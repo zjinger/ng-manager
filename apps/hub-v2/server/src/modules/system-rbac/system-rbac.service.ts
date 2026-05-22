@@ -235,12 +235,23 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
       throw new AppError(ERROR_CODES.SYSTEM_ROLE_BUILTIN_UPDATE, "super admin role cannot be modified", 403);
     }
     const now = nowIso();
+    const users: Array<{ id: string; username: string | null; displayName: string | null; label: string }> = [];
     for (const userId of input.userIds) {
       if (!this.repo.userExists(userId)) {
         throw new AppError(ERROR_CODES.USER_NOT_FOUND, `user not found: ${userId}`, 404);
       }
+      const user = this.repo.findUserById(userId);
+      users.push({
+        id: userId,
+        username: user?.username ?? null,
+        displayName: user?.displayName ?? null,
+        label: user?.displayName?.trim() || user?.username?.trim() || userId
+      });
       this.repo.addRoleUser(roleId, userId, genId("usr"), now);
     }
+    const userLabel = users.length > 3
+      ? `${users.slice(0, 3).map((user) => user.label).join("、")} 等 ${users.length} 名用户`
+      : users.map((user) => user.label).join("、");
     this.auditLog?.record(
       {
         module: "role",
@@ -248,8 +259,8 @@ export class SystemRbacService implements SystemRbacCommandContract, SystemRbacQ
         targetType: "system_role_users",
         targetId: role.id,
         targetName: role.name,
-        summary: `为角色「${role.name}」添加 ${input.userIds.length} 名用户`,
-        after: { userIds: input.userIds }
+        summary: `为角色「${role.name}」添加用户「${userLabel}」`,
+        after: { users }
       },
       _ctx
     );

@@ -5,6 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EmptyStateComponent, LoadingStateComponent, PageHeaderComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -16,6 +17,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import type { AuditLogAction, AuditLogEntity, AuditLogLevel, AuditLogModule } from '../../models/audit-log.model';
 import { AUDIT_ACTION_LABELS, AUDIT_LEVEL_LABELS, AUDIT_MODULE_LABELS } from '../../models/audit-log.model';
 import { AuditLogApiService } from '../../services/audit-log-api.service';
+import { buildAuditChangeRows, formatAuditLogJson } from './audit-log-diff.util';
 
 @Component({
   selector: 'app-audit-log-page',
@@ -23,6 +25,7 @@ import { AuditLogApiService } from '../../services/audit-log-api.service';
     DatePipe,
     FormsModule,
     NzButtonModule,
+    NzCollapseModule,
     NzDatePickerModule,
     NzDrawerModule,
     NzIconModule,
@@ -162,17 +165,43 @@ import { AuditLogApiService } from '../../services/audit-log-api.service';
             <div class="detail-grid__wide"><label>摘要</label><span>{{ current.summary }}</span></div>
           </div>
 
-          <section class="json-section">
-            <h3>Meta</h3>
-            <pre>{{ formatJson(current.metaJson) }}</pre>
+          <section class="change-section">
+            <div class="section-title">
+              <h3>变更内容</h3>
+              <span>{{ changeSummary() }}</span>
+            </div>
+            @if (changeRows().length > 0) {
+              <div class="change-table">
+                <div class="change-table__head">
+                  <span>字段</span>
+                  <span>变更前</span>
+                  <span>变更后</span>
+                </div>
+                @for (row of changeRows(); track row.key) {
+                  <div class="change-table__row" [class.change-table__row--added]="row.kind === 'added'" [class.change-table__row--removed]="row.kind === 'removed'">
+                    <span class="change-field">{{ row.label }}</span>
+                    <span class="change-value">{{ row.before }}</span>
+                    <span class="change-value">{{ row.after }}</span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="change-empty">本次操作未记录字段级变更</div>
+            }
           </section>
-          <section class="json-section">
-            <h3>Before</h3>
-            <pre>{{ formatJson(current.beforeJson) }}</pre>
-          </section>
-          <section class="json-section">
-            <h3>After</h3>
-            <pre>{{ formatJson(current.afterJson) }}</pre>
+
+          <section class="raw-section">
+            <nz-collapse nzGhost>
+              <nz-collapse-panel nzHeader="Meta 原始数据">
+                <pre>{{ rawData().meta }}</pre>
+              </nz-collapse-panel>
+              <nz-collapse-panel nzHeader="Before 原始数据">
+                <pre>{{ rawData().before }}</pre>
+              </nz-collapse-panel>
+              <nz-collapse-panel nzHeader="After 原始数据">
+                <pre>{{ rawData().after }}</pre>
+              </nz-collapse-panel>
+            </nz-collapse>
           </section>
         }
       </ng-container>
@@ -273,13 +302,84 @@ import { AuditLogApiService } from '../../services/audit-log-api.service';
       .wrap {
         overflow-wrap: anywhere;
       }
-      .json-section {
+      .change-section,
+      .raw-section {
         margin-top: 16px;
       }
-      .json-section h3 {
+      .section-title {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .section-title h3 {
         margin: 0 0 8px;
         color: var(--text-heading);
         font-size: 14px;
+      }
+      .section-title span {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .change-table {
+        overflow: hidden;
+        border: 1px solid var(--border-color-soft);
+        border-radius: 8px;
+        background: var(--bg-container);
+      }
+      .change-table__head,
+      .change-table__row {
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        padding: 10px 12px;
+      }
+      .change-table__head {
+        background: var(--bg-subtle);
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .change-table__row {
+        border-top: 1px solid var(--border-color-soft);
+        color: var(--text-secondary);
+      }
+      .change-table__row--added .change-value:last-child {
+        color: var(--color-success);
+      }
+      .change-table__row--removed .change-value:nth-child(2) {
+        color: var(--color-danger);
+      }
+      .change-field {
+        color: var(--text-heading);
+        font-weight: 700;
+      }
+      .change-value {
+        min-width: 0;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .change-empty {
+        padding: 18px;
+        border: 1px dashed var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-subtle);
+        color: var(--text-muted);
+        text-align: center;
+      }
+      .raw-section {
+        border: 1px solid var(--border-color-soft);
+        border-radius: 8px;
+        background: var(--bg-container);
+      }
+      .raw-section ::ng-deep .ant-collapse {
+        background: transparent;
+      }
+      .raw-section ::ng-deep .ant-collapse-header {
+        color: var(--text-heading);
+        font-weight: 700;
       }
       pre {
         max-height: 260px;
@@ -301,6 +401,26 @@ import { AuditLogApiService } from '../../services/audit-log-api.service';
         }
         .detail-grid {
           grid-template-columns: 1fr;
+        }
+        .change-table__head {
+          display: none;
+        }
+        .change-table__row {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+        .change-value::before {
+          display: block;
+          margin-bottom: 2px;
+          color: var(--text-muted);
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .change-value:nth-child(2)::before {
+          content: '变更前';
+        }
+        .change-value:nth-child(3)::before {
+          content: '变更后';
         }
       }
     `,
@@ -327,6 +447,19 @@ export class AuditLogPageComponent {
   readonly selected = signal<AuditLogEntity | null>(null);
   readonly detailOpen = signal(false);
   readonly subtitle = computed(() => `共 ${this.total()} 条后台管理操作记录，支持按模块、动作、级别和时间筛选`);
+  readonly changeRows = computed(() => buildAuditChangeRows(this.selected()));
+  readonly changeSummary = computed(() => {
+    const total = this.changeRows().length;
+    return total > 0 ? `共 ${total} 项变化` : '无字段变化';
+  });
+  readonly rawData = computed(() => {
+    const current = this.selected();
+    return {
+      meta: formatAuditLogJson(current?.metaJson ?? null),
+      before: formatAuditLogJson(current?.beforeJson ?? null),
+      after: formatAuditLogJson(current?.afterJson ?? null),
+    };
+  });
   readonly drawerBodyStyle = { padding: '18px 20px 24px', overflow: 'auto' };
 
   readonly moduleOptions = Object.entries(AUDIT_MODULE_LABELS).map(([value, label]) => ({ value: value as AuditLogModule, label }));
@@ -432,17 +565,6 @@ export class AuditLogPageComponent {
 
   levelColor(value: AuditLogLevel): string {
     return value === 'error' ? 'red' : value === 'warn' ? 'orange' : 'blue';
-  }
-
-  formatJson(value: string | null): string {
-    if (!value) {
-      return '-';
-    }
-    try {
-      return JSON.stringify(JSON.parse(value), null, 2);
-    } catch {
-      return value;
-    }
   }
 
   private toStartIso(value: Date | null): string | undefined {

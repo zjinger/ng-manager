@@ -8,6 +8,12 @@ export interface OrganizationUserRef {
   displayName: string | null;
 }
 
+export interface OrganizationUserSummary {
+  id: string;
+  username: string;
+  displayName: string | null;
+}
+
 export interface DepartmentEntity {
   id: string;
   parentId: string | null;

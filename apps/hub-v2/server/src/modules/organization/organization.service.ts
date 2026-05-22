@@ -172,14 +172,15 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
       updatedAt: now
     });
     const item = this.repo.listDepartmentTitles(department.id).find((entry) => entry.titleCode === titleCode)!;
+    const titleLabel = item.titleName?.trim() || titleCode;
     this.auditLog?.record(
       {
         module: "organization",
         action: "assign",
         targetType: "department_title",
         targetId: `${department.id}:${titleCode}`,
-        targetName: `${department.name} / ${titleCode}`,
-        summary: `为部门「${department.name}」绑定职务「${titleCode}」`,
+        targetName: `${department.name} / ${titleLabel}`,
+        summary: `为部门「${department.name}」绑定职务「${titleLabel}」`,
         after: item
       },
       _ctx
@@ -192,15 +193,19 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
     if (!department) {
       throw new AppError(ERROR_CODES.ORGANIZATION_DEPARTMENT_NOT_FOUND, `department not found: ${departmentId}`, 404);
     }
-    this.repo.removeDepartmentTitle(department.id, titleCode.trim());
+    const normalizedTitleCode = titleCode.trim();
+    const item = this.repo.listDepartmentTitles(department.id).find((entry) => entry.titleCode === normalizedTitleCode);
+    const titleLabel = item?.titleName?.trim() || normalizedTitleCode;
+    this.repo.removeDepartmentTitle(department.id, normalizedTitleCode);
     this.auditLog?.record(
       {
         module: "organization",
         action: "remove",
         targetType: "department_title",
-        targetId: `${department.id}:${titleCode.trim()}`,
-        targetName: `${department.name} / ${titleCode.trim()}`,
-        summary: `移除部门「${department.name}」的职务「${titleCode.trim()}」`
+        targetId: `${department.id}:${normalizedTitleCode}`,
+        targetName: `${department.name} / ${titleLabel}`,
+        summary: `移除部门「${department.name}」的职务「${titleLabel}」`,
+        before: item ?? { departmentId: department.id, titleCode: normalizedTitleCode }
       },
       _ctx
     );
@@ -208,6 +213,8 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
 
   async addUserDepartment(userId: string, input: UserDepartmentInput, _ctx: RequestContext): Promise<UserDepartmentEntity> {
     this.ensureUser(userId);
+    const user = this.repo.findUserById(userId);
+    const userLabel = this.formatUserLabel(user, userId);
     this.normalizeUserDepartmentInputs([input]);
     const department = this.repo.findDepartmentById(input.departmentId);
     if (!department) {
@@ -228,8 +235,8 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
         action: "assign",
         targetType: "user_department",
         targetId: `${userId}:${input.departmentId}`,
-        targetName: userId,
-        summary: `为用户「${userId}」绑定部门「${input.departmentId}」`,
+        targetName: `${userLabel} / ${department.name}`,
+        summary: `为用户「${userLabel}」绑定部门「${department.name}」`,
         after: item
       },
       _ctx
@@ -239,6 +246,10 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
 
   async removeUserDepartment(userId: string, departmentId: string, _ctx: RequestContext): Promise<void> {
     this.ensureUser(userId);
+    const user = this.repo.findUserById(userId);
+    const userLabel = this.formatUserLabel(user, userId);
+    const department = this.repo.findDepartmentById(departmentId);
+    const departmentLabel = department?.name?.trim() || departmentId;
     this.repo.removeUserDepartment(userId, departmentId);
     this.auditLog?.record(
       {
@@ -246,8 +257,8 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
         action: "remove",
         targetType: "user_department",
         targetId: `${userId}:${departmentId}`,
-        targetName: userId,
-        summary: `移除用户「${userId}」的部门「${departmentId}」`
+        targetName: `${userLabel} / ${departmentLabel}`,
+        summary: `移除用户「${userLabel}」的部门「${departmentLabel}」`
       },
       _ctx
     );
@@ -365,5 +376,9 @@ export class OrganizationService implements OrganizationCommandContract, Organiz
 
   private canManageDepartments(ctx: RequestContext): boolean {
     return (ctx.authScopes ?? []).includes("admin.departments.manage");
+  }
+
+  private formatUserLabel(user: { username: string; displayName: string | null } | null, fallback: string): string {
+    return user?.displayName?.trim() || user?.username?.trim() || fallback;
   }
 }

@@ -5,6 +5,7 @@ import type {
   DepartmentTitleInput,
   DepartmentStatus,
   ListDepartmentsQuery,
+  OrganizationUserSummary,
   UserDepartmentEntity,
   UserDepartmentInput
 } from "./organization.types";
@@ -46,6 +47,12 @@ type DepartmentTitleRow = {
   member_count: number;
   created_at: string;
   updated_at: string;
+};
+
+type UserSummaryRow = {
+  id: string;
+  username: string;
+  display_name: string | null;
 };
 
 export class OrganizationRepo {
@@ -342,6 +349,19 @@ export class OrganizationRepo {
   userExists(userId: string): boolean {
     const row = this.db.prepare("SELECT id FROM users WHERE id = ?").get(userId) as { id: string } | undefined;
     return !!row;
+  }
+
+  findUserById(userId: string): OrganizationUserSummary | null {
+    const row = this.db
+      .prepare("SELECT id, username, display_name FROM users WHERE id = ?")
+      .get(userId) as UserSummaryRow | undefined;
+    return row
+      ? {
+          id: row.id,
+          username: row.username,
+          displayName: row.display_name
+        }
+      : null;
   }
 
   private mapDepartment(row: DepartmentRow): DepartmentEntity {
