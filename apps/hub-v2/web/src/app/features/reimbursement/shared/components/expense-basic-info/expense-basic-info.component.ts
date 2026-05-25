@@ -59,7 +59,6 @@ const DEFAULT_BASIC_INFO: CreateReimbursementClaimInput = {
             <nz-form-control>
               <input
                 nz-input
-                disabled
                 placeholder="请输入报销部门"
                 name="departmentName"
                 [ngModel]="value().departmentName"
@@ -74,7 +73,6 @@ const DEFAULT_BASIC_INFO: CreateReimbursementClaimInput = {
             <nz-form-control>
               <input
                 nz-input
-                disabled
                 placeholder="请输入姓名"
                 name="applicantName"
                 [ngModel]="value().applicantName"

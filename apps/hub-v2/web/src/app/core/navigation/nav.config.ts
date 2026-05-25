@@ -86,7 +86,7 @@ export const NAV_ITEMS: NavSection[] = [
       {
         key: 'reimbursements-mine',
         label: '我的报销',
-        icon: 'message',
+        icon: 'account-book',
         route: '/reimbursements/mine',
         exact: true,
         permissions: ['expense.view.self'],

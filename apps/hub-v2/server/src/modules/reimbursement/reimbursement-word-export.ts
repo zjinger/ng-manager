@@ -197,7 +197,7 @@ function travelMetaNumber(item: ReimbursementItemEntity | undefined, key: keyof 
 }
 
 function formatMoney(amount: number): string {
-  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+  return amount.toFixed(2);
 }
 
 function formatOptionalNumber(amount: number): string {
