@@ -4,8 +4,11 @@ import { ok } from "../../shared/http/response";
 import {
   attachRdTaskSheetUploadSchema,
   closeRdTaskSheetSchema,
+  convertRdTaskSheetToIssueSchema,
+  convertRdTaskSheetToRdItemSchema,
   createRdTaskSheetSchema,
   listRdTaskSheetsQuerySchema,
+  previewRdTaskSheetImportSchema,
   replyRdTaskSheetSchema,
   updateRdTaskSheetSchema
 } from "./rd-task-sheet.schema";
@@ -22,6 +25,23 @@ export default async function rdTaskSheetRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     const body = createRdTaskSheetSchema.parse(request.body);
     return reply.status(201).send(ok(await app.container.rdTaskSheetCommand.create(body, ctx), "rd task sheet created"));
+  });
+
+  app.post("/rd/task-sheets/import/preview", async (request) => {
+    const ctx = requireAuth(request);
+    const body = previewRdTaskSheetImportSchema.parse(request.body ?? {});
+    return ok(await app.container.rdTaskSheetQuery.previewImport(body, ctx));
+  });
+
+  app.get("/rd/task-sheets/:sheetId/export", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const { sheetId } = request.params as { sheetId: string };
+    const file = await app.container.rdTaskSheetQuery.exportWord(sheetId, ctx);
+    const encodedFileName = encodeURIComponent(file.fileName);
+    return reply
+      .type(file.mimeType)
+      .header("Content-Disposition", `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`)
+      .send(file.buffer);
   });
 
   app.get("/rd/task-sheets/:sheetId", async (request) => {
@@ -61,6 +81,20 @@ export default async function rdTaskSheetRoutes(app: FastifyInstance) {
     const { sheetId } = request.params as { sheetId: string };
     const body = closeRdTaskSheetSchema.parse(request.body ?? {});
     return ok(await app.container.rdTaskSheetCommand.close(sheetId, body, ctx), "rd task sheet closed");
+  });
+
+  app.post("/rd/task-sheets/:sheetId/convert/rd-item", async (request) => {
+    const ctx = requireAuth(request);
+    const { sheetId } = request.params as { sheetId: string };
+    const body = convertRdTaskSheetToRdItemSchema.parse(request.body ?? {});
+    return ok(await app.container.rdTaskSheetCommand.convertToRdItem(sheetId, body, ctx), "rd task sheet converted to rd item");
+  });
+
+  app.post("/rd/task-sheets/:sheetId/convert/issue", async (request) => {
+    const ctx = requireAuth(request);
+    const { sheetId } = request.params as { sheetId: string };
+    const body = convertRdTaskSheetToIssueSchema.parse(request.body ?? {});
+    return ok(await app.container.rdTaskSheetCommand.convertToIssue(sheetId, body, ctx), "rd task sheet converted to issue");
   });
 
   app.post("/rd/task-sheets/:sheetId/attachments", async (request) => {

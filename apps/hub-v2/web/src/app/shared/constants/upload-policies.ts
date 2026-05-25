@@ -125,6 +125,20 @@ export const UPLOAD_TARGETS = {
     invalidTypeMessage: '仅支持 Word / PDF / JPG / PNG 文件',
     sizeLimitMessage: '单个文件最大 10MB',
   },
+  taskSheetWordImport: {
+    bucket: 'task-sheets',
+    category: 'word_import',
+    visibility: 'private',
+    accept: buildAcceptValue(
+      ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+      ['.docx'],
+    ),
+    maxSizeBytes: 10 * MB,
+    allowedMimeTypes: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    allowedExtensions: ['.docx'],
+    invalidTypeMessage: '仅支持 .docx 任务单文件',
+    sizeLimitMessage: '单个文件最大 10MB',
+  },
 } satisfies Record<string, UploadTargetPolicy>;
 
 export function validateUploadFile(file: File, policy: UploadTargetPolicy): string | null {

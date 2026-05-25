@@ -1,9 +1,9 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
@@ -32,6 +32,8 @@ import {
   RD_TASK_SHEET_STATUS_LABELS,
   RD_TASK_SHEET_STATUS_OPTIONS,
   RD_TASK_SHEET_URGENCY_LABELS,
+  type ConvertRdTaskSheetToIssueInput,
+  type ConvertRdTaskSheetToRdItemInput,
   type CreateRdTaskSheetInput,
   type RdTaskSheetBusinessType,
   type RdTaskSheetDetail,
@@ -44,6 +46,13 @@ import { RdTaskSheetApiService } from '../../services/rd-task-sheet-api.service'
 import { RdTaskSheetStore } from '../../store/rd-task-sheet.store';
 
 type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryContent: string };
+type ConvertKind = 'rd' | 'issue';
+type ConvertForm = {
+  projectId: string | null;
+  title: string;
+  memberIds: string[];
+  assigneeId: string | null;
+};
 
 @Component({
   selector: 'app-rd-task-sheet-page',
@@ -51,7 +60,6 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
   imports: [
     DatePipe,
     FormsModule,
-    RouterLink,
     PageHeaderComponent,
     PageToolbarComponent,
     FilterBarComponent,
@@ -62,6 +70,7 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
     RdTaskSheetDialogComponent,
     NzButtonModule,
     NzIconModule,
+    NzInputModule,
     NzPaginationModule,
     NzSelectModule,
     NzTagModule,
@@ -76,10 +85,10 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
           <span nz-icon nzType="plus"></span>
           新建任务单
         </button>
-        <a nz-button routerLink="/rd">
-          <span nz-icon nzType="unordered-list"></span>
-          研发项
-        </a>
+        <button nz-button (click)="openImport()">
+          <span nz-icon nzType="import"></span>
+          关联历史任务单
+        </button>
       </div>
 
       <app-filter-bar toolbar-filters class="task-toolbar__main">
@@ -205,6 +214,20 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
           </header>
 
           <div class="drawer__actions">
+            <button nz-button [nzLoading]="exporting()" (click)="exportWord(selected)">
+              <span nz-icon nzType="download"></span>
+              导出 Word
+            </button>
+            @if (!selected.convertedRdItemId) {
+              <button nz-button (click)="openConvert(selected, 'rd')">转研发项</button>
+            } @else {
+              <nz-tag nzColor="blue">已转研发项</nz-tag>
+            }
+            @if (!selected.convertedIssueId) {
+              <button nz-button (click)="openConvert(selected, 'issue')">转测试单</button>
+            } @else {
+              <nz-tag nzColor="purple">已转测试单</nz-tag>
+            }
             @if (selected.status === 'draft') {
               <button nz-button (click)="openEdit(selected)">编辑</button>
               <button nz-button nzType="primary" [nzLoading]="store.busy()" (click)="store.issue(selected.id)">下发</button>
@@ -310,10 +333,89 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
       [projects]="projects()"
       [users]="users()"
       [initial]="editingSheet()"
+      [prefill]="prefillDraft()"
       [currentUser]="authStore.currentUser()"
       (cancel)="closeForm()"
       (save)="saveSheet($event)"
     />
+
+    @if (importOpen()) {
+      <div class="modal-backdrop">
+        <section class="modal-panel modal-panel--narrow">
+          <header>
+            <h2>关联历史任务单</h2>
+            <button nz-button nzType="text" (click)="closeImport()">
+              <span nz-icon nzType="close"></span>
+            </button>
+          </header>
+          <div class="form-grid form-grid--single">
+            <app-file-upload-dropzone
+              [policy]="wordImportPolicy"
+              [files]="importFiles()"
+              [disabled]="importing()"
+              [hint]="'仅支持 .docx 任务单文件，解析后会进入预览确认表单。'"
+              (filesChange)="handleImportFiles($event)"
+            />
+            @if (importing()) {
+              <p class="muted">正在解析 Word 内容...</p>
+            }
+          </div>
+          <footer>
+            <button nz-button (click)="closeImport()">取消</button>
+          </footer>
+        </section>
+      </div>
+    }
+
+    @if (convertOpen()) {
+      <div class="modal-backdrop">
+        <section class="modal-panel modal-panel--narrow">
+          <header>
+            <h2>{{ convertKind() === 'rd' ? '转研发项' : '转测试单' }}</h2>
+            <button nz-button nzType="text" (click)="convertOpen.set(false)">
+              <span nz-icon nzType="close"></span>
+            </button>
+          </header>
+          <div class="form-grid form-grid--single">
+            <label>
+              <span>关联项目</span>
+              <nz-select nzShowSearch nzPlaceHolder="选择项目" [ngModel]="convertForm().projectId" (ngModelChange)="updateConvert({ projectId: $event })">
+                @for (project of projects(); track project.id) {
+                  <nz-option [nzLabel]="project.name" [nzValue]="project.id"></nz-option>
+                }
+              </nz-select>
+            </label>
+            <label>
+              <span>标题</span>
+              <input nz-input [ngModel]="convertForm().title" (ngModelChange)="updateConvert({ title: $event })" />
+            </label>
+            @if (convertKind() === 'rd') {
+              <label>
+                <span>研发成员</span>
+                <nz-select nzMode="multiple" nzShowSearch nzPlaceHolder="选择成员" [ngModel]="convertForm().memberIds" (ngModelChange)="updateConvert({ memberIds: $event })">
+                  @for (user of users(); track user.id) {
+                    <nz-option [nzLabel]="userName(user)" [nzValue]="user.id"></nz-option>
+                  }
+                </nz-select>
+              </label>
+            } @else {
+              <label>
+                <span>负责人</span>
+                <nz-select nzShowSearch nzAllowClear nzPlaceHolder="选择负责人" [ngModel]="convertForm().assigneeId" (ngModelChange)="updateConvert({ assigneeId: $event })">
+                  @for (user of users(); track user.id) {
+                    <nz-option [nzLabel]="userName(user)" [nzValue]="user.id"></nz-option>
+                  }
+                </nz-select>
+              </label>
+            }
+          </div>
+          <footer>
+            <button nz-button (click)="convertOpen.set(false)">取消</button>
+            <button nz-button nzType="primary" [nzLoading]="converting()" [disabled]="!canConvert()" (click)="saveConvert()">确认创建</button>
+          </footer>
+        </section>
+      </div>
+    }
 
     @if (replyOpen()) {
       <div class="modal-backdrop">
@@ -602,8 +704,23 @@ export class RdTaskSheetPageComponent implements OnInit {
   readonly keywordDraft = signal('');
   readonly formOpen = signal(false);
   readonly editingSheet = signal<RdTaskSheetDetail | null>(null);
+  readonly prefillDraft = signal<CreateRdTaskSheetInput | null>(null);
   readonly replyOpen = signal(false);
   readonly uploading = signal(false);
+  readonly importing = signal(false);
+  readonly importOpen = signal(false);
+  readonly importFiles = signal<File[]>([]);
+  readonly importUploadId = signal<string | null>(null);
+  readonly exporting = signal(false);
+  readonly converting = signal(false);
+  readonly convertOpen = signal(false);
+  readonly convertKind = signal<ConvertKind>('rd');
+  readonly convertForm = signal<ConvertForm>({
+    projectId: null,
+    title: '',
+    memberIds: [],
+    assigneeId: null,
+  });
   readonly detailUploadFiles = signal<File[]>([]);
   readonly replyForm = signal<ReplyForm>({
     result: 'resolved',
@@ -613,6 +730,7 @@ export class RdTaskSheetPageComponent implements OnInit {
 
   readonly statusOptions = RD_TASK_SHEET_STATUS_OPTIONS;
   readonly uploadPolicy = UPLOAD_TARGETS.taskSheetAttachment;
+  readonly wordImportPolicy = UPLOAD_TARGETS.taskSheetWordImport;
   readonly uploadSizeLimit = formatUploadSizeLimit(this.uploadPolicy);
   readonly subtitle = computed(() => `共 ${this.store.total()} 张任务单，支持关联或不关联项目。`);
   readonly dialogBusy = computed(() => this.store.busy() || this.uploading());
@@ -665,17 +783,22 @@ export class RdTaskSheetPageComponent implements OnInit {
 
   openCreate(): void {
     this.editingSheet.set(null);
+    this.prefillDraft.set(null);
+    this.importUploadId.set(null);
     this.formOpen.set(true);
   }
 
   openEdit(detail: RdTaskSheetDetail): void {
     this.editingSheet.set(detail);
+    this.prefillDraft.set(null);
     this.formOpen.set(true);
   }
 
   closeForm(): void {
     this.formOpen.set(false);
     this.editingSheet.set(null);
+    this.prefillDraft.set(null);
+    this.importUploadId.set(null);
   }
 
   saveSheet(event: { id?: string; value: CreateRdTaskSheetInput; files: File[] }): void {
@@ -687,10 +810,14 @@ export class RdTaskSheetPageComponent implements OnInit {
     this.uploading.set(true);
     uploadRequest.pipe(finalize(() => this.uploading.set(false))).subscribe({
       next: (uploads) => {
+        const importUploadId = this.importUploadId();
         this.store.create(
           {
             ...event.value,
-            attachments: uploads.map((upload) => ({ uploadId: upload.id })),
+            attachments: [
+              ...(importUploadId ? [{ uploadId: importUploadId }] : []),
+              ...uploads.map((upload) => ({ uploadId: upload.id })),
+            ],
           },
           (detail) => {
             this.closeForm();
@@ -699,6 +826,50 @@ export class RdTaskSheetPageComponent implements OnInit {
         );
       },
       error: () => this.message.error('附件上传失败，请稍后重试'),
+    });
+  }
+
+  openImport(): void {
+    this.importFiles.set([]);
+    this.importOpen.set(true);
+  }
+
+  closeImport(): void {
+    if (this.importing()) {
+      return;
+    }
+    this.importFiles.set([]);
+    this.importOpen.set(false);
+  }
+
+  handleImportFiles(files: File[]): void {
+    const file = files[0];
+    this.importFiles.set(file ? [file] : []);
+    if (!file) {
+      return;
+    }
+    this.importing.set(true);
+    this.api.uploadWordImport(file).subscribe({
+      next: (upload) => {
+        this.api
+          .previewImport(upload.id)
+          .pipe(finalize(() => this.importing.set(false)))
+          .subscribe({
+            next: (result) => {
+              this.importOpen.set(false);
+              this.importFiles.set([]);
+              this.editingSheet.set(null);
+              this.prefillDraft.set(result.draft);
+              this.importUploadId.set(result.upload.uploadId);
+              this.formOpen.set(true);
+            },
+            error: () => this.message.error('Word 解析失败，请确认格式为任务单 .docx'),
+          });
+      },
+      error: () => {
+        this.importing.set(false);
+        this.message.error('历史任务单上传失败');
+      },
     });
   }
 
@@ -730,6 +901,85 @@ export class RdTaskSheetPageComponent implements OnInit {
       },
       () => this.replyOpen.set(false),
     );
+  }
+
+  exportWord(detail: RdTaskSheetDetail): void {
+    this.exporting.set(true);
+    this.api
+      .exportWord(detail.id)
+      .pipe(finalize(() => this.exporting.set(false)))
+      .subscribe({
+        next: (response) => {
+          const blob = response.body;
+          if (!blob) {
+            this.message.error('导出 Word 失败');
+            return;
+          }
+          const filename = decodeDownloadFileName(response.headers.get('content-disposition')) || `${detail.sheetNo}.docx`;
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = url;
+          anchor.download = filename;
+          anchor.click();
+          URL.revokeObjectURL(url);
+        },
+        error: () => this.message.error('导出 Word 失败'),
+      });
+  }
+
+  openConvert(detail: RdTaskSheetDetail, kind: ConvertKind): void {
+    const fallbackUserId = detail.receiverUserId || detail.processorUserId || null;
+    this.convertKind.set(kind);
+    this.convertForm.set({
+      projectId: detail.projectId,
+      title: detail.title,
+      memberIds: fallbackUserId ? [fallbackUserId] : [],
+      assigneeId: fallbackUserId,
+    });
+    this.convertOpen.set(true);
+  }
+
+  updateConvert(patch: Partial<ConvertForm>): void {
+    this.convertForm.update((form) => ({ ...form, ...patch }));
+  }
+
+  canConvert(): boolean {
+    const form = this.convertForm();
+    if (!form.projectId || !form.title.trim()) {
+      return false;
+    }
+    return this.convertKind() === 'issue' || form.memberIds.length > 0;
+  }
+
+  saveConvert(): void {
+    const detail = this.store.selected();
+    const form = this.convertForm();
+    if (!detail || !this.canConvert()) {
+      return;
+    }
+    this.converting.set(true);
+    const request =
+      this.convertKind() === 'rd'
+        ? this.api.convertToRdItem(detail.id, {
+            projectId: form.projectId,
+            title: form.title.trim(),
+            memberIds: form.memberIds,
+            planEndAt: detail.expectedResolvedAt,
+          } satisfies ConvertRdTaskSheetToRdItemInput)
+        : this.api.convertToIssue(detail.id, {
+            projectId: form.projectId,
+            title: form.title.trim(),
+            assigneeId: form.assigneeId,
+            type: 'bug',
+          } satisfies ConvertRdTaskSheetToIssueInput);
+    request.pipe(finalize(() => this.converting.set(false))).subscribe({
+      next: (updated) => {
+        this.convertOpen.set(false);
+        this.store.select(updated.id);
+        this.message.success(this.convertKind() === 'rd' ? '已创建研发项' : '已创建测试单');
+      },
+      error: () => this.message.error(this.convertKind() === 'rd' ? '转研发项失败' : '转测试单失败'),
+    });
   }
 
   uploadForSelected(files: File[], detail: RdTaskSheetDetail): void {
@@ -779,6 +1029,10 @@ export class RdTaskSheetPageComponent implements OnInit {
     return RD_TASK_SHEET_RESULT_LABELS[result] ?? result;
   }
 
+  userName(user: UserEntity): string {
+    return user.displayName || user.username;
+  }
+
   statusColor(status: RdTaskSheetStatus): string {
     return {
       draft: 'default',
@@ -799,6 +1053,8 @@ export class RdTaskSheetPageComponent implements OnInit {
       close: '关闭',
       'attachment.added': '添加附件',
       'attachment.removed': '删除附件',
+      'convert.rd_item': '转研发项',
+      'convert.issue': '转测试单',
     };
     return labels[action] ?? action;
   }
@@ -816,4 +1072,16 @@ export class RdTaskSheetPageComponent implements OnInit {
     }
     return `${(size / 1024 / 1024).toFixed(1)}MB`;
   }
+}
+
+function decodeDownloadFileName(disposition: string | null): string {
+  if (!disposition) {
+    return '';
+  }
+  const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  if (utf8Match) {
+    return decodeURIComponent(utf8Match[1].replace(/"/g, ''));
+  }
+  const asciiMatch = /filename="?([^";]+)"?/i.exec(disposition);
+  return asciiMatch ? decodeURIComponent(asciiMatch[1]) : '';
 }

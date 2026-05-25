@@ -1,10 +1,14 @@
+import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
-import { ApiClientService } from '@core/http';
+import { API_BASE_URL, ApiClientService } from '@core/http';
 import { buildUploadFormData, UPLOAD_TARGETS } from '@shared/constants';
 import type {
   CloseRdTaskSheetInput,
+  ConvertRdTaskSheetToIssueInput,
+  ConvertRdTaskSheetToRdItemInput,
   CreateRdTaskSheetInput,
+  PreviewRdTaskSheetImportResult,
   RdTaskSheetDetail,
   RdTaskSheetListQuery,
   RdTaskSheetListResult,
@@ -15,6 +19,8 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class RdTaskSheetApiService {
   private readonly api = inject(ApiClientService);
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = inject(API_BASE_URL);
 
   list(query: Partial<RdTaskSheetListQuery>) {
     const normalizedQuery: Record<string, string | number | boolean | null | undefined> = {
@@ -60,7 +66,31 @@ export class RdTaskSheetApiService {
     return this.api.delete<RdTaskSheetDetail>(`/rd/task-sheets/${sheetId}/attachments/${attachmentId}`);
   }
 
+  previewImport(uploadId: string) {
+    return this.api.post<PreviewRdTaskSheetImportResult, { uploadId: string }>('/rd/task-sheets/import/preview', { uploadId });
+  }
+
+  exportWord(sheetId: string) {
+    return this.http.get(`${this.baseUrl}/rd/task-sheets/${sheetId}/export`, {
+      observe: 'response',
+      responseType: 'blob',
+      withCredentials: true,
+    });
+  }
+
+  convertToRdItem(sheetId: string, input: ConvertRdTaskSheetToRdItemInput) {
+    return this.api.post<RdTaskSheetDetail, ConvertRdTaskSheetToRdItemInput>(`/rd/task-sheets/${sheetId}/convert/rd-item`, input);
+  }
+
+  convertToIssue(sheetId: string, input: ConvertRdTaskSheetToIssueInput) {
+    return this.api.post<RdTaskSheetDetail, ConvertRdTaskSheetToIssueInput>(`/rd/task-sheets/${sheetId}/convert/issue`, input);
+  }
+
   uploadAttachment(file: File) {
     return this.api.post<{ id: string }, FormData>('/uploads', buildUploadFormData(file, UPLOAD_TARGETS.taskSheetAttachment));
+  }
+
+  uploadWordImport(file: File) {
+    return this.api.post<{ id: string }, FormData>('/uploads', buildUploadFormData(file, UPLOAD_TARGETS.taskSheetWordImport));
   }
 }

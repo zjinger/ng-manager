@@ -273,7 +273,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     eventBus
   );
   const rdService = new RdService(rdRepo, projectAccess, eventBus, uploadService);
-  const rdTaskSheetService = new RdTaskSheetService(new RdTaskSheetRepo(db), projectAccess, uploadService);
+  const rdTaskSheetService = new RdTaskSheetService(new RdTaskSheetRepo(db), projectAccess, uploadService, rdService, issueService);
   const releaseRepo = new ReleaseRepo(db);
   const releaseService = new ReleaseService(releaseRepo, projectRepo, projectAccess, eventBus, contentLogService);
   const dashboardService = new DashboardService(

@@ -53,7 +53,10 @@ export const createRdTaskSheetSchema = z.object({
   urgency: taskSheetUrgencySchema.optional(),
   businessType: taskSheetBusinessTypeSchema.optional(),
   expectedResolvedAt: nullableText,
+  resolvedAt: nullableText,
+  result: taskSheetResultSchema.nullable().optional(),
   businessDescription: z.string().trim().min(1),
+  deliveryContent: nullableText,
   attachments: z.array(attachRdTaskSheetUploadSchema).optional()
 });
 
@@ -90,6 +93,33 @@ export const replyRdTaskSheetSchema = z.object({
 
 export const closeRdTaskSheetSchema = z.object({
   reason: nullableText
+});
+
+export const previewRdTaskSheetImportSchema = z.object({
+  uploadId: z.string().trim().min(1)
+});
+
+export const convertRdTaskSheetToRdItemSchema = z.object({
+  projectId: nullableText,
+  title: optionalText,
+  description: optionalText,
+  type: z.string().trim().optional(),
+  priority: z.string().trim().optional(),
+  memberIds: z.array(z.string().trim().min(1)).optional(),
+  verifierId: nullableText,
+  planStartAt: nullableText,
+  planEndAt: nullableText
+});
+
+export const convertRdTaskSheetToIssueSchema = z.object({
+  projectId: nullableText,
+  title: optionalText,
+  description: optionalText,
+  type: z.string().trim().optional(),
+  priority: z.string().trim().optional(),
+  assigneeId: nullableText,
+  verifierId: nullableText,
+  rdItemId: nullableText
 });
 
 export const listRdTaskSheetsQuerySchema = z.object({

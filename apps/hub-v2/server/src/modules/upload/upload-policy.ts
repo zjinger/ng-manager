@@ -90,6 +90,14 @@ const TASK_SHEET_ATTACHMENT_POLICY: UploadPolicy = {
   sizeLimitMessage: "单个文件最大 10MB"
 };
 
+const TASK_SHEET_WORD_IMPORT_POLICY: UploadPolicy = {
+  maxSizeBytes: 10 * MB,
+  allowedMimeTypes: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  allowedExtensions: [".docx"],
+  invalidTypeMessage: "仅支持 .docx 任务单文件",
+  sizeLimitMessage: "单个文件最大 10MB"
+};
+
 /**
  * 根据上传的 bucket 和 category 决定使用哪个上传策略
  */
@@ -114,6 +122,9 @@ export function resolveUploadPolicy(bucket: string, category: string): UploadPol
   }
   if (bucket === "task-sheets" && category === "attachment") {
     return TASK_SHEET_ATTACHMENT_POLICY;
+  }
+  if (bucket === "task-sheets" && category === "word_import") {
+    return TASK_SHEET_WORD_IMPORT_POLICY;
   }
   return GENERIC_UPLOAD_POLICY;
 }

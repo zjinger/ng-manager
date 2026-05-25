@@ -1,21 +1,33 @@
+import fs from "node:fs";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
 import type { RequestContext } from "../../shared/context/request-context";
 import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
+import type { IssueCommandContract } from "../issue/issue.contract";
+import type { IssuePriority, IssueType } from "../issue/issue.types";
 import type { ProjectAccessContract } from "../project/project-access.contract";
 import type { UploadQueryContract } from "../upload/upload.contract";
+import type { RdCommandContract } from "./rd.contract";
+import type { RdItemPriority, RdItemType } from "./rd.types";
 import type { RdTaskSheetCommandContract, RdTaskSheetQueryContract } from "./rd-task-sheet.contract";
 import { RdTaskSheetRepo } from "./rd-task-sheet.repo";
+import { parseRdTaskSheetWord } from "./rd-task-sheet-word-import";
+import { renderRdTaskSheetWord } from "./rd-task-sheet-word-export";
 import type {
   AttachRdTaskSheetUploadInput,
   CloseRdTaskSheetInput,
+  ConvertRdTaskSheetToIssueInput,
+  ConvertRdTaskSheetToRdItemInput,
   CreateRdTaskSheetInput,
   ListRdTaskSheetsQuery,
+  PreviewRdTaskSheetImportInput,
+  PreviewRdTaskSheetImportResult,
   RdTaskSheetAction,
   RdTaskSheetDetail,
   RdTaskSheetEntity,
   RdTaskSheetListResult,
+  RenderedRdTaskSheetWord,
   ReplyRdTaskSheetInput,
   UpdateRdTaskSheetInput,
   UserDisplayProfile
@@ -29,7 +41,9 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
   constructor(
     private readonly repo: RdTaskSheetRepo,
     private readonly projectAccess: ProjectAccessContract,
-    private readonly uploadQuery: UploadQueryContract
+    private readonly uploadQuery: UploadQueryContract,
+    private readonly rdCommand?: RdCommandContract,
+    private readonly issueCommand?: IssueCommandContract
   ) {}
 
   async create(input: CreateRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail> {
@@ -40,11 +54,14 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
     const receiver = this.resolveOptionalUser(input.receiverUserId ?? null);
     const processor = this.resolveOptionalUser(input.processorUserId ?? null);
     const now = nowIso();
+    const hasImportedReply = Boolean(input.deliveryContent?.trim() || input.result || input.resolvedAt?.trim());
+    const sheetNo = normalizeNullable(input.sheetNo) || this.getNextSheetNo();
+    this.ensureSheetNoUnique(sheetNo);
     const entity: RdTaskSheetEntity = {
       id: genId("rdts"),
       projectId,
-      sheetNo: normalizeNullable(input.sheetNo) || this.getNextSheetNo(),
-      status: "draft",
+      sheetNo,
+      status: hasImportedReply ? "replied" : "draft",
       title: input.title.trim(),
       issueDate: input.issueDate?.trim() || now.slice(0, 10),
       issuerDepartment: normalizeNullable(input.issuerDepartment),
@@ -65,16 +82,18 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
       urgency: input.urgency ?? "normal",
       businessType: input.businessType ?? "technical_service",
       expectedResolvedAt: normalizeNullable(input.expectedResolvedAt),
-      resolvedAt: null,
-      result: null,
+      resolvedAt: hasImportedReply ? normalizeNullable(input.resolvedAt) || now : null,
+      result: input.result ?? null,
       businessDescription: input.businessDescription.trim(),
-      deliveryContent: null,
+      deliveryContent: normalizeNullable(input.deliveryContent),
       closeReason: null,
+      convertedRdItemId: null,
+      convertedIssueId: null,
       creatorId: creator.id,
       creatorName: creator.name,
       issuedAt: null,
       processingStartedAt: null,
-      repliedAt: null,
+      repliedAt: hasImportedReply ? now : null,
       closedAt: null,
       createdAt: now,
       updatedAt: now
@@ -102,9 +121,11 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
     const receiver = input.receiverUserId === undefined ? null : this.resolveOptionalUser(input.receiverUserId);
     const processor = input.processorUserId === undefined ? null : this.resolveOptionalUser(input.processorUserId);
     const now = nowIso();
+    const nextSheetNo = input.sheetNo === undefined ? current.sheetNo : normalizeNullable(input.sheetNo) || current.sheetNo;
+    this.ensureSheetNoUnique(nextSheetNo, id);
     const updated = this.repo.update(id, {
       project_id: projectId,
-      sheet_no: input.sheetNo === undefined ? current.sheetNo : normalizeNullable(input.sheetNo) || current.sheetNo,
+      sheet_no: nextSheetNo,
       title: input.title?.trim() || current.title,
       issue_date: input.issueDate?.trim() || current.issueDate,
       issuer_department: input.issuerDepartment === undefined ? current.issuerDepartment : normalizeNullable(input.issuerDepartment),
@@ -256,6 +277,96 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
     return this.requireDetail(id);
   }
 
+  async previewImport(input: PreviewRdTaskSheetImportInput, ctx: RequestContext): Promise<PreviewRdTaskSheetImportResult> {
+    this.requireAnyPermission(ctx, [SUBMIT_PERMISSION, MANAGE_PERMISSION]);
+    const upload = await this.uploadQuery.getById(input.uploadId, ctx);
+    if (!isDocxUpload(upload.fileName, upload.originalName, upload.mimeType)) {
+      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "历史任务单导入仅支持 .docx 文件", 400);
+    }
+    if (!fs.existsSync(upload.storagePath)) {
+      throw new AppError(ERROR_CODES.NOT_FOUND, "上传的 Word 文件不存在", 404);
+    }
+    const draft = parseRdTaskSheetWord(fs.readFileSync(upload.storagePath));
+    if (draft.projectId) {
+      await this.resolveProjectId(draft.projectId, ctx, "import rd task sheet");
+    }
+    return {
+      draft,
+      upload: {
+        uploadId: upload.id,
+        originalName: upload.originalName || upload.fileName
+      }
+    };
+  }
+
+  async exportWord(id: string, ctx: RequestContext): Promise<RenderedRdTaskSheetWord> {
+    await this.requireEntityWithAccess(id, ctx);
+    return renderRdTaskSheetWord(this.requireDetail(id));
+  }
+
+  async convertToRdItem(id: string, input: ConvertRdTaskSheetToRdItemInput, ctx: RequestContext): Promise<RdTaskSheetDetail> {
+    const current = await this.requireEntityWithAccess(id, ctx);
+    if (!this.rdCommand) {
+      throw new AppError(ERROR_CODES.INTERNAL_ERROR, "rd conversion is not configured", 500);
+    }
+    if (current.convertedRdItemId) {
+      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "任务单已转为研发项", 409);
+    }
+    const projectId = normalizeNullable(input.projectId) || current.projectId;
+    if (!projectId) {
+      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "转研发项需要选择关联项目", 400);
+    }
+    const rdItem = await this.rdCommand.createItem(
+      {
+        projectId,
+        title: input.title?.trim() || current.title,
+        description: input.description?.trim() || buildConvertedDescription(current),
+        type: (input.type as RdItemType | undefined) ?? "feature_dev",
+        priority: (input.priority as RdItemPriority | undefined) ?? (current.urgency === "urgent" ? "high" : "medium"),
+        memberIds: input.memberIds?.map((item) => item.trim()).filter(Boolean) ?? defaultMemberIds(current),
+        verifierId: normalizeNullable(input.verifierId),
+        planStartAt: normalizeNullable(input.planStartAt) ?? current.issueDate,
+        planEndAt: normalizeNullable(input.planEndAt) ?? current.expectedResolvedAt ?? undefined
+      },
+      ctx
+    );
+    const now = nowIso();
+    this.repo.update(id, { converted_rd_item_id: rdItem.id, updated_at: now });
+    this.createLog(id, "convert.rd_item", ctx, `转为研发项 ${rdItem.rdNo}`, now, { rdItemId: rdItem.id });
+    return this.requireDetail(id);
+  }
+
+  async convertToIssue(id: string, input: ConvertRdTaskSheetToIssueInput, ctx: RequestContext): Promise<RdTaskSheetDetail> {
+    const current = await this.requireEntityWithAccess(id, ctx);
+    if (!this.issueCommand) {
+      throw new AppError(ERROR_CODES.INTERNAL_ERROR, "issue conversion is not configured", 500);
+    }
+    if (current.convertedIssueId) {
+      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "任务单已转为测试单", 409);
+    }
+    const projectId = normalizeNullable(input.projectId) || current.projectId;
+    if (!projectId) {
+      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "转测试单需要选择关联项目", 400);
+    }
+    const issue = await this.issueCommand.create(
+      {
+        projectId,
+        title: input.title?.trim() || current.title,
+        description: input.description?.trim() || buildConvertedDescription(current),
+        type: (input.type as IssueType | undefined) ?? "bug",
+        priority: (input.priority as IssuePriority | undefined) ?? (current.urgency === "urgent" ? "high" : "medium"),
+        assigneeId: normalizeNullable(input.assigneeId) ?? current.receiverUserId ?? current.processorUserId,
+        verifierId: normalizeNullable(input.verifierId),
+        rdItemId: normalizeNullable(input.rdItemId) ?? current.convertedRdItemId
+      },
+      ctx
+    );
+    const now = nowIso();
+    this.repo.update(id, { converted_issue_id: issue.id, updated_at: now });
+    this.createLog(id, "convert.issue", ctx, `转为测试单 ${issue.issueNo}`, now, { issueId: issue.id });
+    return this.requireDetail(id);
+  }
+
   async getEntityById(id: string, ctx: RequestContext): Promise<RdTaskSheetEntity> {
     return this.requireEntityWithAccess(id, ctx);
   }
@@ -372,10 +483,15 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
   }
 
   private getNextSheetNo(): string {
-    const datePart = nowIso().slice(0, 10).replace(/-/g, "");
-    const prefix = `TS-${datePart}-`;
+    const prefix = nowIso().slice(0, 7).replace(/-/g, "");
     const sequence = this.repo.nextSheetSequence(prefix);
-    return `${prefix}${String(sequence).padStart(3, "0")}`;
+    return `${prefix}${String(sequence).padStart(4, "0")}`;
+  }
+
+  private ensureSheetNoUnique(sheetNo: string, excludeId?: string): void {
+    if (this.repo.existsSheetNo(sheetNo, excludeId)) {
+      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "任务单编号已存在", 409);
+    }
   }
 
   private addAttachmentRecord(sheetId: string, uploadId: string, userId: string, createdAt: string): void {
@@ -431,4 +547,28 @@ function userDisplayName(profile: UserDisplayProfile | null): string | null {
     return null;
   }
   return profile.displayName?.trim() || profile.username;
+}
+
+function isDocxUpload(fileName: string, originalName: string | null | undefined, mimeType: string | null | undefined): boolean {
+  const name = `${fileName || ""} ${originalName || ""}`.toLowerCase();
+  return name.includes(".docx") || mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+}
+
+function defaultMemberIds(entity: RdTaskSheetEntity): string[] {
+  return Array.from(new Set([entity.receiverUserId, entity.processorUserId, entity.creatorId].filter(Boolean) as string[]));
+}
+
+function buildConvertedDescription(entity: RdTaskSheetEntity): string {
+  return [
+    `来源任务单：${entity.sheetNo}`,
+    entity.projectName ? `项目名称：${entity.projectName}` : "",
+    entity.customerCompany ? `客户单位：${entity.customerCompany}` : "",
+    entity.expectedResolvedAt ? `期望解决时间：${entity.expectedResolvedAt}` : "",
+    "",
+    "业务描述：",
+    entity.businessDescription,
+    entity.deliveryContent ? `\n交付 / 答复内容：\n${entity.deliveryContent}` : ""
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
 }

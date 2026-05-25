@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS rd_task_sheets (
   business_description TEXT NOT NULL,
   delivery_content TEXT,
   close_reason TEXT,
+  converted_rd_item_id TEXT,
+  converted_issue_id TEXT,
   creator_id TEXT NOT NULL,
   creator_name TEXT NOT NULL,
   issued_at TEXT,
@@ -42,6 +44,8 @@ CREATE TABLE IF NOT EXISTS rd_task_sheets (
   FOREIGN KEY (issuer_user_id) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY (receiver_user_id) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY (processor_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (converted_rd_item_id) REFERENCES rd_items(id) ON DELETE SET NULL,
+  FOREIGN KEY (converted_issue_id) REFERENCES issues(id) ON DELETE SET NULL,
   FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE RESTRICT
 );
 

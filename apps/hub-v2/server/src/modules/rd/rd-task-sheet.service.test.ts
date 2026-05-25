@@ -64,6 +64,8 @@ function createDb() {
       business_description TEXT NOT NULL,
       delivery_content TEXT,
       close_reason TEXT,
+      converted_rd_item_id TEXT,
+      converted_issue_id TEXT,
       creator_id TEXT NOT NULL,
       creator_name TEXT NOT NULL,
       issued_at TEXT,
@@ -181,7 +183,7 @@ describe("RdTaskSheetService", () => {
       assert.equal(created.status, "draft");
       assert.equal(created.receiverName, "接收人");
       assert.equal(created.attachments.length, 1);
-      assert.match(created.sheetNo, /^TS-\d{8}-001$/);
+      assert.match(created.sheetNo, /^\d{6}0001$/);
 
       const issued = await svc.issue(created.id, ctx("usr_creator"));
       assert.equal(issued.status, "issued");

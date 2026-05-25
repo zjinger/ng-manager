@@ -48,7 +48,10 @@ const DEFAULT_DRAFT: Draft = {
   urgency: 'normal',
   businessType: 'technical_service',
   expectedResolvedAt: '',
+  resolvedAt: '',
+  result: null,
   businessDescription: '',
+  deliveryContent: '',
 };
 
 @Component({
@@ -253,7 +256,7 @@ const DEFAULT_DRAFT: Draft = {
         <button nz-button type="button" (click)="cancel.emit()">取消</button>
         <button nz-button nzType="primary" form="rd-task-sheet-form" [disabled]="!isFormValid()" [nzLoading]="busy()">
           <nz-icon nzType="check" />
-          创建任务单
+          {{ initial() ? '保存' : '创建任务单' }}
         </button>
       </app-form-actions>
     </app-dialog-shell>
@@ -381,6 +384,7 @@ export class RdTaskSheetDialogComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly initial = input<RdTaskSheetDetail | null>(null);
+  readonly prefill = input<CreateRdTaskSheetInput | null>(null);
   readonly currentUser = input<AuthUser | null>(null);
   readonly projects = input<ProjectSummary[]>([]);
   readonly users = input<UserEntity[]>([]);
@@ -409,6 +413,11 @@ export class RdTaskSheetDialogComponent {
       const initial = this.initial();
       if (initial) {
         this.setDraftFromDetail(initial);
+        return;
+      }
+      const prefill = this.prefill();
+      if (prefill) {
+        this.setDraftFromInput(prefill);
         return;
       }
       this.setDraftForCreate();
@@ -530,7 +539,30 @@ export class RdTaskSheetDialogComponent {
       urgency: detail.urgency,
       businessType: detail.businessType,
       expectedResolvedAt: detail.expectedResolvedAt,
+      resolvedAt: detail.resolvedAt,
+      result: detail.result,
       businessDescription: detail.businessDescription,
+      deliveryContent: detail.deliveryContent,
+    });
+  }
+
+  private setDraftFromInput(input: CreateRdTaskSheetInput): void {
+    const issueDate = input.issueDate || todayString();
+    this.issueDate.set(parseDate(issueDate));
+    this.expectedResolvedDate.set(parseDate(input.expectedResolvedAt));
+    this.attachmentFiles.set([]);
+    this.draft.set({
+      ...DEFAULT_DRAFT,
+      ...input,
+      issueDate,
+      projectId: input.projectId ?? null,
+      sheetNo: input.sheetNo ?? '',
+      title: input.title || input.projectName || '',
+      projectName: input.projectName || input.title || '',
+      expectedResolvedAt: input.expectedResolvedAt ?? '',
+      resolvedAt: input.resolvedAt ?? '',
+      result: input.result ?? null,
+      deliveryContent: input.deliveryContent ?? '',
     });
   }
 }
@@ -559,7 +591,10 @@ function sanitizeDraft(draft: Draft): CreateRdTaskSheetInput {
     urgency: draft.urgency,
     businessType: draft.businessType,
     expectedResolvedAt: textOrNull(draft.expectedResolvedAt),
+    resolvedAt: textOrNull(draft.resolvedAt),
+    result: draft.result,
     businessDescription: draft.businessDescription.trim(),
+    deliveryContent: textOrNull(draft.deliveryContent),
   };
 }
 

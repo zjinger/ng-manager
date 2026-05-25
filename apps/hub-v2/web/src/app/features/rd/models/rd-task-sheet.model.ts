@@ -11,6 +11,8 @@ export type RdTaskSheetAction =
   | 'start_processing'
   | 'reply'
   | 'close'
+  | 'convert.rd_item'
+  | 'convert.issue'
   | 'attachment.added'
   | 'attachment.removed';
 
@@ -44,6 +46,8 @@ export interface RdTaskSheetEntity {
   businessDescription: string;
   deliveryContent: string | null;
   closeReason: string | null;
+  convertedRdItemId: string | null;
+  convertedIssueId: string | null;
   creatorId: string;
   creatorName: string;
   issuedAt: string | null;
@@ -118,7 +122,10 @@ export interface CreateRdTaskSheetInput {
   urgency?: RdTaskSheetUrgency;
   businessType?: RdTaskSheetBusinessType;
   expectedResolvedAt?: string | null;
+  resolvedAt?: string | null;
+  result?: RdTaskSheetResult | null;
   businessDescription: string;
+  deliveryContent?: string | null;
   attachments?: Array<{ uploadId: string }>;
 }
 
@@ -132,6 +139,37 @@ export interface ReplyRdTaskSheetInput {
 
 export interface CloseRdTaskSheetInput {
   reason?: string | null;
+}
+
+export interface PreviewRdTaskSheetImportResult {
+  draft: CreateRdTaskSheetInput;
+  upload: {
+    uploadId: string;
+    originalName: string;
+  };
+}
+
+export interface ConvertRdTaskSheetToRdItemInput {
+  projectId?: string | null;
+  title?: string;
+  description?: string;
+  type?: string;
+  priority?: string;
+  memberIds?: string[];
+  verifierId?: string | null;
+  planStartAt?: string | null;
+  planEndAt?: string | null;
+}
+
+export interface ConvertRdTaskSheetToIssueInput {
+  projectId?: string | null;
+  title?: string;
+  description?: string;
+  type?: string;
+  priority?: string;
+  assigneeId?: string | null;
+  verifierId?: string | null;
+  rdItemId?: string | null;
 }
 
 export const RD_TASK_SHEET_STATUS_LABELS: Record<RdTaskSheetStatus, string> = {

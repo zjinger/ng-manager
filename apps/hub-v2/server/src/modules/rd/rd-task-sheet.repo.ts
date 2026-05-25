@@ -45,6 +45,8 @@ type SheetRow = {
   business_description: string;
   delivery_content: string | null;
   close_reason: string | null;
+  converted_rd_item_id: string | null;
+  converted_issue_id: string | null;
   creator_id: string;
   creator_name: string;
   issued_at: string | null;
@@ -109,6 +111,8 @@ export type UpdateTaskSheetRowInput = Partial<{
   business_description: string;
   delivery_content: string | null;
   close_reason: string | null;
+  converted_rd_item_id: string | null;
+  converted_issue_id: string | null;
   processor_started_at: string | null;
   issued_at: string | null;
   processing_started_at: string | null;
@@ -132,9 +136,22 @@ export class RdTaskSheetRepo {
 
   nextSheetSequence(prefix: string): number {
     const row = this.db
-      .prepare("SELECT COUNT(*) AS count FROM rd_task_sheets WHERE sheet_no LIKE ?")
-      .get(`${prefix}%`) as { count: number };
-    return row.count + 1;
+      .prepare(
+        `
+          SELECT COALESCE(MAX(CAST(SUBSTR(sheet_no, ?) AS INTEGER)), 0) AS max
+          FROM rd_task_sheets
+          WHERE sheet_no LIKE ? AND LENGTH(sheet_no) = ?
+        `
+      )
+      .get(prefix.length + 1, `${prefix}%`, prefix.length + 4) as { max: number };
+    return row.max + 1;
+  }
+
+  existsSheetNo(sheetNo: string, excludeId?: string): boolean {
+    const row = excludeId
+      ? (this.db.prepare("SELECT 1 AS hit FROM rd_task_sheets WHERE sheet_no = ? AND id <> ?").get(sheetNo, excludeId) as { hit: number } | undefined)
+      : (this.db.prepare("SELECT 1 AS hit FROM rd_task_sheets WHERE sheet_no = ?").get(sheetNo) as { hit: number } | undefined);
+    return Boolean(row);
   }
 
   findUserProfile(userId: string): UserDisplayProfile | null {
@@ -156,7 +173,7 @@ export class RdTaskSheetRepo {
             customer_company, customer_contact, customer_phone,
             project_name, project_contact, related_system,
             urgency, business_type, expected_resolved_at, resolved_at, result,
-            business_description, delivery_content, close_reason,
+            business_description, delivery_content, close_reason, converted_rd_item_id, converted_issue_id,
             creator_id, creator_name, issued_at, processing_started_at, replied_at, closed_at,
             created_at, updated_at
           )
@@ -168,7 +185,7 @@ export class RdTaskSheetRepo {
             ?, ?, ?,
             ?, ?, ?,
             ?, ?, ?, ?, ?,
-            ?, ?, ?,
+            ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?
           )
@@ -204,6 +221,8 @@ export class RdTaskSheetRepo {
         entity.businessDescription,
         entity.deliveryContent,
         entity.closeReason,
+        entity.convertedRdItemId,
+        entity.convertedIssueId,
         entity.creatorId,
         entity.creatorName,
         entity.issuedAt,
@@ -423,6 +442,8 @@ export class RdTaskSheetRepo {
       businessDescription: row.business_description,
       deliveryContent: row.delivery_content,
       closeReason: row.close_reason,
+      convertedRdItemId: row.converted_rd_item_id,
+      convertedIssueId: row.converted_issue_id,
       creatorId: row.creator_id,
       creatorName: row.creator_name,
       issuedAt: row.issued_at,
