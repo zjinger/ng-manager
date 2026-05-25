@@ -27,6 +27,7 @@ import issueCommentRoutes from "../modules/issue/comment/issue-comment.routes";
 import issueParticipantRoutes from "../modules/issue/participant/issue-participant.routes";
 import issueRoutes from "../modules/issue/issue.routes";
 import projectRoutes from "../modules/project/project.routes";
+import rdTaskSheetRoutes from "../modules/rd/rd-task-sheet.routes";
 import rdRoutes from "../modules/rd/rd.routes";
 import releasePublicRoutes from "../modules/release/release-public.routes";
 import releaseRoutes from "../modules/release/release.routes";
@@ -126,6 +127,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(userRoutes, { prefix: "/api/admin" });
   await app.register(adminSearchRoutes, { prefix: "/api/admin" });
   await app.register(projectRoutes, { prefix: "/api/admin" });
+  await app.register(rdTaskSheetRoutes, { prefix: "/api/admin" });
   await app.register(uploadRoutes, { prefix: "/api/admin" });
   await app.register(announcementPublicRoutes, { prefix: "/api/public" });
   await app.register(feedbackPublicRoutes, { prefix: "/api/public" });

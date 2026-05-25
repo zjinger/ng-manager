@@ -168,7 +168,7 @@ const DEFAULT_DRAFT: Draft = {
             </div>
             <div nz-col nzSpan="12">
               <nz-form-item>
-                <nz-form-label nzFor="verifierId" nzTooltipTitle="验证人负责验收确认" [nzTooltipIcon]="'question-circle'">验证人</nz-form-label>
+                <nz-form-label nzFor="verifierId" nzTooltipTitle="验证人负责验收确认，未指定时默认为创建人" [nzTooltipIcon]="'question-circle'">验证人</nz-form-label>
                 <nz-form-control>
                   <nz-select
                     nzAllowClear

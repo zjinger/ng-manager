@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/auth/admin.guard';
 import { authGuard } from './core/auth/auth.guard';
-import { ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, permissionGuard, PROJECT_GOVERNANCE_PERMISSIONS } from './core/auth';
+import { ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, permissionGuard, PROJECT_GOVERNANCE_PERMISSIONS, TASK_SHEET_PERMISSIONS } from './core/auth';
 import { FEATURE_FLAGS } from './core/feature-flags';
 
 export const routes: Routes = [
@@ -93,7 +93,7 @@ export const routes: Routes = [
       {
         path: 'rd',
         canActivate: [permissionGuard],
-        data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS] },
+        data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS, ...TASK_SHEET_PERMISSIONS] },
         loadChildren: () => import('./features/rd/routes').then((m) => m.RD_ROUTES),
       },
       // 内容路由：公告、文档、版本发布等

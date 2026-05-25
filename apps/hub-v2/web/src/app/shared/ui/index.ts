@@ -8,6 +8,7 @@ export * from './form-actions';
 export * from './echarts';
 export * from './list-state';
 export * from './filter-bar';
+export * from './file-upload-dropzone';
 export * from './list-state';
 export * from './panel-card';
 export * from './page-header';

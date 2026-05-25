@@ -19,3 +19,8 @@ export const PROJECT_GOVERNANCE_PERMISSIONS = [
 
 export const ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION = 'announcement.global.manage' as const;
 
+export const TASK_SHEET_PERMISSIONS = [
+  'task_sheet.submit',
+  'task_sheet.view.self',
+  'task_sheet.manage',
+] as const;

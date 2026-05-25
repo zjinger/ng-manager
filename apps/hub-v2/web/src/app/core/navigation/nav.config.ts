@@ -1,5 +1,6 @@
 import type { NavSection } from './menu.types';
-import { ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, PROJECT_GOVERNANCE_PERMISSIONS } from '../auth/permission.constants';
+import { ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, PROJECT_GOVERNANCE_PERMISSIONS, TASK_SHEET_PERMISSIONS } from '../auth/permission.constants';
+import { FEATURE_FLAGS } from '../feature-flags';
 
 export const NAV_ITEMS: NavSection[] = [
   {
@@ -37,6 +38,14 @@ export const NAV_ITEMS: NavSection[] = [
         tone: 'warning',
         permissions: [...PROJECT_GOVERNANCE_PERMISSIONS],
       },
+      {
+        key: 'rd-task-sheets',
+        label: '任务单管理',
+        icon: 'schedule',
+        route: '/rd/task-sheets',
+        tone: 'info',
+        permissions: [...TASK_SHEET_PERMISSIONS],
+      },
     ],
   },
   {
@@ -60,16 +69,18 @@ export const NAV_ITEMS: NavSection[] = [
       },
     ],
   },
-  // {
-  //   key: 'feedback-center',
-  //   label: '反馈中心',
-  //   items: [
-  //     { key: 'feedbacks', label: '系统反馈', icon: 'message', route: '/feedbacks' },
-  //     ...(FEATURE_FLAGS.survey
-  //       ? [{ key: 'surveys', label: '问卷调查', icon: 'form', route: '/surveys' }]
-  //       : []),
-  //   ],
-  // },
+  {
+    key: 'feedback-center',
+    label: '反馈中心',
+    items: [
+      ...(FEATURE_FLAGS.feedback
+        ? [{ key: 'feedbacks', label: '系统反馈', icon: 'message', route: '/feedbacks' }]
+        : []),
+      ...(FEATURE_FLAGS.survey
+        ? [{ key: 'surveys', label: '问卷调查', icon: 'form', route: '/surveys' }]
+        : []),
+    ],
+  },
   {
     key: 'financing-center',
     label: '财务中心',

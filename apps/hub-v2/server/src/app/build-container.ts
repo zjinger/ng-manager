@@ -76,6 +76,9 @@ import { PersonalTokenService } from "../modules/personal-token/personal-token.s
 import type { RdCommandContract, RdQueryContract } from "../modules/rd/rd.contract";
 import { RdRepo } from "../modules/rd/rd.repo";
 import { RdService } from "../modules/rd/rd.service";
+import type { RdTaskSheetCommandContract, RdTaskSheetQueryContract } from "../modules/rd/rd-task-sheet.contract";
+import { RdTaskSheetRepo } from "../modules/rd/rd-task-sheet.repo";
+import { RdTaskSheetService } from "../modules/rd/rd-task-sheet.service";
 import type { ReleaseCommandContract, ReleaseQueryContract } from "../modules/release/release.contract";
 import { ReleaseRepo } from "../modules/release/release.repo";
 import { ReleaseService } from "../modules/release/release.service";
@@ -156,6 +159,8 @@ export type AppContainer = {
   issueBranchQuery: IssueBranchQueryContract;
   rdCommand: RdCommandContract;
   rdQuery: RdQueryContract;
+  rdTaskSheetCommand: RdTaskSheetCommandContract;
+  rdTaskSheetQuery: RdTaskSheetQueryContract;
   releaseCommand: ReleaseCommandContract;
   releaseQuery: ReleaseQueryContract;
   sharedConfigCommand: SharedConfigCommandContract;
@@ -214,7 +219,16 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const rdRepo = new RdRepo(db);
   const projectAuthorization = new ProjectAuthorizationService(db, projectRepo);
   const projectAccess = new ProjectAccessService(projectRepo, projectAuthorization);
-  const projectService = new ProjectService(projectRepo, userRepo, rdRepo, projectAccess, projectAuthorization, eventBus, db);
+  const projectService = new ProjectService(
+    projectRepo,
+    userRepo,
+    rdRepo,
+    projectAccess,
+    projectAuthorization,
+    eventBus,
+    db,
+    config.initAdminUsername
+  );
   const profileRepo = new ProfileRepo(db);
   const profileService = new ProfileService(profileRepo);
   const personalTokenRepo = new PersonalTokenRepo(db);
@@ -259,6 +273,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     eventBus
   );
   const rdService = new RdService(rdRepo, projectAccess, eventBus, uploadService);
+  const rdTaskSheetService = new RdTaskSheetService(new RdTaskSheetRepo(db), projectAccess, uploadService);
   const releaseRepo = new ReleaseRepo(db);
   const releaseService = new ReleaseService(releaseRepo, projectRepo, projectAccess, eventBus, contentLogService);
   const dashboardService = new DashboardService(
@@ -357,6 +372,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     issueBranchQuery: issueBranchService,
     rdCommand: rdService,
     rdQuery: rdService,
+    rdTaskSheetCommand: rdTaskSheetService,
+    rdTaskSheetQuery: rdTaskSheetService,
     releaseCommand: releaseService,
     releaseQuery: releaseService,
     sharedConfigCommand: sharedConfigService,

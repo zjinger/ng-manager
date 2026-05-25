@@ -68,6 +68,13 @@ export class BreadcrumbService {
       return [{ label: '测试跟踪' }];
     }
 
+    if (path.startsWith('/rd/task-sheets')) {
+      return [
+        { label: '研发管理', route: '/rd' },
+        { label: '任务单管理' },
+      ];
+    }
+
     if (path.startsWith('/rd/')) {
       return [
         { label: '研发管理', route: '/rd' },

@@ -18,6 +18,14 @@ export interface UploadTargetPolicy {
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'] as const;
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.flv', '.wmv'] as const;
 const INLINE_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.m4v'] as const;
+const TASK_SHEET_ATTACHMENT_EXTENSIONS = [
+  '.doc',
+  '.docx',
+  '.pdf',
+  '.jpg',
+  '.jpeg',
+  '.png',
+] as const;
 
 export const UPLOAD_TARGETS = {
   markdownImage: {
@@ -75,15 +83,46 @@ export const UPLOAD_TARGETS = {
     invalidTypeMessage: '仅支持上传图片或视频文件',
     sizeLimitMessage: '单个文件最大 10MB',
   },
+  // 报销单附件上传策略，限制为 IMAGE/PDF 文件且大小不超过 10MB
   reimbursementAttachment: {
     bucket: 'reimbursements',
     category: 'attachment',
     visibility: 'private',
-    accept: buildAcceptValue(['image/jpeg', 'image/png', 'application/pdf'], ['.jpg', '.jpeg', '.png', '.pdf']),
+    accept: buildAcceptValue(['image/*', 'application/pdf'], ['.jpg', '.jpeg', '.png', '.pdf']),
     maxSizeBytes: 10 * MB,
-    allowedMimeTypes: ['image/jpeg', 'image/png', 'application/pdf'],
+    allowedMimeTypes: ['image/', 'application/pdf'],
     allowedExtensions: ['.jpg', '.jpeg', '.png', '.pdf'],
-    invalidTypeMessage: '仅支持 JPG / PNG / PDF',
+    invalidTypeMessage: '仅支持上传图片或 PDF 文件',
+    sizeLimitMessage: '单个文件最大 10MB',
+  },
+
+  // 任务单附件上传策略，限制为 IMAGE/WORD/PDF 文件且大小不超过 10MB
+  taskSheetAttachment: {
+    bucket: 'task-sheets',
+    category: 'attachment',
+    visibility: 'private',
+    accept: buildAcceptValue(
+      [
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+        'image/jpg',
+      ],
+      TASK_SHEET_ATTACHMENT_EXTENSIONS,
+    ),
+    maxSizeBytes: 10 * MB,
+    allowedMimeTypes: [
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+    ],
+    allowedExtensions: TASK_SHEET_ATTACHMENT_EXTENSIONS,
+    invalidTypeMessage: '仅支持 Word / PDF / JPG / PNG 文件',
     sizeLimitMessage: '单个文件最大 10MB',
   },
 } satisfies Record<string, UploadTargetPolicy>;
@@ -127,7 +166,9 @@ export function formatUploadSizeLimit(policy: Pick<UploadTargetPolicy, 'maxSizeB
   return `${sizeInMb.toFixed(1)}MB`;
 }
 
-export function resolveAttachmentPreviewKind(file: Pick<File, 'name' | 'type'>): 'image' | 'video' | 'file' {
+export function resolveAttachmentPreviewKind(
+  file: Pick<File, 'name' | 'type'>,
+): 'image' | 'video' | 'file' {
   const mime = (file.type || '').toLowerCase();
   if (mime.startsWith('image/')) {
     return 'image';
@@ -155,7 +196,12 @@ function matchesUploadPolicy(file: File, policy: UploadTargetPolicy): boolean {
 
 function isInlinePlayableVideo(file: Pick<File, 'name' | 'type'>): boolean {
   const mime = (file.type || '').toLowerCase();
-  if (mime === 'video/mp4' || mime === 'video/webm' || mime === 'video/quicktime' || mime === 'video/x-m4v') {
+  if (
+    mime === 'video/mp4' ||
+    mime === 'video/webm' ||
+    mime === 'video/quicktime' ||
+    mime === 'video/x-m4v'
+  ) {
     return true;
   }
 
