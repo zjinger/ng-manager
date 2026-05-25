@@ -76,6 +76,11 @@ export interface IssueParticipantEntity {
   createdAt: string;
 }
 
+export interface AddIssueParticipantTaskInput {
+  userId: string;
+  title?: string;
+}
+
 export interface IssueBranchEntity {
   id: string;
   issueId: string;

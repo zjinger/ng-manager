@@ -5,6 +5,8 @@ import { ERROR_CODES } from "../../../shared/errors/error-codes";
 import { genId } from "../../../shared/utils/id";
 import { nowIso } from "../../../shared/utils/time";
 import type { ProjectAccessContract } from "../../project/project-access.contract";
+import type { IssueBranchEntity } from "../branch/issue-branch.types";
+import { IssueBranchRepo } from "../branch/issue-branch.repo";
 import { IssueRepo } from "../issue.repo";
 import { requireIssueParticipantManageAccess } from "../issue.policy";
 import type { IssueLogEntity } from "../issue.types";
@@ -20,6 +22,7 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
   constructor(
     private readonly issueRepo: IssueRepo,
     private readonly participantRepo: IssueParticipantRepo,
+    private readonly branchRepo: IssueBranchRepo,
     private readonly projectAccess: ProjectAccessContract,
     private readonly eventBus: EventBus
   ) {}
@@ -45,6 +48,7 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
 
     this.participantRepo.create(entity);
     this.issueRepo.createLog(this.createParticipantLog(issue.id, ctx, member.displayName, "participant.added", entity.createdAt));
+    const branch = this.createBranchForTask(issue.id, ctx, entity, input.taskTitle);
     await this.eventBus.emit({
       type: "issue.updated",
       scope: "project",
@@ -59,6 +63,8 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
         participantId: entity.id,
         userId: entity.userId,
         userName: entity.userName,
+        branchId: branch?.id,
+        branchTitle: branch?.title,
         assigneeId: issue.assigneeId,
         reporterId: issue.reporterId,
         verifierId: issue.verifierId,
@@ -84,6 +90,8 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
 
     const entities: IssueParticipantEntity[] = [];
     const names: string[] = [];
+    const branches: IssueBranchEntity[] = [];
+    const taskTitleByUserId = this.buildTaskTitleMap(input.tasks);
 
     for (const userId of userIds) {
       const member = await this.projectAccess.requireProjectMember(issue.projectId, userId, "add issue participant");
@@ -97,6 +105,10 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
       this.participantRepo.create(entity);
       entities.push(entity);
       names.push(member.displayName);
+      const branch = this.createBranchForTask(issue.id, ctx, entity, taskTitleByUserId.get(member.userId));
+      if (branch) {
+        branches.push(branch);
+      }
     }
 
     const createdAt = nowIso();
@@ -109,7 +121,17 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
       operatorId: ctx.userId?.trim() || ctx.accountId,
       operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
       summary: `添加协作人 ${names.join("、")}`,
-      metaJson: JSON.stringify({ kind: "participant.added.batch", userNames: names, userIds }),
+      metaJson: JSON.stringify({
+        kind: "participant.added.batch",
+        userNames: names,
+        userIds,
+        tasks: branches.map((branch) => ({
+          userId: branch.ownerUserId,
+          userName: branch.ownerUserName,
+          branchId: branch.id,
+          title: branch.title
+        }))
+      }),
       createdAt
     });
 
@@ -127,6 +149,8 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
         participantIds: entities.map((item) => item.id),
         userIds,
         userNames: names,
+        branchIds: branches.map((item) => item.id),
+        branchTitles: branches.map((item) => item.title),
         assigneeId: issue.assigneeId,
         reporterId: issue.reporterId,
         verifierId: issue.verifierId,
@@ -224,6 +248,68 @@ export class IssueParticipantService implements IssueParticipantCommandContract,
       userName,
       createdAt: nowIso()
     };
+  }
+
+  private createBranchForTask(
+    issueId: string,
+    ctx: RequestContext,
+    participant: IssueParticipantEntity,
+    rawTitle?: string
+  ): IssueBranchEntity | null {
+    const title = rawTitle?.trim();
+    if (!title) {
+      return null;
+    }
+
+    const now = nowIso();
+    const entity: IssueBranchEntity = {
+      id: genId("isb"),
+      issueId,
+      ownerUserId: participant.userId,
+      ownerUserName: participant.userName,
+      title,
+      status: "todo",
+      summary: null,
+      startedAt: null,
+      finishedAt: null,
+      createdById: ctx.userId?.trim() || ctx.accountId,
+      createdByName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.branchRepo.create(entity);
+    this.issueRepo.createLog({
+      id: genId("islog"),
+      issueId,
+      actionType: "update",
+      fromStatus: null,
+      toStatus: null,
+      operatorId: ctx.userId?.trim() || ctx.accountId,
+      operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
+      summary: `创建协作分支：${entity.title} -> ${entity.ownerUserName}`,
+      metaJson: JSON.stringify({
+        kind: "issue_branch.created",
+        branchId: entity.id,
+        ownerUserId: entity.ownerUserId,
+        ownerUserName: entity.ownerUserName,
+        title: entity.title
+      }),
+      createdAt: now
+    });
+    return entity;
+  }
+
+  private buildTaskTitleMap(tasks: AddIssueParticipantsBatchInput["tasks"]): Map<string, string> {
+    const result = new Map<string, string>();
+    for (const task of tasks ?? []) {
+      const userId = task.userId.trim();
+      const title = task.title?.trim();
+      if (userId && title) {
+        result.set(userId, title);
+      }
+    }
+    return result;
   }
 
   private async isProjectAdmin(projectId: string, ctx: RequestContext): Promise<boolean> {

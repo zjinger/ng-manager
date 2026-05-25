@@ -8,8 +8,15 @@ export interface IssueParticipantEntity {
 
 export interface AddIssueParticipantInput {
   userId: string;
+  taskTitle?: string;
+}
+
+export interface AddIssueParticipantTaskInput {
+  userId: string;
+  title?: string;
 }
 
 export interface AddIssueParticipantsBatchInput {
   userIds: string[];
+  tasks?: AddIssueParticipantTaskInput[];
 }

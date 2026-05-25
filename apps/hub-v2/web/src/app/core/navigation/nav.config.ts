@@ -89,6 +89,8 @@ export const NAV_ITEMS: NavSection[] = [
         icon: 'account-book',
         route: '/reimbursements/mine',
         exact: true,
+        badge: 'Beta',
+        tone: 'info',
         permissions: ['expense.view.self'],
       },
       {

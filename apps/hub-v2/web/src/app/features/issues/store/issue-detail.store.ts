@@ -11,6 +11,7 @@ import type {
   IssueCommentEntity,
   IssueEntity,
   IssueLogEntity,
+  AddIssueParticipantTaskInput,
   CreateIssueBranchInput,
   IssueParticipantEntity,
   StartOwnIssueBranchInput,
@@ -363,15 +364,18 @@ export class IssueDetailStore {
     });
   }
 
-  addParticipants(userIds: string[]): void {
+  addParticipants(participants: AddIssueParticipantTaskInput[]): void {
     const issueId = this.issueState()?.id;
-    const ids = [...new Set(userIds.map((item) => item.trim()).filter(Boolean))];
+    const items = participants
+      .map((item) => ({ userId: item.userId.trim(), title: item.title?.trim() ?? '' }))
+      .filter((item) => item.userId);
+    const ids = [...new Set(items.map((item) => item.userId))];
     if (!issueId || ids.length === 0) {
       return;
     }
 
     this.busyState.set(true);
-    this.issueApi.addParticipants(issueId, ids).subscribe({
+    this.issueApi.addParticipants(issueId, items).subscribe({
       next: ({ items }) => {
         this.participantsState.update((current) => [...current, ...items]);
         this.refreshBranches(issueId);

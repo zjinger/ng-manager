@@ -45,7 +45,7 @@ interface TransitionUploadItem {
                 <div #uploadListRef class="upload-list">
                   @for (item of uploads(); track item.id) {
                     <div class="upload-item"  [class.multiple-item]="uploads().length > 1" [class.is-uploading]="item.status === 'uploading'" [class.is-error]="item.status === 'error'">
-                      <img nz-image class="upload-item__thumb" [nzSrc]="item.previewUrl" [alt]="item.file.name || 'reopen-image'" (click)="$event.stopPropagation()" />
+                      <img nz-image class="upload-item__thumb" [nzSrc]="item.previewUrl" [alt]="item.file.name || 'transition-image'" (click)="$event.stopPropagation()" />
                       @if (item.status === 'uploading') {
                         <div class="upload-item__mask">
                           <span class="upload-item__spinner" aria-hidden="true"></span>
@@ -86,7 +86,7 @@ interface TransitionUploadItem {
                 (paste)="onPaste($event)"
               ></textarea>
             </div>
-            @if (mode() === 'reopen') {
+            @if (supportsImageUpload()) {
               <span class="transition-field__tip">支持直接粘贴截图上传图片。</span>
             }
           </div>
@@ -244,6 +244,7 @@ export class IssueTransitionDialogComponent implements OnDestroy {
 
   readonly content = signal('');
   readonly uploads = signal<TransitionUploadItem[]>([]);
+  readonly supportsImageUpload = computed(() => this.mode() === 'resolve' || this.mode() === 'reopen');
   readonly uploading = computed(() => this.uploads().some((item) => item.status === 'uploading'));
   readonly uploadListHeight = signal(0);
   readonly textareaPaddingTop = computed(() => this.uploadListHeight() + 20);
@@ -321,10 +322,10 @@ export class IssueTransitionDialogComponent implements OnDestroy {
   }
 
   onPaste(event: ClipboardEvent): void {
-    if (this.mode() !== 'reopen' || this.busy()) {
+    if (!this.supportsImageUpload() || this.busy()) {
       return;
     }
-    const files = extractClipboardImages(event, 'reopen-image');
+    const files = extractClipboardImages(event, `${this.mode()}-image`);
     if (files.length === 0) {
       return;
     }

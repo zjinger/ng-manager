@@ -22,7 +22,7 @@ import { IssueEditDialogComponent } from '../../dialogs/issue-edit-dialog/issue-
 import { IssueStartOwnBranchDialogComponent } from '../../dialogs/issue-start-own-branch-dialog/issue-start-own-branch-dialog.component';
 import { IssueTransitionDialogComponent } from '../../dialogs/issue-transition-dialog/issue-transition-dialog.component';
 import { IssueDetailStore } from '../../store/issue-detail.store';
-import type { IssueEntity, UpdateIssueInput } from '../../models/issue.model';
+import type { AddIssueParticipantTaskInput, IssueEntity, UpdateIssueInput } from '../../models/issue.model';
 import { MarkdownViewerComponent } from '@app/shared/ui';
 import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
 
@@ -201,7 +201,7 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
         [issue]="store.issue()"
         [members]="store.availableMembers()"
         (cancel)="addParticipantsOpen.set(false)"
-        (confirm)="confirmAddParticipants($event.userIds)"
+        (confirm)="confirmAddParticipants($event.participants)"
       />
 
       <app-issue-create-branch-dialog
@@ -411,8 +411,8 @@ export class IssueDetailDrawerPageComponent {
     this.assignOpen.set(false);
   }
 
-  confirmAddParticipants(userIds: string[]): void {
-    this.store.addParticipants(userIds);
+  confirmAddParticipants(participants: AddIssueParticipantTaskInput[]): void {
+    this.store.addParticipants(participants);
     this.addParticipantsOpen.set(false);
   }
 

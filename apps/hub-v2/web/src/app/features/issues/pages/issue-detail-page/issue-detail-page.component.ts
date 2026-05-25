@@ -24,7 +24,7 @@ import { IssueCreateBranchDialogComponent } from '../../dialogs/issue-create-bra
 import { IssueEditDialogComponent } from '../../dialogs/issue-edit-dialog/issue-edit-dialog.component';
 import { IssueStartOwnBranchDialogComponent } from '../../dialogs/issue-start-own-branch-dialog/issue-start-own-branch-dialog.component';
 import { IssueTransitionDialogComponent } from '../../dialogs/issue-transition-dialog/issue-transition-dialog.component';
-import { IssueEntity, UpdateIssueInput } from '../../models/issue.model';
+import { AddIssueParticipantTaskInput, IssueEntity, UpdateIssueInput } from '../../models/issue.model';
 import { IssueDetailStore } from '../../store/issue-detail.store';
 
 @Component({
@@ -215,7 +215,7 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
         [issue]="store.issue()"
         [members]="store.availableMembers()"
         (cancel)="addParticipantsOpen.set(false)"
-        (confirm)="confirmAddParticipants($event.userIds)"
+        (confirm)="confirmAddParticipants($event.participants)"
       />
 
       <app-issue-create-branch-dialog
@@ -438,8 +438,8 @@ export class IssueDetailPageComponent {
     this.assignOpen.set(false);
   }
 
-  confirmAddParticipants(userIds: string[]): void {
-    this.store.addParticipants(userIds);
+  confirmAddParticipants(participants: AddIssueParticipantTaskInput[]): void {
+    this.store.addParticipants(participants);
     this.addParticipantsOpen.set(false);
   }
 

@@ -249,10 +249,11 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const issueCommentRepo = new IssueCommentRepo(db);
   const issueCommentService = new IssueCommentService(issueRepo, issueCommentRepo, projectAccess, eventBus, uploadService);
   const issueParticipantRepo = new IssueParticipantRepo(db);
-  const issueParticipantService = new IssueParticipantService(issueRepo, issueParticipantRepo, projectAccess, eventBus);
+  const issueBranchRepo = new IssueBranchRepo(db);
+  const issueParticipantService = new IssueParticipantService(issueRepo, issueParticipantRepo, issueBranchRepo, projectAccess, eventBus);
   const issueBranchService = new IssueBranchService(
     issueRepo,
-    new IssueBranchRepo(db),
+    issueBranchRepo,
     issueParticipantRepo,
     projectAccess,
     eventBus

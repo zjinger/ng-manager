@@ -5,6 +5,7 @@ import { buildUploadFormData, UPLOAD_TARGETS } from '@shared/constants';
 import type {
   AssignIssueInput,
   CloseIssueInput,
+  AddIssueParticipantTaskInput,
   CreateIssueInput,
   CreateIssueBranchInput,
   CompleteIssueBranchInput,
@@ -102,10 +103,21 @@ export class IssueApiService {
     return this.api.post<IssueParticipantEntity, { userId: string }>(`/issues/${issueId}/participants`, { userId });
   }
 
-  addParticipants(issueId: string, userIds: string[]) {
-    return this.api.post<{ items: IssueParticipantEntity[] }, { userIds: string[] }>(`/issues/${issueId}/participants/batch`, {
-      userIds,
-    });
+  addParticipants(issueId: string, participants: AddIssueParticipantTaskInput[]) {
+    const normalized = participants
+      .map((item) => ({ userId: item.userId.trim(), title: item.title?.trim() ?? '' }))
+      .filter((item) => item.userId);
+    const userIds = [...new Set(normalized.map((item) => item.userId))];
+    const tasks = normalized
+      .filter((item) => item.title)
+      .map((item) => ({ userId: item.userId, title: item.title }));
+    return this.api.post<{ items: IssueParticipantEntity[] }, { userIds: string[]; tasks?: AddIssueParticipantTaskInput[] }>(
+      `/issues/${issueId}/participants/batch`,
+      {
+        userIds,
+        tasks: tasks.length > 0 ? tasks : undefined,
+      },
+    );
   }
 
   removeParticipant(issueId: string, participantId: string) {
