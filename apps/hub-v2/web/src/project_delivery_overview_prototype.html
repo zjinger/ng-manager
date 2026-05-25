@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>项目实施总览 UI 原型</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --line: #dfe7f1;
+      --line-soft: #edf2f7;
+      --text: #102033;
+      --muted: #68778b;
+      --muted-2: #8b9aaf;
+      --primary: #2563eb;
+      --primary-2: #1d4ed8;
+      --green: #10b981;
+      --green-bg: #dcfce7;
+      --orange: #f59e0b;
+      --orange-bg: #fff7ed;
+      --red: #ef4444;
+      --red-bg: #fee2e2;
+      --cyan: #0891b2;
+      --cyan-bg: #ecfeff;
+      --violet: #6255ee;
+      --violet-bg: #eef2ff;
+      --shadow: 0 1px 2px rgba(15, 23, 42, .06), 0 12px 28px rgba(15, 23, 42, .06);
+      --radius: 10px;
+      --radius-sm: 8px;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    body, button, input, textarea { font-size: 14px; }
+    button { font-family: inherit; }
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: 236px;
+      flex: 0 0 236px;
+      background: #111827;
+      color: #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 10px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 6px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      margin-bottom: 12px;
+    }
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      color: #fff;
+      font-weight: 800;
+    }
+    .brand-title { font-weight: 800; color: #fff; line-height: 1.2; }
+    .brand-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .nav-section { margin: 10px 0 4px; }
+    .nav-label {
+      padding: 8px 8px 6px;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 38px;
+      padding: 0 10px;
+      border-radius: 8px;
+      color: #9aa7b8;
+    }
+    .nav-item i { width: 16px; text-align: center; }
+    .nav-item.active {
+      color: #fff;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      box-shadow: 0 12px 24px rgba(37, 99, 235, .26);
+    }
+    .nav-badge {
+      margin-left: auto;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.14);
+      font-size: 11px;
+      color: #e0f2fe;
+    }
+    .shell {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.88);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    .menu-btn {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--muted);
+    }
+    .crumb { color: var(--muted); font-size: 13px; }
+    .crumb strong { color: var(--text); }
+    .top-spacer { flex: 1; }
+    .search {
+      width: 300px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      border-radius: 8px;
+      background: #f1f5f9;
+      color: var(--muted-2);
+      font-size: 13px;
+    }
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 12px;
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+    }
+    .page {
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+    }
+    .hero {
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, .08), rgba(16, 185, 129, .05)),
+        var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 22px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: start;
+    }
+    .hero-main {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .project-no {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 6px;
+      background: #eaf1ff;
+      color: #1d4ed8;
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: .02em;
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    .hero-desc {
+      margin: 0;
+      max-width: 900px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    .meta-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .meta-pill strong { color: var(--text); }
+    .hero-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      min-width: 290px;
+    }
+    .btn {
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 0 12px;
+      font-weight: 700;
+      cursor: default;
+      white-space: nowrap;
+    }
+    .btn.primary {
+      color: #fff;
+      border-color: var(--primary);
+      background: var(--primary);
+      box-shadow: 0 12px 22px rgba(37, 99, 235, .2);
+    }
+    .btn.ghost { color: var(--muted); }
+    .role-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+    }
+    .role-title { font-weight: 800; }
+    .role-copy { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .role-tags { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 26px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .tag.blue { background: #dbeafe; color: #1d4ed8; }
+    .tag.green { background: var(--green-bg); color: #047857; }
+    .tag.orange { background: #ffedd5; color: #c2410c; }
+    .tag.red { background: var(--red-bg); color: #b91c1c; }
+    .tag.gray { background: #f1f5f9; color: #64748b; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      padding: 15px;
+      min-width: 0;
+    }
+    .stat-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .stat-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+    .stat-icon.blue { background: #dbeafe; color: #1d4ed8; }
+    .stat-icon.green { background: var(--green-bg); color: #047857; }
+    .stat-icon.orange { background: #ffedd5; color: #c2410c; }
+    .stat-icon.red { background: var(--red-bg); color: #b91c1c; }
+    .stat-icon.cyan { background: var(--cyan-bg); color: #0e7490; }
+    .stat-icon.violet { background: var(--violet-bg); color: #4338ca; }
+    .stat-value {
+      margin-top: 12px;
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .stat-sub {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(320px, .9fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .stack { display: grid; gap: 16px; min-width: 0; }
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-width: 0;
+    }
+    .panel-head {
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 900;
+    }
+    .panel-title i { color: var(--primary); }
+    .panel-sub { color: var(--muted); font-size: 12px; }
+    .panel-body { padding: 16px; }
+    .milestone {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(112px, 1fr));
+      gap: 10px;
+    }
+    .step {
+      position: relative;
+      padding: 13px 12px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: #fbfdff;
+      min-width: 0;
+    }
+    .step.done { border-color: #b8f0d0; background: #f0fdf4; }
+    .step.active { border-color: #bfdbfe; background: #eff6ff; box-shadow: inset 0 0 0 1px rgba(37,99,235,.08); }
+    .step.warn { border-color: #fed7aa; background: #fff7ed; }
+    .step-name { font-weight: 900; margin-bottom: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .step-date { color: var(--muted); font-size: 12px; }
+    .step-status { margin-top: 10px; }
+    .progress-line {
+      height: 8px;
+      border-radius: 999px;
+      background: #e5edf7;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #2563eb, #10b981);
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .summary-card {
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: #fbfdff;
+      padding: 14px;
+      min-height: 142px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .summary-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 900;
+    }
+    .summary-top i { color: var(--primary); }
+    .summary-card p {
+      margin: 0;
+      color: #334155;
+      line-height: 1.7;
+      font-size: 13px;
+    }
+    .edit-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .table-wrap { overflow: auto; }
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 780px;
+    }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line-soft);
+      text-align: left;
+      vertical-align: middle;
+      font-size: 13px;
+    }
+    th {
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .module-name { font-weight: 900; }
+    .module-sub { margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .bar {
+      width: 120px;
+      height: 7px;
+      border-radius: 999px;
+      background: #e5edf7;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: #10b981;
+    }
+    .bar-fill.warn { background: #f59e0b; }
+    .bar-fill.blue { background: #2563eb; }
+    .bar-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .risk-list {
+      display: grid;
+      gap: 10px;
+    }
+    .risk-item {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      padding: 12px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: #fbfdff;
+    }
+    .risk-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+    }
+    .risk-icon.red { color: #b91c1c; background: var(--red-bg); }
+    .risk-icon.orange { color: #c2410c; background: #ffedd5; }
+    .risk-icon.blue { color: #1d4ed8; background: #dbeafe; }
+    .risk-title { font-weight: 900; margin-bottom: 4px; }
+    .risk-copy { color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .owner {
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .quality-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .quality-item {
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: #fbfdff;
+      padding: 12px;
+    }
+    .quality-label { color: var(--muted); font-size: 12px; font-weight: 800; }
+    .quality-value { margin-top: 8px; font-size: 23px; font-weight: 900; }
+    .quality-note { margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .rd-summary {
+      display: grid;
+      gap: 12px;
+    }
+    .rd-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .rd-summary-item {
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: #fbfdff;
+      padding: 12px;
+    }
+    .rd-summary-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .rd-summary-value {
+      margin-top: 8px;
+      font-size: 22px;
+      font-weight: 900;
+    }
+    .rd-list {
+      display: grid;
+      gap: 8px;
+    }
+    .rd-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: #fff;
+    }
+    .rd-title {
+      font-weight: 900;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .rd-meta {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .timeline {
+      display: grid;
+      gap: 12px;
+    }
+    .event {
+      display: grid;
+      grid-template-columns: auto minmax(0,1fr);
+      gap: 10px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      margin-top: 6px;
+      border-radius: 999px;
+      background: var(--primary);
+      box-shadow: 0 0 0 4px #dbeafe;
+    }
+    .event-title { font-weight: 900; margin-bottom: 4px; }
+    .event-copy { color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .event-time { color: var(--muted-2); font-size: 12px; margin-top: 4px; }
+    .link-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .link-card {
+      display: grid;
+      gap: 8px;
+      padding: 13px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: #fbfdff;
+    }
+    .link-card strong { display: flex; align-items: center; gap: 7px; }
+    .link-card span { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .footer-note {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      padding: 8px 0 4px;
+    }
+    @media (max-width: 1440px) {
+      .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .milestone { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 1180px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero { grid-template-columns: 1fr; }
+      .hero-actions { justify-content: flex-start; min-width: 0; }
+    }
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .topbar { padding: 0 14px; }
+      .search { display: none; }
+      .page { padding: 14px; }
+      .hero { padding: 16px; }
+      .hero h1 { font-size: 22px; }
+      .stats,
+      .summary-grid,
+      .quality-grid,
+      .rd-summary-grid,
+      .link-grid,
+      .milestone { grid-template-columns: 1fr; }
+      .role-strip { align-items: flex-start; flex-direction: column; }
+      .role-tags { justify-content: flex-start; }
+    }
+    @media (max-width: 560px) {
+      .hero-actions { flex-direction: column; align-items: stretch; }
+      .btn { width: 100%; }
+      .risk-item { grid-template-columns: auto minmax(0, 1fr); }
+      .owner { grid-column: 2; }
+      .stat-value { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">H</div>
+        <div>
+          <div class="brand-title">深蓝协作平台</div>
+          <div class="brand-sub">Hub v2</div>
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">工作台</div>
+        <div class="nav-item"><i class="fa-solid fa-gauge"></i><span>工作台</span></div>
+        <div class="nav-item"><i class="fa-solid fa-chart-line"></i><span>数据看板</span></div>
+        <div class="nav-item active"><i class="fa-solid fa-route"></i><span>实施总览</span><span class="nav-badge">新</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">协作中心</div>
+        <div class="nav-item"><i class="fa-solid fa-bug"></i><span>测试跟踪</span></div>
+        <div class="nav-item"><i class="fa-solid fa-rocket"></i><span>研发管理</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">系统管理</div>
+        <div class="nav-item"><i class="fa-solid fa-table-cells-large"></i><span>项目管理</span></div>
+      </div>
+    </aside>
+
+    <main class="shell">
+      <header class="topbar">
+        <button class="menu-btn"><i class="fa-solid fa-bars"></i></button>
+        <div class="crumb">首页 / 工作台 / <strong>项目实施总览</strong></div>
+        <div class="top-spacer"></div>
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><span>搜索项目、模块、风险</span></div>
+        <div class="user-chip"><div class="avatar">李</div><span>李总</span></div>
+      </header>
+
+      <section class="page">
+        <section class="hero">
+          <div class="hero-main">
+            <div class="eyebrow">
+              <span class="project-no">YFX</span>
+              <span>项目实施总览</span>
+              <span>汇报周期：2026-04-15 至 2026-04-21</span>
+            </div>
+            <div>
+              <h1>统一问题追踪与协作平台优化</h1>
+              <p class="hero-desc">
+                面向领导与外部汇报，聚合项目模块、研发项、测试单、风险和汇报摘要；执行细节仍保留在研发管理和测试跟踪中。
+              </p>
+            </div>
+            <div class="meta-row">
+              <span class="meta-pill"><i class="fa-solid fa-user-tie"></i> 项目负责人 <strong>王雯</strong></span>
+              <span class="meta-pill"><i class="fa-regular fa-calendar"></i> 计划周期 <strong>2026-03-28 ~ 2026-05-10</strong></span>
+              <span class="meta-pill"><i class="fa-solid fa-flag-checkered"></i> 当前阶段 <strong>测试验证</strong></span>
+              <span class="meta-pill"><i class="fa-solid fa-shield-halved"></i> 健康状态 <strong>需关注</strong></span>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <button class="btn ghost"><i class="fa-solid fa-image"></i>导出图片</button>
+            <button class="btn ghost"><i class="fa-solid fa-file-pdf"></i>导出 PDF</button>
+            <button class="btn primary"><i class="fa-solid fa-camera-retro"></i>生成汇报快照</button>
+          </div>
+        </section>
+
+        <section class="role-strip">
+          <div>
+            <div class="role-title">当前为领导只读视角</div>
+            <div class="role-copy">可查看项目进度、风险、质量和汇报摘要；编辑汇报摘要与生成正式快照需要项目管理员权限。</div>
+          </div>
+          <div class="role-tags">
+            <span class="tag blue"><i class="fa-solid fa-eye"></i>领导可查看</span>
+            <span class="tag green"><i class="fa-solid fa-download"></i>允许导出</span>
+            <span class="tag orange"><i class="fa-solid fa-pen"></i>管理员维护摘要</span>
+          </div>
+        </section>
+
+        <section class="stats">
+          <article class="stat">
+            <div class="stat-head"><span>整体进度</span><span class="stat-icon blue"><i class="fa-solid fa-chart-simple"></i></span></div>
+            <div class="stat-value">68%</div>
+            <div class="progress-line"><div class="progress-fill" style="width:68%"></div></div>
+            <div class="stat-sub">自动汇总模块与研发项进度</div>
+          </article>
+          <article class="stat">
+            <div class="stat-head"><span>按时率</span><span class="stat-icon green"><i class="fa-solid fa-clock"></i></span></div>
+            <div class="stat-value">82%</div>
+            <div class="stat-sub">本期 9/11 个节点按计划推进</div>
+          </article>
+          <article class="stat">
+            <div class="stat-head"><span>未关闭测试单</span><span class="stat-icon cyan"><i class="fa-solid fa-bug"></i></span></div>
+            <div class="stat-value">17</div>
+            <div class="stat-sub">其中高优先级 3 个</div>
+          </article>
+          <article class="stat">
+            <div class="stat-head"><span>阻塞研发项</span><span class="stat-icon red"><i class="fa-solid fa-triangle-exclamation"></i></span></div>
+            <div class="stat-value">2</div>
+            <div class="stat-sub">主要集中在消息中心与权限模块</div>
+          </article>
+          <article class="stat">
+            <div class="stat-head"><span>待确认事项</span><span class="stat-icon orange"><i class="fa-solid fa-circle-question"></i></span></div>
+            <div class="stat-value">5</div>
+            <div class="stat-sub">需要业务侧确认 2 项</div>
+          </article>
+          <article class="stat">
+            <div class="stat-head"><span>延期风险</span><span class="stat-icon violet"><i class="fa-solid fa-hourglass-half"></i></span></div>
+            <div class="stat-value">中</div>
+            <div class="stat-sub">预计影响上线窗口 1~2 天</div>
+          </article>
+        </section>
+
+        <section class="grid">
+          <div class="stack">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title"><i class="fa-solid fa-timeline"></i>里程碑进度</div>
+                  <div class="panel-sub">展示项目当前所处阶段和关键节点状态</div>
+                </div>
+                <span class="tag orange">当前：测试验证</span>
+              </div>
+              <div class="panel-body">
+                <div class="milestone">
+                  <div class="step done"><div class="step-name">需求确认</div><div class="step-date">03/28 完成</div><div class="step-status"><span class="tag green">已完成</span></div></div>
+                  <div class="step done"><div class="step-name">方案设计</div><div class="step-date">04/03 完成</div><div class="step-status"><span class="tag green">已完成</span></div></div>
+                  <div class="step done"><div class="step-name">功能开发</div><div class="step-date">04/16 完成</div><div class="step-status"><span class="tag green">已完成</span></div></div>
+                  <div class="step active"><div class="step-name">测试验证</div><div class="step-date">04/17 ~ 04/25</div><div class="step-status"><span class="tag blue">进行中</span></div></div>
+                  <div class="step warn"><div class="step-name">交付上线</div><div class="step-date">计划 04/29</div><div class="step-status"><span class="tag orange">有风险</span></div></div>
+                  <div class="step"><div class="step-name">项目结项</div><div class="step-date">计划 05/10</div><div class="step-status"><span class="tag gray">未开始</span></div></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title"><i class="fa-solid fa-pen-to-square"></i>汇报摘要</div>
+                  <div class="panel-sub">项目管理员维护，可直接用于周会、领导汇报和客户同步</div>
+                </div>
+                <span class="edit-badge"><i class="fa-solid fa-lock"></i>只读视图</span>
+              </div>
+              <div class="panel-body">
+                <div class="summary-grid">
+                  <article class="summary-card">
+                    <div class="summary-top"><span><i class="fa-solid fa-arrow-trend-up"></i>本周进展</span><span class="edit-badge">管理员可编辑</span></div>
+                    <p>完成问题追踪核心流程重构，RD 与测试单已建立关联。测试验证阶段已覆盖登录、权限、消息中心等核心链路。</p>
+                  </article>
+                  <article class="summary-card">
+                    <div class="summary-top"><span><i class="fa-solid fa-list-check"></i>下周计划</span><span class="edit-badge">管理员可编辑</span></div>
+                    <p>完成剩余高优先级测试单修复，推进预发布环境验收，准备上线回滚方案和用户操作说明。</p>
+                  </article>
+                  <article class="summary-card">
+                    <div class="summary-top"><span><i class="fa-solid fa-triangle-exclamation"></i>风险事项</span><span class="edit-badge">管理员可编辑</span></div>
+                    <p>消息中心批量通知存在性能波动，权限角色边界仍需业务负责人确认，可能影响交付上线节点。</p>
+                  </article>
+                  <article class="summary-card">
+                    <div class="summary-top"><span><i class="fa-solid fa-handshake-angle"></i>需协调事项</span><span class="edit-badge">管理员可编辑</span></div>
+                    <p>请业务侧在 04/23 前确认审批流角色矩阵；请运维确认预发布数据库备份和上线窗口。</p>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title"><i class="fa-solid fa-table-cells-large"></i>模块实施矩阵</div>
+                  <div class="panel-sub">从模块维度聚合研发项、测试单和风险</div>
+                </div>
+                <span class="tag blue">4 个核心模块</span>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>模块</th>
+                      <th>负责人</th>
+                      <th>进度</th>
+                      <th>研发项</th>
+                      <th>测试单</th>
+                      <th>阻塞</th>
+                      <th>状态</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><div class="module-name">问题追踪</div><div class="module-sub">Issue 分类、优先级、验证流</div></td>
+                      <td>陈墨</td>
+                      <td><div class="bar-cell"><div class="bar"><div class="bar-fill" style="width:88%"></div></div>88%</div></td>
+                      <td>6</td>
+                      <td>9 / 未关 2</td>
+                      <td>0</td>
+                      <td><span class="tag green">稳定</span></td>
+                    </tr>
+                    <tr>
+                      <td><div class="module-name">研发协作</div><div class="module-sub">RD 阶段、执行人、验证人</div></td>
+                      <td>王雯</td>
+                      <td><div class="bar-cell"><div class="bar"><div class="bar-fill blue" style="width:76%"></div></div>76%</div></td>
+                      <td>8</td>
+                      <td>6 / 未关 3</td>
+                      <td>1</td>
+                      <td><span class="tag blue">推进中</span></td>
+                    </tr>
+                    <tr>
+                      <td><div class="module-name">消息中心</div><div class="module-sub">通知、待办、活动流</div></td>
+                      <td>黄晨</td>
+                      <td><div class="bar-cell"><div class="bar"><div class="bar-fill warn" style="width:54%"></div></div>54%</div></td>
+                      <td>5</td>
+                      <td>11 / 未关 8</td>
+                      <td>1</td>
+                      <td><span class="tag orange">需关注</span></td>
+                    </tr>
+                    <tr>
+                      <td><div class="module-name">权限与项目配置</div><div class="module-sub">项目角色、模块映射、数据权限</div></td>
+                      <td>苏澄</td>
+                      <td><div class="bar-cell"><div class="bar"><div class="bar-fill warn" style="width:61%"></div></div>61%</div></td>
+                      <td>7</td>
+                      <td>5 / 未关 4</td>
+                      <td>0</td>
+                      <td><span class="tag orange">待确认</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <aside class="stack">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title"><i class="fa-solid fa-shield-heart"></i>质量概览</div>
+                  <div class="panel-sub">测试单维度的交付质量信号</div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="quality-grid">
+                  <div class="quality-item"><div class="quality-label">累计测试单</div><div class="quality-value">43</div><div class="quality-note">本周期新增 18</div></div>
+                  <div class="quality-item"><div class="quality-label">已验证</div><div class="quality-value">26</div><div class="quality-note">验证通过率 60%</div></div>
+                  <div class="quality-item"><div class="quality-label">高优先级未关</div><div class="quality-value">3</div><div class="quality-note">需每日跟进</div></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title"><i class="fa-solid fa-code-branch"></i>关联研发项汇总</div>
+                  <div class="panel-sub">只展示影响交付判断的 RD 聚合结果</div>
+                </div>
+                <span class="tag blue">27 个研发项</span>
+              </div>
+              <div class="panel-body">
+                <div class="rd-summary">
+                  <div class="rd-summary-grid">
+                    <div class="rd-summary-item"><div class="rd-summary-label">已完成</div><div class="rd-summary-value">18</div><div class="quality-note">覆盖 3 个里程碑</div></div>
+                    <div class="rd-summary-item"><div class="rd-summary-label">进行中</div><div class="rd-summary-value">7</div><div class="quality-note">平均进度 68%</div></div>
+                    <div class="rd-summary-item"><div class="rd-summary-label">阻塞</div><div class="rd-summary-value">2</div><div class="quality-note">影响消息中心</div></div>
+                  </div>
+                  <div class="rd-list">
+                    <div class="rd-row">
+                      <div><div class="rd-title">RD-000021 消息中心批量通知性能优化</div><div class="rd-meta">当前阶段：测试验证 / 执行人：黄晨 / 关联测试单 6 个</div></div>
+                      <span class="tag orange">需关注</span>
+                    </div>
+                    <div class="rd-row">
+                      <div><div class="rd-title">RD-000018 角色权限矩阵与项目观察者视图</div><div class="rd-meta">当前阶段：方案确认 / 执行人：苏澄 / 待业务确认 2 项</div></div>
+                      <span class="tag blue">推进中</span>
+                    </div>
+                    <div class="rd-row">
+                      <div><div class="rd-title">RD-000014 Issue 验证流与待办通知闭环</div><div class="rd-meta">当前阶段：已完成 / 验证人：王雯 / 无阻塞</div></div>
+                      <span class="tag green">稳定</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title"><i class="fa-solid fa-fire-flame-curved"></i>风险与阻塞</div>
+                  <div class="panel-sub">优先展示影响交付节点的事项</div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="risk-list">
+                  <div class="risk-item">
+                    <div class="risk-icon red"><i class="fa-solid fa-bolt"></i></div>
+                    <div><div class="risk-title">消息通知性能波动</div><div class="risk-copy">批量通知在 2 万用户规模下出现响应延迟，影响上线验收。</div></div>
+                    <div class="owner">黄晨</div>
+                  </div>
+                  <div class="risk-item">
+                    <div class="risk-icon orange"><i class="fa-solid fa-user-check"></i></div>
+                    <div><div class="risk-title">角色矩阵待业务确认</div><div class="risk-copy">项目观察者、管理员、验证人边界还需业务负责人最终确认。</div></div>
+                    <div class="owner">苏澄</div>
+                  </div>
+                  <div class="risk-item">
+                    <div class="risk-icon blue"><i class="fa-solid fa-database"></i></div>
+                    <div><div class="risk-title">上线备份窗口待排期</div><div class="risk-copy">预发布数据库备份和回滚方案需运维确认，预计本周内关闭。</div></div>
+                    <div class="owner">赵晴</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title"><i class="fa-solid fa-clock-rotate-left"></i>近期动态</div>
+                  <div class="panel-sub">汇报视角只保留关键节点变化</div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="timeline">
+                  <div class="event">
+                    <div class="dot"></div>
+                    <div><div class="event-title">功能开发阶段已完成</div><div class="event-copy">验证人确认进入测试验证阶段，累计 21 个研发项进入验收链路。</div><div class="event-time">04/17 18:30</div></div>
+                  </div>
+                  <div class="event">
+                    <div class="dot"></div>
+                    <div><div class="event-title">新增高优先级测试问题 2 个</div><div class="event-copy">集中在消息中心批量通知和权限配置回显。</div><div class="event-time">04/19 10:15</div></div>
+                  </div>
+                  <div class="event">
+                    <div class="dot"></div>
+                    <div><div class="event-title">项目管理员更新周报摘要</div><div class="event-copy">补充下周上线准备和需协调事项。</div><div class="event-time">04/21 09:00</div></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title"><i class="fa-solid fa-link"></i>明细入口</div>
+                  <div class="panel-sub">需要追溯时再进入执行层</div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="link-grid">
+                  <div class="link-card"><strong><i class="fa-solid fa-rocket"></i>研发管理</strong><span>查看 RD 阶段、执行人、成员进度和验收记录。</span></div>
+                  <div class="link-card"><strong><i class="fa-solid fa-bug"></i>测试跟踪</strong><span>查看测试单状态、负责人、验证结果和附件。</span></div>
+                  <div class="link-card"><strong><i class="fa-solid fa-table-cells-large"></i>项目模块</strong><span>维护模块结构、模块负责人和研发项映射。</span></div>
+                  <div class="link-card"><strong><i class="fa-solid fa-file-lines"></i>汇报快照</strong><span>查看历史汇报版本，避免汇报内容随数据变化。</span></div>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </section>
+
+        <div class="footer-note">静态 UI 原型，仅用于评审项目实施总览的信息架构与视觉布局。</div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
