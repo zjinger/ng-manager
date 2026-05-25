@@ -38,14 +38,14 @@ export const NAV_ITEMS: NavSection[] = [
         tone: 'warning',
         permissions: [...PROJECT_GOVERNANCE_PERMISSIONS],
       },
-      {
-        key: 'rd-task-sheets',
-        label: '任务单管理',
-        icon: 'schedule',
-        route: '/rd/task-sheets',
-        tone: 'info',
-        permissions: [...TASK_SHEET_PERMISSIONS],
-      },
+      // {
+      //   key: 'rd-task-sheets',
+      //   label: '任务单管理',
+      //   icon: 'schedule',
+      //   route: '/rd/task-sheets',
+      //   tone: 'info',
+      //   permissions: [...TASK_SHEET_PERMISSIONS],
+      // },
     ],
   },
   {
