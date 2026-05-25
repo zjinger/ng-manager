@@ -75,7 +75,7 @@ import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/com
     >
       <div class="todo-list">
         @for (item of items(); track item.kind + ':' + item.entityId + ':' + item.updatedAt) {
-          <a class="todo-row" [routerLink]="detailLink(item)">
+          <a class="todo-row" [class.todo-row--urged]="isUrgedIssueTodo(item)" [routerLink]="detailLink(item)">
             <div class="todo-row__main">
               <div class="todo-row__title">
                 @if (item.kind === 'reimbursement_todo') {
@@ -84,6 +84,9 @@ import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/com
                   <span class="todo-row__tag" [attr.data-kind]="item.kind">{{ kindLabel(item.kind) }}</span>
                 }
                 <span class="todo-row__role" [attr.data-kind]="item.kind">{{ roleLabel(item.kind) }}</span>
+                @if (isUrgedIssueTodo(item)) {
+                  <span class="todo-row__urge-badge">置顶提醒</span>
+                }
                 <span>{{ item.title }}</span>
               </div>
               <div class="todo-row__meta">
@@ -150,6 +153,9 @@ import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/com
       .todo-row:hover {
         background: var(--bg-subtle);
       }
+      .todo-row--urged {
+        background: rgba(245, 158, 11, 0.06);
+      }
       .todo-row__title {
         display: flex;
         align-items: center;
@@ -181,6 +187,16 @@ import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/com
         background: var(--bg-subtle);
         color: var(--text-secondary);
       }
+      .todo-row__urge-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 6px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        background: rgba(245, 158, 11, 0.16);
+        color: #b45309;
+      }
       .todo-row__code {
         font-size: 12px;
         font-weight: 700;
@@ -199,6 +215,9 @@ import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/com
         display: flex;
         justify-content: flex-end;
         padding: 16px 0 4px;
+      }
+      :host-context(html[data-theme='dark']) .todo-row--urged {
+        background: rgba(245, 158, 11, 0.1);
       }
     `,
   ],
@@ -326,6 +345,10 @@ export class DashboardTodosPageComponent {
       return '待验证';
     }
     return '负责人';
+  }
+
+  isUrgedIssueTodo(item: DashboardTodoItem): boolean {
+    return item.kind.startsWith('issue') && !!item.lastUrgedAt;
   }
 
   projectLabel(projectId: string): string {

@@ -214,3 +214,120 @@ describe("IssueRepo list keyword filter", () => {
     }
   });
 });
+
+describe("IssueRepo dashboard todos", () => {
+  it("keeps urged issue todos ahead of newer ordinary todos", () => {
+    const db = new Database(":memory:");
+    try {
+      db.exec(`
+        CREATE TABLE issues (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          issue_no TEXT NOT NULL UNIQUE,
+          title TEXT NOT NULL,
+          description TEXT,
+          type TEXT NOT NULL,
+          status TEXT NOT NULL,
+          priority TEXT NOT NULL,
+          reporter_id TEXT NOT NULL,
+          reporter_name TEXT NOT NULL,
+          assignee_id TEXT,
+          assignee_name TEXT,
+          verifier_id TEXT,
+          verifier_name TEXT,
+          rd_item_id TEXT,
+          rd_no_snapshot TEXT,
+          rd_title_snapshot TEXT,
+          rd_status_snapshot TEXT,
+          module_code TEXT,
+          version_code TEXT,
+          environment_code TEXT,
+          resolution_summary TEXT,
+          close_reason TEXT,
+          close_remark TEXT,
+          reopen_count INTEGER NOT NULL DEFAULT 0,
+          started_at TEXT,
+          resolved_at TEXT,
+          verified_at TEXT,
+          closed_at TEXT,
+          last_urged_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE issue_participants (
+          id TEXT PRIMARY KEY,
+          issue_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          user_name TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
+      `);
+
+      const repo = new IssueRepo(db);
+      const buildIssue = (input: {
+        id: string;
+        issueNo: string;
+        title: string;
+        updatedAt: string;
+        lastUrgedAt?: string | null;
+      }): IssueEntity => ({
+        id: input.id,
+        projectId: "p1",
+        issueNo: input.issueNo,
+        title: input.title,
+        description: null,
+        type: "bug",
+        status: "in_progress",
+        priority: "medium",
+        reporterId: "usr_reporter",
+        reporterName: "张三",
+        assigneeId: "usr_lisi",
+        assigneeName: "李四",
+        verifierId: null,
+        verifierName: null,
+        rdItemId: null,
+        rdNoSnapshot: null,
+        rdTitleSnapshot: null,
+        rdStatusSnapshot: null,
+        moduleCode: null,
+        versionCode: null,
+        environmentCode: null,
+        resolutionSummary: null,
+        closeReason: null,
+        closeRemark: null,
+        reopenCount: 0,
+        startedAt: null,
+        resolvedAt: null,
+        verifiedAt: null,
+        closedAt: null,
+        lastUrgedAt: input.lastUrgedAt ?? null,
+        createdAt: "2026-05-24T08:00:00.000Z",
+        updatedAt: input.updatedAt,
+      });
+
+      repo.create(buildIssue({
+        id: "iss_urged",
+        issueNo: "PRJ-BUG-0001",
+        title: "被提报人置顶提醒",
+        updatedAt: "2026-05-24T09:00:00.000Z",
+        lastUrgedAt: "2026-05-24T10:00:00.000Z",
+      }));
+      repo.create(buildIssue({
+        id: "iss_newer",
+        issueNo: "PRJ-BUG-0002",
+        title: "更新更晚的普通待办",
+        updatedAt: "2026-05-25T09:00:00.000Z",
+      }));
+
+      const todos = repo.listTodosForDashboard(["p1"], "usr_lisi", 10);
+
+      assert.equal(todos.length, 2);
+      assert.equal(todos[0]?.entityId, "iss_urged");
+      assert.equal(todos[0]?.lastUrgedAt, "2026-05-24T10:00:00.000Z");
+      assert.equal(todos[1]?.entityId, "iss_newer");
+    } finally {
+      db.close();
+    }
+  });
+});

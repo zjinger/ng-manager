@@ -82,6 +82,7 @@ export interface IssueDashboardTodo {
   status: string;
   updatedAt: string;
   sortAt?: string;
+  lastUrgedAt?: string | null;
   projectId: string;
 }
 

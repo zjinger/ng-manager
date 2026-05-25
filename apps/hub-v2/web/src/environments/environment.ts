@@ -2,5 +2,5 @@ export const APP_CONFIG = {
   production: false,
   environment: 'LOCAL',
   surveyEnabled: false,
-  feedbackEnabled: true,
+  feedbackEnabled: false,
 };

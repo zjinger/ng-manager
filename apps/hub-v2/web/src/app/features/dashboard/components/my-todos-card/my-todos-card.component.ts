@@ -24,6 +24,7 @@ import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/com
       @for (item of items(); track item.kind + '-' + item.entityId) {
         <a
           class="todo"
+          [class.todo--urged]="isUrgedIssueTodo(item)"
           [routerLink]="detailLink(item)"
         >
           <div class="todo__priority" [attr.data-kind]="item.kind"></div>
@@ -38,6 +39,9 @@ import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/com
               }
               @if (roleLabel(item)) {
                 <span class="todo__role" [attr.data-kind]="item.kind">{{ roleLabel(item) }}</span>
+              }
+              @if (isUrgedIssueTodo(item)) {
+                <span class="todo__urge-badge">置顶</span>
               }
               <span>{{ item.title }}</span>
             </div>
@@ -73,11 +77,17 @@ import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/com
       .todo:hover {
         background: var(--bg-subtle);
       }
+      .todo--urged {
+        background: rgba(245, 158, 11, 0.06);
+      }
       .todo__priority {
         width: 4px;
         flex-shrink: 0;
         border-radius: 2px;
         background: var(--color-info);
+      }
+      .todo--urged .todo__priority {
+        background: #f59e0b;
       }
       .todo__priority[data-kind='issue_verify'] {
         background: var(--color-warning);
@@ -157,6 +167,17 @@ import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/com
         background: rgba(225, 29, 72, 0.1);
         color: #be123c;
       }
+      .todo__urge-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(245, 158, 11, 0.16);
+        color: #b45309;
+        font-size: 11px;
+        font-weight: 700;
+        flex: 0 0 auto;
+      }
       .todo__meta {
         display: flex;
         align-items: center;
@@ -174,6 +195,9 @@ import { ReimbursementTypeTagComponent } from '../../../reimbursement/shared/com
       }
       :host-context(html[data-theme='dark']) .todo__tag[data-kind='reimbursement_todo'] {
         background: rgba(244, 63, 94, 0.18);
+      }
+      :host-context(html[data-theme='dark']) .todo--urged {
+        background: rgba(245, 158, 11, 0.1);
       }
     `,
   ],
@@ -229,4 +253,7 @@ export class MyTodosCardComponent {
     return '';
   }
 
+  isUrgedIssueTodo(item: DashboardTodoItem): boolean {
+    return item.kind.startsWith('issue') && !!item.lastUrgedAt;
+  }
 }

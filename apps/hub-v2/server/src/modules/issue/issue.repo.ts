@@ -511,7 +511,7 @@ export class IssueRepo {
           WHERE assignee_id = ?
             AND status IN ('open', 'in_progress', 'pending_update', 'reopened')
             ${scope.clause}
-          ORDER BY sort_at DESC
+          ORDER BY CASE WHEN last_urged_at IS NOT NULL THEN 0 ELSE 1 END, sort_at DESC
           ${limitClause}
         `
       )
@@ -536,7 +536,7 @@ export class IssueRepo {
             AND i.status IN ('open', 'in_progress', 'pending_update', 'reopened')
             AND COALESCE(i.assignee_id, '') <> ?
             ${scope.clause}
-          ORDER BY sort_at DESC
+          ORDER BY CASE WHEN i.last_urged_at IS NOT NULL THEN 0 ELSE 1 END, sort_at DESC
           ${limitClause}
         `
       )
@@ -559,7 +559,7 @@ export class IssueRepo {
           WHERE COALESCE(verifier_id, reporter_id) = ?
             AND status = 'resolved'
             ${scope.clause}
-          ORDER BY sort_at DESC
+          ORDER BY CASE WHEN last_urged_at IS NOT NULL THEN 0 ELSE 1 END, sort_at DESC
           ${limitClause}
         `
       )
@@ -579,7 +579,7 @@ export class IssueRepo {
       ...collaborating.map((row) => this.mapDashboardTodo("issue_collaborating", row)),
       ...verifying.map((row) => this.mapDashboardTodo("issue_verify", row))
     ]
-      .sort((a, b) => (b.sortAt ?? b.updatedAt).localeCompare(a.sortAt ?? a.updatedAt))
+      .sort((a, b) => this.compareDashboardTodos(a, b))
       .slice(0, withLimit ? limit : undefined);
   }
 
@@ -712,8 +712,19 @@ export class IssueRepo {
       status: row.status,
       updatedAt: row.updated_at,
       sortAt: row.sort_at || row.last_urged_at || row.updated_at,
+      lastUrgedAt: row.last_urged_at,
       projectId: row.project_id
     };
+  }
+
+  private compareDashboardTodos(left: IssueDashboardTodo, right: IssueDashboardTodo): number {
+    if (left.lastUrgedAt || right.lastUrgedAt) {
+      if (left.lastUrgedAt && right.lastUrgedAt) {
+        return right.lastUrgedAt.localeCompare(left.lastUrgedAt);
+      }
+      return left.lastUrgedAt ? -1 : 1;
+    }
+    return (right.sortAt ?? right.updatedAt).localeCompare(left.sortAt ?? left.updatedAt);
   }
 
   private normalizeIssueType(type: IssueRow["type"]): IssueEntity["type"] {

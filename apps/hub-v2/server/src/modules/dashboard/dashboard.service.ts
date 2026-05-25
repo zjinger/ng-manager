@@ -692,6 +692,7 @@ export class DashboardService implements DashboardQueryContract {
       title: item.title,
       status: item.status,
       updatedAt: item.updatedAt,
+      lastUrgedAt: item.lastUrgedAt,
       projectId: item.projectId,
       assigneeName: item.assigneeName
     }));
@@ -731,6 +732,7 @@ export class DashboardService implements DashboardQueryContract {
         title: item.title,
         status: item.status,
         updatedAt: item.updatedAt,
+        lastUrgedAt: item.lastUrgedAt,
         projectId: item.projectId,
         assigneeName: item.assigneeName
       })),
@@ -907,11 +909,11 @@ export class DashboardService implements DashboardQueryContract {
 
   private mergeTodos(issueTodos: DashboardTodoItem[], rdTodos: DashboardTodoItem[], limit?: number): DashboardTodoItem[] {
     if (limit === undefined) {
-      return [...issueTodos, ...rdTodos].sort((a, b) => this.todoSortAt(b).localeCompare(this.todoSortAt(a)));
+      return [...issueTodos, ...rdTodos].sort((a, b) => this.compareTodos(a, b));
     }
 
     const merged = [...issueTodos, ...rdTodos]
-      .sort((a, b) => this.todoSortAt(b).localeCompare(this.todoSortAt(a)))
+      .sort((a, b) => this.compareTodos(a, b))
       .slice(0, limit);
 
     const activeRdTodo = rdTodos.find((item) => item.status === "doing" || item.status === "blocked");
@@ -929,7 +931,7 @@ export class DashboardService implements DashboardQueryContract {
       : merged
           .map((item, index) => ({ item, index }))
           .reverse()
-          .find(({ item }) => !item.kind.startsWith("rd"))?.index ?? -1;
+          .find(({ item }) => !item.kind.startsWith("rd") && !item.lastUrgedAt)?.index ?? -1;
 
     const next = [...merged];
     if (replacementIndex >= 0) {
@@ -939,8 +941,18 @@ export class DashboardService implements DashboardQueryContract {
     }
 
     return next
-      .sort((a, b) => this.todoSortAt(b).localeCompare(this.todoSortAt(a)))
+      .sort((a, b) => this.compareTodos(a, b))
       .slice(0, limit);
+  }
+
+  private compareTodos(left: DashboardTodoItem, right: DashboardTodoItem): number {
+    if (left.lastUrgedAt || right.lastUrgedAt) {
+      if (left.lastUrgedAt && right.lastUrgedAt) {
+        return right.lastUrgedAt.localeCompare(left.lastUrgedAt);
+      }
+      return left.lastUrgedAt ? -1 : 1;
+    }
+    return this.todoSortAt(right).localeCompare(this.todoSortAt(left));
   }
 
   private todoSortAt(item: DashboardTodoItem): string {

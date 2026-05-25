@@ -18,6 +18,7 @@ export interface DashboardTodoItem {
   status: string;
   updatedAt: string;
   sortAt?: string;
+  lastUrgedAt?: string | null;
   projectId: string;
   claimType?: ReimbursementClaimType;
   applicantName?: string;
@@ -45,6 +46,7 @@ export interface DashboardReportedIssueItem {
   title: string;
   status: string;
   updatedAt: string;
+  lastUrgedAt?: string | null;
   projectId: string;
   assigneeName: string | null;
 }

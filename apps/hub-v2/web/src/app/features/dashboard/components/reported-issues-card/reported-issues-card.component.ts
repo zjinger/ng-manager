@@ -35,6 +35,9 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
             </div>
             <div class="issue__meta">
               <app-status-badge [status]="item.status" />
+              @if (item.lastUrgedAt) {
+                <span class="issue__urge-badge">已提醒</span>
+              }
               <span>{{ projectLabel(item.projectId) }}</span>
               <span>{{ assigneeLabel(item.assigneeName) }}</span>
               <span>{{ item.updatedAt | date: 'MM-dd HH:mm' }}</span>
@@ -125,6 +128,16 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
       .issue__urge-btn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+      }
+      .issue__urge-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(245, 158, 11, 0.16);
+        color: #b45309;
+        font-size: 11px;
+        font-weight: 700;
       }
     `,
   ],

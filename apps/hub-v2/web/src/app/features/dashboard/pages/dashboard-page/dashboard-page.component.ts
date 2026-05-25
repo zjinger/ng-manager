@@ -11,6 +11,7 @@ import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
 import { PageHeaderComponent } from '@shared/ui';
 import { AuthStore } from '@core/auth';
+import { FEATURE_FLAGS } from '@core/feature-flags';
 import { ProjectContextStore } from '@core/state';
 import { DashboardRefreshBusService } from '@core/realtime';
 import type { ReimbursementClaimEntity, ReimbursementClaimStatus, ReimbursementDashboard, ReimbursementStats } from '../../../reimbursement/models/reimbursement.model';
@@ -164,7 +165,7 @@ export class DashboardPageComponent {
   readonly shouldStackInfoWidgets = computed(() => this.isWidgetVisible('collab.announcements') && this.isWidgetVisible('collab.documents'));
   private readonly shortcutItemMap = computed(() => {
     const items = [
-      ...(this.canAccessCollaborationWorkspace() ? this.collaborationShortcutItems : []),
+      ...(this.canAccessCollaborationWorkspace() ? this.collaborationShortcutItems.filter((item) => this.isShortcutEnabled(item.key)) : []),
       ...(this.canAccessReimbursementWorkspace() ? this.reimbursementShortcutItems() : []),
     ];
     return new Map(items.map((item) => [item.key as DashboardShortcutKey, item]));
@@ -318,7 +319,7 @@ export class DashboardPageComponent {
     const collabTodos = this.store.data()?.todos ?? [];
     const reimbursementTodos = (this.reimbursementDashboard()?.recentTodos ?? []).map((claim) => this.mapReimbursementTodo(claim));
     return [...collabTodos, ...reimbursementTodos]
-      .sort((left, right) => this.todoSortAt(right).localeCompare(this.todoSortAt(left)))
+      .sort((left, right) => this.compareTodos(left, right))
       .slice(0, 10);
   });
   readonly mergedTodoTotal = computed(() => this.store.todosTotal() + (this.reimbursementDashboard()?.todoCount ?? 0));
@@ -436,7 +437,9 @@ export class DashboardPageComponent {
     this.dashboardApi
       .updatePreferences(
         this.preferenceDraft().map(({ key, visible, order }) => ({ key, visible, order })),
-        this.shortcutPreferenceDraft().map(({ key, visible, order }) => ({ key, visible, order })),
+        this.shortcutPreferenceDraft()
+          .filter((item) => this.isShortcutEnabled(item.key))
+          .map(({ key, visible, order }) => ({ key, visible, order })),
       )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -503,11 +506,17 @@ export class DashboardPageComponent {
     this.canAccessReimbursementWorkspace.set(preferences.capabilities.canAccessReimbursementWorkspace);
     this.canAccessCollaborationWorkspace.set(preferences.capabilities.canAccessCollaborationWorkspace);
     const widgets = [...preferences.widgets].sort((left, right) => left.order - right.order);
-    const shortcuts = [...(preferences.shortcuts ?? [])].sort((left, right) => left.order - right.order);
+    const shortcuts = [...(preferences.shortcuts ?? [])]
+      .filter((item) => this.isShortcutEnabled(item.key))
+      .sort((left, right) => left.order - right.order);
     this.preferences.set(widgets);
     this.preferenceDraft.set(widgets.map((item) => ({ ...item })));
     this.shortcutPreferences.set(shortcuts);
     this.shortcutPreferenceDraft.set(shortcuts.map((item) => ({ ...item })));
+  }
+
+  private isShortcutEnabled(key: string): boolean {
+    return key !== 'collab.feedbacks' || FEATURE_FLAGS.feedback;
   }
 
   private loadReimbursementData(): void {
@@ -568,6 +577,16 @@ export class DashboardPageComponent {
 
   private todoSortAt(item: DashboardTodoItem): string {
     return item.sortAt ?? item.updatedAt;
+  }
+
+  private compareTodos(left: DashboardTodoItem, right: DashboardTodoItem): number {
+    if (left.lastUrgedAt || right.lastUrgedAt) {
+      if (left.lastUrgedAt && right.lastUrgedAt) {
+        return right.lastUrgedAt.localeCompare(left.lastUrgedAt);
+      }
+      return left.lastUrgedAt ? -1 : 1;
+    }
+    return this.todoSortAt(right).localeCompare(this.todoSortAt(left));
   }
 
   private getCurrentMonthRange(): { dateFrom: string; dateTo: string } {

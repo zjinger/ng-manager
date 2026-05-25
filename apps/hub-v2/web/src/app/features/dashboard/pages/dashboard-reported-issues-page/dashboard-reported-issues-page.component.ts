@@ -74,6 +74,9 @@ import { DashboardApiService } from '../../services/dashboard-api.service';
               </div>
               <div class="issue-row__meta">
                 <app-status-badge [status]="item.status" />
+                @if (item.lastUrgedAt) {
+                  <span class="issue-row__urge-badge">已提醒</span>
+                }
                 <span>{{ projectLabel(item.projectId) }}</span>
                 <span>{{ assigneeLabel(item.assigneeName) }}</span>
                 <span>{{ item.updatedAt | date: 'MM-dd HH:mm' }}</span>
@@ -189,6 +192,16 @@ import { DashboardApiService } from '../../services/dashboard-api.service';
       .issue-row__urge-btn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+      }
+      .issue-row__urge-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(245, 158, 11, 0.16);
+        color: #b45309;
+        font-size: 11px;
+        font-weight: 700;
       }
       .pagination {
         display: flex;
