@@ -56,7 +56,8 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     private readonly access: ProjectAccessContract,
     private readonly authorization: ProjectAuthorizationService,
     private readonly eventBus: EventBus,
-    private readonly db: Database.Database
+    private readonly db: Database.Database,
+    private readonly initAdminUsername: string | null = null
   ) {}
 
   async create(input: CreateProjectInput, ctx: RequestContext): Promise<ProjectEntity> {
@@ -231,7 +232,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
   async listMemberCandidates(projectId: string, ctx: RequestContext): Promise<ProjectMemberCandidate[]> {
     await this.requireProjectMaintainer(projectId, ctx, "list project member candidates");
-    return this.repo.listActiveUserCandidates();
+    return this.repo.listActiveUserCandidates({ excludedUsername: this.initAdminUsername });
   }
 
   async addMember(projectId: string, input: AddProjectMemberInput, ctx: RequestContext): Promise<ProjectMemberEntity> {

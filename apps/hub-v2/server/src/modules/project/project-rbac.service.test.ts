@@ -21,6 +21,7 @@ function createDb() {
       email TEXT,
       mobile TEXT,
       title_code TEXT,
+      default_project_title_code TEXT,
       status TEXT NOT NULL DEFAULT 'active',
       source TEXT NOT NULL DEFAULT 'local',
       remark TEXT,
@@ -110,12 +111,34 @@ function createDb() {
       created_at TEXT NOT NULL,
       UNIQUE (user_id, role_id)
     );
+    CREATE TABLE project_titles (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL,
+      sort INTEGER NOT NULL DEFAULT 0,
+      remark TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 
   db.prepare(
     `INSERT INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at)
      VALUES (?, ?, ?, '', 0, 'platform_admin', '平台管理角色', 'active', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
   ).run("role_project_ops", "project_ops", "项目管理");
+  db.prepare(
+    `INSERT INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at)
+     VALUES (?, ?, ?, '', 1, 'platform_admin', '平台管理角色', 'active', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+  ).run("srole_super_admin", "super_admin", "超级管理员");
+  db.prepare(
+    `INSERT INTO system_roles (id, code, name, description, is_builtin, purpose_code, purpose_name, status, sort, created_at, updated_at)
+     VALUES (?, ?, ?, '', 1, 'platform_admin', '平台管理角色', 'active', 1, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+  ).run("srole_admin", "admin", "管理员");
+  db.prepare(
+    `INSERT INTO project_titles (id, code, name, status, sort, remark, created_at, updated_at)
+     VALUES ('ptitle_member', 'member', '成员', 'active', 10, NULL, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+  ).run();
 
   const permissions = [
     ["perm_read_all", "project.read.all"],
@@ -137,8 +160,8 @@ function createDb() {
   ] as const;
   for (const [id, username] of users) {
     db.prepare(
-      `INSERT INTO users (id, username, display_name, email, mobile, title_code, status, source, remark, created_at, updated_at)
-       VALUES (?, ?, ?, NULL, NULL, NULL, 'active', 'local', NULL, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+      `INSERT INTO users (id, username, display_name, email, mobile, title_code, default_project_title_code, status, source, remark, created_at, updated_at)
+       VALUES (?, ?, ?, NULL, NULL, NULL, NULL, 'active', 'local', NULL, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
     ).run(id, username, username);
   }
 
@@ -282,6 +305,41 @@ describe("project RBAC integration", () => {
       assert.equal(updated.roleCode, "project_admin");
       const previousOwner = repo.findMemberById("prj_1", "pm_owner");
       assert.equal(previousOwner?.isOwner, false);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("excludes super admin and initial admin from project member candidates", async () => {
+    const db = createDb();
+    try {
+      db.prepare(
+        `INSERT INTO users (id, username, display_name, email, mobile, title_code, default_project_title_code, status, source, remark, created_at, updated_at)
+         VALUES ('usr_init_admin', 'admin', '系统管理员', NULL, NULL, NULL, NULL, 'active', 'local', NULL, '2026-01-03T00:00:00.000Z', '2026-01-03T00:00:00.000Z'),
+                ('usr_super_admin', 'root', '超级管理员', NULL, NULL, NULL, NULL, 'active', 'local', NULL, '2026-01-04T00:00:00.000Z', '2026-01-04T00:00:00.000Z'),
+                ('usr_real_admin', 'realadmin', '真实管理员', NULL, NULL, NULL, 'member', 'active', 'local', NULL, '2026-01-05T00:00:00.000Z', '2026-01-05T00:00:00.000Z')`
+      ).run();
+      db.prepare(
+        `INSERT INTO user_system_roles (id, user_id, role_id, created_at)
+         VALUES ('usr_super_admin_role', 'usr_super_admin', 'srole_super_admin', '2026-01-04T00:00:00.000Z'),
+                ('usr_real_admin_role', 'usr_real_admin', 'srole_admin', '2026-01-05T00:00:00.000Z')`
+      ).run();
+      const repo = new ProjectRepo(db);
+      const authorization = new ProjectAuthorizationService(db, repo);
+      const access = new ProjectAccessService(repo, authorization);
+      const service = new ProjectService(repo, new UserRepo(db), new RdRepo(db), access, authorization, eventBus, db, "admin");
+
+      const candidates = await service.listMemberCandidates("prj_1", createRequestContext({
+        accountId: "adm_owner",
+        userId: "usr_owner",
+        roles: ["user"],
+        source: "http"
+      }));
+      const usernames = candidates.map((item) => item.username).sort();
+
+      assert.equal(usernames.includes("admin"), false);
+      assert.equal(usernames.includes("root"), false);
+      assert.equal(usernames.includes("realadmin"), true);
     } finally {
       db.close();
     }

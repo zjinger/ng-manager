@@ -207,6 +207,13 @@
 1. 若有 `project.manage.all`，直接允许
 2. 否则要求是该项目 `owner` 或 `project_admin`
 
+项目成员候选人规则：
+
+1. 只返回 `users.status = active` 的真实人员
+2. 排除拥有 `super_admin` 系统角色的用户
+3. 排除 `INIT_ADMIN_USERNAME` 初始化维护账号
+4. 不排除普通 `admin` 系统角色用户；真实员工即使拥有后台管理权限，也可以参与项目协作
+
 ## 7.4 归档项目
 
 建议单独判断：

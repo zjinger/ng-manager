@@ -62,6 +62,10 @@ type UserCandidateRow = {
   default_project_title_name: string | null;
 };
 
+type ListActiveUserCandidatesOptions = {
+  excludedUsername?: string | null;
+};
+
 type ProjectConfigRow = {
   id: string;
   project_id: string;
@@ -394,7 +398,15 @@ export class ProjectRepo {
     return rows.map((row) => this.mapMember(row));
   }
 
-  listActiveUserCandidates(): ProjectMemberCandidate[] {
+  listActiveUserCandidates(options: ListActiveUserCandidatesOptions = {}): ProjectMemberCandidate[] {
+    const conditions = ["u.status = 'active'"];
+    const params: unknown[] = [];
+    const excludedUsername = options.excludedUsername?.trim();
+    if (excludedUsername) {
+      conditions.push("u.username <> ?");
+      params.push(excludedUsername);
+    }
+
     const rows = this.db
       .prepare(
         `
@@ -406,11 +418,17 @@ export class ProjectRepo {
             CASE WHEN pt.status = 'active' THEN pt.name ELSE NULL END AS default_project_title_name
           FROM users u
           LEFT JOIN project_titles pt ON pt.code = u.default_project_title_code
-          WHERE u.status = 'active'
+          WHERE ${conditions.join(" AND ")}
+            AND NOT EXISTS (
+              SELECT 1
+              FROM user_system_roles usr
+              INNER JOIN system_roles sr ON sr.id = usr.role_id
+              WHERE usr.user_id = u.id AND sr.code = 'super_admin'
+            )
           ORDER BY u.updated_at DESC, u.created_at DESC
         `
       )
-      .all() as UserCandidateRow[];
+      .all(...params) as UserCandidateRow[];
 
     return rows.map((row) => ({
       id: row.id,
