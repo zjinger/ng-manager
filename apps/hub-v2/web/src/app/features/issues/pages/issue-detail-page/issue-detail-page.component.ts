@@ -125,6 +125,8 @@ import { IssueDetailStore } from '../../store/issue-detail.store';
                 <app-issue-comment-editor
                   [comments]="store.comments()"
                   [members]="store.members()"
+                  [issueId]="issue.id"
+                  [projectId]="issue.projectId"
                   [busy]="store.busy()"
                   (submit)="store.postComment($event.content, $event.mentions)"
                 />

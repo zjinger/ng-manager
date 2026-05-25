@@ -3,14 +3,15 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { ISSUE_STATUS_LABELS } from '@shared/constants';
-import type { IssueEntity, IssueLogEntity } from '../../models/issue.model';
+import type { IssueBranchEntity, IssueEntity, IssueLogEntity } from '../../models/issue.model';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { NzPopoverModule } from 'ng-zorro-antd/popover';
 
 @Component({
   selector: 'app-issue-detail-drawer-header',
   standalone: true,
-  imports: [NzButtonModule, NzIconModule, NzPopconfirmModule, NzTooltipModule],
+  imports: [NzButtonModule, NzIconModule, NzPopconfirmModule, NzPopoverModule, NzTooltipModule],
   template: `
     <section class="detail-header">
       <div class="detail-header__top">
@@ -43,6 +44,66 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
           @if (canStart()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="start.emit()">{{ startActionLabel() }}</button>
           }
+          @if (completableBranches().length === 1) {
+            @let branch = completableBranches()[0];
+            <button
+              nz-button
+              nzType="primary"
+              class="detail-header__action-btn"
+              nz-popconfirm
+              [nzPopconfirmTitle]="'确认标记协作分支「' + branch.title + '」已完成？'"
+              nzPopconfirmOkText="完成"
+              nzPopconfirmCancelText="取消"
+              [nzLoading]="busy()"
+              [nz-tooltip]="'完成协作：' + branch.title"
+              (nzOnConfirm)="completeBranch.emit(branch.id)"
+            >
+              标记完成
+            </button>
+          }
+          @if (completableBranches().length > 1) {
+            <button
+              nz-button
+              nzType="primary"
+              class="detail-header__action-btn"
+              nz-popover
+              nzPopoverTrigger="click"
+              nzPopoverPlacement="bottomLeft"
+              [nzPopoverContent]="completeBranchPopover"
+              nz-tooltip="有多个处理中协作分支，点击后选择要标记完成的任务"
+              [nzLoading]="busy()"
+            >
+              标记完成
+            </button>
+          }
+          @if (startableBranches().length === 1) {
+            @let branch = startableBranches()[0];
+            <button
+              nz-button
+              nzType="primary"
+              class="detail-header__action-btn"
+              [nzLoading]="busy()"
+              [nz-tooltip]="'开始协作：' + branch.title"
+              (click)="startBranch.emit(branch.id)"
+            >
+              开始处理
+            </button>
+          }
+          @if (startableBranches().length > 1) {
+            <button
+              nz-button
+              nzType="primary"
+              class="detail-header__action-btn"
+              nz-popover
+              nzPopoverTrigger="click"
+              nzPopoverPlacement="bottomLeft"
+              [nzPopoverContent]="startBranchPopover"
+              nz-tooltip="有多个待开始协作分支，点击后选择要开始处理的任务"
+              [nzLoading]="busy()"
+            >
+              开始处理
+            </button>
+          }
           @if (canClaim() && !canAssign()) {
             <button nz-button nzType="default" class="detail-header__action-btn" (click)="claim.emit()">认领</button>
           }
@@ -74,6 +135,42 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
         </div>
       </div>
     </section>
+
+    <ng-template #startBranchPopover>
+      <div class="branch-popover">
+        @for (branch of startableBranches(); track branch.id) {
+          <button
+            type="button"
+            class="branch-popover__item"
+            [disabled]="busy()"
+            (click)="startBranch.emit(branch.id)"
+          >
+            <span class="branch-popover__title">{{ branch.title }}</span>
+            <span class="branch-popover__meta">开始处理</span>
+          </button>
+        }
+      </div>
+    </ng-template>
+
+    <ng-template #completeBranchPopover>
+      <div class="branch-popover">
+        @for (branch of completableBranches(); track branch.id) {
+          <button
+            type="button"
+            class="branch-popover__item"
+            [disabled]="busy()"
+            nz-popconfirm
+            [nzPopconfirmTitle]="'确认标记协作分支「' + branch.title + '」已完成？'"
+            nzPopconfirmOkText="完成"
+            nzPopconfirmCancelText="取消"
+            (nzOnConfirm)="completeBranch.emit(branch.id)"
+          >
+            <span class="branch-popover__title">{{ branch.title }}</span>
+            <span class="branch-popover__meta">标记完成</span>
+          </button>
+        }
+      </div>
+    </ng-template>
   `,
   styles: [
     `
@@ -218,8 +315,54 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
       }
       .detail-header__action-btn {
         min-width: 76px;
+        max-width: 100%;
         border-radius: 999px;
         height: 36px;
+      }
+      .branch-popover {
+        display: grid;
+        gap: 6px;
+        width: min(360px, calc(100vw - 48px));
+        max-height: 280px;
+        overflow: auto;
+        padding: 2px;
+      }
+      .branch-popover__item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) max-content;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        min-height: 40px;
+        padding: 8px 10px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--text-primary);
+        text-align: left;
+        cursor: pointer;
+        transition: background-color 0.16s ease;
+      }
+      .branch-popover__item:hover,
+      .branch-popover__item:focus-visible {
+        background: color-mix(in srgb, var(--primary-500) 12%, transparent);
+        outline: none;
+      }
+      .branch-popover__item:disabled {
+        cursor: not-allowed;
+        opacity: 0.58;
+      }
+      .branch-popover__title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 600;
+      }
+      .branch-popover__meta {
+        color: var(--primary-700);
+        font-size: 12px;
+        font-weight: 700;
       }
       @media (max-width: 960px) {
         .detail-header__top,
@@ -248,8 +391,11 @@ export class IssueDetailDrawerHeaderComponent {
 
   readonly issue = input.required<IssueEntity>();
   readonly logs = input<IssueLogEntity[]>([]);
+  readonly busy = input(false);
   readonly canStart = input(false);
   readonly startActionLabel = input('开始处理');
+  readonly startableBranches = input<IssueBranchEntity[]>([]);
+  readonly completableBranches = input<IssueBranchEntity[]>([]);
   readonly canClaim = input(false);
   readonly canAssign = input(false);
   readonly assignActionLabel = input('重新指派');
@@ -263,6 +409,8 @@ export class IssueDetailDrawerHeaderComponent {
   readonly branchSummaryText = input('');
 
   readonly start = output<void>();
+  readonly startBranch = output<string>();
+  readonly completeBranch = output<string>();
   readonly waitForUpdate = output<void>();
   readonly claim = output<void>();
   readonly assign = output<void>();

@@ -37,13 +37,19 @@
     }
     <div class="composer__main">
       <nz-mention
+        #mentionRef="nzMention"
         [nzSuggestions]="mentionOptions()"
-        [nzValueWith]="mentionLabel"
+        [nzValueWith]="mentionValue"
+        [nzPrefix]="['@', '/']"
+        [nzNotFoundContent]="mentionNotFoundText()"
         (nzOnSearchChange)="handleMentionSearch($event)"
         (nzOnSelect)="handleMentionSelect($event)"
         style="border: none"
       >
         <div
+          #inputShellRef
+          cdkOverlayOrigin
+          #issueLinkOrigin="cdkOverlayOrigin"
           class="composer__input-shell"
           [class.has-upload]="uploads().length > 0"
         >
@@ -95,22 +101,75 @@
             </div>
           }
           <textarea
+            #textareaRef
             nz-input
             nzMentionTrigger
             class="composer__textarea"
             rows="3"
-            placeholder="添加评论… 输入 @ 提及成员"
+            placeholder="添加评论… 输入 @ 提及成员，输入 / 使用命令"
             [ngModel]="draft()"
             [style.padding-top.px]="uploads().length > 0 ? textareaPaddingTop() : null"
-            (ngModelChange)="draft.set($event)"
+            (ngModelChange)="handleDraftChange($event)"
+            (click)="handleTextareaNavigation()"
+            (keyup)="handleTextareaNavigation()"
+            (keydown)="handleTextareaKeydown($event)"
             (paste)="onPaste($event)"
           ></textarea>
         </div>
-        <ng-template nzMentionSuggestion let-member>
-          <div class="mention-option">
-            <span class="mention-name">{{ member.displayName || member.userId }}</span>
-            <span class="mention-id">{{ roleLabel(member.roleCode) }}</span>
-          </div>
+        <ng-template
+          cdkConnectedOverlay
+          [cdkConnectedOverlayOrigin]="issueLinkOrigin"
+          [cdkConnectedOverlayOpen]="!!activeIssueLinkCommand()"
+          [cdkConnectedOverlayWidth]="issueReferenceOverlayWidth()"
+          [cdkConnectedOverlayPositions]="issueReferenceOverlayPositions"
+          [cdkConnectedOverlayPush]="true"
+        >
+          @if (activeIssueLinkCommand(); as command) {
+            <div class="link-command-panel">
+              <div class="link-command-panel__header">
+                <span class="link-command-panel__command">/测试单</span>
+                <span class="link-command-panel__hint">输入问题编号后选择测试单</span>
+              </div>
+              @if (command.query.trim() && issueReferenceLoading()) {
+                <div class="link-command-panel__empty">正在查找测试单…</div>
+              } @else if (command.query.trim() && issueReferenceOptions().length > 0) {
+                <div
+                  class="link-command-panel__list"
+                  (scroll)="onIssueReferenceScroll($event)"
+                >
+                  @for (issue of issueReferenceOptions(); track issue.id) {
+                    <button
+                      type="button"
+                      class="link-command-option"
+                      (mousedown)="$event.preventDefault()"
+                      (click)="insertIssueReference(issue)"
+                    >
+                      <span class="link-command-option__no">{{ issue.issueNo }}</span>
+                      <span class="link-command-option__title">{{ issue.title }}</span>
+                    </button>
+                  }
+                  @if (issueReferenceLoadingMore()) {
+                    <div class="link-command-panel__more">正在加载更多…</div>
+                  }
+                </div>
+              } @else if (command.query.trim()) {
+                <div class="link-command-panel__empty">未找到匹配测试单</div>
+              }
+            </div>
+          }
+        </ng-template>
+        <ng-template nzMentionSuggestion let-option>
+          @if (isSlashCommandOption(option)) {
+            <div class="mention-option mention-option--command">
+              <span class="mention-name">{{ option.label }}</span>
+              <span class="mention-id">{{ option.description }}</span>
+            </div>
+          } @else {
+            <div class="mention-option">
+              <span class="mention-name">{{ option.displayName || option.userId }}</span>
+              <span class="mention-id">{{ roleLabel(option.roleCode) }}</span>
+            </div>
+          }
         </ng-template>
       </nz-mention>
       <div class="composer__actions">

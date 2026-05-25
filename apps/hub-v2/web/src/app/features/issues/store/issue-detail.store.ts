@@ -229,6 +229,28 @@ export class IssueDetailStore {
     }
     return !this.branchesState().some((item) => actorIds.has(item.ownerUserId) && item.status !== 'done');
   });
+  readonly startableOwnBranches = computed(() => {
+    const issue = this.issueState();
+    if (!issue || ['resolved', 'verified', 'closed'].includes(issue.status)) {
+      return [];
+    }
+    const actorIds = new Set(this.currentActorIds());
+    if (actorIds.size === 0) {
+      return [];
+    }
+    return this.branchesState().filter((item) => actorIds.has(item.ownerUserId) && item.status === 'todo');
+  });
+  readonly completableOwnBranches = computed(() => {
+    const issue = this.issueState();
+    if (!issue || ['resolved', 'verified', 'closed'].includes(issue.status)) {
+      return [];
+    }
+    const actorIds = new Set(this.currentActorIds());
+    if (actorIds.size === 0) {
+      return [];
+    }
+    return this.branchesState().filter((item) => actorIds.has(item.ownerUserId) && item.status === 'in_progress');
+  });
 
   load(issueId: string): void {
     this.loadingState.set(true);

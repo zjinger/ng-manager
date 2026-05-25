@@ -59,8 +59,11 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
           <app-issue-detail-drawer-header
             [issue]="issue"
             [logs]="store.logs()"
+            [busy]="store.busy()"
             [canStart]="store.canStart()"
             [startActionLabel]="store.startActionLabel()"
+            [startableBranches]="store.startableOwnBranches()"
+            [completableBranches]="store.completableOwnBranches()"
             [canClaim]="store.canClaim()"
             [canAssign]="store.canAssign()"
             [assignActionLabel]="store.assignActionLabel()"
@@ -73,6 +76,8 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
             [canClose]="store.canClose()"
             [branchSummaryText]="store.branchSummaryText()"
             (start)="confirmStart()"
+            (startBranch)="store.startBranch($event)"
+            (completeBranch)="store.completeBranch($event)"
             (waitForUpdate)="confirmWaitForUpdate()"
             (claim)="confirmClaim()"
             (assign)="assignIssue()"
@@ -112,6 +117,8 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
             <app-issue-comment-editor
               [comments]="store.comments()"
               [members]="store.members()"
+              [issueId]="issue.id"
+              [projectId]="issue.projectId"
               [busy]="store.busy()"
               (submit)="store.postComment($event.content, $event.mentions)"
             />
@@ -127,6 +134,7 @@ import { ISSUE_TITLE_BY_TYPE } from '@app/shared/constants';
               [canCreate]="store.canCreateBranches()"
               [canStartActions]="store.canStartBranchActions()"
               [canStartOwn]="store.canStartOwnBranch()"
+              [showBranchActions]="false"
               [busy]="store.busy()"
               (create)="openCreateBranch()"
               (startOwn)="openStartOwnBranch()"

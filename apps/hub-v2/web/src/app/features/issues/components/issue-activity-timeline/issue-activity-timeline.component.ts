@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
@@ -8,6 +9,7 @@ import type { IssueLogEntity } from '../../models/issue.model';
 import { IssueDetailNoteComponent } from '../issue-detail-note/issue-detail-note.component';
 import { NzImageModule } from 'ng-zorro-antd/image';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
+import { parseIssueReferenceSegments } from '../../utils';
 
 interface IssueTimelineItem {
   id: string;
@@ -15,15 +17,22 @@ interface IssueTimelineItem {
   actionType: string;
   actor: string;
   action: string;
-  actionSegments?: Array<{ text: string; mention?: boolean }>;
+  actionSegments?: IssueTimelineActionSegment[];
   imageItems: Array<{ alt: string; url: string }>;
   time: string;
+}
+
+interface IssueTimelineActionSegment {
+  text: string;
+  mention?: boolean;
+  issueReference?: boolean;
+  issueId?: string;
 }
 
 @Component({
   selector: 'app-issue-activity-timeline',
   standalone: true,
-  imports: [FormsModule, NzIconModule, NzSelectModule, PanelCardComponent, IssueDetailNoteComponent, NzImageModule],
+  imports: [FormsModule, RouterLink, NzIconModule, NzSelectModule, PanelCardComponent, IssueDetailNoteComponent, NzImageModule],
   templateUrl: './issue-activity-timeline.component.html',
   styleUrl: './issue-activity-timeline.component.less',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,7 +69,7 @@ export class IssueActivityTimelineComponent {
         actionType: item.actionType,
         actor: item.operatorName || '系统',
         action: normalizedAction,
-        actionSegments: this.highlightMentionSegments(normalizedAction),
+        actionSegments: this.highlightActionSegments(normalizedAction),
         imageItems,
         time: new Intl.DateTimeFormat('zh-CN', {
           month: '2-digit',
@@ -202,12 +211,26 @@ export class IssueActivityTimelineComponent {
     );
   }
 
-  private highlightMentionSegments(text: string): Array<{ text: string; mention?: boolean }> | undefined {
-    if (!text || !text.includes('@') || this.mentionLabels().length === 0) {
-      return undefined;
+  private highlightActionSegments(text: string): IssueTimelineActionSegment[] | undefined {
+    const segments: IssueTimelineActionSegment[] = [];
+
+    for (const segment of parseIssueReferenceSegments(text)) {
+      if (segment.issueReference) {
+        segments.push(segment);
+        continue;
+      }
+      segments.push(...this.highlightMentionSegments(segment.text));
     }
 
-    const segments: Array<{ text: string; mention?: boolean }> = [];
+    return segments.some((segment) => segment.mention || segment.issueReference) ? segments : undefined;
+  }
+
+  private highlightMentionSegments(text: string): IssueTimelineActionSegment[] {
+    if (!text || !text.includes('@') || this.mentionLabels().length === 0) {
+      return text ? [{ text }] : [];
+    }
+
+    const segments: IssueTimelineActionSegment[] = [];
     let cursor = 0;
 
     while (cursor < text.length) {
@@ -241,7 +264,7 @@ export class IssueActivityTimelineComponent {
       cursor = mentionStart + 1 + mentionLabel.length;
     }
 
-    return segments.some((segment) => !!segment.mention) ? segments : undefined;
+    return segments.length > 0 ? segments : [{ text }];
   }
 
   private matchMentionLabel(text: string, nameStartIndex: number): string | null {

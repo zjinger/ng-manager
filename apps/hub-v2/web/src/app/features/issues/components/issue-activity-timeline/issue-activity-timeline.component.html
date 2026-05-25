@@ -29,7 +29,14 @@
             <span class="timeline-log__action">
               @if (item.actionSegments?.length) {
                 @for (segment of item.actionSegments!; track $index) {
-                  @if (segment.mention) {
+                  @if (segment.issueReference && segment.issueId) {
+                    <a
+                      class="timeline-log__mention timeline-log__issue-ref"
+                      [routerLink]="['/issues', segment.issueId]"
+                    >
+                      {{ segment.text }}
+                    </a>
+                  } @else if (segment.mention) {
                     <span class="timeline-log__mention">{{ segment.text }}</span>
                   } @else {
                     <span>{{ segment.text }}</span>

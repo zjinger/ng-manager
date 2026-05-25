@@ -44,12 +44,12 @@ import type { IssueBranchEntity } from '../../models/issue.model';
                   <div class="branch-card__summary">{{ branch.summary }}</div>
                 }
                 <div class="branch-card__actions">
-                @if (canStartActions() && isMine(branch) && branch.status === 'todo') {
+                @if (showBranchActions() && canStartActions() && isMine(branch) && branch.status === 'todo') {
                   <button nz-button nzType="default" nzSize="small" [nzLoading]="busy()" (click)="startBranch.emit(branch.id)">
                     开始处理
                   </button>
                 }
-                @if (isMine(branch) && branch.status === 'in_progress') {
+                @if (showBranchActions() && isMine(branch) && branch.status === 'in_progress') {
                   <button
                     nz-button
                     nzType="primary"
@@ -192,6 +192,7 @@ export class IssueBranchesPanelComponent {
   readonly canCreate = input(false);
   readonly canStartActions = input(false);
   readonly canStartOwn = input(false);
+  readonly showBranchActions = input(true);
   readonly busy = input(false);
 
   readonly create = output<void>();
