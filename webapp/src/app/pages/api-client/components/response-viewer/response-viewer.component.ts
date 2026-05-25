@@ -7,6 +7,9 @@ import {
   SimpleChanges,
   computed,
   signal,
+  ElementRef,
+  ViewChild,
+  viewChild,
 } from '@angular/core';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -19,6 +22,7 @@ import { SendResponse } from '@models/api-client';
 import { ResponseBodyViewerComponent } from './response-body-viewer/response-body-viewer.component';
 import { formatBytes } from '@app/utils/file.utils';
 import { JsonViewerComponent } from '@app/shared/components/json-viewer';
+import { TextSearchComponent } from './text-search/text-search.component';
 
 @Component({
   selector: 'app-response-viewer',
@@ -32,6 +36,7 @@ import { JsonViewerComponent } from '@app/shared/components/json-viewer';
     CurlActionsComponent,
     ResponseBodyViewerComponent,
     JsonViewerComponent,
+    TextSearchComponent,
   ],
   template: `
     <div class="wrap">
@@ -64,9 +69,13 @@ import { JsonViewerComponent } from '@app/shared/components/json-viewer';
       } @else if (!response()) {
         <div class="empty">发送请求后在此查看响应</div>
       } @else {
-        <nz-tabs class="tabs" [(nzSelectedIndex)]="tabIndex">
+        <nz-tabs
+          class="tabs"
+          [(nzSelectedIndex)]="tabIndex"
+          [nzTabBarExtraContent]="extraTemplate"
+        >
           <nz-tab nzTitle="Body">
-            <div class="pane">
+            <div class="pane" #bodyPane>
               <!-- @if (isJson()) {
                 <pre class="code">{{ prettyJson() }}</pre>
               } @else {
@@ -77,7 +86,7 @@ import { JsonViewerComponent } from '@app/shared/components/json-viewer';
           </nz-tab>
 
           <nz-tab nzTitle="Headers">
-            <div class="pane">
+            <div class="pane" #headersPane>
               <div class="hlist">
                 @for (k of headerKeys(); track k) {
                   <div class="hrow">
@@ -90,12 +99,15 @@ import { JsonViewerComponent } from '@app/shared/components/json-viewer';
           </nz-tab>
 
           <nz-tab nzTitle="Raw">
-            <div class="pane">
+            <div class="pane" #rawPane>
               <!-- <pre class="code">{{ rawDump() }}</pre> -->
               <app-json-viewer [json]="rawDump()" />
             </div>
           </nz-tab>
         </nz-tabs>
+        <ng-template #extraTemplate>
+          <app-text-search [searchContainer]="currentTabPane()"></app-text-search>
+        </ng-template>
       }
     </div>
   `,
@@ -186,6 +198,23 @@ import { JsonViewerComponent } from '@app/shared/components/json-viewer';
         opacity: 0.85;
         word-break: break-word;
       }
+
+      /* Tabs 容器需要相对定位以支持搜索框定位 */
+      .tabs {
+        position: relative;
+      }
+
+      /* 确保 tab bar 有足够空间显示搜索组件 */
+      :host ::ng-deep .ant-tabs-nav {
+        display: flex;
+        align-items: center;
+      }
+
+      :host ::ng-deep .ant-tabs-extra-content {
+        flex: 1;
+        display: flex;
+        justify-content: flex-end;
+      }
     `,
   ],
 })
@@ -194,9 +223,28 @@ export class ResponseViewerComponent implements OnChanges {
   @Input() result: SendResponse | null = null;
   @Input() activedTabId: string | null = null;
 
+  readonly bodyPaneRef = viewChild<ElementRef<HTMLElement>>('bodyPane');
+  readonly headersPaneRef = viewChild<ElementRef<HTMLElement>>('headersPane');
+  readonly rawPaneRef = viewChild<ElementRef<HTMLElement>>('rawPane');
+
   resultSig = signal<SendResponse | null>(null);
 
-  tabIndex = 0;
+  tabIndex = signal(0);
+
+  // 当前激活的 tab pane
+  currentTabPane = computed(() => {
+    // 根据 tabIndex 返回对应的 pane 元素
+    switch (this.tabIndex()) {
+      case 0:
+        return this.bodyPaneRef()?.nativeElement ?? null;
+      case 1:
+        return this.headersPaneRef()?.nativeElement ?? null;
+      case 2:
+        return this.rawPaneRef()?.nativeElement ?? null;
+      default:
+        return null;
+    }
+  });
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['result']) {

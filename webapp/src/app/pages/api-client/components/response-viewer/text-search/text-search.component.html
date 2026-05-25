@@ -1,0 +1,97 @@
+<div class="search-container">
+  <div class="search-box">
+    <span class="search-icon">
+      <nz-icon nzType="search" />
+    </span>
+
+    <input
+      nz-input
+      class="search-input"
+      [ngModel]="searchOptions().term"
+      (ngModelChange)="onTermChange($event)"
+      placeholder="查找..."
+    />
+
+    <div class="search-tools">
+      <button
+        nz-button
+        nzType="text"
+        nzSize="small"
+        class="tool-btn"
+        [class.active]="searchOptions().caseSensitive"
+        (click)="toggleCaseSensitive()"
+        nz-tooltip
+        nzTooltipTitle="区分大小写"
+      >
+        Aa
+      </button>
+
+      <button
+        nz-button
+        nzType="text"
+        nzSize="small"
+        class="tool-btn"
+        [class.active]="searchOptions().wholeWord"
+        (click)="toggleWholeWord()"
+        nz-tooltip
+        nzTooltipTitle="全字匹配"
+      >
+        ab
+      </button>
+
+      <button
+        nz-button
+        nzType="text"
+        nzSize="small"
+        class="tool-btn"
+        [class.active]="searchOptions().regex"
+        (click)="toggleRegex()"
+        nz-tooltip
+        nzTooltipTitle="使用正则表达式"
+      >
+        .*
+      </button>
+
+      @if (searchOptions().term) {
+        <span class="match-info"> {{ currentIndex() + 1 }}/{{ totalMatches() }} </span>
+      }
+    </div>
+  </div>
+
+  <div class="search-actions">
+    <button
+      nz-button
+      nzType="text"
+      nzSize="small"
+      (click)="prevMatch()"
+      [disabled]="totalMatches() === 0"
+      nz-tooltip
+      nzTooltipTitle="上一个"
+    >
+      <nz-icon nzType="up" />
+    </button>
+
+    <button
+      nz-button
+      nzType="text"
+      nzSize="small"
+      (click)="nextMatch()"
+      [disabled]="totalMatches() === 0"
+      nz-tooltip
+      nzTooltipTitle="下一个"
+    >
+      <nz-icon nzType="down" />
+    </button>
+
+    <button
+      nz-button
+      nzType="text"
+      nzSize="small"
+      (click)="clearSearch()"
+      nz-tooltip
+      nzTooltipTitle="清空"
+    >
+      <nz-icon nzType="close" />
+    </button>
+  </div>
+</div>
