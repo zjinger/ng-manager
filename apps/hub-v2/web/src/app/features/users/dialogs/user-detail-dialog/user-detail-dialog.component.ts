@@ -56,9 +56,11 @@ import type { UserSystemRoleEntity } from '../../../admin/models/system-rbac.mod
                   <p>{{ currentUser.email || '未设置邮箱' }} · {{ currentUser.username }}</p>
                   <div class="user-hero__tags">
                     <app-user-status-tag [status]="currentUser.status" />
-                    <span class="hero-pill" [class.hero-pill--muted]="!currentUser.loginEnabled">
-                      {{ currentUser.loginEnabled ? '可登录后台' : '后台已关闭' }}
-                    </span>
+                    @if (!readonly()) {
+                      <span class="hero-pill" [class.hero-pill--muted]="!currentUser.loginEnabled">
+                        {{ currentUser.loginEnabled ? '可登录后台' : '后台已关闭' }}
+                      </span>
+                    }
                     @for (role of roleAssignments(); track role.id) {
                       <span class="hero-pill hero-pill--role">{{ role.roleName }}</span>
                     }
@@ -75,36 +77,42 @@ import type { UserSystemRoleEntity } from '../../../admin/models/system-rbac.mod
               </div>
 
               <div class="user-detail__grid">
-                <div class="detail-field">
-                  <span>部门</span>
-                  <strong>{{ primaryDepartmentLabel(currentUser) }}</strong>
-                </div>
-                <div class="detail-field">
-                  <span>职位</span>
-                  <strong>{{ titleLabel(currentUser.organizationTitleCode, currentUser.organizationTitleName) }}</strong>
-                </div>
-                <div class="detail-field">
-                  <span>项目职能</span>
-                  <strong>{{ titleLabel(currentUser.defaultProjectTitleCode, currentUser.defaultProjectTitleName) }}</strong>
-                </div>
+                @if (!readonly()) {
+                  <div class="detail-field">
+                    <span>部门</span>
+                    <strong>{{ primaryDepartmentLabel(currentUser) }}</strong>
+                  </div>
+                  <div class="detail-field">
+                    <span>职位</span>
+                    <strong>{{ titleLabel(currentUser.organizationTitleCode, currentUser.organizationTitleName) }}</strong>
+                  </div>
+                  <div class="detail-field">
+                    <span>项目职能</span>
+                    <strong>{{ titleLabel(currentUser.defaultProjectTitleCode, currentUser.defaultProjectTitleName) }}</strong>
+                  </div>
+                }
                 <div class="detail-field">
                   <span>手机号</span>
                   <strong>{{ currentUser.mobile || '未设置' }}</strong>
                 </div>
-                <div class="detail-field">
-                  <span>直属上级</span>
-                  <strong>{{ currentUser.managerUser?.displayName || currentUser.managerUser?.username || '未设置' }}</strong>
-                </div>
+                @if (!readonly()) {
+                  <div class="detail-field">
+                    <span>直属上级</span>
+                    <strong>{{ currentUser.managerUser?.displayName || currentUser.managerUser?.username || '未设置' }}</strong>
+                  </div>
+                }
                 <div class="detail-field">
                   <span>创建时间</span>
                   <strong>{{ currentUser.createdAt | date: 'yyyy-MM-dd HH:mm:ss' }}</strong>
                 </div>
-                <div class="detail-field">
-                  <span>最后登录</span>
-                  <strong [class.detail-field__placeholder]="!currentUser.lastLoginAt">
-                    {{ currentUser.lastLoginAt ? (currentUser.lastLoginAt | date: 'yyyy-MM-dd HH:mm:ss') : '从未登录' }}
-                  </strong>
-                </div>
+                @if (!readonly()) {
+                  <div class="detail-field">
+                    <span>最后登录</span>
+                    <strong [class.detail-field__placeholder]="!currentUser.lastLoginAt">
+                      {{ currentUser.lastLoginAt ? (currentUser.lastLoginAt | date: 'yyyy-MM-dd HH:mm:ss') : '从未登录' }}
+                    </strong>
+                  </div>
+                }
                 <!-- <div class="detail-field">
                   <span>登录次数</span>
                   <strong class="detail-field__placeholder">待接入</strong>

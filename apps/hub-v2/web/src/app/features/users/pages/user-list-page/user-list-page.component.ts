@@ -57,12 +57,14 @@ import { ProjectTitleApiService } from '../../../admin/services/project-title-ap
           <nz-option nzLabel="停用" nzValue="inactive"></nz-option>
         </nz-select>
 
-        <nz-select class="toolbar__status" nzAllowClear nzPlaceHolder="全部部门" [ngModel]="departmentId()" (ngModelChange)="departmentId.set($event || '')">
-          <nz-option nzLabel="全部部门" nzValue=""></nz-option>
-          @for (department of departments(); track department.id) {
-            <nz-option [nzLabel]="department.name" [nzValue]="department.id"></nz-option>
-          }
-        </nz-select>
+        @if (!isReadonly()) {
+          <nz-select class="toolbar__status" nzAllowClear nzPlaceHolder="全部部门" [ngModel]="departmentId()" (ngModelChange)="departmentId.set($event || '')">
+            <nz-option nzLabel="全部部门" nzValue=""></nz-option>
+            @for (department of departments(); track department.id) {
+              <nz-option [nzLabel]="department.name" [nzValue]="department.id"></nz-option>
+            }
+          </nz-select>
+        }
 
         <button nz-button class="toolbar__filter-btn" (click)="applyFilters()">筛选</button>
       </app-filter-bar>
@@ -76,11 +78,12 @@ import { ProjectTitleApiService } from '../../../admin/services/project-title-ap
       />
     </app-page-toolbar>
 
-    <app-list-state [loading]="store.loading()" [empty]="store.items().length === 0" loadingText="正在加载用户列表…" emptyTitle="当前没有用户数据">
+    <app-list-state [loading]="store.loading()" [empty]="visibleUsers().length === 0" loadingText="正在加载用户列表…" emptyTitle="当前没有用户数据">
       <app-user-list-table
-        [items]="store.items()"
+        [items]="visibleUsers()"
         [titleLabelMap]="titleLabelMap()"
         [canEdit]="canManageUsers()"
+        [showOrganizationFields]="!isReadonly()"
         (view)="openDetail($event)"
         (edit)="openEdit($event)"
         (resetPassword)="resetPassword($event)"
@@ -160,7 +163,14 @@ export class UserListPageComponent {
   readonly titleOptions = signal<Array<{ label: string; value: string }>>([]);
   readonly projectTitleOptions = signal<Array<{ label: string; value: string }>>([]);
   readonly titleLabelMap = signal<Record<string, string>>({});
-  readonly subtitle = computed(() => `当前共 ${this.store.total()} 个用户`);
+  readonly visibleUsers = computed(() => {
+    const items = this.store.items();
+    if (!this.isReadonly()) {
+      return items;
+    }
+    return items.filter((item) => item.username.trim().toLowerCase() !== 'admin');
+  });
+  readonly subtitle = computed(() => `当前共 ${this.isReadonly() ? this.visibleUsers().length : this.store.total()} 个用户`);
   readonly isReadonly = signal(this.route.snapshot.pathFromRoot.some((item) => item.data['readonly'] === true));
   readonly canManageUsers = computed(() =>
     !this.isReadonly() && hasRequiredPermissions(this.authStore.currentUser()?.permissionCodes ?? [], ['admin.users.manage'], 'any')
