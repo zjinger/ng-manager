@@ -1,9 +1,11 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 
 import { DataTableComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent } from '@shared/ui';
+import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import type { IssueEntity } from '../../models/issue.model';
 import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.component';
@@ -14,7 +16,9 @@ import type { IssueListViewMode } from '../issue-filter-bar/issue-filter-bar.com
   imports: [
     CommonModule,
     FormsModule,
+    RouterLink,
     NzCheckboxModule,
+    NzPopoverModule,
     DataTableComponent,
     PriorityBadgeComponent,
     StatusBadgeComponent,

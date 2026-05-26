@@ -112,7 +112,8 @@
 
 .issue-row__title-main-header app-type-badge,
 .issue-row__title-main-header app-priority-badge,
-.issue-row__title-main-header .issue-module-tag {
+.issue-row__title-main-header .issue-module-tag,
+.issue-row__title-main-header .issue-rd-tag {
     flex-shrink: 0;
 }
 
@@ -172,8 +173,8 @@
 }
 
 .issue-rd-tag {
-    display: inline-flex;
-    align-items: center;
+    display: inline-block;
+    max-width: 132px;
     padding: 1px 8px;
     border-radius: 999px;
     border: 1px solid color-mix(in srgb, var(--primary-400) 35%, transparent);
@@ -181,7 +182,42 @@
     color: var(--primary-700);
     font-size: 11px;
     line-height: 18px;
+    text-align: center;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.issue-rd-popover-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 280px;
+    min-width: 0;
+    color: var(--primary-700);
+    text-decoration: none;
+}
+
+.issue-rd-popover-link__code {
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.issue-rd-popover-link__title {
+    min-width: 0;
+    font-size: 12px;
+    color: var(--primary-700);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.issue-rd-popover-link--readonly,
+.issue-rd-popover-link--readonly .issue-rd-popover-link__code,
+.issue-rd-popover-link--readonly .issue-rd-popover-link__title {
+    color: var(--text-primary);
 }
 
 .issue-row__assignee,

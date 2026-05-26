@@ -34,7 +34,31 @@
           <app-priority-badge [priority]="item.priority" />
           <app-type-badge [type]="item.type" />
           @if (item.rdNoSnapshot) {
-            <span class="issue-rd-tag">{{ item.rdNoSnapshot }}</span>
+            <ng-template #cardRdPopover>
+              @if (item.rdItemId) {
+                <a class="issue-rd-popover-link" [routerLink]="['/rd', item.rdItemId]" (click)="stopRowOpen($event)">
+                  <span class="issue-rd-popover-link__code">{{ item.rdNoSnapshot }}</span>
+                  @if (item.rdTitleSnapshot) {
+                    <span class="issue-rd-popover-link__title">{{ item.rdTitleSnapshot }}</span>
+                  }
+                </a>
+              } @else {
+                <span class="issue-rd-popover-link issue-rd-popover-link--readonly">
+                  <span class="issue-rd-popover-link__code">{{ item.rdNoSnapshot }}</span>
+                  @if (item.rdTitleSnapshot) {
+                    <span class="issue-rd-popover-link__title">{{ item.rdTitleSnapshot }}</span>
+                  }
+                </span>
+              }
+            </ng-template>
+            <span
+              class="issue-rd-tag"
+              nz-popover
+              nzPopoverTrigger="hover"
+              [nzPopoverContent]="cardRdPopover"
+            >
+              {{ item.rdTitleSnapshot || item.rdNoSnapshot }}
+            </span>
           }
         </div>
         <div class="issue-card__footer">
@@ -101,7 +125,31 @@
                     <span class="issue-module-tag">{{ item.moduleCode }}</span>
                   }
                   @if (item.rdNoSnapshot) {
-                    <span class="issue-rd-tag" [nz-tooltip]="item.rdTitleSnapshot || item.rdNoSnapshot">{{ item.rdNoSnapshot }}</span>
+                    <ng-template #rowRdPopover>
+                      @if (item.rdItemId) {
+                        <a class="issue-rd-popover-link" [routerLink]="['/rd', item.rdItemId]" (click)="stopRowOpen($event)">
+                          <span class="issue-rd-popover-link__code">{{ item.rdNoSnapshot }}</span>
+                          @if (item.rdTitleSnapshot) {
+                            <span class="issue-rd-popover-link__title">{{ item.rdTitleSnapshot }}</span>
+                          }
+                        </a>
+                      } @else {
+                        <span class="issue-rd-popover-link issue-rd-popover-link--readonly">
+                          <span class="issue-rd-popover-link__code">{{ item.rdNoSnapshot }}</span>
+                          @if (item.rdTitleSnapshot) {
+                            <span class="issue-rd-popover-link__title">{{ item.rdTitleSnapshot }}</span>
+                          }
+                        </span>
+                      }
+                    </ng-template>
+                    <span
+                      class="issue-rd-tag"
+                      nz-popover
+                      nzPopoverTrigger="hover"
+                      [nzPopoverContent]="rowRdPopover"
+                    >
+                      {{ item.rdTitleSnapshot || item.rdNoSnapshot }}
+                    </span>
                   }
                 </div>
                 <div class="issue-row__meta">{{ previewSummary(item) || '暂无详细描述' }}</div>
