@@ -125,7 +125,7 @@ const DEFAULT_DRAFT: Draft = {
             </div>
           </div>
           <div class="row" nz-row nzGutter="16">
-            <div class="col" nz-col nzSpan="8">
+            <div class="col" nz-col nzSpan="12">
               <nz-form-item>
               <nz-form-label nzFor="type" nzRequired>类型</nz-form-label>
               <nz-form-control>
@@ -137,7 +137,7 @@ const DEFAULT_DRAFT: Draft = {
               </nz-form-control>
               </nz-form-item>
             </div>
-            <div class="col" nz-col nzSpan="8">
+            <div class="col" nz-col nzSpan="12">
               <nz-form-item>
               <nz-form-label nzFor="priority" nzRequired>优先级</nz-form-label>
               <nz-form-control>
@@ -172,7 +172,7 @@ const DEFAULT_DRAFT: Draft = {
             </div>
             <div class="col" nz-col nzSpan="8">
               <nz-form-item>
-                <nz-form-label nzFor="participantIds">协作人</nz-form-label>
+                <nz-form-label nzFor="participantIds" [nzTooltipIcon]="'question-circle'" nzTooltipTitle="协作人会接收通知并参与处理问题">协作人</nz-form-label>
                 <nz-form-control>
                   <nz-select
                     nzMode="multiple"
@@ -196,7 +196,7 @@ const DEFAULT_DRAFT: Draft = {
             </div>
             <div class="col" nz-col nzSpan="8">
               <nz-form-item>
-              <nz-form-label nzFor="verifierId">验证人</nz-form-label>
+              <nz-form-label nzFor="verifierId" [nzTooltipIcon]="'question-circle'" nzTooltipTitle="验证人负责验证问题的解决情况，未指定时默认为创建人">验证人</nz-form-label>
               <nz-form-control>
                 <nz-select
                 nzAllowClear
