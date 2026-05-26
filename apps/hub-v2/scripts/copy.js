@@ -34,12 +34,14 @@ const SERVER_PACKAGE_JSON = path.join(HUB_ROOT, "server", "package.json");
 const SERVER_PACKAGE_LOCK = path.join(HUB_ROOT, "server", "package-lock.json");
 const SERVER_ENV_PROD = path.join(HUB_ROOT, "server", ".env.production");
 const SERVER_DB_MIGRATIONS = path.join(HUB_ROOT, "server", "src", "db", "migrations");
+const SERVER_LEGACY_RBAC_CLEANUP_SCRIPT = path.join(HUB_ROOT, "server", "scripts", "cleanup-legacy-rbac-member-bindings.cjs");
 
 
 const HUB_ECOSYSTEM = path.join(HUB_ROOT, "ecosystem.config.cjs");
 
 const BUILD_DIR = path.join(HUB_ROOT, "build");
 const BUILD_DB_MIGRATIONS = path.join(BUILD_DIR, "db", "migrations");
+const BUILD_SCRIPTS_DIR = path.join(BUILD_DIR, "scripts");
 const BUILD_WWW = path.join(BUILD_DIR, "www");
 
 async function removeDir(dir) {
@@ -116,6 +118,7 @@ async function generateProdPackageJson(src, dest) {
   prodPkg.scripts = {
     "db:migrate": "node db/migrate-cli.js",
     "db:reset:rd-task-sheets-0055": "node db/reset-rd-task-sheets-0055-cli.js",
+    "rbac:cleanup-legacy-member-bindings": "node scripts/cleanup-legacy-rbac-member-bindings.cjs",
   };
 
   await fs.promises.writeFile(dest, JSON.stringify(prodPkg, null, 2));
@@ -139,25 +142,31 @@ async function main() {
   // 3. server/src/db/migrations -> build/db/migrations
   await copyDir(SERVER_DB_MIGRATIONS, BUILD_DB_MIGRATIONS);
 
-  // 4. generate production package.json : server/package.json -> build/package.json
+  // 4. server/scripts/cleanup-legacy-rbac-member-bindings.cjs -> build/scripts
+  await copyFileIfExists(
+    SERVER_LEGACY_RBAC_CLEANUP_SCRIPT,
+    path.join(BUILD_SCRIPTS_DIR, "cleanup-legacy-rbac-member-bindings.cjs"),
+  );
+
+  // 5. generate production package.json : server/package.json -> build/package.json
   await generateProdPackageJson(
     SERVER_PACKAGE_JSON,
     path.join(BUILD_DIR, "package.json"),
   );
 
-  // 5. server/package-lock.json -> build/package-lock.json
+  // 6. server/package-lock.json -> build/package-lock.json
   await copyFileIfExists(
     SERVER_PACKAGE_LOCK,
     path.join(BUILD_DIR, "package-lock.json"),
   );
 
-  // 6. server/.env.production -> build/.env.production
+  // 7. server/.env.production -> build/.env.production
   await copyFileIfExists(
     SERVER_ENV_PROD,
     path.join(BUILD_DIR, ".env.production"),
   );
 
-  // 7. hub-v2/ecosystem.config.cjs -> build/ecosystem.config.cjs
+  // 8. hub-v2/ecosystem.config.cjs -> build/ecosystem.config.cjs
   await copyFileIfExists(
     HUB_ECOSYSTEM,
     path.join(BUILD_DIR, "ecosystem.config.cjs"),
