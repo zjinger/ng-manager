@@ -160,29 +160,6 @@ export class RdService implements RdCommandContract, RdQueryContract {
     const current = await this.requireItemWithAccess(id, ctx, "update rd item");
     await this.requireBasicEditAccess(current, ctx, "update rd item");
     this.requireItemVersion(current, input.version);
-    if (input.progress !== undefined) {
-      this.requireAssignee(current, ctx, "update rd progress");
-      if (input.progress >= 100 && current.status === "doing") {
-        return this.complete(id, ctx, {}, input.version);
-      }
-      if (input.progress < 100 && (current.status === "done" || current.status === "accepted")) {
-        return this.applyAction(
-          id,
-          "resume",
-          ctx,
-          current,
-          {
-            progress: input.progress,
-            actual_end_at: null,
-            blocker_reason: null
-          },
-          // `resumed rd item by progress update: ${current.progress}% -> ${input.progress}%`
-          `更新研发项进度: ${current.progress}% -> ${input.progress}%`,
-          undefined,
-          input.version
-        );
-      }
-    }
     const members = await this.resolveMembers(
       current.projectId,
       input.memberIds === undefined ? this.collectEffectiveMemberIds(current.memberIds, current.assigneeId) : input.memberIds,
@@ -204,7 +181,6 @@ export class RdService implements RdCommandContract, RdQueryContract {
       verifier_id: members.verifierId,
       verifier_name: members.verifierName,
       member_ids: JSON.stringify(memberIds),
-      progress: input.progress ?? current.progress,
       plan_start_at: input.planStartAt === undefined ? current.planStartAt : input.planStartAt?.trim() || null,
       plan_end_at: input.planEndAt === undefined ? current.planEndAt : input.planEndAt?.trim() || null,
       updated_at: nowIso()
@@ -759,9 +735,6 @@ export class RdService implements RdCommandContract, RdQueryContract {
 
   private createUpdateLogContent(current: RdItemEntity, input: UpdateRdItemInput): string {
     const changes: string[] = [];
-    if (input.progress !== undefined && input.progress !== current.progress) {
-      changes.push(`进度: ${current.progress}% -> ${input.progress}%`);
-    }
     if (input.title !== undefined && input.title.trim() !== current.title) {
       changes.push("更新标题");
     }
@@ -833,66 +806,9 @@ export class RdService implements RdCommandContract, RdQueryContract {
       return item;
     }
 
-    if (progressChanged) {
-      this.repo.upsertProgress({
-        id: existing ? existing.id : genId("rdp"),
-        item_id: id,
-        user_id: userId,
-        progress: input.progress,
-        note: nextNote,
-        updated_at: now
-      });
-
-      this.repo.createProgressHistory({
-        id: genId("rdph"),
-        item_id: id,
-        user_id: userId,
-        old_progress: oldProgress,
-        new_progress: input.progress,
-        note: nextNote,
-        created_at: now
-      });
-    }
-
-    const allProgressRows = this.repo.listProgressByItemId(id);
-    const progressByUser = new Map(allProgressRows.map((row) => [row.user_id, row.progress]));
-    const effectiveMemberIds = this.collectEffectiveMemberIds(item.memberIds, item.assigneeId);
-    const memberCount = effectiveMemberIds.length;
-    const mainProgress =
-      memberCount === 0
-        ? 0
-        : Math.round(
-            effectiveMemberIds.reduce((sum, memberId) => sum + (progressByUser.get(memberId) ?? 0), 0) / memberCount
-          );
-
-    const updatePayload: Record<string, unknown> = {
-      progress: mainProgress,
-      updated_at: now
-    };
-    if (mainProgress >= 100 && (item.status === "todo" || item.status === "doing" || item.status === "blocked")) {
-      updatePayload.status = "done";
-      updatePayload.actual_start_at = item.actualStartAt ?? now;
-      updatePayload.actual_end_at = now;
-      updatePayload.blocker_reason = null;
-    } else if (mainProgress > 0 && item.status === "todo") {
-      updatePayload.status = "doing";
-      updatePayload.actual_start_at = item.actualStartAt ?? now;
-      updatePayload.actual_end_at = null;
-    } else if (mainProgress < 100 && item.status === "done") {
-      updatePayload.status = "doing";
-      updatePayload.actual_end_at = null;
-    }
-
-    const updated = this.repo.updateItem(id, {
-      ...updatePayload
-    }, item.version);
-
-    if (!updated) {
-      throw new AppError(ERROR_CODES.RD_ITEM_VERSION_CONFLICT, "rd item version conflict", 409);
-    }
-
-    const updatedItem = this.requireItem(id);
-    const blockLogContent = await this.applyProgressMemberBlockChange(updatedItem, userId, blockReason, resolveBlockId, ctx);
+    const blockMember = blockReason
+      ? await this.projectAccess.requireProjectMember(item.projectId, userId, "create rd member block")
+      : null;
     const progressNote = nextNote;
     const isStartProcessing = oldProgress <= 0 && input.progress > 0;
     const progressLogContent = progressChanged
@@ -904,21 +820,85 @@ export class RdService implements RdCommandContract, RdQueryContract {
               ? `更新个人进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
               : `更新个人进度: ${oldProgress}% -> ${input.progress}%`))
       : "";
-    const logContent = [progressLogContent, blockLogContent].filter(Boolean).join("；");
-    this.repo.createLog(this.createLog(updatedItem, "update", ctx, logContent || "更新个人进度"));
+    const updatedItem = this.repo.transaction(() => {
+      if (progressChanged) {
+        this.repo.upsertProgress({
+          id: existing ? existing.id : genId("rdp"),
+          item_id: id,
+          user_id: userId,
+          progress: input.progress,
+          note: nextNote,
+          updated_at: now
+        });
+
+        this.repo.createProgressHistory({
+          id: genId("rdph"),
+          item_id: id,
+          user_id: userId,
+          old_progress: oldProgress,
+          new_progress: input.progress,
+          note: nextNote,
+          created_at: now
+        });
+      }
+
+      const allProgressRows = this.repo.listProgressByItemId(id);
+      const progressByUser = new Map(allProgressRows.map((row) => [row.user_id, row.progress]));
+      const effectiveMemberIds = this.collectEffectiveMemberIds(item.memberIds, item.assigneeId);
+      const memberCount = effectiveMemberIds.length;
+      const mainProgress =
+        memberCount === 0
+          ? 0
+          : Math.round(
+              effectiveMemberIds.reduce((sum, memberId) => sum + (progressByUser.get(memberId) ?? 0), 0) / memberCount
+            );
+
+      const updatePayload: Record<string, unknown> = {
+        progress: mainProgress,
+        updated_at: now
+      };
+      if (mainProgress >= 100 && (item.status === "todo" || item.status === "doing" || item.status === "blocked")) {
+        updatePayload.status = "done";
+        updatePayload.actual_start_at = item.actualStartAt ?? now;
+        updatePayload.actual_end_at = now;
+        updatePayload.blocker_reason = null;
+      } else if (mainProgress > 0 && item.status === "todo") {
+        updatePayload.status = "doing";
+        updatePayload.actual_start_at = item.actualStartAt ?? now;
+        updatePayload.actual_end_at = null;
+      } else if (mainProgress < 100 && item.status === "done") {
+        updatePayload.status = "doing";
+        updatePayload.actual_end_at = null;
+      }
+
+      const updated = this.repo.updateItem(id, {
+        ...updatePayload
+      }, item.version);
+
+      if (!updated) {
+        throw new AppError(ERROR_CODES.RD_ITEM_VERSION_CONFLICT, "rd item version conflict", 409);
+      }
+
+      const transactionUpdatedItem = this.requireItem(id);
+      const blockLogContent = this.applyProgressMemberBlockChange(transactionUpdatedItem, userId, blockReason, resolveBlockId, ctx, blockMember);
+      const logContent = [progressLogContent, blockLogContent].filter(Boolean).join("；");
+      this.repo.createLog(this.createLog(transactionUpdatedItem, "update", ctx, logContent || "更新个人进度"));
+      return transactionUpdatedItem;
+    });
     const memberBlockEventAction = resolveBlockId ? "resume" : (blockReason ? "block" : "");
     const eventAction = previousStatus !== "done" && updatedItem.status === "done" ? "complete" : (memberBlockEventAction || "update_progress");
     await this.emitRdEvent("rd.updated", eventAction, updatedItem, ctx);
     return updatedItem;
   }
 
-  private async applyProgressMemberBlockChange(
+  private applyProgressMemberBlockChange(
     item: RdItemEntity,
     userId: string,
     blockReason: string | null,
     resolveBlockId: string | null,
-    ctx: RequestContext
-  ): Promise<string> {
+    ctx: RequestContext,
+    blockMember: { userId: string; displayName: string } | null
+  ): string {
     if (resolveBlockId) {
       const block = this.repo.findMemberBlockById(resolveBlockId);
       if (!block || block.itemId !== item.id) {
@@ -949,13 +929,15 @@ export class RdService implements RdCommandContract, RdQueryContract {
     if (active) {
       return "";
     }
-    const member = await this.projectAccess.requireProjectMember(item.projectId, userId, "create rd member block");
+    if (!blockMember) {
+      throw new AppError(ERROR_CODES.RD_ACTION_FAILED, "failed to resolve rd member", 500);
+    }
     this.repo.createMemberBlock({
       id: genId("rdmb"),
       project_id: item.projectId,
       item_id: item.id,
-      user_id: member.userId,
-      user_name: member.displayName,
+      user_id: blockMember.userId,
+      user_name: blockMember.displayName,
       reason: blockReason,
       status: "active",
       blocked_at: nowIso(),

@@ -88,10 +88,9 @@ export const updateRdItemSchema = z.object({
   priority: rdPrioritySchema.optional(),
   memberIds: z.array(z.string().trim().min(1)).min(1).optional(),
   verifierId: z.string().trim().nullable().optional(),
-  progress: z.coerce.number().int().min(0).max(100).optional(),
   planStartAt: z.string().trim().nullable().optional(),
   planEndAt: z.string().trim().nullable().optional()
-});
+}).strict();
 
 export const blockRdItemSchema = z.object({
   blockerReason: z.string().optional()

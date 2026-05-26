@@ -465,8 +465,7 @@ export class RdDetailPageComponent {
     if (!current || !this.canComplete()) {
       return;
     }
-    this.runAction(() => this.rdApi.complete(current.id, { reason }));
-    this.completeOpen.set(false);
+    this.runAction(() => this.rdApi.complete(current.id, { reason }), () => this.completeOpen.set(false));
   }
 
   projectName(projectId: string): string {
@@ -637,7 +636,7 @@ export class RdDetailPageComponent {
     });
   }
 
-  private runAction(request: () => ReturnType<RdApiService['start']>): void {
+  private runAction(request: () => ReturnType<RdApiService['start']>, done?: () => void): void {
     this.busy.set(true);
     request().subscribe({
       next: (item) => {
@@ -652,6 +651,7 @@ export class RdDetailPageComponent {
         this.loadProgress(item.id);
         this.loadMemberBlocks(item.id);
         this.busy.set(false);
+        done?.();
       },
       error: () => {
         this.busy.set(false);

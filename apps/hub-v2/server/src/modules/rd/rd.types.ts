@@ -174,7 +174,6 @@ export interface UpdateRdItemInput {
   priority?: RdItemPriority;
   memberIds?: string[];
   verifierId?: string | null;
-  progress?: number;
   planStartAt?: string | null;
   planEndAt?: string | null;
 }

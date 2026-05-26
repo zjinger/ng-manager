@@ -182,6 +182,10 @@ type RdStageHistoryRow = {
 export class RdRepo {
   constructor(private readonly db: Database.Database) {}
 
+  transaction<T>(fn: () => T): T {
+    return this.db.transaction(fn)();
+  }
+
   createStage(entity: RdStageEntity): void {
     this.db
       .prepare(

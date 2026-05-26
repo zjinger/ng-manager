@@ -734,8 +734,7 @@ export class RdBoardPageComponent {
     if (!current || !this.canCompleteSelectedItem()) {
       return;
     }
-    this.store.complete(current.id, { reason });
-    this.completeOpen.set(false);
+    this.store.complete(current.id, { reason }, () => this.completeOpen.set(false));
   }
 
   openEditDialog(): void {

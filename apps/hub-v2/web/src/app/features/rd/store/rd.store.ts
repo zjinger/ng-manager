@@ -168,8 +168,8 @@ export class RdStore {
     this.runAction(() => this.rdApi.resume(itemId));
   }
 
-  complete(itemId: string, input: CompleteRdItemInput = {}): void {
-    this.runAction(() => this.rdApi.complete(itemId, input));
+  complete(itemId: string, input: CompleteRdItemInput = {}, done?: () => void): void {
+    this.runAction(() => this.rdApi.complete(itemId, input), done);
   }
 
   updateItemInList(item: RdItemEntity): void {
@@ -188,12 +188,13 @@ export class RdStore {
     this.runAction(() => this.rdApi.close(itemId, input));
   }
 
-  private runAction(request: () => Observable<RdItemEntity>): void {
+  private runAction(request: () => Observable<RdItemEntity>, done?: () => void): void {
     this.busyState.set(true);
     request().subscribe({
       next: (updated) => {
         this.busyState.set(false);
         this.patchOrRefresh(updated);
+        done?.();
       },
       error: () => {
         this.busyState.set(false);

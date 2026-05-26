@@ -87,9 +87,16 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
                 </button>
               }
               @if (linkedIssuesHasMore() || linkedIssuesLoading()) {
-                <div class="linked-issues__load-state">
-                  {{ linkedIssuesLoading() ? '正在加载更多测试单…' : '继续滚动加载更多' }}
-                </div>
+                <button
+                  nz-button
+                  type="button"
+                  class="linked-issues__load-state"
+                  [disabled]="linkedIssuesLoading()"
+                  [nzLoading]="linkedIssuesLoading()"
+                  (click)="loadMoreLinkedIssues.emit()"
+                >
+                  {{ linkedIssuesLoading() ? '正在加载更多测试单…' : '加载更多测试单' }}
+                </button>
               }
             </div>
           </app-panel-card>
@@ -176,8 +183,9 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
         flex-shrink: 0;
       }
       .linked-issues__load-state {
+        width: calc(100% - 40px);
+        margin: 10px 20px;
         padding: 10px 20px;
-        border-top: 1px solid var(--border-color-soft);
         color: var(--text-muted);
         font-size: 12px;
         text-align: center;
@@ -258,6 +266,20 @@ export class RdDetailContentComponent {
         notes.push({
           id: `close-${log.id}`,
           label: '关闭原因',
+          content: reason,
+        });
+        continue;
+      }
+
+      if (log.actionType === 'complete') {
+        const reasonMatch = content.match(/(?:^|；)\s*说明[:：]\s*(.+?)(?:；\s*成员进度[:：]|$)/);
+        const reason = reasonMatch?.[1]?.trim();
+        if (!reason) {
+          continue;
+        }
+        notes.push({
+          id: `complete-${log.id}`,
+          label: '完成判定依据',
           content: reason,
         });
       }
