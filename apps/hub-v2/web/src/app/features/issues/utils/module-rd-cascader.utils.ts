@@ -102,15 +102,28 @@ export function findModuleRdSelectionPath(input: {
   rdItemId: string | null | undefined;
 }): string[] | null {
   const normalizedRdId = input.rdItemId?.trim() || null;
+  const normalizedModuleCode = input.moduleCode?.trim();
+
+  // 编辑回显时，研发项优先于模块本身：选中的是某个研发项叶子节点。
   if (normalizedRdId) {
-    const mapped = input.moduleRdLinks.find((item) => item.rdItemId === normalizedRdId)?.moduleId ?? null;
+    // 同一个研发项可能被挂到多个模块下，不能简单取第一条映射。
+    // 如果当前测试单已有 moduleCode，优先回显到该模块下的研发项节点。
+    const currentModule = normalizedModuleCode
+      ? input.modules.find((item) => moduleValue(item) === normalizedModuleCode)
+      : null;
+    const preferredMapped = currentModule && input.moduleRdLinks.some(
+      (item) => item.rdItemId === normalizedRdId && item.moduleId === currentModule.id,
+    )
+      ? currentModule.id
+      : null;
+    const mapped = preferredMapped ?? input.moduleRdLinks.find((item) => item.rdItemId === normalizedRdId)?.moduleId ?? null;
     if (mapped) {
       return [...buildModulePathById(input.modules, mapped), `rd:${normalizedRdId}`];
     }
+    // 研发项没有模块映射时，落到“关联研发项”直接选择分组。
     return ['__rd_direct__', `rd-direct:${normalizedRdId}`];
   }
 
-  const normalizedModuleCode = input.moduleCode?.trim();
   if (!normalizedModuleCode) {
     return null;
   }
