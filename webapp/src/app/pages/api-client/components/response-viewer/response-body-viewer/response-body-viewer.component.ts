@@ -1,4 +1,4 @@
-import { Component, computed, effect, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input } from '@angular/core';
 import { ApiResponseEntity } from '@models/api-client';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -107,6 +107,7 @@ type PreviewKind = 'json' | 'image' | 'video' | 'audio' | 'pdf' | 'binary' | 'te
       width: fit-content;
     }
   `,
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ResponseBodyViewerComponent {
   readonly response = input<ApiResponseEntity | null>();

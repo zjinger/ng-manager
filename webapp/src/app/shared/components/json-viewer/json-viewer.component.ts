@@ -1,12 +1,14 @@
-import { Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { JsonNodeComponent } from './json-node.component';
 import { buildJsonTree } from './utils/json-tree.utils';
 
+// TODO：复制显示器文本时得到的字符串应该和视觉上显示的字符串一致（去除span之间的多余空格等）
 @Component({
   selector: 'app-json-viewer',
   standalone: true,
   imports: [JsonNodeComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (parseError()) {
       <div class="error">JSON 格式错误</div>

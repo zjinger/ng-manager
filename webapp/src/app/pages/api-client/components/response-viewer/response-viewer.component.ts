@@ -69,12 +69,8 @@ import { TextSearchComponent } from './text-search/text-search.component';
       } @else if (!response()) {
         <div class="empty">发送请求后在此查看响应</div>
       } @else {
-        <nz-tabs
-          class="tabs"
-          [(nzSelectedIndex)]="tabIndex"
-          [nzTabBarExtraContent]="extraTemplate"
-        >
-          <nz-tab nzTitle="Body">
+        <nz-tabs class="tabs" [(nzSelectedIndex)]="tabIndex" [nzTabBarExtraContent]="extraTemplate">
+          <nz-tab nzTitle="Body" [nzForceRender]="true">
             <div class="pane" #bodyPane>
               <!-- @if (isJson()) {
                 <pre class="code">{{ prettyJson() }}</pre>
@@ -85,7 +81,7 @@ import { TextSearchComponent } from './text-search/text-search.component';
             </div>
           </nz-tab>
 
-          <nz-tab nzTitle="Headers">
+          <nz-tab nzTitle="Headers" [nzForceRender]="true">
             <div class="pane" #headersPane>
               <div class="hlist">
                 @for (k of headerKeys(); track k) {
@@ -98,7 +94,7 @@ import { TextSearchComponent } from './text-search/text-search.component';
             </div>
           </nz-tab>
 
-          <nz-tab nzTitle="Raw">
+          <nz-tab nzTitle="Raw" [nzForceRender]="true">
             <div class="pane" #rawPane>
               <!-- <pre class="code">{{ rawDump() }}</pre> -->
               <app-json-viewer [json]="rawDump()" />
@@ -308,13 +304,22 @@ export class ResponseViewerComponent implements OnChanges {
   // });
 
   rawDump = computed(() => {
-    if (!this.response()) return '';
+    const res = this.response();
+    if (!res) return '';
+
     // 避免直接修改原对象
-    const raw = structuredClone(this.response()!);
-    // 处理超大的 base64 内容
-    if (raw.bodyBase64) {
-      raw.bodyBase64 = `[base64 content omitted: ${formatBytes(raw.bodySize ?? 0)}]`;
-    }
-    return JSON.stringify(raw, null, 2);
+    const { bodyBase64, ...rest } = res;
+
+    // 防止深拷贝base64
+    return JSON.stringify(
+      {
+        ...rest,
+        bodyBase64: bodyBase64
+          ? `[base64 content omitted: ${formatBytes(res.bodySize ?? 0)}]`
+          : undefined,
+      },
+      null,
+      2,
+    );
   });
 }

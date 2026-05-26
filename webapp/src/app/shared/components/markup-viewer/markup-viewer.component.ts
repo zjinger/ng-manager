@@ -1,12 +1,14 @@
-import { Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { MarkupNodeComponent } from './markup-node.component';
 import { buildMarkupTree } from './utils/markup-tree.utils';
 
+// TODO：复制显示器文本时得到的字符串应该和视觉上显示的字符串一致（去除span之间的多余空格等）
 @Component({
   selector: 'app-markup-viewer',
   standalone: true,
   imports: [MarkupNodeComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="markup-viewer">
       @for (node of tree(); track node.path) {

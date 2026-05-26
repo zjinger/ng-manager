@@ -9,37 +9,31 @@ import { MarkupNode } from './models/markup-node.model';
   template: `
     <!-- element -->
     @if (isElement()) {
-      <div class="node">
+      <div class="node" [style.padding-left.px]="(depth() + 1) * 16">
         <!-- toggle -->
         <div class="toggle-wrap">
           @if (hasChildren()) {
-            <span class="toggle" (click)="toggle()">
-              {{ collapsed() ? '▸' : '▾' }}
-            </span>
+            <span class="toggle" (click)="toggle()">{{ collapsed() ? '▸' : '▾' }}</span>
           }
         </div>
 
         <!-- indent -->
-        <div class="indent" [style.width.px]="depth() * 16"></div>
+        <!-- <div class="indent" [style.width.px]="depth() * 16"></div> -->
 
         <span class="bracket">&lt;</span>
 
-        <span class="tag">
-          {{ node().tagName }}
-        </span>
+        <span class="tag">{{ node().tagName }}</span>
 
         @for (attr of node().attributes ?? []; track attr.name) {
-          <span class="attr-name">
-            {{ attr.name }}
-          </span>
+          <span class="attr-name">{{ attr.name }}</span>
 
-          <span>=</span>
+          <span class="attr-operator"> = </span>
 
-          <span class="attr-value"> "{{ attr.value }}" </span>
+          <span class="attr-value">"{{ attr.value }}"</span>
         }
 
         @if (node().selfClosing) {
-          <span class="bracket"> /&gt;</span>
+          <span class="bracket">/&gt;</span>
         } @else {
           <span class="bracket">&gt;</span>
         }
@@ -47,13 +41,11 @@ import { MarkupNode } from './models/markup-node.model';
         @if (collapsed() && !node().selfClosing) {
           <span class="collapsed"> ... </span>
 
-          <span class="bracket"> &lt;/ </span>
+          <span class="bracket">&lt;/</span>
 
-          <span class="tag">
-            {{ node().tagName }}
-          </span>
+          <span class="tag">{{ node().tagName }}</span>
 
-          <span class="bracket"> &gt; </span>
+          <span class="bracket">&gt;</span>
         }
       </div>
       <div [class.hidden]="collapsed() && !node().selfClosing">
@@ -62,18 +54,16 @@ import { MarkupNode } from './models/markup-node.model';
           <app-markup-node [node]="child" [depth]="depth() + 1" />
         }
 
-        <div class="node">
+        <div class="node" [style.padding-left.px]="(depth() + 1) * 16">
           <div class="toggle-wrap"></div>
 
-          <div class="indent" [style.width.px]="depth() * 16"></div>
+          <!-- <div class="indent" [style.width.px]="depth() * 16"></div> -->
 
-          <span class="bracket"> &lt;/ </span>
+          <span class="bracket">&lt;/</span>
 
-          <span class="tag">
-            {{ node().tagName }}
-          </span>
+          <span class="tag">{{ node().tagName }}</span>
 
-          <span class="bracket"> &gt; </span>
+          <span class="bracket">&gt;</span>
         </div>
         <!-- } -->
       </div>
@@ -81,35 +71,30 @@ import { MarkupNode } from './models/markup-node.model';
 
     <!-- text -->
     @if (isText()) {
-      <div class="node">
+      <div class="node" [style.padding-left.px]="(depth() + 1) * 16">
         <div class="toggle-wrap"></div>
 
-        <div class="indent" [style.width.px]="depth() * 16"></div>
+        <!-- <div class="indent" [style.width.px]="depth() * 16"></div> -->
 
-        <span class="text">
-          {{ node().textContent }}
-        </span>
+        <span class="text">{{ node().textContent }}</span>
       </div>
     }
 
     <!-- comment -->
     @if (isComment()) {
-      <div class="node">
+      <div class="node" [style.padding-left.px]="(depth() + 1) * 16">
         <div class="toggle-wrap"></div>
 
-        <div class="indent" [style.width.px]="depth() * 16"></div>
+        <!-- <div class="indent" [style.width.px]="depth() * 16"></div> -->
 
-        <span class="comment">
-          &lt;!--
-          {{ node().textContent }}
-          --&gt;
-        </span>
+        <span class="comment">&lt;!--{{ node().textContent }}-&gt;</span>
       </div>
     }
   `,
   styles: `
     .node {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
 
       min-height: 24px;
@@ -118,6 +103,7 @@ import { MarkupNode } from './models/markup-node.model';
 
       // white-space: pre-wrap;
       word-break: break-word;
+      position: relative;
       &:hover {
         background: #fafafa;
       }
@@ -138,6 +124,10 @@ import { MarkupNode } from './models/markup-node.model';
 
       display: flex;
       justify-content: center;
+
+      position: absolute;
+      left: 0;
+      top: 0;
       &:hover {
         background: rgba(0, 0, 0, 0.06);
       }
@@ -155,12 +145,18 @@ import { MarkupNode } from './models/markup-node.model';
     }
 
     .tag {
+      white-space: nowrap;
       color: #307cd6;
     }
 
     .attr-name {
       color: #3aa3f0;
       margin-left: 8px;
+      white-space: nowrap;
+    }
+
+    .attr-operator{
+      margin:0 2px;
     }
 
     .attr-value {
@@ -177,6 +173,7 @@ import { MarkupNode } from './models/markup-node.model';
     }
 
     .bracket {
+      white-space: nowrap;
       color: #8c8c8c;
     }
 

@@ -6,21 +6,19 @@ import { JsonNode } from './models/json.node.model';
   standalone: true,
   imports: [JsonNodeComponent],
   template: `
-    <div class="node">
+    <div class="node" [style.paddingLeft.px]="(depth() + 1) * 16">
       <!-- toggle 占位 -->
       <div class="toggle-wrap">
         @if (isObject() || isArray()) {
-          <span class="toggle" (click)="updateCollapsed()">
-            {{ collapsed() ? '▸' : '▾' }}
-          </span>
+          <span class="toggle" (click)="updateCollapsed()">{{ collapsed() ? '▸' : '▾' }}</span>
         }
       </div>
       <!-- 缩进 -->
-      <div class="indent" [style.width.px]="depth() * 16"></div>
+      <!-- <div class="indent" [style.width.px]="depth() * 16"></div> -->
 
       <!-- key -->
       @if (node().key !== undefined) {
-        <span class="key"> "{{ node().key }}" </span>
+        <span class="key">"{{ node().key }}"</span>
         <span>: </span>
       }
 
@@ -29,7 +27,7 @@ import { JsonNode } from './models/json.node.model';
         <span class="brace">{{ '{' }}</span>
 
         @if (collapsed()) {
-          <span class="meta"> {{ node().children?.length + ' items ... ' }} </span>
+          <span class="meta">{{ node().children?.length + ' items ... ' }}</span>
           <span class="close">{{ '}' }}</span>
         }
       }
@@ -39,39 +37,37 @@ import { JsonNode } from './models/json.node.model';
         <span class="brace">[</span>
 
         @if (collapsed()) {
-          <span class="meta"> {{ node().children?.length + ' items ... ' }} </span>
+          <span class="meta">{{ node().children?.length + ' items ... ' }}</span>
           <span class="close">{{ ']' }}</span>
         }
       }
 
       <!-- primitive -->
       @if (isPrimitive()) {
-        <span [class]="valueClass()">
-          {{ formatValue() }}
-        </span>
+        <span [class]="valueClass()">{{ formatValue() }}</span>
       }
     </div>
 
     <!-- children -->
     <div class="children" [class.hidden]="collapsed()">
-        @for (child of node().children ?? []; track child.path) {
-          <app-json-node [node]="child" [depth]="depth() + 1" />
-        }
-        <!-- 缩进 -->
-        <!-- close -->
-        @if (isObject()) {
-          <div class="node">
-            <div class="indent" [style.width.px]="depth() * 16 + 16"></div>
-            <span class="close">{{ '}' }}</span>
-          </div>
-        }
+      @for (child of node().children ?? []; track child.path) {
+        <app-json-node [node]="child" [depth]="depth() + 1" />
+      }
+      <!-- 缩进 -->
+      <!-- close -->
+      @if (isObject()) {
+        <div class="node" [style.paddingLeft.px]="(depth() + 1) * 16">
+          <!-- <div class="indent" [style.width.px]="depth() * 16 + 16"></div> -->
+          <span class="close">{{ '}' }}</span>
+        </div>
+      }
 
-        @if (isArray()) {
-          <div class="node">
-            <div class="indent" [style.width.px]="depth() * 16 + 16"></div>
-            <span class="close">{{ ']' }}</span>
-          </div>
-        }
+      @if (isArray()) {
+        <div class="node" [style.paddingLeft.px]="(depth() + 1) * 16">
+          <!-- <div class="indent" [style.width.px]="depth() * 16 + 16"></div> -->
+          <span class="close">{{ ']' }}</span>
+        </div>
+      }
     </div>
   `,
   styles: `
@@ -81,6 +77,7 @@ import { JsonNode } from './models/json.node.model';
 
       white-space: pre-wrap;
       word-break: break-word;
+      position: relative;
       &:hover {
         background: rgba(0, 0, 0, 0.03);
       }
@@ -96,12 +93,15 @@ import { JsonNode } from './models/json.node.model';
       flex-shrink: 0;
 
       display: flex;
-      // justify-content: center;
+      justify-content: center;
+      position: absolute;
+      top: 0;
+      left: 0;
       &:hover {
         background: rgba(0, 0, 0, 0.06);
       }
     }
-    .hidden{
+    .hidden {
       display: none;
     }
 
@@ -111,7 +111,7 @@ import { JsonNode } from './models/json.node.model';
       // font-size: 1.5rem;
       // line-height: 0.4rem;
       user-select: none;
-      transform: scale(200%) translateX(-3px);
+      transform: scale(200%);
     }
 
     .content {
