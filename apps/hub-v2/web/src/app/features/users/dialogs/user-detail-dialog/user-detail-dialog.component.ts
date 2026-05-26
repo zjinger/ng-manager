@@ -8,6 +8,7 @@ import { DialogShellComponent, ListStateComponent } from '@shared/ui';
 import type { DepartmentEntity } from '../../../organization/models/organization.model';
 import { UserStatusTagComponent } from '../../components/user-status-tag/user-status-tag.component';
 import { UserEditDialogComponent } from '../user-edit-dialog';
+import type { UserEditSubmitEvent } from '../user-edit-dialog';
 import type { UserEntity } from '../../models/user.model';
 import { UserApiService } from '../../services/user-api.service';
 import { UserRbacApiService } from '../../services/user-rbac-api.service';
@@ -140,8 +141,6 @@ import type { UserSystemRoleEntity } from '../../../admin/models/system-rbac.mod
           [projectTitleOptions]="projectTitleOptions()"
           (cancel)="closeEdit()"
           (update)="updateUser($event)"
-          (roleSync)="pendingRoleIds.set($event)"
-          (resetPassword)="resetPassword()"
         />
       }
     }
@@ -287,7 +286,6 @@ export class UserDetailDialogComponent {
   readonly busy = signal(false);
   readonly editOpen = signal(false);
   readonly user = signal<UserEntity | null>(null);
-  readonly pendingRoleIds = signal<string[]>([]);
   readonly roleAssignments = signal<UserSystemRoleEntity[]>([]);
 
   constructor() {
@@ -318,16 +316,14 @@ export class UserDetailDialogComponent {
     if (this.readonly()) {
       return;
     }
-    this.pendingRoleIds.set([]);
     this.editOpen.set(true);
   }
 
   closeEdit(): void {
     this.editOpen.set(false);
-    this.pendingRoleIds.set([]);
   }
 
-  updateUser(input: Parameters<UserApiService['update']>[1]): void {
+  updateUser(event: UserEditSubmitEvent): void {
     if (this.readonly()) {
       return;
     }
@@ -335,50 +331,23 @@ export class UserDetailDialogComponent {
     if (!currentUser) {
       return;
     }
+    const input = event.input;
+    const passwordDraft = input.loginEnabled ? event.passwordDraft : null;
     this.busy.set(true);
     this.userApi.update(currentUser.id, input).subscribe({
       next: (updated) => {
-        this.roleSync.syncUserRoles(updated.id, this.pendingRoleIds()).subscribe({
+        this.roleSync.syncUserRoles(updated.id, event.roleIds).subscribe({
           next: () => {
-            this.user.set(updated);
-            this.busy.set(false);
-            this.editOpen.set(false);
-            this.pendingRoleIds.set([]);
-            this.loadRoles(updated.id);
-            this.updated.emit(updated);
-            this.message.success('用户资料已更新');
+            this.finishEditSave(updated, passwordDraft);
           },
           error: () => {
-            this.user.set(updated);
-            this.busy.set(false);
-            this.updated.emit(updated);
+            this.finishEditSave(updated, passwordDraft);
           },
         });
       },
       error: () => {
         this.busy.set(false);
         this.message.error('更新用户失败');
-      },
-    });
-  }
-
-  resetPassword(): void {
-    if (this.readonly()) {
-      return;
-    }
-    const currentUser = this.user();
-    if (!currentUser) {
-      return;
-    }
-    this.busy.set(true);
-    this.userApi.resetPassword(currentUser.id).subscribe({
-      next: (result) => {
-        this.busy.set(false);
-        this.message.success(`已重置 ${result.username} 的密码：${result.temporaryPassword}`);
-      },
-      error: () => {
-        this.busy.set(false);
-        this.message.error('重置密码失败');
       },
     });
   }
@@ -417,6 +386,33 @@ export class UserDetailDialogComponent {
     this.userRbacApi.listUserSystemRoles(userId).subscribe({
       next: (items) => this.roleAssignments.set(items),
       error: () => this.roleAssignments.set([]),
+    });
+  }
+
+  private finishEditSave(updated: UserEntity, passwordDraft: string | null): void {
+    const finish = (nextUser: UserEntity) => {
+      this.user.set(nextUser);
+      this.busy.set(false);
+      this.editOpen.set(false);
+      this.loadRoles(nextUser.id);
+      this.updated.emit(nextUser);
+      this.message.success('用户资料已更新');
+    };
+
+    if (!passwordDraft) {
+      finish(updated);
+      return;
+    }
+
+    this.userApi.resetPassword(updated.id, { newPassword: passwordDraft }).subscribe({
+      next: (result) => {
+        finish({ ...updated, mustChangePassword: result.mustChangePassword });
+        this.message.success(`已重置 ${result.username} 的密码：${result.temporaryPassword}`);
+      },
+      error: () => {
+        this.busy.set(false);
+        this.message.error('重置密码失败');
+      },
     });
   }
 }

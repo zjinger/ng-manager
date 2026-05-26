@@ -14,6 +14,7 @@ import { UserListTableComponent } from '../../components/user-list-table/user-li
 import { UserCreateDialogComponent } from '../../dialogs/user-create-dialog';
 import { UserDetailDialogComponent } from '../../dialogs/user-detail-dialog/user-detail-dialog.component';
 import { UserEditDialogComponent } from '../../dialogs/user-edit-dialog';
+import type { UserEditSubmitEvent } from '../../dialogs/user-edit-dialog';
 import type { UserEntity } from '../../models/user.model';
 import { UserRoleSyncService } from '../../services/user-role-sync.service';
 import { UserTitleApiService } from '../../services/user-title-api.service';
@@ -112,8 +113,6 @@ import { ProjectTitleApiService } from '../../../admin/services/project-title-ap
         [projectTitleOptions]="projectTitleOptions()"
         (cancel)="closeEditDialog()"
         (update)="updateUser($event)"
-        (roleSync)="editingRoleIds.set($event)"
-        (resetPassword)="resetEditingUserPassword()"
       />
     }
 
@@ -157,7 +156,6 @@ export class UserListPageComponent {
   readonly createDialogOpen = signal(false);
   readonly editDialogOpen = signal(false);
   readonly editingUser = signal<UserEntity | null>(null);
-  readonly editingRoleIds = signal<string[]>([]);
   readonly detailDialogOpen = signal(false);
   readonly detailUserId = signal('');
   readonly titleOptions = signal<Array<{ label: string; value: string }>>([]);
@@ -228,7 +226,6 @@ export class UserListPageComponent {
       return;
     }
     this.editingUser.set(user);
-    this.editingRoleIds.set([]);
     this.editDialogOpen.set(true);
   }
 
@@ -244,7 +241,6 @@ export class UserListPageComponent {
   closeEditDialog(): void {
     this.editDialogOpen.set(false);
     this.editingUser.set(null);
-    this.editingRoleIds.set([]);
   }
 
   createUser(input: Parameters<UserStore['create']>[0]): void {
@@ -257,7 +253,7 @@ export class UserListPageComponent {
     });
   }
 
-  updateUser(input: Parameters<UserStore['update']>[1]): void {
+  updateUser(event: UserEditSubmitEvent): void {
     if (!this.canManageUsers()) {
       return;
     }
@@ -265,16 +261,15 @@ export class UserListPageComponent {
     if (!user) {
       return;
     }
+    const input = event.input;
+    const passwordDraft = input.loginEnabled ? event.passwordDraft : null;
     this.store.update(user.id, input, () => {
-      this.roleSync.syncUserRoles(user.id, this.editingRoleIds()).subscribe({
+      this.roleSync.syncUserRoles(user.id, event.roleIds).subscribe({
         next: () => {
-          this.closeEditDialog();
-          this.reloadList();
-          this.store.loadOptions((items) => this.userOptions.set(items));
+          this.finishEditSave(user.id, passwordDraft);
         },
         error: () => {
-          this.reloadList();
-          this.store.loadOptions((items) => this.userOptions.set(items));
+          this.finishEditSave(user.id, passwordDraft);
         },
       });
     });
@@ -287,15 +282,21 @@ export class UserListPageComponent {
     this.store.resetPassword(user.id);
   }
 
-  resetEditingUserPassword(): void {
-    if (!this.canManageUsers()) {
+  private finishEditSave(userId: string, passwordDraft: string | null): void {
+    const finish = () => {
+      this.closeEditDialog();
+      this.reloadList();
+      this.store.loadOptions((items) => this.userOptions.set(items));
+    };
+
+    if (!passwordDraft) {
+      finish();
       return;
     }
-    const user = this.editingUser();
-    if (!user) {
-      return;
-    }
-    this.store.resetPassword(user.id);
+
+    this.store.resetPassword(userId, { newPassword: passwordDraft }, () => {
+      finish();
+    });
   }
 
   closeDetail(): void {

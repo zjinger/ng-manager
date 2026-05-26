@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
-import type { SystemRoleEntity } from '../../../admin/models/system-rbac.model';
+import type { SystemPermissionEntity, SystemRoleEntity } from '../../../admin/models/system-rbac.model';
+import { groupSystemPermissions } from '../../../admin/utils/system-rbac-ui';
 
 @Component({
   selector: 'app-user-permissions-tab',
@@ -51,24 +52,47 @@ import type { SystemRoleEntity } from '../../../admin/models/system-rbac.model';
     </section>
 
     <div class="edit-section-divider"></div>
-    <!--TODO:后续增加用户级权限覆盖功能，上线前先隐藏相关 UI，避免偏离统一 RBAC 模型-->
+
     <section class="user-form-section">
       <div class="user-form-section__title">
-        <nz-icon nzType="safety-certificate" nzTheme="outline" />
-        权限继承说明
+        <nz-icon nzType="key" nzTheme="outline" />
+        角色权限预览
       </div>
-      <div class="info-list">
-        <div class="info-card">
-          <strong>权限来自角色</strong>
-          <span
-            >当前用户管理页面直接维护系统角色归属，具体权限由角色管理和权限配置页统一控制。</span
-          >
+
+      @if (selectedRoleIds().length === 0) {
+        <div class="empty-box">请选择系统角色后查看权限。</div>
+      } @else {
+        <div class="role-permission-list">
+          @for (entry of selectedRolePermissions(); track entry.role.id) {
+            <article class="role-permission-panel">
+              <header class="role-permission-panel__header">
+                <strong>{{ entry.role.name }}</strong>
+                <span>{{ entry.permissionCount }} 项权限</span>
+              </header>
+
+              @if (entry.groups.length > 0) {
+                <div class="permission-group-list">
+                  @for (group of entry.groups; track group.groupCode) {
+                    <div class="permission-group">
+                      <div class="permission-group__title">{{ group.groupName }}</div>
+                      <div class="permission-chip-list">
+                        @for (permission of group.items; track permission.id) {
+                          <span class="permission-chip" [title]="permission.code">
+                            <strong>{{ permission.name }}</strong>
+                            <span>{{ permission.code }}</span>
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="empty-box">该角色暂无已配置权限。</div>
+              }
+            </article>
+          }
         </div>
-        <div class="info-card">
-          <strong>不做用户级覆盖</strong>
-          <span>本阶段不在用户编辑页写入单用户权限覆盖，避免偏离统一 RBAC 模型。</span>
-        </div>
-      </div>
+      }
     </section>
   `,
   styles: `
@@ -190,12 +214,6 @@ import type { SystemRoleEntity } from '../../../admin/models/system-rbac.model';
       font-size: 12px;
     }
 
-    .info-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .info-card,
     .empty-box {
       display: grid;
       gap: 4px;
@@ -205,21 +223,108 @@ import type { SystemRoleEntity } from '../../../admin/models/system-rbac.model';
       background: var(--bg-subtle);
     }
 
-    .info-card strong {
-      color: var(--text-primary);
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    .info-card span,
     .empty-box {
       color: var(--text-muted);
       font-size: 12px;
     }
 
+    .role-permission-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .role-permission-panel {
+      display: grid;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background: var(--bg-container);
+    }
+
+    .role-permission-panel__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .role-permission-panel__header strong {
+      min-width: 0;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .role-permission-panel__header span {
+      flex: 0 0 auto;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .permission-group-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .permission-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .permission-group__title {
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .permission-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .permission-chip {
+      display: inline-grid;
+      gap: 2px;
+      max-width: 220px;
+      padding: 7px 10px;
+      border: 1px solid var(--border-color-soft);
+      border-radius: 8px;
+      background: var(--bg-subtle);
+    }
+
+    .permission-chip strong,
+    .permission-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .permission-chip strong {
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .permission-chip span {
+      color: var(--text-muted);
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 11px;
+    }
+
     @media (max-width: 600px) {
       .role-select-grid {
         grid-template-columns: 1fr;
+      }
+
+      .role-permission-panel__header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .permission-chip {
+        max-width: 100%;
       }
     }
   `,
@@ -228,8 +333,24 @@ import type { SystemRoleEntity } from '../../../admin/models/system-rbac.model';
 export class UserPermissionsTabComponent {
   readonly roles = input.required<SystemRoleEntity[]>();
   readonly selectedRoleIds = input<string[]>([]);
+  readonly permissionsByRoleId = input<Record<string, SystemPermissionEntity[]>>({});
   readonly readonly = input(false);
   readonly selectionChange = output<string[]>();
+
+  readonly selectedRolePermissions = computed(() => {
+    const selectedRoleIds = new Set(this.selectedRoleIds());
+    const permissionsByRoleId = this.permissionsByRoleId();
+    return this.roles()
+      .filter((role) => selectedRoleIds.has(role.id))
+      .map((role) => {
+        const permissions = permissionsByRoleId[role.id] ?? [];
+        return {
+          role,
+          permissionCount: permissions.length,
+          groups: groupSystemPermissions(permissions),
+        };
+      });
+  });
 
   isSelected(roleId: string): boolean {
     return this.selectedRoleIds().includes(roleId);

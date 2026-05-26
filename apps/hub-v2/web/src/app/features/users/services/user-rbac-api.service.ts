@@ -2,7 +2,12 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { ApiClientService } from '@core/http';
-import type { AddRoleUsersInput, SystemRoleEntity, UserSystemRoleEntity } from '../../admin/models/system-rbac.model';
+import type {
+  AddRoleUsersInput,
+  SystemPermissionEntity,
+  SystemRoleEntity,
+  UserSystemRoleEntity,
+} from '../../admin/models/system-rbac.model';
 
 @Injectable({ providedIn: 'root' })
 export class UserRbacApiService {
@@ -14,6 +19,12 @@ export class UserRbacApiService {
 
   listUserSystemRoles(userId: string) {
     return this.api.get<{ items: UserSystemRoleEntity[] }>(`/users/${userId}/system-roles`).pipe(map((response) => response.items));
+  }
+
+  getRolePermissions(roleId: string) {
+    return this.api
+      .get<{ items: SystemPermissionEntity[] }>(`/system-roles/${roleId}/permissions`)
+      .pipe(map((response) => response.items));
   }
 
   addRoleUsers(roleId: string, input: AddRoleUsersInput) {

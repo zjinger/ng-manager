@@ -3,7 +3,14 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { ApiError } from '@core/http';
 import type { PageResult } from '@core/types';
-import type { CreateUserInput, UpdateUserInput, UserEntity, UserListQuery } from '../models/user.model';
+import type {
+  CreateUserInput,
+  ResetUserPasswordInput,
+  ResetUserPasswordResult,
+  UpdateUserInput,
+  UserEntity,
+  UserListQuery,
+} from '../models/user.model';
 import { UserApiService } from '../services/user-api.service';
 
 const DEFAULT_QUERY: UserListQuery = {
@@ -86,13 +93,13 @@ export class UserStore {
     });
   }
 
-  update(userId: string, input: UpdateUserInput, done?: () => void): void {
+  update(userId: string, input: UpdateUserInput, done?: (updated: UserEntity) => void): void {
     this.busyState.set(true);
     this.userApi.update(userId, input).subscribe({
       next: (updated) => {
         this.busyState.set(false);
-        done?.();
         this.patchOrRefresh(updated);
+        done?.(updated);
       },
       error: () => {
         this.busyState.set(false);
@@ -100,13 +107,17 @@ export class UserStore {
     });
   }
 
-  resetPassword(userId: string, done?: () => void): void {
+  resetPassword(
+    userId: string,
+    input: ResetUserPasswordInput = {},
+    done?: (result: ResetUserPasswordResult) => void
+  ): void {
     this.busyState.set(true);
-    this.userApi.resetPassword(userId).subscribe({
+    this.userApi.resetPassword(userId, input).subscribe({
       next: (result) => {
         this.busyState.set(false);
         this.message.success(`已重置 ${result.username} 的密码：${result.temporaryPassword}`);
-        done?.();
+        done?.(result);
       },
       error: (error: unknown) => {
         this.busyState.set(false);
