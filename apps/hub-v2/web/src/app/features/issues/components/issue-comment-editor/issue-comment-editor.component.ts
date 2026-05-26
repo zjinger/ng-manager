@@ -132,7 +132,7 @@ export class IssueCommentEditorComponent implements OnDestroy {
   readonly issueReferenceQuery = signal('');
   readonly issueReferencePage = signal(1);
   readonly issueReferenceTotal = signal(0);
-  readonly hasMoreIssueReferences = computed(() => this.issueReferenceOptions().length < this.issueReferenceTotal());
+  readonly hasMoreIssueReferences = computed(() => this.issueReferencePage() * ISSUE_REFERENCE_PAGE_SIZE < this.issueReferenceTotal());
   readonly issueReferenceOverlayWidth = signal(0);
   readonly issueReferenceOverlayPositions = ISSUE_REFERENCE_OVERLAY_POSITIONS;
   readonly uploads = signal<CommentUploadItem[]>([]);
@@ -527,6 +527,10 @@ export class IssueCommentEditorComponent implements OnDestroy {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(({ result, options }) => {
+        const activeCommand = this.activeIssueLinkCommand();
+        if (!activeCommand || activeCommand.query.trim() !== keyword || this.projectId() !== projectId) {
+          return;
+        }
         this.issueReferencePage.set(result.page);
         this.issueReferenceTotal.set(result.total);
         const seen = new Set(this.issueReferenceOptions().map((item) => item.id));
