@@ -4,15 +4,19 @@ import type {
   CloseRdTaskSheetInput,
   ConvertRdTaskSheetToIssueInput,
   ConvertRdTaskSheetToRdItemInput,
+  CreateRdTaskSheetDefaultRouteInput,
   CreateRdTaskSheetInput,
+  ListRdTaskSheetDefaultRoutesQuery,
   ListRdTaskSheetsQuery,
   PreviewRdTaskSheetImportInput,
   PreviewRdTaskSheetImportResult,
+  RdTaskSheetDefaultRouteEntity,
   RdTaskSheetDetail,
   RdTaskSheetEntity,
   RdTaskSheetListResult,
   RenderedRdTaskSheetWord,
   ReplyRdTaskSheetInput,
+  UpdateRdTaskSheetDefaultRouteInput,
   UpdateRdTaskSheetInput
 } from "./rd-task-sheet.types";
 
@@ -27,6 +31,9 @@ export interface RdTaskSheetCommandContract {
   detach(id: string, attachmentId: string, ctx: RequestContext): Promise<RdTaskSheetDetail>;
   convertToRdItem(id: string, input: ConvertRdTaskSheetToRdItemInput, ctx: RequestContext): Promise<RdTaskSheetDetail>;
   convertToIssue(id: string, input: ConvertRdTaskSheetToIssueInput, ctx: RequestContext): Promise<RdTaskSheetDetail>;
+  createDefaultRoute(input: CreateRdTaskSheetDefaultRouteInput, ctx: RequestContext): Promise<RdTaskSheetDefaultRouteEntity>;
+  updateDefaultRoute(id: string, input: UpdateRdTaskSheetDefaultRouteInput, ctx: RequestContext): Promise<RdTaskSheetDefaultRouteEntity>;
+  deleteDefaultRoute(id: string, ctx: RequestContext): Promise<{ id: string }>;
 }
 
 export interface RdTaskSheetQueryContract {
@@ -35,4 +42,7 @@ export interface RdTaskSheetQueryContract {
   getEntityById(id: string, ctx: RequestContext): Promise<RdTaskSheetEntity>;
   previewImport(input: PreviewRdTaskSheetImportInput, ctx: RequestContext): Promise<PreviewRdTaskSheetImportResult>;
   exportWord(id: string, ctx: RequestContext): Promise<RenderedRdTaskSheetWord>;
+  listDefaultRoutes(query: ListRdTaskSheetDefaultRoutesQuery, ctx: RequestContext): Promise<RdTaskSheetDefaultRouteEntity[]>;
+  getMyDefaultRoute(ctx: RequestContext): Promise<RdTaskSheetDefaultRouteEntity | null>;
+  matchDefaultRoute(issuerUserId: string | undefined, ctx: RequestContext): Promise<RdTaskSheetDefaultRouteEntity | null>;
 }

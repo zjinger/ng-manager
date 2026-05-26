@@ -10,6 +10,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { finalize, forkJoin, of } from 'rxjs';
 
 import { AuthStore } from '@core/auth';
+import { HasPermissionDirective } from '@core/auth/has-permission.directive';
 import {
   FilterBarComponent,
   ListStateComponent,
@@ -56,6 +57,7 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
     FilterBarComponent,
     SearchBoxComponent,
     ListStateComponent,
+    HasPermissionDirective,
     RdTaskSheetImportDialogComponent,
     RdTaskSheetDialogComponent,
     RdTaskSheetDetailDrawerComponent,
@@ -68,15 +70,15 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
   ],
   providers: [RdTaskSheetStore],
   template: `
-    <app-page-header title="任务单管理" [subtitle]="subtitle()" />
+    <app-page-header title="我的任务单" [subtitle]="subtitle()" />
 
     <app-page-toolbar>
       <div toolbar-primary class="toolbar-actions">
-        <button nz-button nzType="primary" (click)="openCreate()">
+        <button *appHasPermission="'task_sheet.manage'" nz-button nzType="primary" (click)="openCreate()">
           <span nz-icon nzType="plus"></span>
           新建任务单
         </button>
-        <button nz-button (click)="openImport()">
+        <button *appHasPermission="'task_sheet.manage'" nz-button (click)="openImport()">
           <span nz-icon nzType="import"></span>
           关联历史任务单
         </button>
@@ -208,7 +210,6 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
       [open]="formOpen()"
       [busy]="dialogBusy()"
       [projects]="projects()"
-      [users]="users()"
       [initial]="editingSheet()"
       [prefill]="prefillDraft()"
       [currentUser]="authStore.currentUser()"
@@ -444,7 +445,7 @@ export class RdTaskSheetPageComponent implements OnInit {
   });
 
   readonly statusOptions = RD_TASK_SHEET_STATUS_OPTIONS;
-  readonly subtitle = computed(() => `共 ${this.store.total()} 张任务单，支持关联或不关联项目。`);
+  readonly subtitle = computed(() => `共 ${this.store.total()} 张与我有关的任务单，支持关联或不关联项目。`);
   readonly dialogBusy = computed(() => this.store.busy() || this.uploading());
   readonly projectFilter = computed(() => {
     const query = this.store.query();

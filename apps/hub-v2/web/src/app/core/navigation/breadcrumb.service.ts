@@ -68,10 +68,17 @@ export class BreadcrumbService {
       return [{ label: '测试跟踪' }];
     }
 
+    if (path.startsWith('/rd/task-sheets/resources')) {
+      return [
+        { label: '研发管理', route: '/rd' },
+        { label: '任务单配置' },
+      ];
+    }
+
     if (path.startsWith('/rd/task-sheets')) {
       return [
         { label: '研发管理', route: '/rd' },
-        { label: '任务单管理' },
+        { label: '我的任务单' },
       ];
     }
 
@@ -98,10 +105,16 @@ export class BreadcrumbService {
       return [{ label: '系统反馈' }];
     }
     if (path.startsWith('/reimbursements/new/travel')) {
-      return [{ label: '新建差旅费报销' }];
+      return [
+        { label: '我的报销', route: '/reimbursements/mine' },
+        { label: '新建差旅费报销' },
+      ];
     }
     if (path.startsWith('/reimbursements/new/general')) {
-      return [{ label: '新建费用报销' }];
+      return [
+        { label: '我的报销', route: '/reimbursements/mine' },
+        { label: '新建费用报销' },
+      ];
     }
     if (path.startsWith('/reimbursements/announcements')) {
       return [{ label: '公告管理' }];

@@ -89,6 +89,7 @@ export interface RdTaskSheetDetail extends RdTaskSheetEntity {
 export interface RdTaskSheetListQuery {
   page: number;
   pageSize: number;
+  scope?: 'related' | 'all';
   projectId?: string;
   unlinked?: boolean;
   status?: RdTaskSheetStatus[];

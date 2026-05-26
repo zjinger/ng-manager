@@ -47,7 +47,8 @@ export class LoginPageComponent {
 
     this.authService.login(this.form.getRawValue()).subscribe({
       next: (user) => {
-        const canAccessAdmin = hasRequiredPermissions(user.permissionCodes ?? [], ADMIN_CONSOLE_PERMISSIONS, 'any');
+        const permissionCodes = user.permissionCodes ?? [];
+        const canAccessAdmin = hasRequiredPermissions(permissionCodes, ADMIN_CONSOLE_PERMISSIONS, 'any');
         void this.router.navigateByUrl(canAccessAdmin ? '/admin' : '/dashboard');
       },
       error: () => {

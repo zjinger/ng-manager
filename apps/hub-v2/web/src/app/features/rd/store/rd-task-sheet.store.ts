@@ -16,6 +16,7 @@ import { RdTaskSheetApiService } from '../services/rd-task-sheet-api.service';
 const DEFAULT_QUERY: RdTaskSheetListQuery = {
   page: 1,
   pageSize: 20,
+  scope: 'related',
   projectId: '',
   unlinked: false,
   status: [],

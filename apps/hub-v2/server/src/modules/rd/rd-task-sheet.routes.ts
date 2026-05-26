@@ -6,15 +6,55 @@ import {
   closeRdTaskSheetSchema,
   convertRdTaskSheetToIssueSchema,
   convertRdTaskSheetToRdItemSchema,
+  createRdTaskSheetDefaultRouteSchema,
   createRdTaskSheetSchema,
+  listRdTaskSheetDefaultRoutesQuerySchema,
   listRdTaskSheetsQuerySchema,
+  matchRdTaskSheetDefaultRouteQuerySchema,
   previewRdTaskSheetImportSchema,
   replyRdTaskSheetSchema,
+  updateRdTaskSheetDefaultRouteSchema,
   updateRdTaskSheetSchema
 } from "./rd-task-sheet.schema";
-import type { ListRdTaskSheetsQuery } from "./rd-task-sheet.types";
+import type { ListRdTaskSheetDefaultRoutesQuery, ListRdTaskSheetsQuery } from "./rd-task-sheet.types";
 
 export default async function rdTaskSheetRoutes(app: FastifyInstance) {
+  app.get("/rd/task-sheet-config/default-routes", async (request) => {
+    const ctx = requireAuth(request);
+    const query = listRdTaskSheetDefaultRoutesQuerySchema.parse(request.query) as ListRdTaskSheetDefaultRoutesQuery;
+    return ok({ items: await app.container.rdTaskSheetQuery.listDefaultRoutes(query, ctx) });
+  });
+
+  app.get("/rd/task-sheet-config/default-routes/me", async (request) => {
+    const ctx = requireAuth(request);
+    return ok(await app.container.rdTaskSheetQuery.getMyDefaultRoute(ctx));
+  });
+
+  app.get("/rd/task-sheet-config/default-routes/match", async (request) => {
+    const ctx = requireAuth(request);
+    const query = matchRdTaskSheetDefaultRouteQuerySchema.parse(request.query);
+    return ok(await app.container.rdTaskSheetQuery.matchDefaultRoute(query.issuerUserId, ctx));
+  });
+
+  app.post("/rd/task-sheet-config/default-routes", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const body = createRdTaskSheetDefaultRouteSchema.parse(request.body ?? {});
+    return reply.status(201).send(ok(await app.container.rdTaskSheetCommand.createDefaultRoute(body, ctx), "rd task sheet default route created"));
+  });
+
+  app.patch("/rd/task-sheet-config/default-routes/:routeId", async (request) => {
+    const ctx = requireAuth(request);
+    const { routeId } = request.params as { routeId: string };
+    const body = updateRdTaskSheetDefaultRouteSchema.parse(request.body ?? {});
+    return ok(await app.container.rdTaskSheetCommand.updateDefaultRoute(routeId, body, ctx), "rd task sheet default route updated");
+  });
+
+  app.delete("/rd/task-sheet-config/default-routes/:routeId", async (request) => {
+    const ctx = requireAuth(request);
+    const { routeId } = request.params as { routeId: string };
+    return ok(await app.container.rdTaskSheetCommand.deleteDefaultRoute(routeId, ctx), "rd task sheet default route deleted");
+  });
+
   app.get("/rd/task-sheets", async (request) => {
     const ctx = requireAuth(request);
     const query = listRdTaskSheetsQuerySchema.parse(request.query) as ListRdTaskSheetsQuery;

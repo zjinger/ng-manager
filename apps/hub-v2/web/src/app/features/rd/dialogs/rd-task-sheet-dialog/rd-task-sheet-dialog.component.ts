@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
@@ -7,15 +16,21 @@ import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import type { AuthUser } from '@core/auth';
 import { UPLOAD_TARGETS } from '@shared/constants';
-import { DialogShellComponent, FileUploadDropzoneComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
+import {
+  DialogShellComponent,
+  FileUploadDropzoneComponent,
+  FormActionsComponent,
+  MarkdownEditorComponent,
+} from '@shared/ui';
 import { ImageUploadService } from '../../../../shared/services/image-upload.service';
 import type { ProjectSummary } from '../../../projects/models/project.model';
-import type { UserEntity } from '../../../users/models/user.model';
+import type { RdTaskSheetDefaultRouteEntity } from '../../models/rd-task-sheet-config.model';
 import {
   RD_TASK_SHEET_BUSINESS_TYPE_OPTIONS,
   type CreateRdTaskSheetInput,
@@ -23,6 +38,7 @@ import {
   type RdTaskSheetDetail,
   type RdTaskSheetUrgency,
 } from '../../models/rd-task-sheet.model';
+import { RdTaskSheetConfigApiService } from '../../services/rd-task-sheet-config-api.service';
 
 type Draft = Omit<CreateRdTaskSheetInput, 'attachments'>;
 
@@ -65,13 +81,14 @@ const DEFAULT_DRAFT: Draft = {
     NzButtonModule,
     NzIconModule,
     NzInputModule,
+    NzModalModule,
     NzRadioModule,
     NzSelectModule,
     DialogShellComponent,
     FileUploadDropzoneComponent,
     FormActionsComponent,
     MarkdownEditorComponent,
-],
+  ],
   template: `
     <app-dialog-shell
       [open]="open()"
@@ -86,7 +103,7 @@ const DEFAULT_DRAFT: Draft = {
           <div class="sheet-title">天津天元海科技开发有限公司业务联络单</div>
 
           <section class="sheet-grid">
-            <div class="sheet-label">日期</div>
+            <div class="sheet-label sheet-label--required">日期</div>
             <div class="sheet-field">
               <nz-date-picker
                 class="field-full"
@@ -98,61 +115,86 @@ const DEFAULT_DRAFT: Draft = {
             </div>
             <div class="sheet-label">编号</div>
             <div class="sheet-field">
-              <input nz-input placeholder="未填写时自动生成" [ngModel]="draft().sheetNo" name="sheetNo" (ngModelChange)="updateField('sheetNo', $event)" />
+              <input
+                nz-input
+                placeholder="未填写时自动生成"
+                [ngModel]="draft().sheetNo"
+                name="sheetNo"
+                (ngModelChange)="updateField('sheetNo', $event)"
+              />
             </div>
-
-            <div class="sheet-label">发起部门</div>
-            <div class="sheet-field">
-              <input nz-input [ngModel]="draft().issuerDepartment" name="issuerDepartment" (ngModelChange)="updateField('issuerDepartment', $event)" />
-            </div>
-            <div class="sheet-label">接收部门</div>
-            <div class="sheet-field">
-              <input nz-input [ngModel]="draft().receiverDepartment" name="receiverDepartment" (ngModelChange)="updateField('receiverDepartment', $event)" />
-            </div>
-
-            <div class="sheet-label">发起人</div>
+            <div class="sheet-label sheet-label--required">发起人</div>
             <div class="sheet-field">
               <nz-select
+                nzShowSearch
+                nzAllowClear
                 style="width: 100%"
-                nzShowSearch
-                nzAllowClear
-                nzPlaceHolder="选择账号"
-                [ngModel]="draft().issuerUserId"
-                name="issuerUserId"
-                (ngModelChange)="selectUser('issuer', $event)"
+                nzPlaceHolder="选择发起人"
+                [ngModel]="issuerRouteId()"
+                name="issuerRouteId"
+                (ngModelChange)="selectIssuerRoute($event)"
               >
-                @for (user of users(); track user.id) {
-                  <nz-option [nzLabel]="userName(user)" [nzValue]="user.id"></nz-option>
+                @for (route of issuerRouteOptions(); track route.id) {
+                  <nz-option [nzLabel]="issuerRouteLabel(route)" [nzValue]="route.id"></nz-option>
                 }
               </nz-select>
             </div>
-            <div class="sheet-label">接收人</div>
-            <div class="sheet-field sheet-field--stacked">
+            <div class="sheet-label sheet-label--required">接收人</div>
+            <div class="sheet-field">
               <nz-select
                 nzShowSearch
                 nzAllowClear
-                nzPlaceHolder="选择账号"
-                [ngModel]="draft().receiverUserId"
-                name="receiverUserId"
-                (ngModelChange)="selectUser('receiver', $event)"
+                style="width: 100%"
+                nzPlaceHolder="选择接收人"
+                [ngModel]="receiverRouteId()"
+                name="receiverRouteId"
+                (ngModelChange)="selectReceiverRoute($event)"
               >
-                @for (user of users(); track user.id) {
-                  <nz-option [nzLabel]="userName(user)" [nzValue]="user.id"></nz-option>
+                @for (route of receiverRouteOptions(); track route.id) {
+                  <nz-option [nzLabel]="receiverRouteLabel(route)" [nzValue]="route.id"></nz-option>
                 }
               </nz-select>
-              <input nz-input placeholder="联系电话" [ngModel]="draft().receiverPhone" name="receiverPhone" (ngModelChange)="updateField('receiverPhone', $event)" />
+            </div>
+
+            <div class="sheet-label sheet-label--required">发起部门</div>
+            <div class="sheet-field">
+              <input
+                nz-input
+                [ngModel]="draft().issuerDepartment"
+                name="issuerDepartment"
+                (ngModelChange)="updateField('issuerDepartment', $event)"
+              />
+            </div>
+            <div class="sheet-label sheet-label--required">接收部门</div>
+            <div class="sheet-field">
+              <input
+                nz-input
+                [ngModel]="draft().receiverDepartment"
+                name="receiverDepartment"
+                (ngModelChange)="updateReceiverField('receiverDepartment', $event)"
+              />
             </div>
 
             <div class="sheet-label">客户单位</div>
             <div class="sheet-field">
-              <input nz-input [ngModel]="draft().customerCompany" name="customerCompany" (ngModelChange)="updateField('customerCompany', $event)" />
+              <input
+                nz-input
+                [ngModel]="draft().customerCompany"
+                name="customerCompany"
+                (ngModelChange)="updateField('customerCompany', $event)"
+              />
             </div>
             <div class="sheet-label">客户联系人</div>
             <div class="sheet-field">
-              <input nz-input [ngModel]="draft().customerContact" name="customerContact" (ngModelChange)="updateField('customerContact', $event)" />
+              <input
+                nz-input
+                [ngModel]="draft().customerContact"
+                name="customerContact"
+                (ngModelChange)="updateField('customerContact', $event)"
+              />
             </div>
 
-            <div class="sheet-label">项目名称</div>
+            <div class="sheet-label sheet-label--required">项目名称</div>
             <div class="sheet-field">
               <input
                 nz-input
@@ -165,12 +207,22 @@ const DEFAULT_DRAFT: Draft = {
             </div>
             <div class="sheet-label">客户联系方式</div>
             <div class="sheet-field">
-              <input nz-input [ngModel]="draft().customerPhone" name="customerPhone" (ngModelChange)="updateField('customerPhone', $event)" />
+              <input
+                nz-input
+                [ngModel]="draft().customerPhone"
+                name="customerPhone"
+                (ngModelChange)="updateField('customerPhone', $event)"
+              />
             </div>
 
             <div class="sheet-label">项目联系人</div>
             <div class="sheet-field">
-              <input nz-input [ngModel]="draft().projectContact" name="projectContact" (ngModelChange)="updateField('projectContact', $event)" />
+              <input
+                nz-input
+                [ngModel]="draft().projectContact"
+                name="projectContact"
+                (ngModelChange)="updateField('projectContact', $event)"
+              />
             </div>
             <div class="sheet-label">相关系统</div>
             <div class="sheet-field">
@@ -191,7 +243,11 @@ const DEFAULT_DRAFT: Draft = {
 
             <div class="sheet-label">紧急程度</div>
             <div class="sheet-field">
-              <nz-radio-group [ngModel]="draft().urgency" name="urgency" (ngModelChange)="updateUrgency($event)">
+              <nz-radio-group
+                [ngModel]="draft().urgency"
+                name="urgency"
+                (ngModelChange)="updateUrgency($event)"
+              >
                 <label nz-radio nzValue="normal">一般</label>
                 <label nz-radio nzValue="urgent">紧急</label>
               </nz-radio-group>
@@ -209,7 +265,11 @@ const DEFAULT_DRAFT: Draft = {
 
             <div class="sheet-label">业务类型</div>
             <div class="sheet-field sheet-field--wide">
-              <nz-radio-group [ngModel]="draft().businessType" name="businessType" (ngModelChange)="updateBusinessType($event)">
+              <nz-radio-group
+                [ngModel]="draft().businessType"
+                name="businessType"
+                (ngModelChange)="updateBusinessType($event)"
+              >
                 @for (option of businessTypeOptions; track option.value) {
                   <label nz-radio [nzValue]="option.value">{{ option.label }}</label>
                 }
@@ -218,7 +278,7 @@ const DEFAULT_DRAFT: Draft = {
           </section>
 
           <section class="sheet-section sheet-section--description">
-            <div class="sheet-section__label">
+            <div class="sheet-section__label sheet-section__label--required">
               <span>业务描述</span>
             </div>
             <div class="sheet-section__body">
@@ -254,7 +314,13 @@ const DEFAULT_DRAFT: Draft = {
 
       <app-form-actions dialog-footer>
         <button nz-button type="button" (click)="cancel.emit()">取消</button>
-        <button nz-button nzType="primary" form="rd-task-sheet-form" [disabled]="!isFormValid()" [nzLoading]="busy()">
+        <button
+          nz-button
+          nzType="primary"
+          form="rd-task-sheet-form"
+          [disabled]="!isFormValid()"
+          [nzLoading]="busy()"
+        >
           <nz-icon nzType="check" />
           {{ initial() ? '保存' : '创建任务单' }}
         </button>
@@ -282,22 +348,28 @@ const DEFAULT_DRAFT: Draft = {
       }
       .sheet-label,
       .sheet-field {
-        min-height: 46px;
         border-right: 1px solid var(--border-color-soft);
         border-bottom: 1px solid var(--border-color-soft);
       }
       .sheet-label {
         display: flex;
         align-items: center;
-        justify-content: center;
-        padding: 8px;
+        justify-content: flex-start;
+        padding: 4px 4px 4px 10px;
         color: var(--text-muted);
         background: var(--surface-subtle);
-        font-size: 13px;
         text-align: center;
+        font-size: 13px;
+      }
+      .sheet-label--required::before,
+      .sheet-section__label--required > span::before {
+        margin-right: 4px;
+        color: #ff4d4f;
+        font-weight: 600;
+        content: '*';
       }
       .sheet-field {
-        padding: 6px 8px;
+        padding: 4px 8px;
       }
       .sheet-field :where(nz-radio-group, .ant-radio-group) {
         display: inline-flex;
@@ -314,11 +386,6 @@ const DEFAULT_DRAFT: Draft = {
       .sheet-field--wide {
         grid-column: span 3;
         border-right: 0;
-      }
-      .sheet-field--stacked {
-        display: grid;
-        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
-        gap: 8px;
       }
       .sheet-section {
         display: grid;
@@ -369,9 +436,6 @@ const DEFAULT_DRAFT: Draft = {
         .sheet-field--wide {
           grid-column: span 1;
         }
-        .sheet-field--stacked {
-          grid-template-columns: 1fr;
-        }
       }
     `,
   ],
@@ -380,6 +444,8 @@ const DEFAULT_DRAFT: Draft = {
 export class RdTaskSheetDialogComponent {
   private readonly imageUpload = inject(ImageUploadService);
   private readonly message = inject(NzMessageService);
+  private readonly modal = inject(NzModalService);
+  private readonly configApi = inject(RdTaskSheetConfigApiService);
 
   readonly open = input(false);
   readonly busy = input(false);
@@ -387,7 +453,6 @@ export class RdTaskSheetDialogComponent {
   readonly prefill = input<CreateRdTaskSheetInput | null>(null);
   readonly currentUser = input<AuthUser | null>(null);
   readonly projects = input<ProjectSummary[]>([]);
-  readonly users = input<UserEntity[]>([]);
   readonly save = output<{ id?: string; value: CreateRdTaskSheetInput; files: File[] }>();
   readonly cancel = output<void>();
 
@@ -395,6 +460,32 @@ export class RdTaskSheetDialogComponent {
   readonly attachmentFiles = signal<File[]>([]);
   readonly issueDate = signal<Date | null>(new Date());
   readonly expectedResolvedDate = signal<Date | null>(null);
+  readonly receiverTouched = signal(false);
+  readonly taskSheetRoutes = signal<RdTaskSheetDefaultRouteEntity[]>([]);
+  readonly issuerRouteId = signal<string | null>(null);
+  readonly receiverRouteId = signal<string | null>(null);
+  readonly issuerRouteOptions = computed(() => {
+    const seen = new Set<string>();
+    return this.taskSheetRoutes().filter((route) => {
+      const key = `${route.issuerUserId || ''}|${route.issuerName || ''}|${route.issuerDepartment || ''}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  });
+  readonly receiverRouteOptions = computed(() => {
+    const seen = new Set<string>();
+    return this.taskSheetRoutes().filter((route) => {
+      const key = `${route.receiverUserId || ''}|${route.receiverName || ''}|${route.receiverDepartment || ''}|${route.receiverPhone || ''}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  });
 
   readonly businessTypeOptions = RD_TASK_SHEET_BUSINESS_TYPE_OPTIONS;
   readonly attachmentUploadPolicy = UPLOAD_TARGETS.taskSheetAttachment;
@@ -403,29 +494,46 @@ export class RdTaskSheetDialogComponent {
     autosaveUniqueId: 'rd-task-sheet-editor',
     status: ['lines', 'words'],
   };
-  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.imageUpload.uploadImage(file);
+  readonly uploadMarkdownImage = async (file: File): Promise<string> =>
+    this.imageUpload.uploadImage(file);
 
   constructor() {
     effect(() => {
       if (!this.open()) {
         return;
       }
+      this.loadTaskSheetRoutes();
       const initial = this.initial();
       if (initial) {
+        this.receiverTouched.set(true);
+        this.issuerRouteId.set(null);
+        this.receiverRouteId.set(null);
         this.setDraftFromDetail(initial);
         return;
       }
       const prefill = this.prefill();
       if (prefill) {
+        this.receiverTouched.set(true);
+        this.issuerRouteId.set(null);
+        this.receiverRouteId.set(null);
         this.setDraftFromInput(prefill);
         return;
       }
+      this.receiverTouched.set(false);
       this.setDraftForCreate();
+      this.loadMyDefaultRoute();
     });
   }
 
   updateField<K extends keyof Draft>(key: K, value: Draft[K]): void {
     this.draft.update((draft) => ({ ...draft, [key]: value }));
+  }
+
+  updateReceiverField<
+    K extends 'receiverDepartment' | 'receiverName' | 'receiverPhone' | 'receiverUserId',
+  >(key: K, value: Draft[K]): void {
+    this.receiverTouched.set(true);
+    this.updateField(key, value);
   }
 
   updateProjectName(value: string): void {
@@ -454,28 +562,58 @@ export class RdTaskSheetDialogComponent {
     this.updateField(key, formatDate(date));
   }
 
-  selectUser(kind: 'issuer' | 'receiver', userId: string | null): void {
-    const user = this.users().find((item) => item.id === userId) ?? null;
-    if (kind === 'issuer') {
+  selectIssuerRoute(routeId: string | null): void {
+    this.issuerRouteId.set(routeId ?? null);
+    const route = this.taskSheetRoutes().find((item) => item.id === routeId) ?? null;
+    if (!route) {
       this.draft.update((draft) => ({
         ...draft,
-        issuerUserId: user?.id ?? null,
-        issuerName: user ? this.userName(user) : '',
-        issuerDepartment: user?.primaryDepartment?.departmentName ?? '',
+        issuerUserId: null,
+        issuerName: '',
+        issuerDepartment: '',
       }));
       return;
     }
-    this.draft.update((draft) => ({
-      ...draft,
-      receiverUserId: user?.id ?? null,
-      receiverName: user ? this.userName(user) : '',
-      receiverPhone: user?.mobile ?? '',
-      receiverDepartment: user?.primaryDepartment?.departmentName ?? '',
-    }));
+    this.applyDefaultRoute(route, true);
   }
 
-  userName(user: UserEntity): string {
-    return user.displayName || user.username;
+  selectReceiverRoute(routeId: string | null): void {
+    this.receiverRouteId.set(routeId ?? null);
+    this.receiverTouched.set(true);
+    const route = this.taskSheetRoutes().find((item) => item.id === routeId) ?? null;
+    if (!route) {
+      this.draft.update((draft) => ({
+        ...draft,
+        receiverUserId: null,
+        receiverName: '',
+        receiverDepartment: '',
+        receiverPhone: '',
+      }));
+      return;
+    }
+    this.applyReceiverRoute(route);
+  }
+
+  issuerRouteLabel(route: RdTaskSheetDefaultRouteEntity): string {
+    return route.issuerName || route.issuerDepartment || '未命名发起人';
+  }
+
+  receiverRouteLabel(route: RdTaskSheetDefaultRouteEntity): string {
+    return (
+      [route.receiverName, route.receiverPhone].filter(Boolean).join('，') ||
+      route.receiverDepartment ||
+      '未命名接收人'
+    );
+  }
+
+  private applyReceiverRoute(route: RdTaskSheetDefaultRouteEntity): void {
+    this.draft.update((draft) => ({
+      ...draft,
+      receiverUserId: route.receiverUserId ?? null,
+      receiverName: route.receiverName ?? '',
+      receiverDepartment: route.receiverDepartment ?? '',
+      receiverPhone: route.receiverPhone ?? '',
+    }));
   }
 
   onMarkdownImageUploadFailed(message: string): void {
@@ -483,13 +621,36 @@ export class RdTaskSheetDialogComponent {
   }
 
   isFormValid(): boolean {
-    return Boolean((this.draft().projectName || this.draft().title).trim() && this.draft().businessDescription.trim());
+    const draft = this.draft();
+    return Boolean(
+      hasText(draft.issueDate) &&
+      hasText(draft.issuerName) &&
+      hasText(draft.issuerDepartment) &&
+      hasText(draft.receiverName) &&
+      hasText(draft.receiverDepartment) &&
+      hasText(draft.projectName || draft.title) &&
+      hasText(draft.businessDescription),
+    );
   }
 
   submitForm(): void {
     if (!this.isFormValid()) {
       return;
     }
+    if (!hasText(this.draft().expectedResolvedAt)) {
+      this.modal.confirm({
+        nzTitle: '确认不填写期望解决时间？',
+        nzContent: '未填写期望解决时间时，任务单将按“没有具体时间要求”保存。',
+        nzOkText: '确认保存',
+        nzCancelText: '返回填写',
+        nzOnOk: () => this.emitSave(),
+      });
+      return;
+    }
+    this.emitSave();
+  }
+
+  private emitSave(): void {
     const initial = this.initial();
     this.save.emit({
       id: initial?.id,
@@ -511,6 +672,72 @@ export class RdTaskSheetDialogComponent {
       issuerName: current?.nickname || current?.username || '',
       issuerDepartment: current?.department?.name ?? '',
     });
+  }
+
+  private loadTaskSheetRoutes(): void {
+    this.configApi.listDefaultRoutes({ status: 'active' }).subscribe({
+      next: (routes) => {
+        this.taskSheetRoutes.set(routes);
+        this.syncRouteSelectionFromDraft();
+      },
+      error: () => this.taskSheetRoutes.set([]),
+    });
+  }
+
+  private loadMyDefaultRoute(): void {
+    this.configApi.getMyDefaultRoute().subscribe({
+      next: (route) => {
+        if (!this.open() || this.initial() || this.prefill()) {
+          return;
+        }
+        this.applyDefaultRoute(route);
+      },
+      error: () => undefined,
+    });
+  }
+
+  private applyDefaultRoute(
+    route: RdTaskSheetDefaultRouteEntity | null,
+    forceReceiver = false,
+  ): void {
+    if (!route) {
+      return;
+    }
+    const shouldApplyReceiver = forceReceiver || !this.receiverTouched();
+    this.issuerRouteId.set(this.findIssuerOptionId(route));
+    if (shouldApplyReceiver) {
+      this.receiverRouteId.set(this.findReceiverOptionId(route));
+    }
+    this.draft.update((draft) => ({
+      ...draft,
+      issuerUserId: route.issuerUserId ?? draft.issuerUserId,
+      issuerName: route.issuerName ?? draft.issuerName,
+      issuerDepartment: route.issuerDepartment ?? draft.issuerDepartment,
+      receiverUserId: shouldApplyReceiver ? (route.receiverUserId ?? null) : draft.receiverUserId,
+      receiverName: shouldApplyReceiver ? (route.receiverName ?? '') : draft.receiverName,
+      receiverDepartment: shouldApplyReceiver
+        ? (route.receiverDepartment ?? '')
+        : draft.receiverDepartment,
+      receiverPhone: shouldApplyReceiver ? (route.receiverPhone ?? '') : draft.receiverPhone,
+    }));
+  }
+
+  private syncRouteSelectionFromDraft(): void {
+    const draft = this.draft();
+    const issuerRoute = this.taskSheetRoutes().find((route) => sameIssuerRoute(route, draft));
+    const receiverRoute = this.taskSheetRoutes().find((route) => sameReceiverRoute(route, draft));
+    this.issuerRouteId.set(issuerRoute?.id ?? null);
+    this.receiverRouteId.set(receiverRoute?.id ?? null);
+  }
+
+  private findIssuerOptionId(route: RdTaskSheetDefaultRouteEntity): string {
+    return this.issuerRouteOptions().find((item) => sameIssuerRoute(item, route))?.id ?? route.id;
+  }
+
+  private findReceiverOptionId(route: RdTaskSheetDefaultRouteEntity): string {
+    return (
+      this.receiverRouteOptions().find((item) => sameReceiverRoute(item, route))?.id ?? route.id
+    );
   }
 
   private setDraftFromDetail(detail: RdTaskSheetDetail): void {
@@ -633,4 +860,38 @@ function todayString(): string {
 function textOrNull(value: string | null | undefined): string | null {
   const normalized = value?.trim();
   return normalized ? normalized : null;
+}
+
+function hasText(value: string | null | undefined): boolean {
+  return Boolean(value?.trim());
+}
+
+function sameIssuerRoute(
+  route: Pick<RdTaskSheetDefaultRouteEntity, 'issuerUserId' | 'issuerName' | 'issuerDepartment'>,
+  source: Pick<Draft, 'issuerUserId' | 'issuerName' | 'issuerDepartment'>,
+): boolean {
+  return (
+    normalizeCompare(route.issuerUserId) === normalizeCompare(source.issuerUserId) &&
+    normalizeCompare(route.issuerName) === normalizeCompare(source.issuerName) &&
+    normalizeCompare(route.issuerDepartment) === normalizeCompare(source.issuerDepartment)
+  );
+}
+
+function sameReceiverRoute(
+  route: Pick<
+    RdTaskSheetDefaultRouteEntity,
+    'receiverUserId' | 'receiverName' | 'receiverDepartment' | 'receiverPhone'
+  >,
+  source: Pick<Draft, 'receiverUserId' | 'receiverName' | 'receiverDepartment' | 'receiverPhone'>,
+): boolean {
+  return (
+    normalizeCompare(route.receiverUserId) === normalizeCompare(source.receiverUserId) &&
+    normalizeCompare(route.receiverName) === normalizeCompare(source.receiverName) &&
+    normalizeCompare(route.receiverDepartment) === normalizeCompare(source.receiverDepartment) &&
+    normalizeCompare(route.receiverPhone) === normalizeCompare(source.receiverPhone)
+  );
+}
+
+function normalizeCompare(value: string | null | undefined): string {
+  return value?.trim() ?? '';
 }

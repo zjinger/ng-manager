@@ -4,6 +4,7 @@ const taskSheetStatusSchema = z.enum(["draft", "issued", "processing", "replied"
 const taskSheetUrgencySchema = z.enum(["normal", "urgent"]);
 const taskSheetBusinessTypeSchema = z.enum(["development", "after_sales", "consulting", "technical_service", "other"]);
 const taskSheetResultSchema = z.enum(["resolved", "unresolved"]);
+const taskSheetDefaultRouteStatusSchema = z.enum(["active", "inactive"]);
 
 function csvEnumArray<T extends [string, ...string[]]>(values: T) {
   const itemSchema = z.enum(values);
@@ -125,6 +126,7 @@ export const convertRdTaskSheetToIssueSchema = z.object({
 export const listRdTaskSheetsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().optional(),
+  scope: z.enum(["related", "all"]).optional(),
   projectId: z.string().trim().optional(),
   unlinked: z.preprocess((value) => {
     if (value === undefined || value === null || value === "") {
@@ -138,3 +140,27 @@ export const listRdTaskSheetsQuerySchema = z.object({
   processorUserId: z.string().trim().optional(),
   keyword: z.string().trim().optional()
 });
+
+export const listRdTaskSheetDefaultRoutesQuerySchema = z.object({
+  keyword: z.string().trim().optional(),
+  status: z.union([taskSheetDefaultRouteStatusSchema, z.literal("")]).optional()
+});
+
+export const matchRdTaskSheetDefaultRouteQuerySchema = z.object({
+  issuerUserId: z.string().trim().min(1).optional()
+});
+
+export const createRdTaskSheetDefaultRouteSchema = z.object({
+  issuerUserId: nullableText,
+  issuerName: nullableText,
+  issuerDepartment: nullableText,
+  receiverUserId: nullableText,
+  receiverName: nullableText,
+  receiverDepartment: nullableText,
+  receiverPhone: nullableText,
+  status: taskSheetDefaultRouteStatusSchema.optional(),
+  remark: nullableText,
+  sort: z.coerce.number().int().optional()
+});
+
+export const updateRdTaskSheetDefaultRouteSchema = createRdTaskSheetDefaultRouteSchema.partial();

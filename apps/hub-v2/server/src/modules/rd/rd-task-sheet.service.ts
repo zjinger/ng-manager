@@ -19,16 +19,20 @@ import type {
   CloseRdTaskSheetInput,
   ConvertRdTaskSheetToIssueInput,
   ConvertRdTaskSheetToRdItemInput,
+  CreateRdTaskSheetDefaultRouteInput,
   CreateRdTaskSheetInput,
+  ListRdTaskSheetDefaultRoutesQuery,
   ListRdTaskSheetsQuery,
   PreviewRdTaskSheetImportInput,
   PreviewRdTaskSheetImportResult,
+  RdTaskSheetDefaultRouteEntity,
   RdTaskSheetAction,
   RdTaskSheetDetail,
   RdTaskSheetEntity,
   RdTaskSheetListResult,
   RenderedRdTaskSheetWord,
   ReplyRdTaskSheetInput,
+  UpdateRdTaskSheetDefaultRouteInput,
   UpdateRdTaskSheetInput,
   UserDisplayProfile
 } from "./rd-task-sheet.types";
@@ -264,11 +268,12 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
     if (query.projectId?.trim()) {
       await this.projectAccess.requireProjectAccess(query.projectId.trim(), ctx, "list rd task sheets");
     }
-    const accessibleProjectIds = this.isManager(ctx) ? [] : await this.projectAccess.listAccessibleProjectIds(ctx);
+    const canManageAll = this.isManager(ctx) && query.scope !== "related";
+    const accessibleProjectIds = canManageAll ? [] : await this.projectAccess.listAccessibleProjectIds(ctx);
     return this.repo.list(query, {
       userId: currentUserId(ctx),
       accessibleProjectIds,
-      canManage: this.isManager(ctx)
+      canManage: canManageAll
     });
   }
 
@@ -371,6 +376,94 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
     return this.requireEntityWithAccess(id, ctx);
   }
 
+  async listDefaultRoutes(query: ListRdTaskSheetDefaultRoutesQuery, ctx: RequestContext): Promise<RdTaskSheetDefaultRouteEntity[]> {
+    this.requireAnyPermission(ctx, [MANAGE_PERMISSION]);
+    return this.repo.listDefaultRoutes(query);
+  }
+
+  async getMyDefaultRoute(ctx: RequestContext): Promise<RdTaskSheetDefaultRouteEntity | null> {
+    this.requireAnyPermission(ctx, [SUBMIT_PERMISSION, MANAGE_PERMISSION]);
+    return this.findActiveDefaultRouteForUser(currentUserId(ctx));
+  }
+
+  async matchDefaultRoute(issuerUserId: string | undefined, ctx: RequestContext): Promise<RdTaskSheetDefaultRouteEntity | null> {
+    this.requireAnyPermission(ctx, [SUBMIT_PERMISSION, MANAGE_PERMISSION]);
+    const userId = normalizeNullable(issuerUserId) || currentUserId(ctx);
+    return this.findActiveDefaultRouteForUser(userId);
+  }
+
+  async createDefaultRoute(input: CreateRdTaskSheetDefaultRouteInput, ctx: RequestContext): Promise<RdTaskSheetDefaultRouteEntity> {
+    this.requireAnyPermission(ctx, [MANAGE_PERMISSION]);
+    const actor = this.requireCurrentUser(ctx);
+    const issuer = this.resolveOptionalUser(input.issuerUserId);
+    const receiver = this.resolveOptionalUser(input.receiverUserId);
+    const now = nowIso();
+    const entity: RdTaskSheetDefaultRouteEntity = {
+      id: genId("rdtsr"),
+      issuerUserId: issuer?.id ?? normalizeNullable(input.issuerUserId),
+      issuerName: normalizeNullable(input.issuerName) || userDisplayName(issuer),
+      issuerDepartment: normalizeNullable(input.issuerDepartment),
+      receiverUserId: receiver?.id ?? normalizeNullable(input.receiverUserId),
+      receiverName: normalizeNullable(input.receiverName) || userDisplayName(receiver),
+      receiverDepartment: normalizeNullable(input.receiverDepartment),
+      receiverPhone: normalizeNullable(input.receiverPhone),
+      status: input.status ?? "active",
+      remark: normalizeNullable(input.remark),
+      sort: input.sort ?? 0,
+      createdByUserId: actor.id,
+      updatedByUserId: actor.id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.repo.createDefaultRoute(entity);
+    return entity;
+  }
+
+  async updateDefaultRoute(id: string, input: UpdateRdTaskSheetDefaultRouteInput, ctx: RequestContext): Promise<RdTaskSheetDefaultRouteEntity> {
+    this.requireAnyPermission(ctx, [MANAGE_PERMISSION]);
+    const current = this.repo.findDefaultRouteById(id);
+    if (!current) {
+      throw new AppError(ERROR_CODES.NOT_FOUND, "rd task sheet default route not found", 404);
+    }
+    const actor = this.requireCurrentUser(ctx);
+    const issuer = input.issuerUserId === undefined ? null : this.resolveOptionalUser(input.issuerUserId);
+    const receiver = input.receiverUserId === undefined ? null : this.resolveOptionalUser(input.receiverUserId);
+    const now = nowIso();
+    const updated = this.repo.updateDefaultRoute(id, {
+      issuer_user_id: input.issuerUserId === undefined ? current.issuerUserId : issuer?.id ?? normalizeNullable(input.issuerUserId),
+      issuer_name:
+        input.issuerName === undefined && input.issuerUserId === undefined
+          ? current.issuerName
+          : normalizeNullable(input.issuerName) || userDisplayName(issuer),
+      issuer_department: input.issuerDepartment === undefined ? current.issuerDepartment : normalizeNullable(input.issuerDepartment),
+      receiver_user_id: input.receiverUserId === undefined ? current.receiverUserId : receiver?.id ?? normalizeNullable(input.receiverUserId),
+      receiver_name:
+        input.receiverName === undefined && input.receiverUserId === undefined
+          ? current.receiverName
+          : normalizeNullable(input.receiverName) || userDisplayName(receiver),
+      receiver_department: input.receiverDepartment === undefined ? current.receiverDepartment : normalizeNullable(input.receiverDepartment),
+      receiver_phone: input.receiverPhone === undefined ? current.receiverPhone : normalizeNullable(input.receiverPhone),
+      status: input.status ?? current.status,
+      remark: input.remark === undefined ? current.remark : normalizeNullable(input.remark),
+      sort: input.sort ?? current.sort,
+      updated_by_user_id: actor.id,
+      updated_at: now
+    });
+    if (!updated) {
+      throw new AppError(ERROR_CODES.INTERNAL_ERROR, "failed to update rd task sheet default route", 500);
+    }
+    return this.repo.findDefaultRouteById(id)!;
+  }
+
+  async deleteDefaultRoute(id: string, ctx: RequestContext): Promise<{ id: string }> {
+    this.requireAnyPermission(ctx, [MANAGE_PERMISSION]);
+    const deleted = this.repo.deleteDefaultRoute(id);
+    if (!deleted) {
+      throw new AppError(ERROR_CODES.NOT_FOUND, "rd task sheet default route not found", 404);
+    }
+    return { id };
+  }
+
   private async requireEntityWithAccess(id: string, ctx: RequestContext): Promise<RdTaskSheetEntity> {
     this.requireAnyPermission(ctx, [VIEW_SELF_PERMISSION, MANAGE_PERMISSION]);
     const entity = this.repo.findById(id);
@@ -410,6 +503,13 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
       return null;
     }
     return this.repo.findUserProfile(normalized);
+  }
+
+  private findActiveDefaultRouteForUser(userId: string): RdTaskSheetDefaultRouteEntity | null {
+    if (!userId) {
+      return null;
+    }
+    return this.repo.findActiveDefaultRouteForIssuer(userId);
   }
 
   private requireCurrentUser(ctx: RequestContext): { id: string; name: string } {

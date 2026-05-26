@@ -86,6 +86,31 @@ CREATE TABLE IF NOT EXISTS rd_task_sheet_logs (
 
 CREATE INDEX IF NOT EXISTS idx_rd_task_sheet_logs_sheet ON rd_task_sheet_logs(sheet_id, created_at);
 
+CREATE TABLE IF NOT EXISTS rd_task_sheet_default_routes (
+  id TEXT PRIMARY KEY,
+  issuer_user_id TEXT,
+  issuer_name TEXT,
+  issuer_department TEXT,
+  receiver_user_id TEXT,
+  receiver_name TEXT,
+  receiver_department TEXT,
+  receiver_phone TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  remark TEXT,
+  sort INTEGER NOT NULL DEFAULT 0,
+  created_by_user_id TEXT,
+  updated_by_user_id TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (issuer_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (receiver_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_rd_task_sheet_default_routes_issuer ON rd_task_sheet_default_routes(issuer_user_id, status, sort);
+CREATE INDEX IF NOT EXISTS idx_rd_task_sheet_default_routes_status ON rd_task_sheet_default_routes(status, sort);
+
 INSERT OR IGNORE INTO system_permissions (
   id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at
 )

@@ -69,21 +69,30 @@ type ConvertKind = 'rd' | 'issue';
             />
 
             <div class="drawer-content__layout">
-              <div class="drawer-content__main">
-                <app-rd-task-sheet-markdown-panel title="业务描述" [content]="current.businessDescription" />
-                <app-rd-task-sheet-markdown-panel title="交付 / 答复内容" [content]="current.deliveryContent" emptyText="暂无回复" />
-                <app-rd-task-sheet-attachments-panel
-                  [detail]="current"
-                  [busy]="busy()"
-                  (upload)="upload.emit($event)"
-                  (detach)="detach.emit($event)"
-                />
-                <app-rd-task-sheet-logs-panel [logs]="current.logs" />
-              </div>
-
-              <div class="drawer-content__side">
-                <app-rd-task-sheet-props-panel [detail]="current" [projects]="projects()" />
-              </div>
+              <app-rd-task-sheet-props-panel
+                class="drawer-content__panel drawer-content__panel--wide"
+                [detail]="current"
+                [projects]="projects()"
+              />
+              <app-rd-task-sheet-markdown-panel
+                class="drawer-content__panel"
+                title="业务描述"
+                [content]="current.businessDescription"
+              />
+              <app-rd-task-sheet-attachments-panel
+                class="drawer-content__panel"
+                [detail]="current"
+                [busy]="busy()"
+                (upload)="upload.emit($event)"
+                (detach)="detach.emit($event)"
+              />
+              <app-rd-task-sheet-markdown-panel
+                class="drawer-content__panel"
+                title="交付 / 答复内容"
+                [content]="current.deliveryContent"
+                emptyText="暂无回复"
+              />
+              <app-rd-task-sheet-logs-panel class="drawer-content__panel" [logs]="current.logs" />
             </div>
           </div>
         }
@@ -147,15 +156,16 @@ type ConvertKind = 'rd' | 'issue';
       }
       .drawer-content__layout {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 320px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 16px;
         align-items: start;
       }
-      .drawer-content__main,
-      .drawer-content__side {
+      .drawer-content__panel {
         min-width: 0;
-        display: grid;
-        gap: 14px;
+        display: block;
+      }
+      .drawer-content__panel--wide {
+        grid-column: 1 / -1;
       }
       @media (max-width: 900px) {
         .drawer-content__layout {

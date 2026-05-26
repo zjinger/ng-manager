@@ -12,6 +12,7 @@ function main() {
     db.pragma("foreign_keys = OFF");
 
     db.transaction(() => {
+      db.prepare("DROP TABLE IF EXISTS rd_task_sheet_default_routes").run();
       db.prepare("DROP TABLE IF EXISTS rd_task_sheet_logs").run();
       db.prepare("DROP TABLE IF EXISTS rd_task_sheet_attachments").run();
       db.prepare("DROP TABLE IF EXISTS rd_task_sheets").run();
@@ -37,7 +38,7 @@ function main() {
         {
           dbPath: config.dbPath,
           resetMigration: MIGRATION_NAME,
-          droppedTables: ["rd_task_sheet_logs", "rd_task_sheet_attachments", "rd_task_sheets"],
+          droppedTables: ["rd_task_sheet_default_routes", "rd_task_sheet_logs", "rd_task_sheet_attachments", "rd_task_sheets"],
           removedPermissions: PERMISSION_CODES
         },
         null,

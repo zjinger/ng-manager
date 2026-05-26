@@ -1,27 +1,39 @@
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzTooltipDirective } from 'ng-zorro-antd/tooltip';
+import type { NzUploadFile, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
+import { NzUploadModule } from 'ng-zorro-antd/upload';
+import { Subscription } from 'rxjs';
 
-import { formatUploadSizeLimit, UPLOAD_TARGETS } from '@shared/constants';
-import { FileUploadDropzoneComponent, PanelCardComponent } from '@shared/ui';
+import { formatUploadSizeLimit, UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
+import { PanelCardComponent } from '@shared/ui';
 import type { RdTaskSheetAttachmentEntity, RdTaskSheetDetail } from '../../models/rd-task-sheet.model';
 
 @Component({
   selector: 'app-rd-task-sheet-attachments-panel',
   standalone: true,
-  imports: [NzButtonModule, PanelCardComponent, FileUploadDropzoneComponent],
+  imports: [NzButtonModule, NzIconModule, NzTooltipDirective, NzUploadModule, PanelCardComponent],
   template: `
     @if (detail(); as current) {
-      <app-panel-card title="附件" [count]="current.attachments.length" [empty]="current.attachments.length === 0 && current.status === 'closed'" [emptyText]="'暂无附件'">
+      <app-panel-card title="附件" [count]="current.attachments.length" [empty]="current.attachments.length === 0" [emptyText]="'当前还没有附件'">
         @if (current.status !== 'closed') {
-          <div class="upload-area">
-            <app-file-upload-dropzone
-              [policy]="uploadPolicy"
-              [files]="uploadFiles()"
-              [disabled]="busy()"
-              [hint]="'支持 Word / PDF / JPG / PNG，单个文件最大 ' + uploadSizeLimit"
-              (filesChange)="handleUploadFiles($event)"
-            />
-          </div>
+          <nz-upload
+            panel-actions
+            class="upload-btn"
+            [nzShowUploadList]="false"
+            [nzDisabled]="busy()"
+            [nzMultiple]="false"
+            [nzAccept]="uploadPolicy.accept"
+            [nzBeforeUpload]="beforeUpload"
+            [nzCustomRequest]="customRequest"
+          >
+            <button nz-button [disabled]="busy()" [nz-tooltip]="'支持 Word / PDF / JPG / PNG，单个文件最大 ' + uploadSizeLimit">
+              <span nz-icon nzType="upload"></span>
+              上传
+            </button>
+          </nz-upload>
         }
         @if (current.attachments.length > 0) {
           <div class="attachment-list">
@@ -43,9 +55,10 @@ import type { RdTaskSheetAttachmentEntity, RdTaskSheetDetail } from '../../model
   `,
   styles: [
     `
-      .upload-area {
-        padding: 16px;
-        border-bottom: 1px solid var(--border-color-soft);
+      .upload-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
       .attachment-list {
         display: grid;
@@ -77,6 +90,8 @@ import type { RdTaskSheetAttachmentEntity, RdTaskSheetDetail } from '../../model
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RdTaskSheetAttachmentsPanelComponent {
+  private readonly message = inject(NzMessageService);
+
   readonly detail = input<RdTaskSheetDetail | null>(null);
   readonly busy = input(false);
   readonly upload = output<File[]>();
@@ -84,14 +99,26 @@ export class RdTaskSheetAttachmentsPanelComponent {
 
   readonly uploadPolicy = UPLOAD_TARGETS.taskSheetAttachment;
   readonly uploadSizeLimit = formatUploadSizeLimit(this.uploadPolicy);
-  readonly uploadFiles = signal<File[]>([]);
 
-  handleUploadFiles(files: File[]): void {
-    this.uploadFiles.set(files);
-    if (files.length > 0) {
-      this.upload.emit(files);
+  readonly beforeUpload = (file: NzUploadFile): boolean => {
+    const rawFile = this.toRawFile(file);
+    if (!rawFile) {
+      this.message.warning('文件读取失败，请重试');
+      return false;
     }
-  }
+    const validationMessage = validateUploadFile(rawFile, this.uploadPolicy);
+    if (validationMessage) {
+      this.message.warning(validationMessage);
+      return false;
+    }
+    this.upload.emit([rawFile]);
+    return false;
+  };
+
+  readonly customRequest = (item: NzUploadXHRArgs): Subscription => {
+    item.onSuccess?.({}, item.file, item);
+    return new Subscription();
+  };
 
   attachmentUrl(uploadId: string): string {
     return `/api/admin/uploads/${encodeURIComponent(uploadId)}/raw`;
@@ -105,5 +132,15 @@ export class RdTaskSheetAttachmentsPanelComponent {
       return `${Math.round(size / 1024)}KB`;
     }
     return `${(size / 1024 / 1024).toFixed(1)}MB`;
+  }
+
+  private toRawFile(file: NzUploadFile): File | null {
+    if (file.originFileObj instanceof File) {
+      return file.originFileObj;
+    }
+    if (file instanceof File) {
+      return file;
+    }
+    return null;
   }
 }

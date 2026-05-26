@@ -93,6 +93,23 @@ function createDb() {
       meta_json TEXT,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE rd_task_sheet_default_routes (
+      id TEXT PRIMARY KEY,
+      issuer_user_id TEXT,
+      issuer_name TEXT,
+      issuer_department TEXT,
+      receiver_user_id TEXT,
+      receiver_name TEXT,
+      receiver_department TEXT,
+      receiver_phone TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      remark TEXT,
+      sort INTEGER NOT NULL DEFAULT 0,
+      created_by_user_id TEXT,
+      updated_by_user_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_creator", "creator", "发起人", "active");
   db.prepare("INSERT INTO users (id, username, display_name, status) VALUES (?, ?, ?, ?)").run("usr_receiver", "receiver", "接收人", "active");
@@ -250,6 +267,28 @@ describe("RdTaskSheetService", () => {
     }
   });
 
+  it("keeps manager related scope separate from all task sheets", async () => {
+    const db = createDb();
+    try {
+      const svc = service(db, {
+        usr_creator: ["prj_1"],
+        usr_other: ["prj_1"]
+      });
+      await svc.create({ title: "无关任务", businessDescription: "A" }, ctx("usr_creator"));
+      await svc.create({ title: "接收任务", receiverUserId: "usr_other", businessDescription: "B" }, ctx("usr_creator"));
+      await svc.create({ projectId: "prj_1", title: "项目任务", businessDescription: "C" }, ctx("usr_creator"));
+
+      const managerCtx = ctx("usr_other", ["task_sheet.manage", "task_sheet.view.self"]);
+      const related = await svc.list({ scope: "related" }, managerCtx);
+      assert.deepEqual(new Set(related.items.map((item) => item.title)), new Set(["接收任务", "项目任务"]));
+
+      const all = await svc.list({ scope: "all" }, managerCtx);
+      assert.deepEqual(new Set(all.items.map((item) => item.title)), new Set(["无关任务", "接收任务", "项目任务"]));
+    } finally {
+      db.close();
+    }
+  });
+
   it("supports attachment removal and task sheet upload policy", async () => {
     const db = createDb();
     try {
@@ -283,6 +322,55 @@ describe("RdTaskSheetService", () => {
           ),
         /仅支持 Word \/ PDF \/ JPG \/ PNG/
       );
+    } finally {
+      db.close();
+    }
+  });
+
+  it("allows managers to maintain default routes and submitters to read their own route", async () => {
+    const db = createDb();
+    try {
+      const svc = service(db);
+      const managerCtx = ctx("usr_creator", ["task_sheet.manage"]);
+      const route = await svc.createDefaultRoute(
+        {
+          issuerUserId: "usr_creator",
+          issuerDepartment: "天元海研发一部",
+          receiverUserId: "usr_receiver",
+          receiverDepartment: "深蓝信息",
+          receiverPhone: "13543006443",
+          sort: 5
+        },
+        managerCtx
+      );
+      assert.equal(route.issuerName, "发起人");
+      assert.equal(route.receiverName, "接收人");
+      assert.equal(route.receiverPhone, "13543006443");
+
+      const ownRoute = await svc.getMyDefaultRoute(ctx("usr_creator"));
+      assert.equal(ownRoute?.id, route.id);
+      assert.equal((await svc.getMyDefaultRoute(ctx("usr_other"))), null);
+
+      const updated = await svc.updateDefaultRoute(route.id, { receiverName: "外部接收人", receiverUserId: null }, managerCtx);
+      assert.equal(updated.receiverUserId, null);
+      assert.equal(updated.receiverName, "外部接收人");
+
+      await svc.deleteDefaultRoute(route.id, managerCtx);
+      assert.equal((await svc.getMyDefaultRoute(ctx("usr_creator"))), null);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("rejects default route maintenance without task sheet manage permission", async () => {
+    const db = createDb();
+    try {
+      const svc = service(db);
+      await assert.rejects(
+        () => svc.createDefaultRoute({ issuerUserId: "usr_creator", receiverName: "接收人" }, ctx("usr_creator")),
+        /forbidden/
+      );
+      await assert.rejects(() => svc.listDefaultRoutes({}, ctx("usr_creator")), /forbidden/);
     } finally {
       db.close();
     }

@@ -2,6 +2,9 @@ import type Database from "better-sqlite3";
 import { normalizePage } from "../../shared/http/pagination";
 import type {
   ListRdTaskSheetsQuery,
+  ListRdTaskSheetDefaultRoutesQuery,
+  RdTaskSheetDefaultRouteEntity,
+  RdTaskSheetDefaultRouteStatus,
   RdTaskSheetAction,
   RdTaskSheetAttachmentEntity,
   RdTaskSheetBusinessType,
@@ -80,6 +83,24 @@ type LogRow = {
   created_at: string;
 };
 
+type DefaultRouteRow = {
+  id: string;
+  issuer_user_id: string | null;
+  issuer_name: string | null;
+  issuer_department: string | null;
+  receiver_user_id: string | null;
+  receiver_name: string | null;
+  receiver_department: string | null;
+  receiver_phone: string | null;
+  status: RdTaskSheetDefaultRouteStatus;
+  remark: string | null;
+  sort: number;
+  created_by_user_id: string | null;
+  updated_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type CreateTaskSheetRowInput = Omit<RdTaskSheetEntity, "attachments" | "logs">;
 
 export type UpdateTaskSheetRowInput = Partial<{
@@ -127,6 +148,23 @@ export interface ListVisibilityInput {
   canManage: boolean;
 }
 
+export type CreateDefaultRouteRowInput = RdTaskSheetDefaultRouteEntity;
+
+export type UpdateDefaultRouteRowInput = Partial<{
+  issuer_user_id: string | null;
+  issuer_name: string | null;
+  issuer_department: string | null;
+  receiver_user_id: string | null;
+  receiver_name: string | null;
+  receiver_department: string | null;
+  receiver_phone: string | null;
+  status: RdTaskSheetDefaultRouteStatus;
+  remark: string | null;
+  sort: number;
+  updated_by_user_id: string | null;
+  updated_at: string;
+}>;
+
 export class RdTaskSheetRepo {
   constructor(private readonly db: Database.Database) {}
 
@@ -159,6 +197,93 @@ export class RdTaskSheetRepo {
       .prepare("SELECT id, username, display_name FROM users WHERE id = ? AND status = 'active'")
       .get(userId) as { id: string; username: string; display_name: string | null } | undefined;
     return row ? { id: row.id, username: row.username, displayName: row.display_name } : null;
+  }
+
+  listDefaultRoutes(query: ListRdTaskSheetDefaultRoutesQuery = {}): RdTaskSheetDefaultRouteEntity[] {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    if (query.status) {
+      conditions.push("status = ?");
+      params.push(query.status);
+    }
+    if (query.keyword?.trim()) {
+      const keyword = `%${query.keyword.trim()}%`;
+      conditions.push(`(
+        issuer_name LIKE ? OR issuer_department LIKE ? OR receiver_name LIKE ? OR
+        receiver_department LIKE ? OR receiver_phone LIKE ? OR remark LIKE ?
+      )`);
+      params.push(keyword, keyword, keyword, keyword, keyword, keyword);
+    }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const rows = this.db
+      .prepare(`SELECT * FROM rd_task_sheet_default_routes ${whereClause} ORDER BY sort ASC, updated_at DESC`)
+      .all(...params) as DefaultRouteRow[];
+    return rows.map((row) => this.mapDefaultRoute(row));
+  }
+
+  createDefaultRoute(entity: CreateDefaultRouteRowInput): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO rd_task_sheet_default_routes (
+            id, issuer_user_id, issuer_name, issuer_department,
+            receiver_user_id, receiver_name, receiver_department, receiver_phone,
+            status, remark, sort, created_by_user_id, updated_by_user_id, created_at, updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        entity.id,
+        entity.issuerUserId,
+        entity.issuerName,
+        entity.issuerDepartment,
+        entity.receiverUserId,
+        entity.receiverName,
+        entity.receiverDepartment,
+        entity.receiverPhone,
+        entity.status,
+        entity.remark,
+        entity.sort,
+        entity.createdByUserId,
+        entity.updatedByUserId,
+        entity.createdAt,
+        entity.updatedAt
+      );
+  }
+
+  updateDefaultRoute(id: string, input: UpdateDefaultRouteRowInput): boolean {
+    const entries = Object.entries(input);
+    if (entries.length === 0) {
+      return false;
+    }
+    const assignments = entries.map(([key]) => `${key} = ?`).join(", ");
+    const params = entries.map(([, value]) => value);
+    return this.db.prepare(`UPDATE rd_task_sheet_default_routes SET ${assignments} WHERE id = ?`).run(...params, id).changes > 0;
+  }
+
+  deleteDefaultRoute(id: string): boolean {
+    return this.db.prepare("DELETE FROM rd_task_sheet_default_routes WHERE id = ?").run(id).changes > 0;
+  }
+
+  findDefaultRouteById(id: string): RdTaskSheetDefaultRouteEntity | null {
+    const row = this.db.prepare("SELECT * FROM rd_task_sheet_default_routes WHERE id = ?").get(id) as DefaultRouteRow | undefined;
+    return row ? this.mapDefaultRoute(row) : null;
+  }
+
+  findActiveDefaultRouteForIssuer(issuerUserId: string): RdTaskSheetDefaultRouteEntity | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT *
+          FROM rd_task_sheet_default_routes
+          WHERE status = 'active' AND issuer_user_id = ?
+          ORDER BY sort ASC, updated_at DESC
+          LIMIT 1
+        `
+      )
+      .get(issuerUserId) as DefaultRouteRow | undefined;
+    return row ? this.mapDefaultRoute(row) : null;
   }
 
   create(entity: RdTaskSheetEntity): void {
@@ -450,6 +575,26 @@ export class RdTaskSheetRepo {
       processingStartedAt: row.processing_started_at,
       repliedAt: row.replied_at,
       closedAt: row.closed_at,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private mapDefaultRoute(row: DefaultRouteRow): RdTaskSheetDefaultRouteEntity {
+    return {
+      id: row.id,
+      issuerUserId: row.issuer_user_id,
+      issuerName: row.issuer_name,
+      issuerDepartment: row.issuer_department,
+      receiverUserId: row.receiver_user_id,
+      receiverName: row.receiver_name,
+      receiverDepartment: row.receiver_department,
+      receiverPhone: row.receiver_phone,
+      status: row.status,
+      remark: row.remark,
+      sort: row.sort,
+      createdByUserId: row.created_by_user_id,
+      updatedByUserId: row.updated_by_user_id,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
