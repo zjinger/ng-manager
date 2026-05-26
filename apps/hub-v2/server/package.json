@@ -22,7 +22,8 @@
     "db:verify:from-v1": "tsx src/db/migrate-from-v1.verify.ts",
     "project:normalize-display-code": "tsx src/scripts/normalize-project-display-code.ts",
     "project:normalize-display-code:dist": "node dist/scripts/normalize-project-display-code.js",
-    "rbac:audit": "tsx src/scripts/audit-rbac-consistency.ts"
+    "rbac:audit": "tsx src/scripts/audit-rbac-consistency.ts",
+    "rbac:cleanup-legacy-member-bindings": "node scripts/cleanup-legacy-rbac-member-bindings.cjs"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
