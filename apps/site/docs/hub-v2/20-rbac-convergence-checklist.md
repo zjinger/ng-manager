@@ -19,11 +19,11 @@
 ### A1. 数据一致性（强制）
 
 [x] 1. `admin_accounts.user_id` 全量补齐，禁止空值新增。  
-[x] 2. 启动时执行一次“账号-用户绑定 + 平台角色同步”自愈。  
+[x] 2. 启动时执行一次“账号-用户绑定 + 初始化超管角色”自愈。  
 [x] 3. 增加巡检 SQL（发布前/日常巡检）：
    - 查空绑定账号
    - 查无角色用户
-   - 查无平台角色用户（`super_admin/admin/member`）
+   - 查初始化超管是否具备 `super_admin`
 
 ### A2. 授权来源收口
 
@@ -74,7 +74,7 @@
 
 [x] 1. 删除所有基于 `finance_approver_user_id` 的残留逻辑。  
 [x] 2. 删除基于 `admin_accounts.role` 的授权判断逻辑。  
-[x] 3. 保留最小兼容映射脚本用于历史库修复（平台角色同步与巡检脚本保留）。
+[x] 3. 保留巡检脚本用于历史库修复；`admin_accounts.role` 不再自动映射平台角色。
 
 ---
 
@@ -94,14 +94,14 @@ WHERE a.user_id IS NOT NULL
 GROUP BY a.id, a.username, a.user_id
 HAVING COUNT(ur.role_id) = 0;
 
--- 3) 账号绑定 user 后，缺少平台角色（super_admin/admin/member）
+-- 3) 初始化管理员是否具备 super_admin
 SELECT a.id AS account_id, a.username, a.user_id, GROUP_CONCAT(sr.code) AS role_codes
 FROM admin_accounts a
 LEFT JOIN user_system_roles ur ON ur.user_id = a.user_id
 LEFT JOIN system_roles sr ON sr.id = ur.role_id
-WHERE a.user_id IS NOT NULL
+WHERE a.username = :INIT_ADMIN_USERNAME AND a.user_id IS NOT NULL
 GROUP BY a.id, a.username, a.user_id
-HAVING SUM(CASE WHEN sr.code IN ('super_admin', 'admin', 'member') THEN 1 ELSE 0 END) = 0;
+HAVING SUM(CASE WHEN sr.code = 'super_admin' THEN 1 ELSE 0 END) = 0;
 ```
 
 ---
@@ -217,3 +217,4 @@ HAVING SUM(CASE WHEN sr.code IN ('super_admin', 'admin', 'member') THEN 1 ELSE 0
 
 - 结论
   - `admin_accounts.role` 已降级为登录分组字段，不再驱动 `user_system_roles` 自动同步；系统角色以显式 RBAC 绑定为准。
+  - 开发期重置/种子脚本仅允许在非生产环境执行；正式环境禁止运行 `db:seed`、`db:reset:*`、`db:reseed:user-departments` 这类会写入演示数据或重建授权数据的脚本。

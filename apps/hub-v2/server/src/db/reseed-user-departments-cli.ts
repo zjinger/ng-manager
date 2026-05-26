@@ -1,5 +1,6 @@
 import { loadMigrationEnv } from "../shared/env/env";
 import { createSqliteDatabase } from "../shared/db/sqlite";
+import { assertNonProductionScript } from "./production-guard";
 
 type Mode = "append" | "replace";
 
@@ -66,6 +67,7 @@ function parseMode(argv: string[]): Mode {
 function main() {
   const mode = parseMode(process.argv.slice(2));
   const config = loadMigrationEnv();
+  assertNonProductionScript("reseed-user-departments");
   const db = createSqliteDatabase(config);
 
   const findUserId = db.prepare("SELECT id FROM users WHERE username = ? LIMIT 1");

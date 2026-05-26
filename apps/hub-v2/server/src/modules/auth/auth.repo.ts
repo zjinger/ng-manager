@@ -210,6 +210,18 @@ export class AuthRepo {
       .run(passwordHash, updatedAt, id);
   }
 
+  updateMustChangePassword(id: string, mustChangePassword: boolean, updatedAt: string): void {
+    this.db
+      .prepare(
+        `
+          UPDATE admin_accounts
+          SET must_change_password = ?, updated_at = ?
+          WHERE id = ?
+        `
+      )
+      .run(mustChangePassword ? 1 : 0, updatedAt, id);
+  }
+
   updateAvatar(id: string, avatarUploadId: string | null, updatedAt: string): void {
     if (!this.hasAvatarUploadColumn) {
       this.db

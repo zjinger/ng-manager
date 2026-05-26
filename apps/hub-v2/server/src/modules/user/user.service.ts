@@ -6,7 +6,6 @@ import { hashPassword } from "../../shared/utils/password";
 import { nowIso } from "../../shared/utils/time";
 import { AuthRepo } from "../auth/auth.repo";
 import { OrganizationService } from "../organization/organization.service";
-import { PlatformRoleSyncService } from "../system-rbac/platform-role-sync.service";
 import { OrganizationTitleService } from "../organization-title/organization-title.service";
 import { ProjectTitleService } from "../project-title/project-title.service";
 import type { AuditLogCommandContract } from "../audit-log/audit-log.contract";
@@ -29,7 +28,6 @@ export class UserService implements UserCommandContract, UserQueryContract {
     private readonly repo: UserRepo,
     private readonly authRepo: AuthRepo,
     private readonly organization: OrganizationService,
-    private readonly platformRoleSync: PlatformRoleSyncService,
     private readonly organizationTitleService: OrganizationTitleService,
     private readonly projectTitleService: ProjectTitleService,
     private readonly auditLog?: AuditLogCommandContract
@@ -61,6 +59,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
       avatarUploadId: null,
       avatarUrl: null,
       loginEnabled,
+      mustChangePassword: loginEnabled,
       status,
       source: "local",
       remark: input.remark?.trim() || null,
@@ -89,7 +88,6 @@ export class UserService implements UserCommandContract, UserQueryContract {
         createdAt: now,
         updatedAt: now
       });
-      this.platformRoleSync.syncFromLegacyRole(entity.id, "user", now);
     }
 
     this.auditLog?.record(
@@ -135,8 +133,10 @@ export class UserService implements UserCommandContract, UserQueryContract {
     this.validateDefaultProjectTitleCode(input.defaultProjectTitleCode);
     this.validateUserReference(input.managerUserId, "manager user", id);
 
+    const account = this.authRepo.findByUserId(user.id) ?? this.authRepo.findByUsername(user.username);
     const nextStatus = input.status ?? user.status;
     const nextLoginEnabled = nextStatus === "active" && (input.loginEnabled === undefined ? user.loginEnabled : input.loginEnabled);
+    const nextMustChangePassword = input.mustChangePassword ?? (nextLoginEnabled && !account ? true : user.mustChangePassword);
     const updated: UserEntity = {
       ...user,
       displayName: input.displayName === undefined ? user.displayName : input.displayName?.trim() || null,
@@ -148,6 +148,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
         input.defaultProjectTitleCode === undefined ? user.defaultProjectTitleCode : input.defaultProjectTitleCode?.trim() || null,
       defaultProjectTitleName: input.defaultProjectTitleCode === undefined ? user.defaultProjectTitleName : null,
       loginEnabled: nextLoginEnabled,
+      mustChangePassword: nextMustChangePassword,
       status: nextStatus,
       remark: input.remark === undefined ? user.remark : input.remark?.trim() || null,
       managerUserId: input.managerUserId === undefined ? user.managerUserId : input.managerUserId?.trim() || null,
@@ -155,7 +156,6 @@ export class UserService implements UserCommandContract, UserQueryContract {
       updatedAt: nowIso()
     };
 
-    const account = this.authRepo.findByUserId(user.id) ?? this.authRepo.findByUsername(user.username);
     if (updated.loginEnabled) {
       if (!account) {
         this.authRepo.create({
@@ -166,19 +166,21 @@ export class UserService implements UserCommandContract, UserQueryContract {
           nickname: updated.displayName || user.username,
           role: "user",
           status: updated.status,
-          mustChangePassword: true,
+          mustChangePassword: updated.mustChangePassword,
           lastLoginAt: null,
           createdAt: updated.updatedAt,
           updatedAt: updated.updatedAt
         });
-        this.platformRoleSync.syncFromLegacyRole(user.id, "user", updated.updatedAt);
       } else if (account.status !== "active") {
         this.authRepo.updateStatus(account.id, "active", updated.updatedAt);
-        this.platformRoleSync.syncFromLegacyRole(user.id, account.role, updated.updatedAt);
+        if (input.mustChangePassword !== undefined) {
+          this.authRepo.updateMustChangePassword(account.id, input.mustChangePassword, updated.updatedAt);
+        }
+      } else if (input.mustChangePassword !== undefined) {
+        this.authRepo.updateMustChangePassword(account.id, input.mustChangePassword, updated.updatedAt);
       }
     } else if (account && account.status !== "inactive") {
       this.authRepo.updateStatus(account.id, "inactive", updated.updatedAt);
-      this.platformRoleSync.syncFromLegacyRole(user.id, account.role, updated.updatedAt);
     }
 
     this.repo.update(id, updated, updated.updatedAt);
@@ -241,10 +243,8 @@ export class UserService implements UserCommandContract, UserQueryContract {
         createdAt: now,
         updatedAt: now
       });
-      this.platformRoleSync.syncFromLegacyRole(user.id, "user", now);
     } else {
       this.authRepo.resetPassword(account.id, passwordHash, now);
-      this.platformRoleSync.syncFromLegacyRole(user.id, account.role, now);
     }
 
     this.auditLog?.record(
@@ -285,6 +285,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
       | "organizationTitleCode"
       | "defaultProjectTitleCode"
       | "loginEnabled"
+      | "mustChangePassword"
       | "status"
       | "remark"
       | "managerUserId"
@@ -295,6 +296,7 @@ export class UserService implements UserCommandContract, UserQueryContract {
       "organizationTitleCode",
       "defaultProjectTitleCode",
       "loginEnabled",
+      "mustChangePassword",
       "status",
       "remark",
       "managerUserId"

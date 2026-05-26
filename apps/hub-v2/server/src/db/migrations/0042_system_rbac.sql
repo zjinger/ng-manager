@@ -140,17 +140,6 @@ WHERE aa.role = 'admin'
   AND aa.user_id IS NOT NULL
   AND lower(trim(aa.username)) = 'admin';
 
-INSERT OR IGNORE INTO user_system_roles (id, user_id, role_id, created_at)
-SELECT 'usr_member_' || aa.user_id, aa.user_id, 'srole_member', datetime('now')
-FROM admin_accounts aa
-WHERE aa.role = 'user'
-  AND aa.user_id IS NOT NULL
-  AND NOT EXISTS (
-    SELECT 1
-    FROM user_system_roles usr
-    WHERE usr.user_id = aa.user_id
-  );
-
 -- Clean up old tables
 DROP TABLE IF EXISTS user_finance_roles;
 DROP TABLE IF EXISTS finance_roles;

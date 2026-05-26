@@ -26,6 +26,7 @@ export const updateUserSchema = z.object({
   status: z.enum(["active", "inactive"]).optional(),
   remark: z.string().trim().nullable().optional(),
   loginEnabled: z.boolean().optional(),
+  mustChangePassword: z.boolean().optional(),
   departments: z.array(userDepartmentSchema).max(1).optional(),
   managerUserId: z.string().trim().nullable().optional()
 });

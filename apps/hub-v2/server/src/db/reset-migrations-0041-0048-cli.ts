@@ -1,5 +1,6 @@
 import { loadMigrationEnv } from "../shared/env/env";
 import { createSqliteDatabase } from "../shared/db/sqlite";
+import { assertNonProductionScript } from "./production-guard";
 
 const MIGRATIONS_TO_RESET = [
   "0041_user_org.sql",
@@ -14,6 +15,7 @@ const MIGRATIONS_TO_RESET = [
 
 function main() {
   const config = loadMigrationEnv();
+  assertNonProductionScript("reset-migrations-0041-0048");
   const db = createSqliteDatabase(config);
 
   try {

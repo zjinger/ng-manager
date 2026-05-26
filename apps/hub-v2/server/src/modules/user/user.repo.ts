@@ -15,6 +15,7 @@ type UserRow = {
   default_project_title_name: string | null;
   avatar_upload_id: string | null;
   login_enabled: number;
+  must_change_password: number | null;
   status: "active" | "inactive";
   source: "local" | "imported";
   remark: string | null;
@@ -49,6 +50,7 @@ export class UserRepo {
             pt.name AS default_project_title_name,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
             CASE WHEN u.status = 'active' AND aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
+            aa.must_change_password,
             u.status,
             u.source,
             u.remark,
@@ -86,6 +88,7 @@ export class UserRepo {
             pt.name AS default_project_title_name,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
             CASE WHEN u.status = 'active' AND aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
+            aa.must_change_password,
             u.status,
             u.source,
             u.remark,
@@ -209,6 +212,7 @@ export class UserRepo {
             pt.name AS default_project_title_name,
             ${this.hasAdminAvatarColumn ? "aa.avatar_upload_id" : "NULL AS avatar_upload_id"},
             CASE WHEN u.status = 'active' AND aa.id IS NOT NULL AND aa.status = 'active' THEN 1 ELSE 0 END AS login_enabled,
+            aa.must_change_password,
             u.status,
             u.source,
             u.remark,
@@ -260,6 +264,7 @@ export class UserRepo {
       avatarUploadId: row.avatar_upload_id ?? null,
       avatarUrl: row.avatar_upload_id ? `/api/admin/uploads/${row.avatar_upload_id}/raw` : null,
       loginEnabled: row.login_enabled === 1,
+      mustChangePassword: row.must_change_password === 1,
       status: row.status,
       source: row.source,
       remark: row.remark,

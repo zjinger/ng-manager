@@ -17,6 +17,7 @@ export interface UserEntity {
   avatarUploadId: string | null;
   avatarUrl: string | null;
   loginEnabled: boolean;
+  mustChangePassword: boolean;
   status: UserStatus;
   source: UserSource;
   remark: string | null;
@@ -57,6 +58,7 @@ export interface UpdateUserInput {
   status?: UserStatus;
   remark?: string | null;
   loginEnabled?: boolean;
+  mustChangePassword?: boolean;
   departments?: UserDepartmentInput[];
   managerUserId?: string | null;
 }

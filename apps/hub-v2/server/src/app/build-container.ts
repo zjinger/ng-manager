@@ -86,7 +86,6 @@ import type { SharedConfigCommandContract, SharedConfigQueryContract } from "../
 import { SharedConfigRepo } from "../modules/shared-config/shared-config.repo";
 import { SharedConfigService } from "../modules/shared-config/shared-config.service";
 import type { SystemRbacCommandContract, SystemRbacQueryContract } from "../modules/system-rbac/system-rbac.contract";
-import { PlatformRoleSyncService } from "../modules/system-rbac/platform-role-sync.service";
 import { SystemRbacRepo } from "../modules/system-rbac/system-rbac.repo";
 import { SystemRbacService } from "../modules/system-rbac/system-rbac.service";
 import type { ProjectTitleCommandContract, ProjectTitleQueryContract } from "../modules/project-title/project-title.contract";
@@ -199,7 +198,6 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const authRepo = new AuthRepo(db);
   const auditLogService = new AuditLogService(new AuditLogRepo(db));
   const systemRbacRepo = new SystemRbacRepo(db);
-  const platformRoleSync = new PlatformRoleSyncService(systemRbacRepo);
   const authService = new AuthService(config, authRepo);
   const organizationRepo = new OrganizationRepo(db);
   const organizationService = new OrganizationService(organizationRepo, auditLogService);
@@ -210,7 +208,6 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     userRepo,
     authRepo,
     organizationService,
-    platformRoleSync,
     organizationTitleService,
     projectTitleService,
     auditLogService

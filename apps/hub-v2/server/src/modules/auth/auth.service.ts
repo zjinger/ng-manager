@@ -233,12 +233,6 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
       }
       if (this.isInitAdminUsername(account.username)) {
         this.repo.replacePlatformRoleBindings(userId, "super_admin", now);
-      } else {
-        const roles = this.repo.listUserSystemRoles(userId);
-        const hasPlatformRole = roles.some((role) => role.code === "super_admin" || role.code === "admin" || role.code === "member");
-        if (!hasPlatformRole) {
-          this.repo.ensureSystemRoleBindingByCode(userId, "member", now);
-        }
       }
     }
   }

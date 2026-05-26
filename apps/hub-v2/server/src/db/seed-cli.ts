@@ -5,6 +5,7 @@ import { runMigrations } from "../shared/db/migrate"
 import { createSqliteDatabase } from "../shared/db/sqlite"
 import { loadEnv } from "../shared/env/env"
 import { hashPassword } from "../shared/utils/password"
+import { assertNonProductionScript } from "./production-guard"
 
 type Row = Record<string, string | number | null>
 
@@ -534,6 +535,7 @@ function upsert(db: Database.Database, table: string, row: Row, conflictColumn =
 
 function main() {
   const config = loadEnv()
+  assertNonProductionScript("seed")
   const db = createSqliteDatabase(config)
 
   try {
