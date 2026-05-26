@@ -129,7 +129,7 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
       [empty]="store.items().length === 0"
       loadingText="正在加载任务单..."
       emptyTitle="暂无任务单"
-      emptyDescription="可以新建任务单，或调整筛选条件。"
+      [emptyDescription]="emptyDescription()"
     >
       <div class="task-table">
         <div class="task-table__head">
@@ -446,6 +446,10 @@ export class RdTaskSheetPageComponent implements OnInit {
 
   readonly statusOptions = RD_TASK_SHEET_STATUS_OPTIONS;
   readonly subtitle = computed(() => `共 ${this.store.total()} 张与我有关的任务单，支持关联或不关联项目。`);
+  readonly canSubmitTaskSheet = computed(() => this.authStore.currentUser()?.permissionCodes.includes('task_sheet.submit') === true);
+  readonly emptyDescription = computed(() =>
+    this.canSubmitTaskSheet() ? '可以新建任务单，或调整筛选条件。' : '暂无与你相关的任务单，可调整筛选条件。',
+  );
   readonly dialogBusy = computed(() => this.store.busy() || this.uploading());
   readonly projectFilter = computed(() => {
     const query = this.store.query();
