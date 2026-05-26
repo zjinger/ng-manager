@@ -134,12 +134,13 @@ export const NAV_ITEMS: NavSection[] = [
         route: '/projects',
         permissions: [...PROJECT_GOVERNANCE_PERMISSIONS],
       },
-      {
-        key: 'users',
-        label: '用户管理',
-        icon: 'team',
-        route: '/users',
-      },
+      // 协作平台用户管理入口已收口到 Admin Console；如后续需要只读通讯录，可恢复以下菜单项。
+      // {
+      //   key: 'users',
+      //   label: '用户管理',
+      //   icon: 'team',
+      //   route: '/users',
+      // },
       // { key: 'shared-config', label: '共享配置', icon: 'setting', route: '/shared-config' },
     ],
   },
