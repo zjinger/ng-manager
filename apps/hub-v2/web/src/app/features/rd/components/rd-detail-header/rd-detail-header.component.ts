@@ -48,6 +48,22 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
                 进入下一阶段
               </button>
             }
+            @if (canComplete()) {
+              <button
+                nz-button
+                nzType="primary"
+                class="detail-header__action-btn"
+                [disabled]="busy()"
+                nz-popconfirm
+                [nzPopconfirmTitle]="'确认标记该研发项已完成吗？'"
+                nzPopconfirmPlacement="topRight"
+                nz-tooltip
+                nzTooltipTitle="可在成员进度未全部 100% 时，由执行人或验证人确认完成"
+                (nzOnConfirm)="actionClick.emit('complete')"
+              >
+                标记完成
+              </button>
+            }
             @if (canAccept()) {
               <button
                 nz-button
@@ -55,13 +71,13 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
                 class="detail-header__action-btn"
                 [disabled]="busy()"
                 nz-popconfirm
-                [nzPopconfirmTitle]="'确认该研发项' + currentStageName() + '阶段已完成吗？'"
+                [nzPopconfirmTitle]="'确认验收通过该研发项' + currentStageName() + '阶段吗？'"
                 nzPopconfirmPlacement="topRight"
                 nz-tooltip
-                nzTooltipTitle="当前阶段已完成，可进入下一阶段或结项"
+                nzTooltipTitle="验收通过后，可进入下一阶段或结项"
                 (nzOnConfirm)="actionClick.emit('accept')"
               >
-                标记已完成
+                验收通过
               </button>
             }
             @if (canEditBasic() && current.status !== 'closed') {
@@ -292,10 +308,11 @@ export class RdDetailHeaderComponent {
   readonly busy = input(false);
   readonly canEditBasic = input(false);
   readonly canAdvance = input(false);
+  readonly canComplete = input(false);
   readonly canAccept = input(false);
   readonly canClose = input(false);
 
-  readonly actionClick = output<'advance' | 'accept' | 'close' | 'reopen'>();
+  readonly actionClick = output<'advance' | 'complete' | 'accept' | 'close' | 'reopen'>();
   readonly editClick = output<void>();
 
   readonly statusFlow = computed<Array<{ id: string; label: string; state: 'done' | 'active' | 'pending' }>>(() => {

@@ -16,6 +16,7 @@ import type {
   AdvanceRdStageInput,
   BlockRdItemInput,
   CloseRdItemInput,
+  CreateRdMemberBlockInput,
   CreateRdItemInput,
   CreateRdStageInput,
   ListRdItemsQuery,
@@ -27,11 +28,13 @@ import type {
   RdItemListResult,
   RdItemProgress,
   RdLogEntity,
+  RdMemberBlockEntity,
   RdProgressHistory,
   RdStageHistoryEntry,
   RdStageEntity,
   UpdateRdItemInput,
   UpdateRdItemProgressInput,
+  ResolveRdMemberBlockInput,
   UpdateRdStageInput
 } from "./rd.types";
 
@@ -276,8 +279,10 @@ export class RdService implements RdCommandContract, RdQueryContract {
 
   async complete(id: string, ctx: RequestContext, expectedVersion?: number): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "complete rd item");
-    this.requireAssignee(current, ctx, "complete rd item");
+    this.requireCompleteAccess(current, ctx, "complete rd item");
     const now = nowIso();
+    const byVerifier = this.isVerifier(current, ctx);
+    const progressSummary = await this.createMemberProgressSummary(current);
     return this.applyAction(
       id,
       "complete",
@@ -288,7 +293,9 @@ export class RdService implements RdCommandContract, RdQueryContract {
         progress: 100,
         blocker_reason: null
       },
-      "标记研发项完成",
+      byVerifier
+        ? `验证人标记完成${progressSummary ? `；成员进度：${progressSummary}` : ""}`
+        : "标记研发项完成",
       now,
       expectedVersion
     );
@@ -572,6 +579,19 @@ export class RdService implements RdCommandContract, RdQueryContract {
     }
   }
 
+  private requireCompleteAccess(item: RdItemEntity, ctx: RequestContext, action: string): void {
+    if (this.isVerifier(item, ctx)) {
+      return;
+    }
+    throw new AppError(ERROR_CODES.RD_PROGRESS_FORBIDDEN, `${action} forbidden`, 403);
+  }
+
+  private isVerifier(item: Pick<RdItemEntity, "verifierId" | "creatorId">, ctx: RequestContext): boolean {
+    const userId = ctx.userId?.trim();
+    const effectiveVerifierId = this.getEffectiveVerifierId(item);
+    return !!userId && !!effectiveVerifierId && effectiveVerifierId === userId;
+  }
+
   private async requireBlockAccess(item: RdItemEntity, ctx: RequestContext, action: string): Promise<void> {
     const userId = ctx.userId?.trim();
     if (!userId) {
@@ -661,6 +681,18 @@ export class RdService implements RdCommandContract, RdQueryContract {
       }
     }
     return names;
+  }
+
+  private async createMemberProgressSummary(item: RdItemEntity): Promise<string> {
+    const memberIds = this.collectEffectiveMemberIds(item.memberIds, item.assigneeId);
+    if (memberIds.length === 0) {
+      return "";
+    }
+    const names = await this.resolveMemberNamesFallback(item.projectId, memberIds);
+    const progressByUser = new Map(this.repo.listProgressByItemId(item.id).map((row) => [row.user_id, row.progress]));
+    return memberIds
+      .map((memberId, index) => `${names[index] || memberId} ${progressByUser.get(memberId) ?? 0}%`)
+      .join("、");
   }
 
   private async applyAction(
@@ -766,25 +798,48 @@ export class RdService implements RdCommandContract, RdQueryContract {
 
     const existing = this.repo.getProgressByItemAndUser(id, userId);
     const oldProgress = existing?.progress ?? 0;
+    const nextNote = input.note?.trim() || null;
+    const currentNote = existing?.note?.trim() || null;
+    const blockReason = input.blockReason?.trim() || null;
+    const resolveBlockId = input.resolveBlockId?.trim() || null;
+    if (blockReason && resolveBlockId) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "cannot block and resolve member block in one request", 400);
+    }
+    const progressChanged = oldProgress !== input.progress || currentNote !== nextNote;
+    if (resolveBlockId) {
+      const block = this.repo.findMemberBlockById(resolveBlockId);
+      if (!block || block.itemId !== item.id) {
+        throw new AppError(ERROR_CODES.RD_ITEM_NOT_FOUND, "rd member block not found", 404);
+      }
+      if (block.userId !== userId) {
+        throw new AppError(ERROR_CODES.RD_BLOCK_FORBIDDEN, "resolve rd member block forbidden", 403);
+      }
+    }
 
-    this.repo.upsertProgress({
-      id: existing ? existing.id : genId("rdp"),
-      item_id: id,
-      user_id: userId,
-      progress: input.progress,
-      note: input.note || null,
-      updated_at: now
-    });
+    if (!progressChanged && !blockReason && !resolveBlockId) {
+      return item;
+    }
 
-    this.repo.createProgressHistory({
-      id: genId("rdph"),
-      item_id: id,
-      user_id: userId,
-      old_progress: oldProgress,
-      new_progress: input.progress,
-      note: input.note || null,
-      created_at: now
-    });
+    if (progressChanged) {
+      this.repo.upsertProgress({
+        id: existing ? existing.id : genId("rdp"),
+        item_id: id,
+        user_id: userId,
+        progress: input.progress,
+        note: nextNote,
+        updated_at: now
+      });
+
+      this.repo.createProgressHistory({
+        id: genId("rdph"),
+        item_id: id,
+        user_id: userId,
+        old_progress: oldProgress,
+        new_progress: input.progress,
+        note: nextNote,
+        created_at: now
+      });
+    }
 
     const allProgressRows = this.repo.listProgressByItemId(id);
     const progressByUser = new Map(allProgressRows.map((row) => [row.user_id, row.progress]));
@@ -824,19 +879,160 @@ export class RdService implements RdCommandContract, RdQueryContract {
     }
 
     const updatedItem = this.requireItem(id);
-    const progressNote = input.note?.trim();
+    const blockLogContent = await this.applyProgressMemberBlockChange(updatedItem, userId, blockReason, resolveBlockId, ctx);
+    const progressNote = nextNote;
     const isStartProcessing = oldProgress <= 0 && input.progress > 0;
-    const progressLogContent = isStartProcessing
-      ? (progressNote
-          ? `开始处理；进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
-          : `开始处理；进度: ${oldProgress}% -> ${input.progress}%`)
-      : (progressNote
-          ? `更新个人进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
-          : `更新个人进度: ${oldProgress}% -> ${input.progress}%`);
-    this.repo.createLog(this.createLog(updatedItem, "update", ctx, progressLogContent));
-    const eventAction = previousStatus !== "done" && updatedItem.status === "done" ? "complete" : "update_progress";
+    const progressLogContent = progressChanged
+      ? (isStartProcessing
+          ? (progressNote
+              ? `开始处理；进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
+              : `开始处理；进度: ${oldProgress}% -> ${input.progress}%`)
+          : (progressNote
+              ? `更新个人进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
+              : `更新个人进度: ${oldProgress}% -> ${input.progress}%`))
+      : "";
+    const logContent = [progressLogContent, blockLogContent].filter(Boolean).join("；");
+    this.repo.createLog(this.createLog(updatedItem, "update", ctx, logContent || "更新个人进度"));
+    const memberBlockEventAction = resolveBlockId ? "resume" : (blockReason ? "block" : "");
+    const eventAction = previousStatus !== "done" && updatedItem.status === "done" ? "complete" : (memberBlockEventAction || "update_progress");
     await this.emitRdEvent("rd.updated", eventAction, updatedItem, ctx);
     return updatedItem;
+  }
+
+  private async applyProgressMemberBlockChange(
+    item: RdItemEntity,
+    userId: string,
+    blockReason: string | null,
+    resolveBlockId: string | null,
+    ctx: RequestContext
+  ): Promise<string> {
+    if (resolveBlockId) {
+      const block = this.repo.findMemberBlockById(resolveBlockId);
+      if (!block || block.itemId !== item.id) {
+        throw new AppError(ERROR_CODES.RD_ITEM_NOT_FOUND, "rd member block not found", 404);
+      }
+      if (block.userId !== userId) {
+        throw new AppError(ERROR_CODES.RD_BLOCK_FORBIDDEN, "resolve rd member block forbidden", 403);
+      }
+      if (block.status !== "active") {
+        return "";
+      }
+      const resolved = this.repo.resolveMemberBlock(block.id, {
+        resolved_at: nowIso(),
+        resolved_by_id: userId || ctx.accountId,
+        resolved_by_name: ctx.nickname?.trim() || userId || ctx.accountId,
+        resolve_note: null,
+      });
+      if (!resolved) {
+        throw new AppError(ERROR_CODES.RD_ACTION_FAILED, "failed to resolve rd member block", 500);
+      }
+      return "解除阻塞";
+    }
+
+    if (!blockReason) {
+      return "";
+    }
+    const active = this.repo.findActiveMemberBlock(item.id, userId);
+    if (active) {
+      return "";
+    }
+    const member = await this.projectAccess.requireProjectMember(item.projectId, userId, "create rd member block");
+    this.repo.createMemberBlock({
+      id: genId("rdmb"),
+      project_id: item.projectId,
+      item_id: item.id,
+      user_id: member.userId,
+      user_name: member.displayName,
+      reason: blockReason,
+      status: "active",
+      blocked_at: nowIso(),
+      resolved_at: null,
+      resolved_by_id: null,
+      resolved_by_name: null,
+      resolve_note: null,
+    });
+    return `标记阻塞：${blockReason}`;
+  }
+
+  async createMemberBlock(id: string, input: CreateRdMemberBlockInput, ctx: RequestContext): Promise<RdMemberBlockEntity> {
+    const item = await this.requireItemWithAccess(id, ctx, "create rd member block");
+    if (item.status === "done" || item.status === "accepted" || item.status === "closed") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "cannot block completed rd item", 400);
+    }
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError(ERROR_CODES.RD_BLOCK_FORBIDDEN, "create rd member block forbidden", 403);
+    }
+    this.requireProgressMember(item, userId, "create rd member block");
+
+    const active = this.repo.findActiveMemberBlock(id, userId);
+    if (active) {
+      return active;
+    }
+
+    const member = await this.projectAccess.requireProjectMember(item.projectId, userId, "create rd member block");
+    const now = nowIso();
+    const block = {
+      id: genId("rdmb"),
+      project_id: item.projectId,
+      item_id: item.id,
+      user_id: member.userId,
+      user_name: member.displayName,
+      reason: input.reason.trim(),
+      status: "active" as const,
+      blocked_at: now,
+      resolved_at: null,
+      resolved_by_id: null,
+      resolved_by_name: null,
+      resolve_note: null,
+    };
+    this.repo.createMemberBlock(block);
+    const entity = this.repo.findMemberBlockById(block.id);
+    if (!entity) {
+      throw new AppError(ERROR_CODES.RD_ACTION_FAILED, "failed to create rd member block", 500);
+    }
+    this.repo.createLog(this.createLog(item, "block", ctx, `${member.displayName} 标记阻塞：${block.reason}`));
+    await this.emitRdEvent("rd.updated", "block", item, ctx);
+    return entity;
+  }
+
+  async resolveMemberBlock(id: string, blockId: string, input: ResolveRdMemberBlockInput, ctx: RequestContext): Promise<RdMemberBlockEntity> {
+    const item = await this.requireItemWithAccess(id, ctx, "resolve rd member block");
+    const block = this.repo.findMemberBlockById(blockId);
+    if (!block || block.itemId !== item.id) {
+      throw new AppError(ERROR_CODES.RD_ITEM_NOT_FOUND, "rd member block not found", 404);
+    }
+    if (block.status !== "active") {
+      return block;
+    }
+    const userId = ctx.userId?.trim();
+    if (!userId || (block.userId !== userId && !this.isVerifier(item, ctx))) {
+      throw new AppError(ERROR_CODES.RD_BLOCK_FORBIDDEN, "resolve rd member block forbidden", 403);
+    }
+    const resolverName = ctx.nickname?.trim() || userId || ctx.accountId;
+    const resolved = this.repo.resolveMemberBlock(block.id, {
+      resolved_at: nowIso(),
+      resolved_by_id: userId || ctx.accountId,
+      resolved_by_name: resolverName,
+      resolve_note: input.note?.trim() || null,
+    });
+    if (!resolved) {
+      const latest = this.repo.findMemberBlockById(block.id);
+      if (latest) {
+        return latest;
+      }
+      throw new AppError(ERROR_CODES.RD_ACTION_FAILED, "failed to resolve rd member block", 500);
+    }
+    const entity = this.repo.findMemberBlockById(block.id);
+    if (!entity) {
+      throw new AppError(ERROR_CODES.RD_ACTION_FAILED, "failed to resolve rd member block", 500);
+    }
+    const note = input.note?.trim();
+    this.repo.createLog(
+      this.createLog(item, "resume", ctx, note ? `解除 ${block.userName || block.userId} 的阻塞：${note}` : `解除 ${block.userName || block.userId} 的阻塞`)
+    );
+    await this.emitRdEvent("rd.updated", "resume", item, ctx);
+    return entity;
   }
 
   async listProgress(id: string, ctx: RequestContext): Promise<RdItemProgress[]> {
@@ -866,6 +1062,11 @@ export class RdService implements RdCommandContract, RdQueryContract {
       note: row.note,
       createdAt: row.created_at
     }));
+  }
+
+  async listMemberBlocks(id: string, ctx: RequestContext): Promise<RdMemberBlockEntity[]> {
+    await this.requireItemWithAccess(id, ctx, "list rd member blocks");
+    return this.repo.listMemberBlocksByItemId(id);
   }
 
   async listStageHistory(id: string, ctx: RequestContext): Promise<RdStageHistoryEntry[]> {

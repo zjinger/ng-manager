@@ -6,6 +6,7 @@ const transitions: Record<RdItemStatus, Partial<Record<RdAction, RdItemStatus>>>
   todo: {
     update: "todo",
     start: "doing",
+    complete: "done",
     close: "closed"
   },
   doing: {
@@ -17,6 +18,7 @@ const transitions: Record<RdItemStatus, Partial<Record<RdAction, RdItemStatus>>>
   blocked: {
     update: "blocked",
     resume: "doing",
+    complete: "done",
     close: "closed"
   },
   done: {

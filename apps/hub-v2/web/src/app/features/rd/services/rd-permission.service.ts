@@ -14,7 +14,11 @@ export class RdPermissionService {
   }
 
   canComplete(item: RdItemEntity | null, userId: string | null): boolean {
-    return this.canEditProgress(item, userId);
+    if (!item || !userId || item.status === 'done' || item.status === 'accepted' || item.status === 'closed') {
+      return false;
+    }
+    const memberIds = new Set([...(item.memberIds ?? []), ...(item.assigneeId ? [item.assigneeId] : [])]);
+    return memberIds.has(userId);
   }
 
   canEditBasic(item: RdItemEntity | null, userId: string | null, members: ProjectMemberEntity[]): boolean {
@@ -63,6 +67,20 @@ export class RdPermissionService {
 
   canAccept(item: RdItemEntity | null, userId: string | null, members: ProjectMemberEntity[]): boolean {
     if (!item || item.status !== 'done') {
+      return false;
+    }
+    return this.isVerifier(item, userId, members);
+  }
+
+  canVerify(item: RdItemEntity | null, userId: string | null, members: ProjectMemberEntity[]): boolean {
+    if (!item) {
+      return false;
+    }
+    return this.isVerifier(item, userId, members);
+  }
+
+  canForceComplete(item: RdItemEntity | null, userId: string | null, members: ProjectMemberEntity[]): boolean {
+    if (!item || item.status === 'done' || item.status === 'accepted' || item.status === 'closed') {
       return false;
     }
     return this.isVerifier(item, userId, members);

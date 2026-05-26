@@ -86,6 +86,23 @@ export interface RdProgressHistory {
   createdAt: string;
 }
 
+export type RdMemberBlockStatus = 'active' | 'resolved';
+
+export interface RdMemberBlockEntity {
+  id: string;
+  projectId: string;
+  itemId: string;
+  userId: string;
+  userName: string | null;
+  reason: string;
+  status: RdMemberBlockStatus;
+  blockedAt: string;
+  resolvedAt: string | null;
+  resolvedById: string | null;
+  resolvedByName: string | null;
+  resolveNote: string | null;
+}
+
 export interface RdLogEntity {
   id: string;
   projectId: string;
@@ -189,6 +206,14 @@ export interface BlockRdItemInput {
   blockerReason?: string;
 }
 
+export interface CreateRdMemberBlockInput {
+  reason: string;
+}
+
+export interface ResolveRdMemberBlockInput {
+  note?: string;
+}
+
 export interface CloseRdItemInput {
   reason?: string;
 }
@@ -218,6 +243,8 @@ export interface UpdateRdItemInput {
 export interface UpdateRdItemProgressInput {
   progress: number;
   note?: string;
+  blockReason?: string;
+  resolveBlockId?: string;
 }
 
 export interface CreateRdStageInput {

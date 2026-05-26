@@ -6,9 +6,11 @@ import type {
   BlockRdItemInput,
   CloseRdItemInput,
   AdvanceRdStageInput,
+  CreateRdMemberBlockInput,
   CreateRdItemInput,
   CreateRdStageInput,
   RdItemEntity,
+  RdMemberBlockEntity,
   RdItemProgress,
   RdLogEntity,
   RdListQuery,
@@ -16,6 +18,7 @@ import type {
   RdProgressHistory,
   RdStageHistoryEntry,
   RdStageEntity,
+  ResolveRdMemberBlockInput,
   UpdateRdItemInput,
   UpdateRdItemProgressInput,
   UpdateRdStageInput,
@@ -59,6 +62,10 @@ export class RdApiService {
 
   listStageHistory(itemId: string) {
     return this.api.get<{ items: RdStageHistoryEntry[] }>(`/rd/items/${itemId}/stage-history`).pipe(map((response) => response.items));
+  }
+
+  listMemberBlocks(itemId: string) {
+    return this.api.get<{ items: RdMemberBlockEntity[] }>(`/rd/items/${itemId}/member-blocks`).pipe(map((response) => response.items));
   }
 
   create(input: CreateRdItemInput) {
@@ -107,6 +114,14 @@ export class RdApiService {
 
   updateProgress(itemId: string, input: UpdateRdItemProgressInput) {
     return this.api.post<RdItemEntity, UpdateRdItemProgressInput>(`/rd/items/${itemId}/progress`, input);
+  }
+
+  createMemberBlock(itemId: string, input: CreateRdMemberBlockInput) {
+    return this.api.post<RdMemberBlockEntity, CreateRdMemberBlockInput>(`/rd/items/${itemId}/member-blocks`, input);
+  }
+
+  resolveMemberBlock(itemId: string, blockId: string, input: ResolveRdMemberBlockInput = {}) {
+    return this.api.post<RdMemberBlockEntity, ResolveRdMemberBlockInput>(`/rd/items/${itemId}/member-blocks/${blockId}/resolve`, input);
   }
 
   listProgressHistory(itemId: string) {

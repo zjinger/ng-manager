@@ -3,7 +3,7 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import type { IssueEntity } from '../../../issues/models/issue.model';
-import type { RdItemEntity, RdLogEntity, RdStageEntity, RdStageHistoryEntry } from '../../models/rd.model';
+import type { RdItemEntity, RdLogEntity, RdMemberBlockEntity, RdStageEntity, RdStageHistoryEntry } from '../../models/rd.model';
 import { RdDetailContentComponent } from '../rd-detail-content/rd-detail-content.component';
 import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progress-panel/rd-progress-panel.component';
 
@@ -55,6 +55,7 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [memberProgressList]="memberProgressList()"
               [canEditBasic]="canEditBasic()"
               [canAdvance]="canAdvance()"
+              [canComplete]="canComplete()"
               [canAccept]="canAccept()"
               [canClose]="canClose()"
               [showSummary]="false"
@@ -68,8 +69,11 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               <app-rd-progress-panel
                 [item]="current"
                 [memberProgressList]="memberProgressList()"
+                [memberBlocks]="memberBlocks()"
+                [canResolveMemberBlocks]="canResolveMemberBlocks()"
                 [currentUserId]="currentUserId() || ''"
                 (updateProgressClick)="updateProgressClick.emit($event)"
+                (resolveMemberBlockClick)="resolveMemberBlockClick.emit($event)"
               />
             }
             <app-rd-detail-content
@@ -81,6 +85,7 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [memberProgressList]="memberProgressList()"
               [canEditBasic]="canEditBasic()"
               [canAdvance]="canAdvance()"
+              [canComplete]="canComplete()"
               [canAccept]="canAccept()"
               [canClose]="canClose()"
               [showLinkedIssues]="true"
@@ -101,6 +106,7 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [memberProgressList]="memberProgressList()"
               [canEditBasic]="canEditBasic()"
               [canAdvance]="canAdvance()"
+              [canComplete]="canComplete()"
               [canAccept]="canAccept()"
               [canClose]="canClose()"
               [showSummary]="false"
@@ -195,13 +201,17 @@ export class RdDetailDrawerComponent {
   readonly linkedIssues = input<IssueEntity[]>([]);
   readonly canEditBasic = input(false);
   readonly canAdvance = input(false);
+  readonly canComplete = input(false);
   readonly canAccept = input(false);
   readonly canClose = input(false);
   readonly memberProgressList = input<MemberProgressItem[]>([]);
+  readonly memberBlocks = input<RdMemberBlockEntity[]>([]);
+  readonly canResolveMemberBlocks = input(false);
   readonly currentUserId = input<string>('');
-  readonly actionClick = output<'advance' | 'accept' | 'close' | 'reopen'>();
+  readonly actionClick = output<'advance' | 'complete' | 'accept' | 'close' | 'reopen'>();
   readonly editRequest = output<void>();
   readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number; quickStart?: boolean }>();
+  readonly resolveMemberBlockClick = output<{ blockId: string }>();
   readonly close = output<void>();
 
   readonly drawerBodyStyle = { padding: '0', overflow: 'auto' };

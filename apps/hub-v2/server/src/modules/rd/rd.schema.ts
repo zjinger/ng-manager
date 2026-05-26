@@ -97,6 +97,14 @@ export const blockRdItemSchema = z.object({
   blockerReason: z.string().optional()
 });
 
+export const createRdMemberBlockSchema = z.object({
+  reason: z.string().trim().min(1).max(500)
+});
+
+export const resolveRdMemberBlockSchema = z.object({
+  note: z.string().trim().max(500).optional()
+});
+
 export const closeRdItemSchema = z.object({
   reason: z.string().trim().optional()
 });
@@ -136,4 +144,6 @@ keyword: z.string().trim().optional()
 export const updateRdItemProgressSchema = z.object({
   progress: z.coerce.number().int().min(0).max(100),
   note: z.string().trim().optional(),
+  blockReason: z.string().trim().min(1).max(500).optional(),
+  resolveBlockId: z.string().trim().min(1).optional(),
 });

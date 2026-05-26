@@ -6,6 +6,7 @@ import type {
   RdDashboardTodo,
   RdItemEntity,
   RdItemListResult,
+  RdMemberBlockEntity,
   RdLogEntity,
   RdStageHistoryEntry,
   RdStageEntity
@@ -75,6 +76,21 @@ type RdProgressHistoryRow = {
   new_progress: number;
   note: string | null;
   created_at: string;
+};
+
+type RdMemberBlockRow = {
+  id: string;
+  project_id: string;
+  item_id: string;
+  user_id: string;
+  user_name: string | null;
+  reason: string;
+  status: "active" | "resolved";
+  blocked_at: string;
+  resolved_at: string | null;
+  resolved_by_id: string | null;
+  resolved_by_name: string | null;
+  resolve_note: string | null;
 };
 
 type RdLogRow = {
@@ -777,6 +793,96 @@ INSERT INTO rd_items (
     );
   }
 
+  createMemberBlock(block: {
+    id: string;
+    project_id: string;
+    item_id: string;
+    user_id: string;
+    user_name: string | null;
+    reason: string;
+    status: "active" | "resolved";
+    blocked_at: string;
+    resolved_at: string | null;
+    resolved_by_id: string | null;
+    resolved_by_name: string | null;
+    resolve_note: string | null;
+  }): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO rd_member_blocks (
+            id, project_id, item_id, user_id, user_name, reason, status, blocked_at,
+            resolved_at, resolved_by_id, resolved_by_name, resolve_note
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        block.id,
+        block.project_id,
+        block.item_id,
+        block.user_id,
+        block.user_name,
+        block.reason,
+        block.status,
+        block.blocked_at,
+        block.resolved_at,
+        block.resolved_by_id,
+        block.resolved_by_name,
+        block.resolve_note
+      );
+  }
+
+  findActiveMemberBlock(itemId: string, userId: string): RdMemberBlockEntity | null {
+    const row = this.db
+      .prepare("SELECT * FROM rd_member_blocks WHERE item_id = ? AND user_id = ? AND status = 'active' LIMIT 1")
+      .get(itemId, userId) as RdMemberBlockRow | undefined;
+    return row ? this.mapMemberBlock(row) : null;
+  }
+
+  findMemberBlockById(id: string): RdMemberBlockEntity | null {
+    const row = this.db.prepare("SELECT * FROM rd_member_blocks WHERE id = ?").get(id) as RdMemberBlockRow | undefined;
+    return row ? this.mapMemberBlock(row) : null;
+  }
+
+  listMemberBlocksByItemId(itemId: string): RdMemberBlockEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM rd_member_blocks
+          WHERE item_id = ?
+          ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, blocked_at DESC
+        `
+      )
+      .all(itemId) as RdMemberBlockRow[];
+    return rows.map((row) => this.mapMemberBlock(row));
+  }
+
+  resolveMemberBlock(
+    id: string,
+    input: {
+      resolved_at: string;
+      resolved_by_id: string | null;
+      resolved_by_name: string | null;
+      resolve_note: string | null;
+    }
+  ): boolean {
+    const result = this.db
+      .prepare(
+        `
+          UPDATE rd_member_blocks
+          SET status = 'resolved',
+              resolved_at = ?,
+              resolved_by_id = ?,
+              resolved_by_name = ?,
+              resolve_note = ?
+          WHERE id = ? AND status = 'active'
+        `
+      )
+      .run(input.resolved_at, input.resolved_by_id, input.resolved_by_name, input.resolve_note, id);
+    return result.changes > 0;
+  }
+
   calculateMainProgress(itemId: string): number {
     const progresses = this.listProgressByItemId(itemId);
     if (progresses.length === 0) return 0;
@@ -808,6 +914,23 @@ INSERT INTO rd_items (
       updatedAt: row.updated_at,
       sortAt: row.updated_at,
       projectId: row.project_id
+    };
+  }
+
+  private mapMemberBlock(row: RdMemberBlockRow): RdMemberBlockEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      itemId: row.item_id,
+      userId: row.user_id,
+      userName: row.user_name,
+      reason: row.reason,
+      status: row.status,
+      blockedAt: row.blocked_at,
+      resolvedAt: row.resolved_at,
+      resolvedById: row.resolved_by_id,
+      resolvedByName: row.resolved_by_name,
+      resolveNote: row.resolve_note,
     };
   }
 }

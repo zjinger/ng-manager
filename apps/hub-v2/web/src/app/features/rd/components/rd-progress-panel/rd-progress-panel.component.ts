@@ -4,11 +4,12 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 import { PanelCardComponent } from '@shared/ui';
-import type { RdItemEntity, RdItemProgress } from '../../models/rd.model';
+import type { RdItemEntity, RdItemProgress, RdMemberBlockEntity } from '../../models/rd.model';
 
 export interface MemberProgressItem extends RdItemProgress {
   memberName: string;
   isCurrentUser: boolean;
+  isActiveMember: boolean;
   avatarUrl?: string | null;
 }
 
@@ -29,6 +30,13 @@ export interface MemberProgressItem extends RdItemProgress {
         <div class="progress-bar__fill" [style.width.%]="mainProgress()"></div>
       </div>
 
+      @if (activeBlocks().length > 0) {
+        <div class="block-alert">
+          <strong>{{ activeBlocks().length }} 名成员存在阻塞</strong>
+          <span>阻塞不会改变研发项整体状态，但推进下一阶段前建议确认。</span>
+        </div>
+      }
+
       <div class="member-list">
         @for (item of memberProgressList(); track item.userId) {
           <div class="member-item">
@@ -47,6 +55,9 @@ export interface MemberProgressItem extends RdItemProgress {
                     @if (item.isCurrentUser) {
                       <span class="member-item__me-tag">我</span>
                     }
+                    @if (!item.isActiveMember) {
+                      <span class="member-item__removed-tag">已移除</span>
+                    }
                   </span>
                   <span class="member-item__time">最后更新：{{ formatTime(item.updatedAt) }}</span>
                 </div>
@@ -57,16 +68,31 @@ export interface MemberProgressItem extends RdItemProgress {
                 </div>
                 <div class="member-item__actions">
                   <strong>{{ item.progress }}%</strong>
-                  @if (item.isCurrentUser && !isProgressLocked()) {
-                    @if (item.progress <= 0) {
+                  @if (activeBlockFor(item.userId); as block) {
+                    @if (item.isActiveMember && item.isCurrentUser && !isProgressLocked()) {
+                      <button nz-button nzType="default" nzSize="small" (click)="onContinueProcessing(block.id)">
+                        继续处理
+                      </button>
+                    } @else if (canResolveMemberBlocks() && !isProgressLocked()) {
                       <button
                         nz-button
                         nzType="default"
                         nzSize="small"
                         nz-popconfirm
-                        nzPopconfirmTitle="确认开始处理吗？"
+                        nzPopconfirmTitle="确认解除该成员阻塞吗？"
                         nzPopconfirmPlacement="topRight"
-                        (nzOnConfirm)="onStartProgress(item)"
+                        (nzOnConfirm)="resolveMemberBlockClick.emit({ blockId: block.id })"
+                      >
+                        解除阻塞
+                      </button>
+                    }
+                  } @else if (item.isActiveMember && item.isCurrentUser && !isProgressLocked()) {
+                    @if (item.progress <= 0) {
+                      <button
+                        nz-button
+                        nzType="default"
+                        nzSize="small"
+                        (click)="onStartProgress(item)"
                       >
                         开始
                       </button>
@@ -81,6 +107,12 @@ export interface MemberProgressItem extends RdItemProgress {
               <div class="member-item__note-row">
                 <span class="member-item__note-label">进度说明：</span>
                 <span class="member-item__note">{{ item.note }}</span>
+              </div>
+            }
+            @if (activeBlockFor(item.userId); as block) {
+              <div class="member-item__block-row">
+                <span class="member-item__block-label">阻塞原因：</span>
+                <span class="member-item__block-reason">{{ block.reason }}</span>
               </div>
             }
           </div>
@@ -134,6 +166,21 @@ export interface MemberProgressItem extends RdItemProgress {
         background: linear-gradient(90deg, var(--primary-500, #4f46e5), var(--primary-400, #6366f1));
         border-radius: 999px;
         transition: width 0.3s ease;
+      }
+      .block-alert {
+        margin: 0 20px 14px;
+        border: 1px solid rgba(245, 158, 11, 0.32);
+        background: rgba(245, 158, 11, 0.08);
+        color: rgb(180, 83, 9);
+        border-radius: 8px;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 12px;
+      }
+      .block-alert strong {
+        font-size: 13px;
       }
       .member-list {
         display: flex;
@@ -194,6 +241,14 @@ export interface MemberProgressItem extends RdItemProgress {
         border-radius: 4px;
         font-weight: 600;
       }
+      .member-item__removed-tag {
+        font-size: 10px;
+        background: var(--gray-100);
+        color: var(--text-muted);
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-weight: 600;
+      }
       .member-item__time {
         font-size: 12px;
         color: var(--text-muted);
@@ -229,10 +284,40 @@ export interface MemberProgressItem extends RdItemProgress {
         display: flex;
         gap: 4px;
       }
+      .member-item__block-row {
+        width: 100%;
+        border-top: 1px dashed rgba(245, 158, 11, 0.32);
+        padding-top: 8px;
+        display: flex;
+        gap: 4px;
+      }
       .member-item__note-label {
         flex: 0 0 auto;
         font-size: 12px;
         color: var(--text-muted);
+      }
+      .member-item__block-label {
+        flex: 0 0 auto;
+        font-size: 12px;
+        color: rgb(180, 83, 9);
+      }
+      .member-item__block-reason {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      :host-context(html[data-theme='dark']) .block-alert,
+      :host-context(html[data-theme='dark']) .member-item__block-row {
+        border-color: rgba(251, 191, 36, 0.35);
+      }
+      :host-context(html[data-theme='dark']) .block-alert {
+        background: rgba(251, 191, 36, 0.12);
+        color: rgb(253, 230, 138);
+      }
+      :host-context(html[data-theme='dark']) .member-item__block-label {
+        color: rgb(253, 230, 138);
       }
     `,
   ],
@@ -241,9 +326,20 @@ export interface MemberProgressItem extends RdItemProgress {
 export class RdProgressPanelComponent {
   readonly item = input<RdItemEntity | null>(null);
   readonly memberProgressList = input<MemberProgressItem[]>([]);
+  readonly memberBlocks = input<RdMemberBlockEntity[]>([]);
+  readonly canResolveMemberBlocks = input(false);
   readonly currentUserId = input<string>('');
 
   readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number; quickStart?: boolean }>();
+  readonly resolveMemberBlockClick = output<{ blockId: string }>();
+
+  activeBlocks(): RdMemberBlockEntity[] {
+    return this.memberBlocks().filter((block) => block.status === 'active');
+  }
+
+  activeBlockFor(userId: string): RdMemberBlockEntity | null {
+    return this.activeBlocks().find((block) => block.userId === userId) ?? null;
+  }
 
   mainProgress(): number {
     return this.item()?.progress ?? 0;
@@ -270,7 +366,7 @@ export class RdProgressPanelComponent {
   }
 
   onUpdateProgress(item: MemberProgressItem): void {
-    if (this.isProgressLocked()) {
+    if (this.isProgressLocked() || !item.isActiveMember || !item.isCurrentUser) {
       return;
     }
     this.updateProgressClick.emit({
@@ -280,15 +376,21 @@ export class RdProgressPanelComponent {
     });
   }
 
-  onStartProgress(item: MemberProgressItem): void {
+  onContinueProcessing(blockId: string): void {
     if (this.isProgressLocked()) {
+      return;
+    }
+    this.resolveMemberBlockClick.emit({ blockId });
+  }
+
+  onStartProgress(item: MemberProgressItem): void {
+    if (this.isProgressLocked() || !item.isActiveMember || !item.isCurrentUser) {
       return;
     }
     this.updateProgressClick.emit({
       userId: item.userId,
       memberName: item.memberName,
       currentProgress: 1,
-      quickStart: true,
     });
   }
 }

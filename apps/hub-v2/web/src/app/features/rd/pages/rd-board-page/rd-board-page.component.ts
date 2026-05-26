@@ -17,13 +17,12 @@ import { RdDetailDrawerComponent } from '../../components/rd-detail-drawer/rd-de
 import { RdFilterBarComponent, type RdViewMode } from '../../components/rd-filter-bar/rd-filter-bar.component';
 import { RdListTableComponent } from '../../components/rd-list-table/rd-list-table.component';
 import { RdAdvanceStageDialogComponent } from '../../dialogs/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
-import { RdBlockDialogComponent } from '../../dialogs/rd-block-dialog/rd-block-dialog.component';
 import { RdCloseDialogComponent } from '../../dialogs/rd-close-dialog/rd-close-dialog.component';
 import { RdCreateDialogComponent } from '../../dialogs/rd-create-dialog/rd-create-dialog.component';
-import { RdEditDialogComponent } from '../../dialogs/rd-edit-dialog/rd-edit-dialog.component';
-import { RdProgressUpdateDialogComponent } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
-import { getRdMemberIds, type CreateRdItemInput, type RdItemEntity, type RdItemProgress, type RdListQuery, type RdLogEntity, type RdStageHistoryEntry } from '../../models/rd.model';
-import { MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
+import { RdEditDialogComponent, type RdEditDialogSaveInput } from '../../dialogs/rd-edit-dialog/rd-edit-dialog.component';
+import { RdProgressUpdateDialogComponent, type RdProgressUpdateDialogSaveInput } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
+import { getRdMemberIds, type CreateRdItemInput, type RdItemEntity, type RdItemProgress, type RdListQuery, type RdLogEntity, type RdMemberBlockEntity, type RdStageHistoryEntry } from '../../models/rd.model';
+import type { MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
 import { RdApiService } from '../../services/rd-api.service';
 import { RdPermissionService } from '../../services/rd-permission.service';
 import { RdStore } from '../../store/rd.store';
@@ -41,7 +40,6 @@ import { map } from 'rxjs';
     RdDetailDrawerComponent,
     RdAdvanceStageDialogComponent,
     RdCreateDialogComponent,
-    RdBlockDialogComponent,
     RdCloseDialogComponent,
     RdEditDialogComponent,
     RdProgressUpdateDialogComponent,
@@ -115,7 +113,7 @@ import { map } from 'rxjs';
 
     <app-rd-detail-drawer
       [open]="!!selectedItem()"
-      [busy]="store.busy()"
+      [busy]="store.busy() || progressUpdating()"
       [item]="selectedItem()"
       [logs]="selectedLogs()"
       [stages]="store.stages()"
@@ -123,21 +121,26 @@ import { map } from 'rxjs';
       [linkedIssues]="selectedLinkedIssues()"
       [canEditBasic]="canEditSelectedBasic()"
       [canAdvance]="canAdvanceSelectedItem()"
+      [canComplete]="canCompleteSelectedItem()"
       [canAccept]="canAcceptSelectedItem()"
       [canClose]="canCloseSelectedItem()"
       [memberProgressList]="selectedMemberProgressList()"
+      [memberBlocks]="selectedMemberBlocks()"
+      [canResolveMemberBlocks]="canResolveSelectedMemberBlocks()"
       [currentUserId]="currentUserId() || ''"
       (actionClick)="handleSelectedAction($event)"
       (editRequest)="openEditDialog()"
       (close)="closeDetail()"
       (updateProgressClick)="openProgressUpdate($event)"
+      (resolveMemberBlockClick)="resolveMemberBlock($event.blockId)"
     />
 
     <app-rd-progress-update-dialog
       [open]="progressUpdateOpen()"
-      [busy]="store.busy()"
+      [busy]="store.busy() || progressUpdating()"
       [memberName]="progressUpdateData()?.memberName || ''"
       [currentProgress]="progressUpdateData()?.currentProgress || 0"
+      [activeBlock]="progressUpdateActiveBlock()"
       (save)="confirmUpdateProgress($event)"
       (cancel)="closeProgressUpdate()"
     />
@@ -152,14 +155,6 @@ import { map } from 'rxjs';
       (create)="createRd($event)"
     />
 
-    <app-rd-block-dialog
-      [open]="blockOpen()"
-      [busy]="store.busy()"
-      [item]="blockingItem()"
-      (cancel)="closeBlockDialog()"
-      (confirm)="confirmBlock($event.blockerReason)"
-    />
-
     <app-rd-close-dialog
       [open]="closeOpen()"
       [busy]="store.busy()"
@@ -172,6 +167,7 @@ import { map } from 'rxjs';
       [open]="editOpen()"
       [busy]="store.busy()"
       [item]="selectedItem()"
+      [members]="members()"
       (cancel)="editOpen.set(false)"
       (save)="saveSelectedBasic($event)"
     />
@@ -212,13 +208,12 @@ export class RdBoardPageComponent {
 
   readonly viewMode = signal<RdViewMode>('list');
   readonly createOpen = signal(false);
-  readonly blockOpen = signal(false);
   readonly closeOpen = signal(false);
   readonly editOpen = signal(false);
   readonly advanceStageOpen = signal(false);
   readonly progressUpdateOpen = signal(false);
   readonly progressUpdateData = signal<{ userId: string; memberName: string; currentProgress: number } | null>(null);
-  readonly blockingItem = signal<RdItemEntity | null>(null);
+  readonly progressUpdating = signal(false);
   readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {
     initialValue: this.route.snapshot.queryParamMap.get('detail'),
   });
@@ -233,6 +228,7 @@ export class RdBoardPageComponent {
   readonly selectedLogs = signal<RdLogEntity[]>([]);
   readonly selectedStageHistory = signal<RdStageHistoryEntry[]>([]);
   readonly selectedProgressList = signal<RdItemProgress[]>([]);
+  readonly selectedMemberBlocks = signal<RdMemberBlockEntity[]>([]);
   readonly selectedLinkedIssues = signal<IssueEntity[]>([]);
   readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
   readonly selectedMemberProgressList = computed<MemberProgressItem[]>(() => {
@@ -243,6 +239,7 @@ export class RdBoardPageComponent {
     const avatarMap = new Map(this.members().map((m) => [m.userId, m.avatarUrl]));
     const progressByUserId = new Map(list.map((p) => [p.userId, p]));
     const legacyMemberIds = getRdMemberIds(item);
+    const activeMemberIds = new Set(legacyMemberIds);
     const useLegacyAssigneeProgressFallback =
       list.length === 0 &&
       legacyMemberIds.length === 1 &&
@@ -275,6 +272,7 @@ export class RdBoardPageComponent {
         p.userName ||
         p.userId,
       isCurrentUser: p.userId === currentId,
+      isActiveMember: activeMemberIds.has(p.userId),
       avatarUrl: avatarMap.get(p.userId) ?? null,
       updatedAt: p.updatedAt,
     }));
@@ -301,9 +299,22 @@ export class RdBoardPageComponent {
       this.hasNextStage(this.selectedItem()) &&
       this.rdPermission.canAdvance(this.selectedItem(), this.currentUserId(), this.members())
   );
+  readonly canCompleteSelectedItem = computed(() =>
+    this.rdPermission.canForceComplete(this.selectedItem(), this.currentUserId(), this.members())
+  );
   readonly canAcceptSelectedItem = computed(() =>
     this.rdPermission.canAccept(this.selectedItem(), this.currentUserId(), this.members())
   );
+  readonly canResolveSelectedMemberBlocks = computed(() =>
+    this.rdPermission.canVerify(this.selectedItem(), this.currentUserId(), this.members())
+  );
+  readonly progressUpdateActiveBlock = computed(() => {
+    const userId = this.progressUpdateData()?.userId;
+    if (!userId) {
+      return null;
+    }
+    return this.selectedMemberBlocks().find((block) => block.userId === userId && block.status === 'active') ?? null;
+  });
   readonly subtitle = computed(() => {
     const project = this.projectContext.currentProject();
     const projectName = project?.name ?? '当前项目';
@@ -439,6 +450,7 @@ export class RdBoardPageComponent {
         this.selectedLogs.set([]);
         this.selectedStageHistory.set([]);
         this.selectedProgressList.set([]);
+        this.selectedMemberBlocks.set([]);
         this.selectedLinkedIssues.set([]);
         return;
       }
@@ -450,6 +462,10 @@ export class RdBoardPageComponent {
       const progressSub = this.rdApi.listProgress(selectedId).subscribe({
         next: (progress) => this.selectedProgressList.set(progress),
         error: () => this.selectedProgressList.set([]),
+      });
+      const memberBlocksSub = this.rdApi.listMemberBlocks(selectedId).subscribe({
+        next: (items) => this.selectedMemberBlocks.set(items),
+        error: () => this.selectedMemberBlocks.set([]),
       });
       const stageHistorySub = this.rdApi.listStageHistory(selectedId).subscribe({
         next: (items) => this.selectedStageHistory.set(items),
@@ -464,6 +480,7 @@ export class RdBoardPageComponent {
       onCleanup(() => {
         logsSub.unsubscribe();
         progressSub.unsubscribe();
+        memberBlocksSub.unsubscribe();
         stageHistorySub.unsubscribe();
         linkedIssuesSub.unsubscribe();
       });
@@ -560,21 +577,30 @@ export class RdBoardPageComponent {
     });
     this.selectedLogs.set([]);
     this.selectedStageHistory.set([]);
+    this.selectedProgressList.set([]);
+    this.selectedMemberBlocks.set([]);
     this.selectedLinkedIssues.set([]);
     this.advanceStageOpen.set(false);
     this.closeOpen.set(false);
     this.editOpen.set(false);
   }
 
-  handleAction(item: RdItemEntity, action: 'advance' | 'accept' | 'close' | 'reopen'): void {
+  handleAction(item: RdItemEntity, action: 'advance' | 'complete' | 'accept' | 'close' | 'reopen'): void {
     this.openDetail(item);
     switch (action) {
       case 'advance':
         if (!this.canAdvanceSelectedItem()) {
           return;
         }
+        this.warnIfAdvanceWithActiveBlocks();
         this.warnIfAdvanceWithIncompleteProgress(this.selectedMemberProgressList());
         this.advanceStageOpen.set(true);
+        break;
+      case 'complete':
+        if (!this.canCompleteSelectedItem()) {
+          return;
+        }
+        this.store.complete(item.id);
         break;
       case 'close':
         if (!this.canCloseSelectedItem()) {
@@ -599,7 +625,7 @@ export class RdBoardPageComponent {
     }
   }
 
-  handleSelectedAction(action: 'advance' | 'accept' | 'close' | 'reopen'): void {
+  handleSelectedAction(action: 'advance' | 'complete' | 'accept' | 'close' | 'reopen'): void {
     const current = this.selectedItem();
     if (!current) {
       return;
@@ -607,7 +633,7 @@ export class RdBoardPageComponent {
     this.handleAction(current, action);
   }
 
-  saveSelectedBasic(input: { title: string; description: string | null }): void {
+  saveSelectedBasic(input: RdEditDialogSaveInput): void {
     if (!this.canEditSelectedBasic()) {
       return;
     }
@@ -619,17 +645,23 @@ export class RdBoardPageComponent {
       version: current.version,
       title: input.title,
       description: input.description,
+      memberIds: input.memberIds,
+      verifierId: input.verifierId,
     });
     this.editOpen.set(false);
   }
 
-  confirmBlock(blockerReason: string): void {
-    const item = this.blockingItem();
-    if (!item) {
+  resolveMemberBlock(blockId: string): void {
+    const current = this.selectedItem();
+    if (!current || this.progressUpdating()) {
       return;
     }
-    this.store.block(item.id, { blockerReason });
-    this.closeBlockDialog();
+    this.rdApi.resolveMemberBlock(current.id, blockId).subscribe({
+      next: () => {
+        this.loadSelectedMemberBlocks(current.id);
+        this.loadSelectedLogs(current.id);
+      },
+    });
   }
 
   confirmAdvanceStage(input: { stageId: string; memberIds: string[]; description?: string; planStartAt?: string; planEndAt?: string }): void {
@@ -664,11 +696,7 @@ export class RdBoardPageComponent {
   }
 
   openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number; quickStart?: boolean }): void {
-    if (this.selectedItem()?.status === 'closed') {
-      return;
-    }
-    if (data.quickStart) {
-      this.quickStartProgress();
+    if (this.selectedItem()?.status === 'closed' || this.progressUpdating()) {
       return;
     }
     this.progressUpdateData.set(data);
@@ -680,26 +708,25 @@ export class RdBoardPageComponent {
     this.progressUpdateData.set(null);
   }
 
-  confirmUpdateProgress(input: { progress: number; note: string }): void {
+  confirmUpdateProgress(input: RdProgressUpdateDialogSaveInput): void {
     const current = this.selectedItem();
-    if (!current) {
+    if (!current || this.progressUpdating()) {
       return;
     }
+    this.progressUpdating.set(true);
     this.rdApi.updateProgress(current.id, input).subscribe({
       next: (item) => {
         this.store.updateItemInList(item);
         this.loadSelectedProgress(item.id);
         this.loadSelectedLogs(item.id);
-        this.progressUpdateOpen.set(false);
+        this.loadSelectedMemberBlocks(item.id);
+        this.progressUpdating.set(false);
+        this.closeProgressUpdate();
       },
       error: () => {
+        this.progressUpdating.set(false);
       },
     });
-  }
-
-  closeBlockDialog(): void {
-    this.blockOpen.set(false);
-    this.blockingItem.set(null);
   }
 
   private loadSelectedProgress(itemId: string): void {
@@ -716,19 +743,10 @@ export class RdBoardPageComponent {
     });
   }
 
-  private quickStartProgress(): void {
-    const current = this.selectedItem();
-    if (!current) {
-      return;
-    }
-    this.rdApi.updateProgress(current.id, { progress: 1, note: '' }).subscribe({
-      next: (item) => {
-        this.store.updateItemInList(item);
-        this.loadSelectedProgress(item.id);
-        this.loadSelectedLogs(item.id);
-      },
-      error: () => {
-      },
+  private loadSelectedMemberBlocks(itemId: string): void {
+    this.rdApi.listMemberBlocks(itemId).subscribe({
+      next: (items) => this.selectedMemberBlocks.set(items),
+      error: () => this.selectedMemberBlocks.set([]),
     });
   }
 
@@ -741,7 +759,7 @@ export class RdBoardPageComponent {
   }
 
   private warnIfAdvanceWithIncompleteProgress(list: MemberProgressItem[]): void {
-    const incomplete = list.filter((item) => Number(item.progress) < 100);
+    const incomplete = list.filter((item) => item.isActiveMember && Number(item.progress) < 100);
     if (incomplete.length === 0) {
       return;
     }
@@ -751,6 +769,18 @@ export class RdBoardPageComponent {
       .slice(0, 3)
       .join('、');
     this.message.warning(`执行人进度未全部达到 100%${names ? `（${names}${incomplete.length > 3 ? ' 等' : ''}）` : ''}，请确认后继续进入下一阶段。`);
+  }
+
+  private warnIfAdvanceWithActiveBlocks(): void {
+    const active = this.selectedMemberBlocks().filter((item) => item.status === 'active');
+    if (active.length === 0) {
+      return;
+    }
+    const names = active
+      .map((item) => item.userName?.trim() || item.userId)
+      .slice(0, 3)
+      .join('、');
+    this.message.warning(`当前仍有 ${active.length} 个成员阻塞${names ? `（${names}${active.length > 3 ? ' 等' : ''}）` : ''}，请确认后继续进入下一阶段。`);
   }
 
   private hasNextStage(item: RdItemEntity | null): boolean {

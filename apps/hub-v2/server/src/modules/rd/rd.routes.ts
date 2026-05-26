@@ -5,10 +5,12 @@ import {
   advanceRdStageSchema,
   blockRdItemSchema,
   closeRdItemSchema,
+  createRdMemberBlockSchema,
   createRdItemSchema,
   createRdStageSchema,
   listRdItemsQuerySchema,
   listRdStagesQuerySchema,
+  resolveRdMemberBlockSchema,
   updateRdItemProgressSchema,
   updateRdItemSchema,
   updateRdStageSchema
@@ -142,5 +144,25 @@ export default async function rdRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     const params = request.params as { itemId: string };
     return ok(await app.container.rdQuery.listProgressHistory(params.itemId, ctx));
+  });
+
+  app.get("/rd/items/:itemId/member-blocks", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    return ok({ items: await app.container.rdQuery.listMemberBlocks(params.itemId, ctx) });
+  });
+
+  app.post("/rd/items/:itemId/member-blocks", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    const body = createRdMemberBlockSchema.parse(request.body);
+    return reply.status(201).send(ok(await app.container.rdCommand.createMemberBlock(params.itemId, body, ctx), "rd member block created"));
+  });
+
+  app.post("/rd/items/:itemId/member-blocks/:blockId/resolve", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string; blockId: string };
+    const body = resolveRdMemberBlockSchema.parse(request.body);
+    return ok(await app.container.rdCommand.resolveMemberBlock(params.itemId, params.blockId, body, ctx), "rd member block resolved");
   });
 }

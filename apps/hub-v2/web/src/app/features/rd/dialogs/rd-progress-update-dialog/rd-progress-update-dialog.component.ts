@@ -3,13 +3,22 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSliderModule } from 'ng-zorro-antd/slider';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
 import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
+import type { RdMemberBlockEntity } from '../../models/rd.model';
+
+export interface RdProgressUpdateDialogSaveInput {
+  progress: number;
+  note: string;
+  blockReason?: string;
+  resolveBlockId?: string;
+}
 
 @Component({
   selector: 'app-rd-progress-update-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzInputModule, NzSliderModule, DialogShellComponent, FormActionsComponent],
+  imports: [FormsModule, NzButtonModule, NzInputModule, NzSliderModule, NzSwitchModule, DialogShellComponent, FormActionsComponent],
   template: `
     <app-dialog-shell
       [open]="open()"
@@ -40,25 +49,60 @@ import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
         </div>
 
         <div class="progress-field">
-          <label>进度说明（可选）</label>
+          <label>
+            @if (blockEnabled()) {
+              阻塞说明
+              <span class="progress-field__required">必填</span>
+            } @else {
+              进度说明
+              <span class="progress-field__optional">可选</span>
+            }
+          </label>
           <textarea
             nz-input
-            rows="3"
-            placeholder="例如：完成了核心模块开发，待联调测试..."
-            [ngModel]="progressNote()"
-            (ngModelChange)="progressNote.set($event)"
+            rows="4"
+            [placeholder]="blockEnabled() ? '请说明当前阻塞原因' : '例如：完成了核心模块开发，待联调测试...'"
+            [ngModel]="description()"
+            (ngModelChange)="description.set($event)"
           ></textarea>
         </div>
 
+        <div class="progress-block">
+          <div class="progress-block__header">
+            <div>
+              <span class="progress-block__label">执行状态</span>
+              <strong>{{ blockEnabled() ? '标记为阻塞' : '当前无阻塞' }}</strong>
+            </div>
+            <nz-switch
+              [ngModel]="blockEnabled()"
+              [nzDisabled]="busy()"
+              (ngModelChange)="onBlockSwitchChange($event)"
+            ></nz-switch>
+          </div>
+          @if (activeBlock(); as block) {
+            <div class="progress-block__hint">
+              关闭开关并保存后，将解除当前阻塞。
+            </div>
+          } @else if (blockEnabled()) {
+            <div class="progress-block__hint">
+              阻塞状态表示成员当前无法继续执行后续任务,请务必填写阻塞原因以便相关人员了解情况并提供帮助。
+            </div>
+          } @else {
+            <div class="progress-block__hint">
+              如果当前处理受阻，打开开关并填写说明。
+            </div>
+          }
+        </div>
+
         <div class="progress-tips">
-          <span>💡 仅允许更新自己的进度</span>
+          <span>仅允许更新自己的进度和执行状态</span>
         </div>
       </div>
 
       <ng-container dialog-footer>
         <app-form-actions>
           <button nz-button type="button" (click)="onCancel()">取消</button>
-          <button nz-button nzType="primary" [nzLoading]="busy()" (click)="onSubmit()">保存进度</button>
+          <button nz-button nzType="primary" [disabled]="!canSubmit()" [nzLoading]="busy()" (click)="onSubmit()">保存进度</button>
         </app-form-actions>
       </ng-container>
     </app-dialog-shell>
@@ -69,7 +113,9 @@ import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
         margin-bottom: 20px;
       }
       .progress-field label {
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 6px;
         font-size: 13px;
         font-weight: 600;
         color: var(--text-secondary);
@@ -94,6 +140,48 @@ import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
       .progress-field textarea {
         resize: vertical;
       }
+      .progress-field__required,
+      .progress-field__optional {
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .progress-field__required {
+        color: var(--danger, #dc2626);
+      }
+      .progress-field__optional {
+        color: var(--text-muted);
+      }
+      .progress-block {
+        border: 1px solid var(--border-color-soft);
+        border-radius: 8px;
+        background: var(--bg-subtle);
+        padding: 12px;
+        margin-bottom: 16px;
+      }
+      .progress-block__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .progress-block__header > div {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .progress-block__label {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+      .progress-block__header strong {
+        font-size: 14px;
+        color: var(--text-heading);
+      }
+      .progress-block__hint {
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
       .progress-tips {
         padding: 12px 14px;
         background: var(--bg-subtle);
@@ -110,12 +198,14 @@ export class RdProgressUpdateDialogComponent {
   readonly busy = input(false);
   readonly memberName = input('');
   readonly currentProgress = input(0);
+  readonly activeBlock = input<RdMemberBlockEntity | null>(null);
 
-  readonly save = output<{ progress: number; note: string }>();
+  readonly save = output<RdProgressUpdateDialogSaveInput>();
   readonly cancel = output<void>();
 
   readonly progressValue = signal(0);
-  readonly progressNote = signal('');
+  readonly description = signal('');
+  readonly blockEnabled = signal(false);
 
   constructor() {
     effect(() => {
@@ -123,7 +213,9 @@ export class RdProgressUpdateDialogComponent {
         return;
       }
       this.progressValue.set(this.currentProgress());
-      this.progressNote.set('');
+      const activeBlock = this.activeBlock();
+      this.description.set(activeBlock?.reason ?? '');
+      this.blockEnabled.set(!!activeBlock);
     });
   }
 
@@ -135,10 +227,28 @@ export class RdProgressUpdateDialogComponent {
     this.cancel.emit();
   }
 
+  onBlockSwitchChange(value: boolean): void {
+    this.blockEnabled.set(value);
+  }
+
+  canSubmit(): boolean {
+    if (this.busy()) {
+      return false;
+    }
+    return !this.blockEnabled() || !!this.description().trim();
+  }
+
   onSubmit(): void {
+    if (!this.canSubmit()) {
+      return;
+    }
+    const activeBlock = this.activeBlock();
+    const description = this.description().trim();
     this.save.emit({
       progress: this.progressValue(),
-      note: this.progressNote(),
+      note: this.blockEnabled() ? '' : description,
+      blockReason: this.blockEnabled() && !activeBlock ? description : undefined,
+      resolveBlockId: !this.blockEnabled() && activeBlock ? activeBlock.id : undefined,
     });
   }
 }

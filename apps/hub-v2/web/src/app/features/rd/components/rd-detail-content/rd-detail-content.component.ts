@@ -38,6 +38,7 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
             [actionPlacement]="flowActionPlacement()"
             [canEditBasic]="canEditBasic()"
             [canAdvance]="canAdvance()"
+            [canComplete]="canComplete()"
             [canAccept]="canAccept()"
             [canClose]="canClose()"
             (actionClick)="actionClick.emit($event)"
@@ -180,6 +181,7 @@ export class RdDetailContentComponent {
   readonly memberProgressList = input<MemberProgressItem[]>([]);
   readonly canEditBasic = input(false);
   readonly canAdvance = input(false);
+  readonly canComplete = input(false);
   readonly canAccept = input(false);
   readonly canClose = input(false);
   readonly showSummary = input(true);
@@ -194,6 +196,9 @@ export class RdDetailContentComponent {
   readonly memberDisplayNames = computed(() => {
     const unique = new Set<string>();
     for (const item of this.memberProgressList()) {
+      if (!item.isActiveMember) {
+        continue;
+      }
       const name = item.memberName?.trim();
       if (name) {
         unique.add(name);
@@ -243,7 +248,7 @@ export class RdDetailContentComponent {
 
     return notes;
   });
-  readonly actionClick = output<'advance' | 'accept' | 'close' | 'reopen'>();
+  readonly actionClick = output<'advance' | 'complete' | 'accept' | 'close' | 'reopen'>();
   readonly editRequest = output<void>();
   constructor() {}
 
