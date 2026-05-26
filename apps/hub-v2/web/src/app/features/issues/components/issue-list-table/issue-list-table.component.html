@@ -36,7 +36,7 @@
           @if (item.rdNoSnapshot) {
             <ng-template #cardRdPopover>
               @if (item.rdItemId) {
-                <a class="issue-rd-popover-link" [routerLink]="['/rd', item.rdItemId]" (click)="stopRowOpen($event)">
+                <a class="issue-rd-popover-link" [routerLink]="['/rd', item.rdItemId]" (click)="stopLinkClick($event)">
                   <span class="issue-rd-popover-link__code">{{ item.rdNoSnapshot }}</span>
                   @if (item.rdTitleSnapshot) {
                     <span class="issue-rd-popover-link__title">{{ item.rdTitleSnapshot }}</span>
@@ -127,7 +127,7 @@
                   @if (item.rdNoSnapshot) {
                     <ng-template #rowRdPopover>
                       @if (item.rdItemId) {
-                        <a class="issue-rd-popover-link" [routerLink]="['/rd', item.rdItemId]" (click)="stopRowOpen($event)">
+                        <a class="issue-rd-popover-link" [routerLink]="['/rd', item.rdItemId]" (click)="stopLinkClick($event)">
                           <span class="issue-rd-popover-link__code">{{ item.rdNoSnapshot }}</span>
                           @if (item.rdTitleSnapshot) {
                             <span class="issue-rd-popover-link__title">{{ item.rdTitleSnapshot }}</span>

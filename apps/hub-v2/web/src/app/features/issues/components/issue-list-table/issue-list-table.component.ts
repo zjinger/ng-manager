@@ -147,6 +147,10 @@ export class IssueListTableComponent {
     event.stopPropagation();
   }
 
+  stopLinkClick(event: Event): void {
+    event.stopPropagation();
+  }
+
   showHoverPreview(event: MouseEvent, item: IssueEntity): void {
     const src = this.previewImageUrl(item);
     if (!src) {
