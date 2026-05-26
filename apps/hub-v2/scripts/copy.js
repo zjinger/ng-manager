@@ -111,10 +111,11 @@ async function generateProdPackageJson(src, dest) {
   }
 
   // 生产发布包内统一使用 dist 下的 CLI，避免依赖 tsx 与 src 目录
+  // "db:migrate:from-v1": "node db/migrate-from-v1.js" 已经过时，第一次迁移后就不再需要，且依赖了 src 目录，改为 "db:migrate": "node db/migrate-cli.js"
+  // "db:verify:from-v1": "node db/migrate-from-v1.verify.js" 同样已经过时，且依赖了 src 目录，暂时不提供独立的验证命令，验证逻辑可以集成到 db:migrate 中，或者提供一个新的 db:migrate:verify 命令
   prodPkg.scripts = {
     "db:migrate": "node db/migrate-cli.js",
-    "db:migrate:from-v1": "node db/migrate-from-v1.js",
-    "db:verify:from-v1": "node db/migrate-from-v1.verify.js"
+    "db:reset:rd-task-sheets-0055": "node db/reset-rd-task-sheets-0055-cli.js",
   };
 
   await fs.promises.writeFile(dest, JSON.stringify(prodPkg, null, 2));
