@@ -1,14 +1,16 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { ISSUE_STATUS_LABELS } from '@shared/constants';
 import { PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent } from '@shared/ui';
+import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.model';
 
 @Component({
   selector: 'app-issue-props-panel',
   standalone: true,
-  imports: [DatePipe, PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent],
+  imports: [DatePipe, RouterLink, NzToolTipModule, PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent, TypeBadgeComponent],
   template: `
     <app-panel-card title="基础信息">
       <dl class="props">
@@ -29,7 +31,7 @@ import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.mod
           <dt>提报人</dt>
           <dd class="person-cell">
             <!-- <span class="mini-avatar">{{ avatarText(issue().reporterName) }}</span> -->
-            <span>{{ issue().reporterName }}</span>
+            <span style="text-align:left">{{ issue().reporterName }}</span>
           </dd>
         </div>
         <div>
@@ -59,12 +61,26 @@ import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.mod
           <dt>关联研发项</dt>
           <dd>
             @if (issue().rdNoSnapshot) {
-              <div class="rd-link">
-                <span class="rd-link__code">{{ issue().rdNoSnapshot }}</span>
-                @if (issue().rdTitleSnapshot) {
-                  <span class="rd-link__title">{{ issue().rdTitleSnapshot }}</span>
-                }
-              </div>
+              @if (issue().rdItemId) {
+                <a
+                  class="rd-link"
+                  [routerLink]="['/rd', issue().rdItemId]"
+                  nz-tooltip
+                  [nzTooltipTitle]="rdLinkText()"
+                >
+                  <span class="rd-link__code">{{ issue().rdNoSnapshot }}</span>
+                  @if (issue().rdTitleSnapshot) {
+                    <span class="rd-link__title">{{ issue().rdTitleSnapshot }}</span>
+                  }
+                </a>
+              } @else {
+                <span class="rd-link rd-link--readonly" nz-tooltip [nzTooltipTitle]="rdLinkText()">
+                  <span class="rd-link__code">{{ issue().rdNoSnapshot }}</span>
+                  @if (issue().rdTitleSnapshot) {
+                    <span class="rd-link__title">{{ issue().rdTitleSnapshot }}</span>
+                  }
+                </span>
+              }
             } @else {
               <span class="meta-cell">未关联研发项</span>
             }
@@ -100,13 +116,17 @@ import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.mod
         display: flex;
         justify-content: space-between;
         gap: 12px;
+        min-width: 0;
         padding: 12px 20px;
         border-top: 1px solid var(--border-color-soft);
       }
       dt {
+        flex: 0 0 auto;
         color: var(--text-muted);
+        white-space: nowrap;
       }
       dd {
+        min-width: 0;
         margin: 0;
         color: var(--text-primary);
         font-weight: 600;
@@ -130,23 +150,34 @@ import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.mod
       }
       .rd-link {
         display: inline-flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 2px;
-        max-width: 220px;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        max-width: 100%;
+        min-width: 0;
+        color: var(--primary-700);
+        text-decoration: none;
+        vertical-align: top;
       }
       .rd-link__code {
-        color: var(--primary-700);
+        flex: 0 0 auto;
         font-size: 12px;
         font-weight: 700;
       }
       .rd-link__title {
+        min-width: 0;
         font-size: 12px;
-        color: var(--text-muted);
-        max-width: 220px;
+        color: var(--primary-700);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+      .rd-link--readonly {
+        color: var(--text-primary);
+      }
+      .rd-link--readonly .rd-link__code,
+      .rd-link--readonly .rd-link__title {
+        color: var(--text-primary);
       }
       .mini-avatar {
         width: 24px;
@@ -168,6 +199,9 @@ import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.mod
 export class IssuePropsPanelComponent {
   readonly issue = input.required<IssueEntity>();
   readonly participants = input<IssueParticipantEntity[]>([]);
+  readonly rdLinkText = computed(() =>
+    [this.issue().rdNoSnapshot, this.issue().rdTitleSnapshot].filter(Boolean).join(' ')
+  );
 
   statusLabel(status: string): string {
     return ISSUE_STATUS_LABELS[status] || status;
