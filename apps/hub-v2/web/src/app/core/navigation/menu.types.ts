@@ -3,6 +3,7 @@ export interface NavItem {
   label: string;
   icon: string;
   route: string;
+  activeRoutes?: string[];
   exact?: boolean;
   badge?: string;
   tone?: 'default' | 'info' | 'warning' | 'danger';

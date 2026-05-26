@@ -97,6 +97,11 @@ export class SidebarComponent {
 
   private matchesRoute(currentUrl: string, item: NavItem): boolean {
     const route = this.normalizeUrl(item.route);
+    const activeRoutes = item.activeRoutes?.map((activeRoute) => this.normalizeUrl(activeRoute)) ?? [];
+    if (activeRoutes.includes(currentUrl)) {
+      return true;
+    }
+
     if (item.exact) {
       return currentUrl === route;
     }

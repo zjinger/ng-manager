@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, ViewChild, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCascaderModule } from 'ng-zorro-antd/cascader';
@@ -6,14 +6,11 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { Subscription } from 'rxjs';
 
-import { formatUploadSizeLimit, ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS, resolveAttachmentPreviewKind, UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
-import { type AttachmentPreviewItem, AttachmentPreviewWallComponent, DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
+import { formatUploadSizeLimit, ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS, UPLOAD_TARGETS } from '@shared/constants';
+import { DialogShellComponent, FileUploadDropzoneComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
-import type { NzUploadFile, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
-import { NzUploadModule } from 'ng-zorro-antd/upload';
 import { ImageUploadService } from '../../../../shared/services/image-upload.service';
 import { AiRecommendPanelComponent } from '../../../ai/components/ai-recommend-panel/ai-recommend-panel.component';
 import { AiIssueStore } from '../../../ai/store/ai-issue.store';
@@ -53,14 +50,13 @@ const DEFAULT_DRAFT: Draft = {
   imports: [FormsModule,
     NzFormModule,
     NzGridModule,
-    NzUploadModule,
     NzButtonModule,
     NzCascaderModule,
     NzIconModule,
     NzInputModule,
     NzSelectModule,
-    AttachmentPreviewWallComponent,
     DialogShellComponent,
+    FileUploadDropzoneComponent,
     FormActionsComponent,
     MarkdownEditorComponent,
     AiRecommendPanelComponent
@@ -278,30 +274,14 @@ const DEFAULT_DRAFT: Draft = {
               <nz-form-item>
               <nz-form-label>附件</nz-form-label>
               <nz-form-control>
-                <nz-upload
-                    class="upload-zone"
-                    nzType="drag"
-                    [nzMultiple]="true"
-                    [nzShowUploadList]="false"
-                    [nzAccept]="attachmentUploadPolicy.accept"
-                    [nzBeforeUpload]="beforeUpload"
-                    [nzCustomRequest]="customRequest"
-                  >
-                    <p class="upload-zone__icon">
-                      <nz-icon nzType="plus" />
-                    </p>
-                    <div class="upload-zone__title">点击或拖拽文件到此区域上传</div>
-                    <div class="upload-zone__hint">支持图片/视频格式，单个文件最大 {{ attachmentUploadSizeText }}</div>
-                </nz-upload>
-                @if (draft().attachmentFiles.length > 0) {
-                  <div class="upload-picked">
-                    <app-attachment-preview-wall
-                      [items]="attachmentPreviewItems()"
-                      [removeDisabled]="busy()"
-                      (remove)="removeAttachmentById($event)"
-                    />
-                  </div>
-                }
+                <app-file-upload-dropzone
+                  [policy]="attachmentUploadPolicy"
+                  [files]="draft().attachmentFiles"
+                  [disabled]="busy()"
+                  [removeDisabled]="busy()"
+                  [hint]="'支持图片/视频格式，单个文件最大 ' + attachmentUploadSizeText"
+                  (filesChange)="updateField('attachmentFiles', $event)"
+                />
               </nz-form-control>
               </nz-form-item>
             </div>
@@ -365,48 +345,6 @@ const DEFAULT_DRAFT: Draft = {
         border-bottom-right-radius: 14px;
         min-height: 180px;
       }
-      .upload-zone {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        min-height: 176px;
-        padding: 24px;
-        border: 1px dashed var(--border-color);
-        border-radius: 18px;
-        background: var(--bg-subtle);
-        color: var(--text-muted);
-        text-align: center;
-      }
-      .upload-zone__icon {
-        width: 52px;
-        height: 52px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--primary-500) 10%, transparent);
-        color: var(--primary-500);
-      }
-      .upload-zone__icon > span[nz-icon] {
-        font-size: 28px;
-      }
-      .upload-zone__title {
-        font-weight: 600;
-        color: var(--text-primary);
-        font-size: 16px;
-      }
-      .upload-zone__hint {
-        margin:0 auto;
-        max-width: 360px;
-        font-size: 14px;
-        line-height: 1.7;
-        color: var(--text-muted);
-      }
-      .upload-picked {
-        margin-top: 12px;
-      }
       .issue-create-hint {
         margin-top: 6px;
         font-size: 12px;
@@ -414,12 +352,6 @@ const DEFAULT_DRAFT: Draft = {
       }
       .issue-field textarea.ant-input {
         border-radius: 0 0 8px 8px;
-      }
-      :host-context(html[data-theme='dark']) .upload-zone {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)), var(--bg-subtle);
-      }
-      :host-context(html[data-theme='dark']) .upload-zone__icon {
-        background: color-mix(in srgb, var(--primary-500) 18%, transparent);
       }
       ::ng-deep .issue-module-cascader-menu .issue-module-cascader-column {
         width: var(--issue-module-cascader-col-width, 260px);
@@ -453,11 +385,10 @@ const DEFAULT_DRAFT: Draft = {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class IssueCreateDialogComponent implements OnDestroy {
+export class IssueCreateDialogComponent {
   private readonly message = inject(NzMessageService);
   private readonly imageUpload = inject(ImageUploadService);
   private readonly aiStore = inject(AiIssueStore);
-  private readonly previewUrlMap = new Map<string, string>();
 
   readonly open = input(false);
   readonly busy = input(false);
@@ -511,7 +442,6 @@ export class IssueCreateDialogComponent implements OnDestroy {
   constructor() {
     effect(() => {
       if (this.open()) {
-        this.clearPreviewUrls();
         this.draft.set({ ...DEFAULT_DRAFT });
         this.modulePath.set(null);
         this.scheduleSyncModuleMenuWidth();
@@ -625,95 +555,6 @@ export class IssueCreateDialogComponent implements OnDestroy {
     );
   }
 
-  readonly beforeUpload = (file: NzUploadFile): boolean => {
-    const rawFile = this.toRawFile(file);
-    if (!rawFile) {
-      this.message.warning('文件读取失败，请重试');
-      return false;
-    }
-    const validationMessage = validateUploadFile(rawFile, this.attachmentUploadPolicy);
-    if (validationMessage) {
-      this.message.warning(validationMessage);
-      return false;
-    }
-
-    this.draft.update((draft) => {
-      const exists = draft.attachmentFiles.some(
-        (item) => item.name === rawFile.name && item.size === rawFile.size && item.lastModified === rawFile.lastModified
-      );
-      if (exists) {
-        return draft;
-      }
-      return { ...draft, attachmentFiles: [...draft.attachmentFiles, rawFile] };
-    });
-    return false;
-  };
-
-  readonly customRequest = (item: NzUploadXHRArgs): Subscription => {
-    item.onSuccess?.({}, item.file, item);
-    return new Subscription();
-  };
-
-  removeAttachment(file: File): void {
-    this.revokePreviewUrl(file);
-    this.draft.update((draft) => ({
-      ...draft,
-      attachmentFiles: draft.attachmentFiles.filter(
-        (item) => !(item.name === file.name && item.size === file.size && item.lastModified === file.lastModified)
-      ),
-    }));
-  }
-
-  removeAttachmentById(id: string): void {
-    const file = this.draft().attachmentFiles.find((item) => this.fileIdentity(item) === id);
-    if (!file) {
-      return;
-    }
-    this.removeAttachment(file);
-  }
-
-  attachmentPreviewItems(): AttachmentPreviewItem[] {
-    return this.draft().attachmentFiles.map((file) => ({
-      id: this.fileIdentity(file),
-      name: file.name,
-      url: this.previewUrl(file),
-      kind: resolveAttachmentPreviewKind(file),
-    }));
-  }
-
-  previewUrl(file: File): string {
-    const key = this.fileIdentity(file);
-    const cached = this.previewUrlMap.get(key);
-    if (cached) {
-      return cached;
-    }
-    const created = URL.createObjectURL(file);
-    this.previewUrlMap.set(key, created);
-    return created;
-  }
-
-  private toRawFile(file: NzUploadFile): File | null {
-    if (file.originFileObj instanceof File) {
-      return file.originFileObj;
-    }
-    if (file instanceof File) {
-      return file;
-    }
-    return null;
-  }
-  formatSize(size: number): string {
-    if (!Number.isFinite(size) || size < 0) {
-      return '-';
-    }
-    if (size < 1024) {
-      return `${size} B`;
-    }
-    if (size < 1024 * 1024) {
-      return `${(size / 1024).toFixed(1)} KB`;
-    }
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
   submitForm(): void {
     if (!this.draft().title.trim()) {
       return;
@@ -724,31 +565,6 @@ export class IssueCreateDialogComponent implements OnDestroy {
       return;
     }
     this.create.emit({ ...this.draft(), title: this.draft().title.trim() });
-  }
-
-  ngOnDestroy(): void {
-    this.clearPreviewUrls();
-  }
-
-  private revokePreviewUrl(file: File): void {
-    const key = this.fileIdentity(file);
-    const cached = this.previewUrlMap.get(key);
-    if (!cached) {
-      return;
-    }
-    URL.revokeObjectURL(cached);
-    this.previewUrlMap.delete(key);
-  }
-
-  private clearPreviewUrls(): void {
-    for (const url of this.previewUrlMap.values()) {
-      URL.revokeObjectURL(url);
-    }
-    this.previewUrlMap.clear();
-  }
-
-  private fileIdentity(file: File): string {
-    return `${file.name}|${file.size}|${file.lastModified}`;
   }
 
   private scheduleSyncModuleMenuWidth(): void {

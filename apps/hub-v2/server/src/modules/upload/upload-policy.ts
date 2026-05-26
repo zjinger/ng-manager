@@ -67,11 +67,11 @@ const ISSUE_ATTACHMENT_POLICY: UploadPolicy = {
   sizeLimitMessage: "单个文件最大 10MB"
 };
 
-// 报销单附件上传策略，限制为 IMAGE/PDF 文件且大小不超过 10MB
+// 报销单附件上传策略，限制为 JPG/PNG/PDF 文件且大小不超过 10MB
 const REIMBURSEMENT_ATTACHMENT_POLICY: UploadPolicy = {
   maxSizeBytes: 10 * MB,
-  allowedMimeTypes: ["image/", "application/pdf"],
-  allowedExtensions: [...IMAGE_EXTENSIONS, ...PDF_EXTENSIONS],
+  allowedMimeTypes: ["image/jpeg", "image/png", "image/jpg", "application/pdf"],
+  allowedExtensions: [".jpg", ".jpeg", ".png", ...PDF_EXTENSIONS],
   invalidTypeMessage: "仅支持上传图片或 PDF 文件",
   sizeLimitMessage: "单个文件最大 10MB"
 };

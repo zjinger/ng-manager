@@ -90,7 +90,7 @@ export const UPLOAD_TARGETS = {
     visibility: 'private',
     accept: buildAcceptValue(['image/*', 'application/pdf'], ['.jpg', '.jpeg', '.png', '.pdf']),
     maxSizeBytes: 10 * MB,
-    allowedMimeTypes: ['image/', 'application/pdf'],
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'],
     allowedExtensions: ['.jpg', '.jpeg', '.png', '.pdf'],
     invalidTypeMessage: '仅支持上传图片或 PDF 文件',
     sizeLimitMessage: '单个文件最大 10MB',

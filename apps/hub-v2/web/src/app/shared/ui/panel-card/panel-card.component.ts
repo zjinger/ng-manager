@@ -32,7 +32,17 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   `,
   styles: [
     `
+      :host {
+        display: block;
+        height: 100%;
+        min-width: 0;
+      }
+
       .panel {
+        height: 100%;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
         background:
           linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%),
           var(--bg-container);
@@ -94,6 +104,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
       .panel__body {
         display: block;
+        flex: 1 1 auto;
       }
 
       .panel__footer:empty {

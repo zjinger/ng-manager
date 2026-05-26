@@ -156,10 +156,12 @@ type WindowWithSaveFilePicker = Window & {
 
       .detail-page__base {
         grid-area: base;
+        min-height: 0;
       }
 
       .detail-page__flow {
         grid-area: flow;
+        min-height: 0;
       }
 
       .detail-page__amount {

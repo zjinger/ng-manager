@@ -16,18 +16,18 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzUploadFile, NzUploadModule, NzUploadXHRArgs } from 'ng-zorro-antd/upload';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
-import { Subscription, lastValueFrom } from 'rxjs';
+import { lastValueFrom } from 'rxjs';
 
 import {
   AttachmentPreviewKind,
   AttachmentPreviewItem,
   AttachmentPreviewWallComponent,
+  FileUploadDropzoneComponent,
 } from '@app/shared/ui';
 
-import { formatUploadSizeLimit, UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
+import { formatUploadSizeLimit, UPLOAD_TARGETS } from '@shared/constants';
 
 import type { ExpenseSummary } from '../../models/expense-summary.model';
 import { ReimbursementUploadService } from '@app/shared/services/reimbursement-upload.service';
@@ -63,8 +63,8 @@ const generateId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)
     NzGridModule,
     NzInputModule,
     NzIconModule,
-    NzUploadModule,
     AttachmentPreviewWallComponent,
+    FileUploadDropzoneComponent,
   ],
   template: `
     <form nz-form nzLayout="vertical">
@@ -153,26 +153,15 @@ const generateId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)
               </div>
               }
 
-              <nz-upload
-                nzType="drag"
-                class="upload-zone"
-                [nzMultiple]="true"
-                [nzShowUploadList]="false"
-                [nzAccept]="uploadAccept"
-                [nzDisabled]="busy() || uploading()"
-                [nzBeforeUpload]="beforeUpload"
-                [nzCustomRequest]="customRequest"
-              >
-                <p class="upload-zone__icon">
-                  <nz-icon nzType="plus" />
-                </p>
-
-                <div class="upload-zone__title">点击或拖拽文件到此区域上传</div>
-
-                <div class="upload-zone__hint">
-                  {{ uploadHintText }}，单个文件最大 {{ uploadSizeLimit }}
-                </div>
-              </nz-upload>
+              <app-file-upload-dropzone
+                [policy]="uploadPolicy"
+                [files]="[]"
+                [multiple]="true"
+                [showPreview]="false"
+                [disabled]="busy() || uploading()"
+                [hint]="uploadDropzoneHint"
+                (filesChange)="uploadSelectedFiles($event)"
+              />
 
               @if (attachmentPreviewItems().length > 0) {
               <div class="upload-picked">
@@ -255,71 +244,6 @@ const generateId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)
         font-weight: normal;
       }
 
-      .upload-zone {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        padding: 24px;
-        min-height: 180px;
-        border-radius: 18px;
-        border: 1px dashed var(--border-color);
-        background: var(--bg-subtle);
-        transition: all 0.3s;
-        cursor: pointer;
-        text-align: center;
-
-        &:hover {
-          border-color: var(--primary-500);
-          background: color-mix(in srgb, var(--primary-500) 6%, var(--bg-subtle));
-        }
-      }
-
-      :host ::ng-deep .upload-zone.ant-upload-wrapper .ant-upload-drag {
-        border-color: var(--border-color);
-        background: var(--bg-subtle);
-      }
-
-      :host ::ng-deep .upload-zone.ant-upload-wrapper .ant-upload-drag-hover,
-      :host ::ng-deep .upload-zone.ant-upload-wrapper .ant-upload-drag:hover {
-        border-color: var(--primary-500);
-        background: color-mix(in srgb, var(--primary-500) 6%, var(--bg-subtle));
-      }
-
-      :host ::ng-deep .upload-zone.ant-upload-wrapper .ant-upload-btn {
-        color: var(--text-primary);
-      }
-
-      .upload-zone__icon {
-        width: 52px;
-        height: 52px;
-        border-radius: 999px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: color-mix(in srgb, var(--primary-500) 14%, transparent);
-        color: var(--primary-600);
-      }
-
-      .upload-zone__icon > span[nz-icon] {
-        font-size: 28px;
-      }
-
-      .upload-zone__title {
-        margin-top: 12px;
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--text-primary);
-      }
-
-      .upload-zone__hint {
-        margin-top: 8px;
-        max-width: 360px;
-        line-height: 1.7;
-        font-size: 14px;
-        color: var(--text-muted);
-      }
-
       .upload-picked {
         margin-top: 16px;
       }
@@ -340,23 +264,9 @@ const generateId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)
       }
 
       :host-context(html[data-theme='dark']) {
-        .amount-display,
-        .upload-zone,
-        ::ng-deep .upload-zone.ant-upload-wrapper .ant-upload-drag {
+        .amount-display {
           border-color: var(--border-color);
           background: color-mix(in srgb, var(--bg-container) 78%, var(--bg-subtle));
-        }
-
-        .upload-zone:hover,
-        ::ng-deep .upload-zone.ant-upload-wrapper .ant-upload-drag-hover,
-        ::ng-deep .upload-zone.ant-upload-wrapper .ant-upload-drag:hover {
-          border-color: var(--primary-400);
-          background: color-mix(in srgb, var(--primary-500) 10%, var(--bg-container));
-        }
-
-        .upload-zone__icon {
-          color: var(--primary-300);
-          background: color-mix(in srgb, var(--primary-500) 20%, transparent);
         }
       }
 
@@ -413,9 +323,9 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
    * 上传策略配置
    */
   readonly uploadPolicy = UPLOAD_POLICY;
-  readonly uploadAccept = this.uploadPolicy.accept;
   readonly uploadSizeLimit = formatUploadSizeLimit(this.uploadPolicy);
   readonly uploadHintText = this.uploadPolicy.invalidTypeMessage;
+  readonly uploadDropzoneHint = `${this.uploadHintText}，单个文件最大 ${this.uploadSizeLimit}`;
 
   /**
    * 模板使用
@@ -477,31 +387,20 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
     this.updateSummary(updated, { skipAttachments: true, skipAdvance: true });
   }
 
-  /**
-   * 上传前校验
-   */
-  readonly beforeUpload = async (file: NzUploadFile): Promise<boolean> => {
-    const rawFile = this.toRawFile(file);
-
-    if (!rawFile) {
-      this.message.error('文件读取失败');
-      return false;
+  async uploadSelectedFiles(files: File[]): Promise<void> {
+    for (const file of files) {
+      await this.uploadFile(file);
     }
+  }
 
-    // 使用策略进行校验
-    const validationMessage = validateUploadFile(rawFile, this.uploadPolicy);
-    if (validationMessage) {
-      this.message.error(validationMessage);
-      return false;
-    }
-
+  private async uploadFile(rawFile: File): Promise<void> {
     const exists = this.summary().attachments.some(
       (att) => att.originalName === rawFile.name && att.fileSize === rawFile.size
     );
 
     if (exists) {
       this.message.warning('文件已存在');
-      return false;
+      return;
     }
 
     // 开始上传
@@ -595,19 +494,7 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
     } finally {
       this.uploading.set(false);
     }
-
-    return false;
-  };
-
-  /**
-   * 自定义上传（不做实际请求，因为已经在 beforeUpload 中处理了）
-   */
-  readonly customRequest = (item: NzUploadXHRArgs): Subscription => {
-    setTimeout(() => {
-      item.onSuccess?.({}, item.file, item);
-    }, 100);
-    return new Subscription();
-  };
+  }
 
   /**
    * 删除附件
@@ -719,19 +606,6 @@ export class ExpenseSummaryAttachmentComponent implements OnDestroy {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const index = Math.floor(Math.log(bytes) / Math.log(unit));
     return `${parseFloat((bytes / Math.pow(unit, index)).toFixed(2))} ${sizes[index]}`;
-  }
-
-  /**
-   * 转换原始文件
-   */
-  private toRawFile(file: NzUploadFile): File | null {
-    if (file.originFileObj instanceof File) {
-      return file.originFileObj;
-    }
-    if (file instanceof File) {
-      return file;
-    }
-    return null;
   }
 
   /**
