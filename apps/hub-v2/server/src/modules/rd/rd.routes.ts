@@ -5,6 +5,7 @@ import {
   advanceRdStageSchema,
   blockRdItemSchema,
   closeRdItemSchema,
+  completeRdItemSchema,
   createRdMemberBlockSchema,
   createRdItemSchema,
   createRdStageSchema,
@@ -104,7 +105,8 @@ export default async function rdRoutes(app: FastifyInstance) {
   app.post("/rd/items/:itemId/complete", async (request) => {
     const ctx = requireAuth(request);
     const params = request.params as { itemId: string };
-    return ok(await app.container.rdCommand.complete(params.itemId, ctx), "rd item completed");
+    const body = completeRdItemSchema.parse(request.body ?? {});
+    return ok(await app.container.rdCommand.complete(params.itemId, ctx, body), "rd item completed");
   });
 
   app.post("/rd/items/:itemId/accept", async (request) => {

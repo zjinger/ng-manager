@@ -18,6 +18,7 @@ import { RdFilterBarComponent, type RdViewMode } from '../../components/rd-filte
 import { RdListTableComponent } from '../../components/rd-list-table/rd-list-table.component';
 import { RdAdvanceStageDialogComponent } from '../../dialogs/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
 import { RdCloseDialogComponent } from '../../dialogs/rd-close-dialog/rd-close-dialog.component';
+import { RdCompleteDialogComponent } from '../../dialogs/rd-complete-dialog/rd-complete-dialog.component';
 import { RdCreateDialogComponent } from '../../dialogs/rd-create-dialog/rd-create-dialog.component';
 import { RdEditDialogComponent, type RdEditDialogSaveInput } from '../../dialogs/rd-edit-dialog/rd-edit-dialog.component';
 import { RdProgressUpdateDialogComponent, type RdProgressUpdateDialogSaveInput } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
@@ -27,6 +28,8 @@ import { RdApiService } from '../../services/rd-api.service';
 import { RdPermissionService } from '../../services/rd-permission.service';
 import { RdStore } from '../../store/rd.store';
 import { map } from 'rxjs';
+
+const LINKED_ISSUES_PAGE_SIZE = 10;
 
 @Component({
   selector: 'app-rd-board-page',
@@ -41,6 +44,7 @@ import { map } from 'rxjs';
     RdAdvanceStageDialogComponent,
     RdCreateDialogComponent,
     RdCloseDialogComponent,
+    RdCompleteDialogComponent,
     RdEditDialogComponent,
     RdProgressUpdateDialogComponent,
     NzPaginationModule,
@@ -119,6 +123,8 @@ import { map } from 'rxjs';
       [stages]="store.stages()"
       [stageHistory]="selectedStageHistory()"
       [linkedIssues]="selectedLinkedIssues()"
+      [linkedIssuesTotal]="selectedLinkedIssuesTotal()"
+      [linkedIssuesLoading]="selectedLinkedIssuesLoading()"
       [canEditBasic]="canEditSelectedBasic()"
       [canAdvance]="canAdvanceSelectedItem()"
       [canComplete]="canCompleteSelectedItem()"
@@ -133,6 +139,7 @@ import { map } from 'rxjs';
       (close)="closeDetail()"
       (updateProgressClick)="openProgressUpdate($event)"
       (resolveMemberBlockClick)="resolveMemberBlock($event.blockId)"
+      (loadMoreLinkedIssues)="loadMoreSelectedLinkedIssues()"
     />
 
     <app-rd-progress-update-dialog
@@ -161,6 +168,15 @@ import { map } from 'rxjs';
       [item]="selectedItem()"
       (cancel)="closeOpen.set(false)"
       (confirm)="confirmClose($event.reason)"
+    />
+
+    <app-rd-complete-dialog
+      [open]="completeOpen()"
+      [busy]="store.busy()"
+      [item]="selectedItem()"
+      [memberProgressList]="selectedMemberProgressList()"
+      (cancel)="completeOpen.set(false)"
+      (confirm)="confirmComplete($event.reason)"
     />
 
     <app-rd-edit-dialog
@@ -209,6 +225,7 @@ export class RdBoardPageComponent {
   readonly viewMode = signal<RdViewMode>('list');
   readonly createOpen = signal(false);
   readonly closeOpen = signal(false);
+  readonly completeOpen = signal(false);
   readonly editOpen = signal(false);
   readonly advanceStageOpen = signal(false);
   readonly progressUpdateOpen = signal(false);
@@ -230,6 +247,9 @@ export class RdBoardPageComponent {
   readonly selectedProgressList = signal<RdItemProgress[]>([]);
   readonly selectedMemberBlocks = signal<RdMemberBlockEntity[]>([]);
   readonly selectedLinkedIssues = signal<IssueEntity[]>([]);
+  readonly selectedLinkedIssuesTotal = signal(0);
+  readonly selectedLinkedIssuesPage = signal(1);
+  readonly selectedLinkedIssuesLoading = signal(false);
   readonly currentUserId = computed(() => this.authStore.currentUser()?.userId || null);
   readonly selectedMemberProgressList = computed<MemberProgressItem[]>(() => {
     const item = this.selectedItem();
@@ -452,9 +472,16 @@ export class RdBoardPageComponent {
         this.selectedProgressList.set([]);
         this.selectedMemberBlocks.set([]);
         this.selectedLinkedIssues.set([]);
+        this.selectedLinkedIssuesTotal.set(0);
+        this.selectedLinkedIssuesPage.set(1);
+        this.selectedLinkedIssuesLoading.set(false);
         return;
       }
       void selectedUpdatedAt;
+      this.selectedLinkedIssues.set([]);
+      this.selectedLinkedIssuesTotal.set(0);
+      this.selectedLinkedIssuesPage.set(1);
+      this.selectedLinkedIssuesLoading.set(false);
       const logsSub = this.rdApi.listLogs(selectedId).subscribe({
         next: (logs) => this.selectedLogs.set(logs),
         error: () => this.selectedLogs.set([]),
@@ -472,10 +499,20 @@ export class RdBoardPageComponent {
         error: () => this.selectedStageHistory.set([]),
       });
       const linkedIssuesSub = this.issueApi
-        .list({ projectId: this.projectContext.currentProjectId() || undefined, rdItemId: selectedId, page: 1, pageSize: 20 })
+        .list({ projectId: this.projectContext.currentProjectId() || undefined, rdItemId: selectedId, page: 1, pageSize: LINKED_ISSUES_PAGE_SIZE })
         .subscribe({
-          next: (result) => this.selectedLinkedIssues.set(result.items),
-          error: () => this.selectedLinkedIssues.set([]),
+          next: (result) => {
+            this.selectedLinkedIssues.set(result.items);
+            this.selectedLinkedIssuesPage.set(result.page);
+            this.selectedLinkedIssuesTotal.set(result.total);
+            this.selectedLinkedIssuesLoading.set(false);
+          },
+          error: () => {
+            this.selectedLinkedIssues.set([]);
+            this.selectedLinkedIssuesTotal.set(0);
+            this.selectedLinkedIssuesPage.set(1);
+            this.selectedLinkedIssuesLoading.set(false);
+          },
         });
       onCleanup(() => {
         logsSub.unsubscribe();
@@ -580,8 +617,12 @@ export class RdBoardPageComponent {
     this.selectedProgressList.set([]);
     this.selectedMemberBlocks.set([]);
     this.selectedLinkedIssues.set([]);
+    this.selectedLinkedIssuesTotal.set(0);
+    this.selectedLinkedIssuesPage.set(1);
+    this.selectedLinkedIssuesLoading.set(false);
     this.advanceStageOpen.set(false);
     this.closeOpen.set(false);
+    this.completeOpen.set(false);
     this.editOpen.set(false);
   }
 
@@ -600,7 +641,7 @@ export class RdBoardPageComponent {
         if (!this.canCompleteSelectedItem()) {
           return;
         }
-        this.store.complete(item.id);
+        this.completeOpen.set(true);
         break;
       case 'close':
         if (!this.canCloseSelectedItem()) {
@@ -688,6 +729,15 @@ export class RdBoardPageComponent {
     this.closeOpen.set(false);
   }
 
+  confirmComplete(reason: string): void {
+    const current = this.selectedItem();
+    if (!current || !this.canCompleteSelectedItem()) {
+      return;
+    }
+    this.store.complete(current.id, { reason });
+    this.completeOpen.set(false);
+  }
+
   openEditDialog(): void {
     if (!this.canEditSelectedBasic() || this.selectedItem()?.status === 'closed') {
       return;
@@ -727,6 +777,43 @@ export class RdBoardPageComponent {
         this.progressUpdating.set(false);
       },
     });
+  }
+
+  loadMoreSelectedLinkedIssues(): void {
+    const selectedId = this.selectedItemId();
+    if (
+      !selectedId ||
+      this.selectedLinkedIssuesLoading() ||
+      this.selectedLinkedIssues().length >= this.selectedLinkedIssuesTotal()
+    ) {
+      return;
+    }
+    const nextPage = this.selectedLinkedIssuesPage() + 1;
+    this.selectedLinkedIssuesLoading.set(true);
+    this.issueApi
+      .list({
+        projectId: this.projectContext.currentProjectId() || undefined,
+        rdItemId: selectedId,
+        page: nextPage,
+        pageSize: LINKED_ISSUES_PAGE_SIZE,
+      })
+      .subscribe({
+        next: (result) => {
+          if (this.selectedItemId() !== selectedId) {
+            this.selectedLinkedIssuesLoading.set(false);
+            return;
+          }
+          const existingIds = new Set(this.selectedLinkedIssues().map((issue) => issue.id));
+          const nextItems = result.items.filter((issue) => !existingIds.has(issue.id));
+          this.selectedLinkedIssues.update((items) => [...items, ...nextItems]);
+          this.selectedLinkedIssuesPage.set(result.page);
+          this.selectedLinkedIssuesTotal.set(result.total);
+          this.selectedLinkedIssuesLoading.set(false);
+        },
+        error: () => {
+          this.selectedLinkedIssuesLoading.set(false);
+        },
+      });
   }
 
   private loadSelectedProgress(itemId: string): void {

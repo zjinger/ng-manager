@@ -7,6 +7,7 @@ import type {
   AdvanceRdStageInput,
   BlockRdItemInput,
   CloseRdItemInput,
+  CompleteRdItemInput,
   CreateRdItemInput,
   RdItemEntity,
   RdListQuery,
@@ -167,8 +168,8 @@ export class RdStore {
     this.runAction(() => this.rdApi.resume(itemId));
   }
 
-  complete(itemId: string): void {
-    this.runAction(() => this.rdApi.complete(itemId));
+  complete(itemId: string, input: CompleteRdItemInput = {}): void {
+    this.runAction(() => this.rdApi.complete(itemId, input));
   }
 
   updateItemInList(item: RdItemEntity): void {

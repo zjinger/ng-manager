@@ -109,6 +109,10 @@ export const closeRdItemSchema = z.object({
   reason: z.string().trim().optional()
 });
 
+export const completeRdItemSchema = z.object({
+  reason: z.string().trim().max(1000).optional()
+});
+
 export const advanceRdStageSchema = z.object({
   stageId: z.string().trim().min(1),
   memberIds: z.array(z.string().trim().min(1)).min(1).optional(),

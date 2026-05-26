@@ -54,12 +54,9 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
                 nzType="primary"
                 class="detail-header__action-btn"
                 [disabled]="busy()"
-                nz-popconfirm
-                [nzPopconfirmTitle]="'确认标记该研发项已完成吗？'"
-                nzPopconfirmPlacement="topRight"
                 nz-tooltip
-                nzTooltipTitle="可在成员进度未全部 100% 时，由执行人或验证人确认完成"
-                (nzOnConfirm)="actionClick.emit('complete')"
+                nzTooltipTitle="由验证人确认研发项已完成"
+                (click)="actionClick.emit('complete')"
               >
                 标记完成
               </button>

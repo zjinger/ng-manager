@@ -18,12 +18,15 @@ import { RdDetailHeaderComponent } from '../../components/rd-detail-header/rd-de
 import { RdProgressPanelComponent, type MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
 import { RdAdvanceStageDialogComponent } from '../../dialogs/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
 import { RdCloseDialogComponent } from '../../dialogs/rd-close-dialog/rd-close-dialog.component';
+import { RdCompleteDialogComponent } from '../../dialogs/rd-complete-dialog/rd-complete-dialog.component';
 import { RdEditDialogComponent, type RdEditDialogSaveInput } from '../../dialogs/rd-edit-dialog/rd-edit-dialog.component';
 import { RdProgressUpdateDialogComponent, type RdProgressUpdateDialogSaveInput } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
 import { getRdMemberIds, type RdItemEntity, type RdItemProgress, type RdLogEntity, type RdMemberBlockEntity, type RdStageEntity, type RdStageHistoryEntry } from '../../models/rd.model';
 import { RdApiService } from '../../services/rd-api.service';
 import { RdPermissionService } from '../../services/rd-permission.service';
 import { map } from 'rxjs';
+
+const LINKED_ISSUES_PAGE_SIZE = 10;
 
 @Component({
   selector: 'app-rd-detail-page',
@@ -37,6 +40,7 @@ import { map } from 'rxjs';
     RdDetailHeaderComponent,
     RdDetailContentComponent,
     RdCloseDialogComponent,
+    RdCompleteDialogComponent,
     RdEditDialogComponent,
     RdAdvanceStageDialogComponent,
     RdProgressPanelComponent,
@@ -114,9 +118,12 @@ import { map } from 'rxjs';
                 [canClose]="canClose()"
                 [showLinkedIssues]="true"
                 [linkedIssues]="linkedIssues()"
+                [linkedIssuesTotal]="linkedIssuesTotal()"
+                [linkedIssuesLoading]="linkedIssuesLoading()"
                 [showSummary]="false"
                 [showAction]="false"
                 [showProps]="false"
+                (loadMoreLinkedIssues)="loadMoreLinkedIssues()"
                 (actionClick)="handleAction($event)"
                 (editRequest)="openEditDialog()"
               />
@@ -165,6 +172,15 @@ import { map } from 'rxjs';
       [item]="item()"
       (cancel)="closeOpen.set(false)"
       (confirm)="confirmClose($event.reason)"
+    />
+
+    <app-rd-complete-dialog
+      [open]="completeOpen()"
+      [busy]="busy()"
+      [item]="item()"
+      [memberProgressList]="memberProgressList()"
+      (cancel)="completeOpen.set(false)"
+      (confirm)="confirmComplete($event.reason)"
     />
 
     <app-rd-edit-dialog
@@ -252,9 +268,13 @@ export class RdDetailPageComponent {
   readonly progressList = signal<RdItemProgress[]>([]);
   readonly memberBlocks = signal<RdMemberBlockEntity[]>([]);
   readonly linkedIssues = signal<IssueEntity[]>([]);
+  readonly linkedIssuesTotal = signal(0);
+  readonly linkedIssuesPage = signal(1);
+  readonly linkedIssuesLoading = signal(false);
   readonly loading = signal(false);
   readonly busy = signal(false);
   readonly closeOpen = signal(false);
+  readonly completeOpen = signal(false);
   readonly editOpen = signal(false);
   readonly advanceStageOpen = signal(false);
   readonly progressUpdateOpen = signal(false);
@@ -360,6 +380,9 @@ export class RdDetailPageComponent {
         this.progressList.set([]);
         this.memberBlocks.set([]);
         this.linkedIssues.set([]);
+        this.linkedIssuesTotal.set(0);
+        this.linkedIssuesPage.set(1);
+        this.linkedIssuesLoading.set(false);
         return;
       }
       this.load(id);
@@ -382,7 +405,7 @@ export class RdDetailPageComponent {
       return;
     }
     if (action === 'complete' && this.canComplete()) {
-      this.runAction(() => this.rdApi.complete(current.id));
+      this.completeOpen.set(true);
       return;
     }
     if (action === 'close' && this.canClose()) {
@@ -435,6 +458,15 @@ export class RdDetailPageComponent {
     }
     this.runAction(() => this.rdApi.close(current.id, { reason }));
     this.closeOpen.set(false);
+  }
+
+  confirmComplete(reason: string): void {
+    const current = this.item();
+    if (!current || !this.canComplete()) {
+      return;
+    }
+    this.runAction(() => this.rdApi.complete(current.id, { reason }));
+    this.completeOpen.set(false);
   }
 
   projectName(projectId: string): string {
@@ -503,6 +535,32 @@ export class RdDetailPageComponent {
     });
   }
 
+  loadMoreLinkedIssues(): void {
+    const current = this.item();
+    if (!current || this.linkedIssuesLoading() || this.linkedIssues().length >= this.linkedIssuesTotal()) {
+      return;
+    }
+    const nextPage = this.linkedIssuesPage() + 1;
+    this.linkedIssuesLoading.set(true);
+    this.issueApi.list({ projectId: current.projectId, rdItemId: current.id, page: nextPage, pageSize: LINKED_ISSUES_PAGE_SIZE }).subscribe({
+      next: (result) => {
+        if (this.item()?.id !== current.id) {
+          this.linkedIssuesLoading.set(false);
+          return;
+        }
+        const existingIds = new Set(this.linkedIssues().map((issue) => issue.id));
+        const nextItems = result.items.filter((issue) => !existingIds.has(issue.id));
+        this.linkedIssues.update((items) => [...items, ...nextItems]);
+        this.linkedIssuesPage.set(result.page);
+        this.linkedIssuesTotal.set(result.total);
+        this.linkedIssuesLoading.set(false);
+      },
+      error: () => {
+        this.linkedIssuesLoading.set(false);
+      },
+    });
+  }
+
   private loadProgress(itemId: string): void {
     this.rdApi.listProgress(itemId).subscribe({
       next: (list) => this.progressList.set(list),
@@ -519,6 +577,10 @@ export class RdDetailPageComponent {
 
   private load(id: string): void {
     this.loading.set(true);
+    this.linkedIssues.set([]);
+    this.linkedIssuesTotal.set(0);
+    this.linkedIssuesPage.set(1);
+    this.linkedIssuesLoading.set(false);
     this.rdApi.getById(id).subscribe({
       next: (item) => {
         this.item.set(item);
@@ -529,7 +591,7 @@ export class RdDetailPageComponent {
           members: this.projectApi.listMembers(item.projectId),
           progress: this.rdApi.listProgress(item.id),
           memberBlocks: this.rdApi.listMemberBlocks(item.id),
-          linkedIssues: this.issueApi.list({ projectId: item.projectId, rdItemId: item.id, page: 1, pageSize: 20 }),
+          linkedIssues: this.issueApi.list({ projectId: item.projectId, rdItemId: item.id, page: 1, pageSize: LINKED_ISSUES_PAGE_SIZE }),
         }).subscribe({
           next: ({ logs, stageHistory, stages, members, progress, memberBlocks, linkedIssues }) => {
             this.logs.set(logs);
@@ -539,6 +601,8 @@ export class RdDetailPageComponent {
             this.progressList.set(progress);
             this.memberBlocks.set(memberBlocks);
             this.linkedIssues.set(linkedIssues.items);
+            this.linkedIssuesPage.set(linkedIssues.page);
+            this.linkedIssuesTotal.set(linkedIssues.total);
             this.loading.set(false);
           },
           error: () => {
@@ -549,6 +613,9 @@ export class RdDetailPageComponent {
             this.progressList.set([]);
             this.memberBlocks.set([]);
             this.linkedIssues.set([]);
+            this.linkedIssuesTotal.set(0);
+            this.linkedIssuesPage.set(1);
+            this.linkedIssuesLoading.set(false);
             this.loading.set(false);
           },
         });
@@ -562,6 +629,9 @@ export class RdDetailPageComponent {
         this.progressList.set([]);
         this.memberBlocks.set([]);
         this.linkedIssues.set([]);
+        this.linkedIssuesTotal.set(0);
+        this.linkedIssuesPage.set(1);
+        this.linkedIssuesLoading.set(false);
         this.loading.set(false);
       },
     });

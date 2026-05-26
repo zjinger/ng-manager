@@ -5,6 +5,7 @@ import { ApiClientService } from '@core/http';
 import type {
   BlockRdItemInput,
   CloseRdItemInput,
+  CompleteRdItemInput,
   AdvanceRdStageInput,
   CreateRdMemberBlockInput,
   CreateRdItemInput,
@@ -92,8 +93,8 @@ export class RdApiService {
     return this.api.post<RdItemEntity>(`/rd/items/${itemId}/reopen`);
   }
 
-  complete(itemId: string) {
-    return this.api.post<RdItemEntity>(`/rd/items/${itemId}/complete`);
+  complete(itemId: string, input: CompleteRdItemInput = {}) {
+    return this.api.post<RdItemEntity, CompleteRdItemInput>(`/rd/items/${itemId}/complete`, input);
   }
 
   advanceStage(itemId: string, input: AdvanceRdStageInput) {

@@ -7,6 +7,7 @@ import {
   advanceRdStageSchema,
   blockRdItemSchema,
   closeRdItemSchema,
+  completeRdItemSchema,
   updateRdItemProgressSchema,
   updateRdItemSchema
 } from "../rd/rd.schema";
@@ -39,7 +40,8 @@ export default async function personalTokenRdRoutes(app: FastifyInstance) {
     const ctx = requirePersonalTokenAuth(request, "rd:transition:write");
     const params = personalRdItemIdParamSchema.parse(request.params);
     await assertRdProjectAccess(app, params.projectKey, params.itemId, ctx);
-    return ok(await app.container.rdCommand.complete(params.itemId, ctx), "rd item completed");
+    const body = completeRdItemSchema.parse(request.body ?? {});
+    return ok(await app.container.rdCommand.complete(params.itemId, ctx, body), "rd item completed");
   });
 
   app.post("/projects/:projectKey/rd-items/:itemId/accept", async (request) => {

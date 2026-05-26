@@ -90,8 +90,11 @@ import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progres
               [canClose]="canClose()"
               [showLinkedIssues]="true"
               [linkedIssues]="linkedIssues()"
+              [linkedIssuesTotal]="linkedIssuesTotal()"
+              [linkedIssuesLoading]="linkedIssuesLoading()"
               [showAction]="false"
               [showProps]="false"
+              (loadMoreLinkedIssues)="loadMoreLinkedIssues.emit()"
               (actionClick)="actionClick.emit($event)"
               (editRequest)="editRequest.emit()"
             />
@@ -199,6 +202,8 @@ export class RdDetailDrawerComponent {
   readonly stages = input<RdStageEntity[]>([]);
   readonly stageHistory = input<RdStageHistoryEntry[]>([]);
   readonly linkedIssues = input<IssueEntity[]>([]);
+  readonly linkedIssuesTotal = input(0);
+  readonly linkedIssuesLoading = input(false);
   readonly canEditBasic = input(false);
   readonly canAdvance = input(false);
   readonly canComplete = input(false);
@@ -212,6 +217,7 @@ export class RdDetailDrawerComponent {
   readonly editRequest = output<void>();
   readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number; quickStart?: boolean }>();
   readonly resolveMemberBlockClick = output<{ blockId: string }>();
+  readonly loadMoreLinkedIssues = output<void>();
   readonly close = output<void>();
 
   readonly drawerBodyStyle = { padding: '0', overflow: 'auto' };

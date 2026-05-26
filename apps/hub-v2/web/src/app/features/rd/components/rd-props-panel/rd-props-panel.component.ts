@@ -30,7 +30,7 @@ import type { RdItemEntity, RdStageEntity, RdStageHistoryEntry, RdStageHistorySn
           </div>
           <div>
             <dt>执行人</dt>
-            <dd class="member-names">{{ memberNamesText() }}</dd>
+            <dd class="member-names" [title]="memberNamesText()">{{ memberNamesText() }}</dd>
           </div>
           <div>
             <dt>验证人</dt>
@@ -98,6 +98,7 @@ import type { RdItemEntity, RdStageEntity, RdStageHistoryEntry, RdStageHistorySn
       }
       .props div {
         display: flex;
+        align-items: center;
         justify-content: space-between;
         gap: 12px;
         padding: 15px 20px;
@@ -111,11 +112,13 @@ import type { RdItemEntity, RdStageEntity, RdStageHistoryEntry, RdStageHistorySn
         color: var(--text-primary);
         font-weight: 600;
         text-align: right;
+        min-width: 0;
+        flex: 1;
       }
       .member-names {
-        max-width: 170px;
-        line-height: 1.5;
-        white-space: normal;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .time-grid {
         display: grid;

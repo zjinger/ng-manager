@@ -16,6 +16,7 @@ import type {
   AdvanceRdStageInput,
   BlockRdItemInput,
   CloseRdItemInput,
+  CompleteRdItemInput,
   CreateRdMemberBlockInput,
   CreateRdItemInput,
   CreateRdStageInput,
@@ -162,7 +163,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
     if (input.progress !== undefined) {
       this.requireAssignee(current, ctx, "update rd progress");
       if (input.progress >= 100 && current.status === "doing") {
-        return this.complete(id, ctx, input.version);
+        return this.complete(id, ctx, {}, input.version);
       }
       if (input.progress < 100 && (current.status === "done" || current.status === "accepted")) {
         return this.applyAction(
@@ -277,12 +278,21 @@ export class RdService implements RdCommandContract, RdQueryContract {
     return entity;
   }
 
-  async complete(id: string, ctx: RequestContext, expectedVersion?: number): Promise<RdItemEntity> {
+  async complete(id: string, ctx: RequestContext, input: CompleteRdItemInput = {}, expectedVersion?: number): Promise<RdItemEntity> {
     const current = await this.requireItemWithAccess(id, ctx, "complete rd item");
     this.requireCompleteAccess(current, ctx, "complete rd item");
     const now = nowIso();
     const byVerifier = this.isVerifier(current, ctx);
-    const progressSummary = await this.createMemberProgressSummary(current);
+    const progressOverview = await this.createMemberProgressOverview(current);
+    const reason = input.reason?.trim() || "";
+    if (progressOverview.hasIncomplete && !reason) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "complete reason is required when member progress is incomplete", 400);
+    }
+    const completeLogParts = [
+      byVerifier ? "验证人标记完成" : "标记研发项完成",
+      reason ? `说明：${reason}` : "",
+      progressOverview.summary ? `成员进度：${progressOverview.summary}` : "",
+    ].filter(Boolean);
     return this.applyAction(
       id,
       "complete",
@@ -293,9 +303,7 @@ export class RdService implements RdCommandContract, RdQueryContract {
         progress: 100,
         blocker_reason: null
       },
-      byVerifier
-        ? `验证人标记完成${progressSummary ? `；成员进度：${progressSummary}` : ""}`
-        : "标记研发项完成",
+      completeLogParts.join("；"),
       now,
       expectedVersion
     );
@@ -683,16 +691,21 @@ export class RdService implements RdCommandContract, RdQueryContract {
     return names;
   }
 
-  private async createMemberProgressSummary(item: RdItemEntity): Promise<string> {
+  private async createMemberProgressOverview(item: RdItemEntity): Promise<{ summary: string; hasIncomplete: boolean }> {
     const memberIds = this.collectEffectiveMemberIds(item.memberIds, item.assigneeId);
     if (memberIds.length === 0) {
-      return "";
+      return { summary: "", hasIncomplete: false };
     }
     const names = await this.resolveMemberNamesFallback(item.projectId, memberIds);
     const progressByUser = new Map(this.repo.listProgressByItemId(item.id).map((row) => [row.user_id, row.progress]));
-    return memberIds
+    const progressValues = memberIds.map((memberId) => progressByUser.get(memberId) ?? 0);
+    const summary = memberIds
       .map((memberId, index) => `${names[index] || memberId} ${progressByUser.get(memberId) ?? 0}%`)
       .join("、");
+    return {
+      summary,
+      hasIncomplete: progressValues.some((progress) => progress < 100)
+    };
   }
 
   private async applyAction(

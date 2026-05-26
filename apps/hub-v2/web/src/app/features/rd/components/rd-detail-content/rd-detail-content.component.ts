@@ -76,7 +76,7 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
         }
         @if (showLinkedIssues()) {
           <app-panel-card title="关联测试单" [empty]="linkedIssues().length === 0" [emptyText]="'暂无关联测试单'">
-            <div class="linked-issues">
+            <div class="linked-issues" (scroll)="onLinkedIssuesScroll($event)">
               @for (issue of linkedIssues(); track issue.id) {
                 <button type="button" class="linked-issues__item" (click)="openIssue(issue.id)">
                   <div class="linked-issues__main">
@@ -85,6 +85,11 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
                   </div>
                   <span class="linked-issues__meta">{{ issue.updatedAt | date: 'MM-dd HH:mm' }}</span>
                 </button>
+              }
+              @if (linkedIssuesHasMore() || linkedIssuesLoading()) {
+                <div class="linked-issues__load-state">
+                  {{ linkedIssuesLoading() ? '正在加载更多测试单…' : '继续滚动加载更多' }}
+                </div>
               }
             </div>
           </app-panel-card>
@@ -126,6 +131,8 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
       }
       .linked-issues {
         display: grid;
+        max-height: 460px;
+        overflow-y: auto;
       }
       .linked-issues__item {
         width: 100%;
@@ -168,6 +175,13 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
         font-size: 12px;
         flex-shrink: 0;
       }
+      .linked-issues__load-state {
+        padding: 10px 20px;
+        border-top: 1px solid var(--border-color-soft);
+        color: var(--text-muted);
+        font-size: 12px;
+        text-align: center;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -192,7 +206,10 @@ export class RdDetailContentComponent {
   readonly showActivity = input(true);
   readonly showLinkedIssues = input(false);
   readonly linkedIssues = input<IssueEntity[]>([]);
+  readonly linkedIssuesTotal = input(0);
+  readonly linkedIssuesLoading = input(false);
   readonly stageHistory = input<RdStageHistoryEntry[]>([]);
+  readonly linkedIssuesHasMore = computed(() => this.linkedIssues().length < this.linkedIssuesTotal());
   readonly memberDisplayNames = computed(() => {
     const unique = new Set<string>();
     for (const item of this.memberProgressList()) {
@@ -250,9 +267,24 @@ export class RdDetailContentComponent {
   });
   readonly actionClick = output<'advance' | 'complete' | 'accept' | 'close' | 'reopen'>();
   readonly editRequest = output<void>();
+  readonly loadMoreLinkedIssues = output<void>();
   constructor() {}
 
   openIssue(issueId: string): void {
-    this.router.navigate(['/issues'], { queryParams: { detail: issueId } });
+    this.router.navigate(['/issues', issueId]);
+  }
+
+  onLinkedIssuesScroll(event: Event): void {
+    if (!this.linkedIssuesHasMore() || this.linkedIssuesLoading()) {
+      return;
+    }
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const distanceToBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+    if (distanceToBottom <= 48) {
+      this.loadMoreLinkedIssues.emit();
+    }
   }
 }

@@ -91,6 +91,12 @@ export class ContentStore {
     }
     this.lastLoadKey = loadKey;
 
+    if (!query.projectId?.trim()) {
+      this.resultState.set({ items: [], page: 1, pageSize: query.pageSize, total: 0 });
+      this.loadingState.set(false);
+      return;
+    }
+
     this.loadingState.set(true);
 
     const handleNext = (result: PageResult<ContentEntity>) => {

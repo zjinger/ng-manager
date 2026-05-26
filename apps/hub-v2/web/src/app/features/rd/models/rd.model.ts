@@ -218,6 +218,10 @@ export interface CloseRdItemInput {
   reason?: string;
 }
 
+export interface CompleteRdItemInput {
+  reason?: string;
+}
+
 export interface AdvanceRdStageInput {
   stageId: string;
   memberIds?: string[];

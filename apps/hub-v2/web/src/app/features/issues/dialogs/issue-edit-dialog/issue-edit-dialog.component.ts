@@ -100,7 +100,7 @@ const EMPTY_DRAFT: EditDraft = {
           </div>
 
           <div nz-row nzGutter="16">
-            <div nz-col nzSpan="8">
+            <div nz-col nzSpan="12">
               <nz-form-item>
                 <nz-form-label nzFor="type" nzRequired>类型</nz-form-label>
                 <nz-form-control>
@@ -113,7 +113,7 @@ const EMPTY_DRAFT: EditDraft = {
               </nz-form-item>
             </div>
 
-            <div nz-col nzSpan="8">
+            <div nz-col nzSpan="12">
               <nz-form-item>
                 <nz-form-label nzFor="priority" nzRequired>优先级</nz-form-label>
                 <nz-form-control>
@@ -246,6 +246,7 @@ const EMPTY_DRAFT: EditDraft = {
 export class IssueEditDialogComponent {
   private readonly message = inject(NzMessageService);
   private readonly imageUpload = inject(ImageUploadService);
+  private initializedIssueId: string | null = null;
   readonly priorityOptions = ISSUE_PRIORITY_OPTIONS.filter((option) => option.value !== '');
   readonly issueTypeOptions = ISSUE_TYPE_OPTIONS;
 
@@ -283,9 +284,15 @@ export class IssueEditDialogComponent {
   constructor() {
     effect(() => {
       if (!this.open()) {
+        this.initializedIssueId = null;
         return;
       }
       const issue = this.issue();
+      const issueId = issue?.id ?? null;
+      if (this.initializedIssueId === issueId) {
+        return;
+      }
+      this.initializedIssueId = issueId;
       this.draft.set({
         title: issue?.title || '',
         description: issue?.description || '',

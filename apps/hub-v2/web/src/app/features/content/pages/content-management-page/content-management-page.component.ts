@@ -109,7 +109,7 @@ import { ContentStore } from '../../store/content.store';
 
     <app-list-state
       [loading]="store.loading()"
-      [empty]="store.items().length === 0"
+      [empty]="noAccessibleProject() || store.items().length === 0"
       loadingText="正在加载内容列表…"
       [emptyTitle]="emptyTitle()"
       [emptyDescription]="emptyDescription()"
@@ -229,6 +229,9 @@ export class ContentManagementPageComponent {
   });
 
   readonly subtitle = computed(() => {
+    if (this.noAccessibleProject()) {
+      return '暂无可访问项目';
+    }
     const projectName = this.projectContext.currentProject()?.name ?? '当前项目';
     const tabLabel =
       {
@@ -249,26 +252,35 @@ export class ContentManagementPageComponent {
   );
 
   readonly emptyTitle = computed(
-    () =>
-      ({
+    () => {
+      if (this.noAccessibleProject()) {
+        return '暂无可访问项目';
+      }
+      return ({
         announcements: '当前筛选条件下没有公告',
         documents: '当前筛选条件下没有文档',
         releases: '当前筛选条件下没有发布记录',
-      }[this.store.activeTab()]),
+      }[this.store.activeTab()]);
+    },
   );
 
   readonly emptyDescription = computed(
-    () =>
-      ({
+    () => {
+      if (this.noAccessibleProject()) {
+        return '你当前还不是任何项目的成员，加入或创建项目后即可查看项目内容。';
+      }
+      return ({
         announcements: '先创建一条公告或调整筛选条件。',
         documents: '先创建一篇文档或调整筛选条件。',
         releases: '先创建一条发布记录或调整筛选条件。',
-      }[this.store.activeTab()]),
+      }[this.store.activeTab()]);
+    },
   );
 
   readonly announcementItems = computed(() => this.store.items() as AnnouncementEntity[]);
   readonly documentItems = computed(() => this.store.items() as DocumentEntity[]);
   readonly releaseItems = computed(() => this.store.items() as ReleaseEntity[]);
+  readonly noAccessibleProject = computed(() => !this.projectContext.currentProjectId());
   readonly selectedAnnouncementId = computed(() => (this.detailTab() === 'announcements' ? this.detailAnnouncement()?.id ?? null : null));
   readonly selectedDocumentId = computed(() => (this.detailTab() === 'documents' ? this.detailDocument()?.id ?? null : null));
   readonly selectedReleaseId = computed(() => (this.detailTab() === 'releases' ? this.detailRelease()?.id ?? null : null));

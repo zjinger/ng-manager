@@ -2,6 +2,7 @@ import type { RequestContext } from "../../shared/context/request-context";
 import type {
   BlockRdItemInput,
   CloseRdItemInput,
+  CompleteRdItemInput,
   AdvanceRdStageInput,
   CreateRdMemberBlockInput,
   CreateRdItemInput,
@@ -33,7 +34,7 @@ export interface RdCommandContract {
   block(id: string, input: BlockRdItemInput, ctx: RequestContext): Promise<RdItemEntity>;
   resume(id: string, ctx: RequestContext): Promise<RdItemEntity>;
   reopen(id: string, ctx: RequestContext): Promise<RdItemEntity>;
-  complete(id: string, ctx: RequestContext): Promise<RdItemEntity>;
+  complete(id: string, ctx: RequestContext, input?: CompleteRdItemInput): Promise<RdItemEntity>;
   advanceStage(id: string, input: AdvanceRdStageInput, ctx: RequestContext): Promise<RdItemEntity>;
   accept(id: string, ctx: RequestContext): Promise<RdItemEntity>;
   close(id: string, input: CloseRdItemInput, ctx: RequestContext): Promise<RdItemEntity>;
