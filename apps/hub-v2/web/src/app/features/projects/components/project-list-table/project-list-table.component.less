@@ -1,7 +1,7 @@
 .project-table__head,
 .project-row {
     display: grid;
-    grid-template-columns: 2fr 1.1fr 0.7fr 0.8fr 0.8fr 0.9fr 0.9fr;
+    grid-template-columns: 2fr 1.1fr 0.7fr 0.8fr 0.8fr 0.9fr 1.1fr;
     gap: 16px;
     align-items: center;
 }
@@ -107,6 +107,13 @@
     color: var(--text-muted);
 }
 
+.project-cell--actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
 .project-time-item {
     display: flex;
     align-items: center;
@@ -184,6 +191,10 @@
     color: var(--primary-600);
     font-weight: 700;
     cursor: pointer;
+}
+
+.project-action--overview {
+    color: #0284c7;
 }
 
 .project-row--expanded {

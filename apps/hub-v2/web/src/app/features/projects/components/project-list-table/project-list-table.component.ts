@@ -46,6 +46,7 @@ export class ProjectListTableComponent {
   readonly manageModuleMembers = output<{ project: ProjectSummary; moduleId: string }>();
   readonly edit = output<ProjectSummary>();
   readonly manageConfig = output<ProjectSummary>();
+  readonly openDeliveryOverview = output<ProjectSummary>();
   readonly archive = output<ProjectSummary>();
   readonly restore = output<ProjectSummary>();
   readonly toggleExpand = output<ProjectSummary>();

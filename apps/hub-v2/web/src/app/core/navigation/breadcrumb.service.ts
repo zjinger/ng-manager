@@ -93,6 +93,10 @@ export class BreadcrumbService {
       return [{ label: '研发管理' }];
     }
 
+    if (path.startsWith('/delivery-overview')) {
+      return [{ label: '实施总览' }];
+    }
+
     if (path.startsWith('/content')) {
       return [{ label: '内容管理' }];
     }

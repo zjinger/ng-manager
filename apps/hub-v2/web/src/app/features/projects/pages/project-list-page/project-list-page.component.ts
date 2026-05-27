@@ -1,6 +1,7 @@
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthStore } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -77,6 +78,7 @@ export class ProjectListPageComponent {
   private readonly authStore = inject(AuthStore);
   private readonly message = inject(NzMessageService);
   private readonly clipboard = inject(Clipboard);
+  private readonly router = inject(Router);
 
   readonly keyword = signal('');
   readonly status = signal<ProjectStatus | ''>('active');
@@ -324,6 +326,11 @@ export class ProjectListPageComponent {
     this.configDialogOpen.set(true);
     this.loadProjectMeta(project.id);
     this.loadMembers(project.id);
+  }
+
+  openDeliveryOverview(project: ProjectSummary): void {
+    this.projectContext.setCurrentProjectId(project.id);
+    void this.router.navigate(['/delivery-overview']);
   }
 
   closeConfigDialog(): void {

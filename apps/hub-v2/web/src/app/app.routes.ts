@@ -96,6 +96,14 @@ export const routes: Routes = [
         data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS, ...TASK_SHEET_PERMISSIONS] },
         loadChildren: () => import('./features/rd/routes').then((m) => m.RD_ROUTES),
       },
+      // 项目实施总览
+      {
+        path: 'delivery-overview',
+        canActivate: [permissionGuard],
+        data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS] },
+        loadChildren: () =>
+          import('./features/delivery-overview/routes').then((m) => m.DELIVERY_OVERVIEW_ROUTES),
+      },
       // 内容路由：公告、文档、版本发布等
       {
         path: 'content',

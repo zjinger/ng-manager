@@ -78,7 +78,7 @@
             <span>{{ item.updatedAt | date: 'yyyy-MM-dd HH:mm' }}</span>
           </div>
         </div>
-        <div class="project-cell">
+        <div class="project-cell project-cell--actions">
           <a
             nz-button
             nz-tooltip="编辑"
@@ -118,6 +118,16 @@
             (click)="manageConfig.emit(item)"
           >
             <nz-icon nzType="setting" nzTheme="outline" />
+          </a>
+          <a
+            nz-button
+            nz-tooltip="实施总览"
+            nzType="text"
+            class="project-action project-action--overview"
+            type="button"
+            (click)="openDeliveryOverview.emit(item)"
+          >
+            <nz-icon nzType="line-chart" nzTheme="outline" />
           </a>
           @if (item.status === 'active') {
             <a
