@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 import { StatusBadgeComponent } from '@shared/ui';
 import {
@@ -15,7 +16,7 @@ type FlowStepId = 'prepare' | 'review' | 'issued' | 'processing' | 'delivered' |
 @Component({
   selector: 'app-rd-task-sheet-detail-header',
   standalone: true,
-  imports: [NzButtonModule, NzIconModule, StatusBadgeComponent],
+  imports: [NzButtonModule, NzIconModule, NzPopconfirmModule, StatusBadgeComponent],
   template: `
     @if (detail(); as current) {
       <section class="detail-header">
@@ -63,25 +64,90 @@ type FlowStepId = 'prepare' | 'review' | 'issued' | 'processing' | 'delivered' |
             }
             @if (current.status === 'draft') {
               <button nz-button class="detail-header__action-btn" (click)="edit.emit(current)">编辑</button>
-              <button nz-button class="detail-header__action-btn" nzType="primary" [nzLoading]="busy()" (click)="submitReview.emit(current.id)">提交审核</button>
+              <button
+                nz-button
+                class="detail-header__action-btn"
+                nzType="primary"
+                [nzLoading]="busy()"
+                nz-popconfirm
+                nzPopconfirmTitle="确认提交该任务单进入审核？"
+                nzPopconfirmOkText="提交"
+                nzPopconfirmCancelText="取消"
+                nzPopconfirmPlacement="topRight"
+                (nzOnConfirm)="submitReview.emit(current.id)"
+              >
+                提交审核
+              </button>
             }
             @if (current.status === 'returned') {
               <button nz-button class="detail-header__action-btn" (click)="edit.emit(current)">编辑</button>
-              <button nz-button class="detail-header__action-btn" nzType="primary" [nzLoading]="busy()" (click)="submitReview.emit(current.id)">重新提交</button>
+              <button
+                nz-button
+                class="detail-header__action-btn"
+                nzType="primary"
+                [nzLoading]="busy()"
+                nz-popconfirm
+                nzPopconfirmTitle="确认重新提交该任务单进入审核？"
+                nzPopconfirmOkText="提交"
+                nzPopconfirmCancelText="取消"
+                nzPopconfirmPlacement="topRight"
+                (nzOnConfirm)="submitReview.emit(current.id)"
+              >
+                重新提交
+              </button>
             }
             @if (current.status === 'pending_review') {
               <button nz-button class="detail-header__action-btn" (click)="returnReview.emit(current)">退回</button>
-              <button nz-button class="detail-header__action-btn" nzType="primary" [nzLoading]="busy()" (click)="approveReview.emit(current.id)">审核下发</button>
+              <button
+                nz-button
+                class="detail-header__action-btn"
+                nzType="primary"
+                [nzLoading]="busy()"
+                nz-popconfirm
+                nzPopconfirmTitle="确认审核通过并下发给接收人？"
+                nzPopconfirmOkText="下发"
+                nzPopconfirmCancelText="取消"
+                nzPopconfirmPlacement="topRight"
+                (nzOnConfirm)="approveReview.emit(current.id)"
+              >
+                审核下发
+              </button>
             }
             @if (current.status === 'issued') {
               <button nz-button class="detail-header__action-btn" (click)="assign.emit(current)">分派处理</button>
-              <button nz-button class="detail-header__action-btn" nzType="primary" [nzLoading]="busy()" (click)="startProcessing.emit(current.id)">开始处理</button>
+              <button
+                nz-button
+                class="detail-header__action-btn"
+                nzType="primary"
+                [nzLoading]="busy()"
+                nz-popconfirm
+                nzPopconfirmTitle="确认开始处理该任务单？"
+                nzPopconfirmOkText="开始处理"
+                nzPopconfirmCancelText="取消"
+                nzPopconfirmPlacement="topRight"
+                (nzOnConfirm)="startProcessing.emit(current.id)"
+              >
+                开始处理
+              </button>
             }
             @if (current.status === 'issued' || current.status === 'processing') {
-              <button nz-button class="detail-header__action-btn" (click)="reply.emit(current)">回复</button>
+              <button nz-button class="detail-header__action-btn" (click)="reply.emit(current)">交付/答复</button>
             }
             @if (current.status === 'replied') {
-              <button nz-button class="detail-header__action-btn" nzDanger [nzLoading]="busy()" (click)="closeSheet.emit(current.id)">关闭</button>
+              <button
+                nz-button
+                class="detail-header__action-btn"
+                nzType="primary"
+                [nzLoading]="busy()"
+                nz-popconfirm
+                nzPopconfirmTitle="确认验收通过该任务单？"
+                nzPopconfirmOkText="验收通过"
+                nzPopconfirmCancelText="取消"
+                nzPopconfirmPlacement="topRight"
+                (nzOnConfirm)="closeSheet.emit(current.id)"
+              >
+                验收通过
+              </button>
             }
             </div>
           </div>

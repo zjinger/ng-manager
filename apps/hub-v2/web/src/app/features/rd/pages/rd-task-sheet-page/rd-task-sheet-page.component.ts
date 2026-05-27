@@ -33,6 +33,7 @@ import {
 } from '../../dialogs/rd-task-sheet-convert-dialog/rd-task-sheet-convert-dialog.component';
 import { RdTaskSheetDialogComponent } from '../../dialogs/rd-task-sheet-dialog/rd-task-sheet-dialog.component';
 import { RdTaskSheetImportDialogComponent } from '../../dialogs/rd-task-sheet-import-dialog/rd-task-sheet-import-dialog.component';
+import { RdTaskSheetReplyDialogComponent } from '../../dialogs/rd-task-sheet-reply-dialog/rd-task-sheet-reply-dialog.component';
 import { RdTaskSheetReviewReturnDialogComponent } from '../../dialogs/rd-task-sheet-review-return-dialog/rd-task-sheet-review-return-dialog.component';
 import {
   RD_TASK_SHEET_STATUS_LABELS,
@@ -42,14 +43,12 @@ import {
   type CreateRdTaskSheetInput,
   type RdTaskSheetDetail,
   type RdTaskSheetEntity,
-  type RdTaskSheetResult,
   type RdTaskSheetStatus,
   type RdTaskSheetUrgency,
+  type ReplyRdTaskSheetInput,
 } from '../../models/rd-task-sheet.model';
 import { RdTaskSheetApiService } from '../../services/rd-task-sheet-api.service';
 import { RdTaskSheetStore } from '../../store/rd-task-sheet.store';
-
-type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryContent: string };
 
 @Component({
   selector: 'app-rd-task-sheet-page',
@@ -70,6 +69,7 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
     RdTaskSheetDetailDrawerComponent,
     RdTaskSheetConvertDialogComponent,
     RdTaskSheetAssignDialogComponent,
+    RdTaskSheetReplyDialogComponent,
     RdTaskSheetReviewReturnDialogComponent,
     NzButtonModule,
     NzIconModule,
@@ -279,46 +279,18 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
       (confirm)="saveReturnReview($event)"
     />
 
-    @if (replyOpen()) {
-      <div class="modal-backdrop">
-        <section class="modal-panel modal-panel--narrow">
-          <header>
-            <h2>回复任务单</h2>
-            <button nz-button nzType="text" (click)="replyOpen.set(false)">
-              <span nz-icon nzType="close"></span>
-            </button>
-          </header>
-          <div class="form-grid form-grid--single">
-            <label>
-              <span>处理结果</span>
-              <nz-select [ngModel]="replyForm().result" (ngModelChange)="updateReply({ result: $event })">
-                <nz-option nzLabel="已解决" nzValue="resolved"></nz-option>
-                <nz-option nzLabel="未解决" nzValue="unresolved"></nz-option>
-              </nz-select>
-            </label>
-            <label>
-              <span>解决时间</span>
-              <input class="date-input" type="date" [ngModel]="replyForm().resolvedAt" (ngModelChange)="updateReply({ resolvedAt: $event })" />
-            </label>
-            <label>
-              <span>交付 / 答复内容</span>
-              <textarea rows="5" [ngModel]="replyForm().deliveryContent" (ngModelChange)="updateReply({ deliveryContent: $event })"></textarea>
-            </label>
-          </div>
-          <footer>
-            <button nz-button (click)="replyOpen.set(false)">取消</button>
-            <button nz-button nzType="primary" [disabled]="!replyForm().deliveryContent.trim()" [nzLoading]="store.busy()" (click)="saveReply()">回复</button>
-          </footer>
-        </section>
-      </div>
-    }
+    <app-rd-task-sheet-reply-dialog
+      [open]="replyOpen()"
+      [busy]="store.busy()"
+      [detail]="store.selected()"
+      (cancel)="replyOpen.set(false)"
+      (confirm)="saveReply($event)"
+    />
   `,
   styles: [
     `
       .toolbar-actions,
-      .task-toolbar__main,
-      .modal-panel header,
-      .modal-panel footer {
+      .task-toolbar__main {
         display: flex;
         align-items: center;
       }
@@ -438,65 +410,11 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
         justify-content: flex-end;
         padding: 16px 0 4px;
       }
-      .modal-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 30;
-        display: grid;
-        place-items: center;
-        padding: 24px;
-        background: rgba(15, 23, 42, 0.34);
-      }
-      .modal-panel {
-        width: min(560px, 100%);
-        max-height: min(86vh, 860px);
-        overflow: auto;
-        background: var(--surface-card);
-        border-radius: var(--border-radius);
-        box-shadow: 0 18px 46px rgba(15, 23, 42, 0.22);
-        padding: 20px;
-      }
-      .modal-panel header,
-      .modal-panel footer {
-        justify-content: space-between;
-        gap: 12px;
-      }
-      .modal-panel h2 {
-        margin: 0;
-        font-size: 18px;
-      }
-      .modal-panel footer {
-        justify-content: flex-end;
-        margin-top: 18px;
-      }
-      .form-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 14px;
-        margin-top: 18px;
-      }
-      label {
-        display: grid;
-        gap: 6px;
-      }
-      label span {
-        color: var(--text-muted);
-        font-size: 12px;
-      }
-      .date-input,
-      textarea {
-        width: 100%;
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius-sm);
-        padding: 8px 11px;
-        background: var(--surface-card);
-      }
       @media (max-width: 900px) {
         .task-table__head {
           display: none;
         }
-        .task-row,
-        .form-grid {
+        .task-row {
           grid-template-columns: 1fr;
         }
       }
@@ -537,11 +455,6 @@ export class RdTaskSheetPageComponent implements OnInit {
   readonly convertKind = signal<RdTaskSheetConvertKind>('rd');
   readonly assignOpen = signal(false);
   readonly returnReviewOpen = signal(false);
-  readonly replyForm = signal<ReplyForm>({
-    result: 'resolved',
-    resolvedAt: new Date().toISOString().slice(0, 10),
-    deliveryContent: '',
-  });
 
   readonly statusOptions = RD_TASK_SHEET_STATUS_OPTIONS;
   readonly subtitle = computed(() => `共 ${this.store.total()} 张与我有关的任务单，支持关联或不关联项目。`);
@@ -680,22 +593,12 @@ export class RdTaskSheetPageComponent implements OnInit {
     });
   }
 
-  openReply(detail: RdTaskSheetDetail): void {
-    this.replyForm.set({
-      result: detail.result ?? 'resolved',
-      resolvedAt: (detail.resolvedAt ?? new Date().toISOString()).slice(0, 10),
-      deliveryContent: detail.deliveryContent ?? '',
-    });
+  openReply(_detail: RdTaskSheetDetail): void {
     this.replyOpen.set(true);
   }
 
-  updateReply(patch: Partial<ReplyForm>): void {
-    this.replyForm.update((form) => ({ ...form, ...patch }));
-  }
-
-  saveReply(): void {
+  saveReply(reply: ReplyRdTaskSheetInput): void {
     const detail = this.store.selected();
-    const reply = this.replyForm();
     if (!detail || !reply.deliveryContent.trim()) {
       return;
     }
