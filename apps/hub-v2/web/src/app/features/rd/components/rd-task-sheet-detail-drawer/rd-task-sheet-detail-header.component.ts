@@ -52,18 +52,38 @@ type FlowStepId = 'prepare' | 'review' | 'issued' | 'processing' | 'delivered' |
               <span nz-icon nzType="download"></span>
               导出 Word
             </button>
-            @if (!current.convertedRdItemId) {
-              <button nz-button class="detail-header__action-btn" (click)="convert.emit('rd')">转研发项</button>
-            } @else {
+            @if (current.convertedRdItemId) {
               <app-status-badge status="converted_rd" label="已转研发项" />
             }
-            @if (!current.convertedIssueId) {
-              <button nz-button class="detail-header__action-btn" (click)="convert.emit('issue')">转测试单</button>
-            } @else {
+            @if (canAssign(current)) {
+              <button nz-button class="detail-header__action-btn" (click)="convert.emit('rd')">转研发项</button>
+            }
+            @if (current.convertedIssueId) {
               <app-status-badge status="converted_issue" label="已转测试单" />
             }
-            @if (current.status === 'draft') {
+            @if (canAssign(current)) {
+              <button nz-button class="detail-header__action-btn" (click)="convert.emit('issue')">转测试单</button>
+            }
+            @if (canEdit(current)) {
               <button nz-button class="detail-header__action-btn" (click)="edit.emit(current)">编辑</button>
+            }
+            @if (canDelete(current)) {
+              <button
+                nz-button
+                class="detail-header__action-btn"
+                nzDanger
+                [nzLoading]="busy()"
+                nz-popconfirm
+                nzPopconfirmTitle="确认删除该任务单？"
+                nzPopconfirmOkText="删除"
+                nzPopconfirmCancelText="取消"
+                nzPopconfirmPlacement="topRight"
+                (nzOnConfirm)="deleteSheet.emit(current.id)"
+              >
+                删除
+              </button>
+            }
+            @if (canSubmitReview(current) && current.status === 'draft') {
               <button
                 nz-button
                 class="detail-header__action-btn"
@@ -79,8 +99,7 @@ type FlowStepId = 'prepare' | 'review' | 'issued' | 'processing' | 'delivered' |
                 提交审核
               </button>
             }
-            @if (current.status === 'returned') {
-              <button nz-button class="detail-header__action-btn" (click)="edit.emit(current)">编辑</button>
+            @if (canSubmitReview(current) && current.status === 'returned') {
               <button
                 nz-button
                 class="detail-header__action-btn"
@@ -96,7 +115,7 @@ type FlowStepId = 'prepare' | 'review' | 'issued' | 'processing' | 'delivered' |
                 重新提交
               </button>
             }
-            @if (current.status === 'pending_review') {
+            @if (canReview(current)) {
               <button nz-button class="detail-header__action-btn" (click)="returnReview.emit(current)">退回</button>
               <button
                 nz-button
@@ -113,8 +132,10 @@ type FlowStepId = 'prepare' | 'review' | 'issued' | 'processing' | 'delivered' |
                 审核下发
               </button>
             }
-            @if (current.status === 'issued') {
+            @if (canAssign(current)) {
               <button nz-button class="detail-header__action-btn" (click)="assign.emit(current)">分派处理</button>
+            }
+            @if (canStartProcessing(current)) {
               <button
                 nz-button
                 class="detail-header__action-btn"
@@ -130,10 +151,17 @@ type FlowStepId = 'prepare' | 'review' | 'issued' | 'processing' | 'delivered' |
                 开始处理
               </button>
             }
-            @if (current.status === 'issued' || current.status === 'processing') {
-              <button nz-button class="detail-header__action-btn" (click)="reply.emit(current)">交付/答复</button>
+            @if (canShowReply(current)) {
+              <button
+                nz-button
+                class="detail-header__action-btn"
+                [disabled]="!linkedTargetsCompleted(current)"
+                (click)="reply.emit(current)"
+              >
+                交付/答复
+              </button>
             }
-            @if (current.status === 'replied') {
+            @if (canAccept(current)) {
               <button
                 nz-button
                 class="detail-header__action-btn"
@@ -306,6 +334,8 @@ type FlowStepId = 'prepare' | 'review' | 'issued' | 'processing' | 'delivered' |
 })
 export class RdTaskSheetDetailHeaderComponent {
   readonly detail = input<RdTaskSheetDetail | null>(null);
+  readonly currentUserId = input('');
+  readonly permissionCodes = input<string[]>([]);
   readonly busy = input(false);
   readonly exporting = input(false);
   readonly exportWord = output<RdTaskSheetDetail>();
@@ -319,6 +349,7 @@ export class RdTaskSheetDetailHeaderComponent {
   readonly startProcessing = output<string>();
   readonly reply = output<RdTaskSheetDetail>();
   readonly closeSheet = output<string>();
+  readonly deleteSheet = output<string>();
 
   statusLabel(status: RdTaskSheetStatus): string {
     return RD_TASK_SHEET_STATUS_LABELS[status] ?? status;
@@ -347,6 +378,75 @@ export class RdTaskSheetDetailHeaderComponent {
 
   currentFlowLabel(status: RdTaskSheetStatus): string {
     return this.statusFlow(status).find((step) => step.state === 'active')?.label ?? statusLabel(status);
+  }
+
+  canEdit(detail: RdTaskSheetDetail): boolean {
+    return this.canSubmitOwn(detail) && (detail.status === 'draft' || detail.status === 'returned');
+  }
+
+  canDelete(detail: RdTaskSheetDetail): boolean {
+    return this.canSubmitOwn(detail) && (detail.status === 'draft' || detail.status === 'returned');
+  }
+
+  canSubmitReview(detail: RdTaskSheetDetail): boolean {
+    return this.canSubmitOwn(detail) && (detail.status === 'draft' || detail.status === 'returned');
+  }
+
+  canReview(detail: RdTaskSheetDetail): boolean {
+    return detail.status === 'pending_review' && this.hasTaskPermission('task_sheet.review');
+  }
+
+  canAssign(detail: RdTaskSheetDetail): boolean {
+    return (detail.status === 'issued' || detail.status === 'processing') && this.hasTaskPermission('task_sheet.assign') && this.isReceiverOrProcessor(detail);
+  }
+
+  canStartProcessing(detail: RdTaskSheetDetail): boolean {
+    return detail.status === 'issued' && (this.isReceiverOrProcessor(detail) || this.hasPermission('task_sheet.manage'));
+  }
+
+  canShowReply(detail: RdTaskSheetDetail): boolean {
+    return (detail.status === 'issued' || detail.status === 'processing') && this.hasTaskPermission('task_sheet.deliver') && this.isReceiverOrProcessor(detail);
+  }
+
+  canAccept(detail: RdTaskSheetDetail): boolean {
+    if (detail.status !== 'replied' || !this.hasTaskPermission('task_sheet.accept')) {
+      return false;
+    }
+    return this.hasPermission('task_sheet.manage') || this.isCreatorOrIssuerOrReviewer(detail);
+  }
+
+  linkedTargetsCompleted(detail: RdTaskSheetDetail): boolean {
+    return !detail.linkedTargets?.length || detail.linkedTargets.every((target) => target.completed);
+  }
+
+  private canSubmitOwn(detail: RdTaskSheetDetail): boolean {
+    return this.hasTaskPermission('task_sheet.submit') && (this.hasPermission('task_sheet.manage') || this.isCreatorOrIssuer(detail));
+  }
+
+  private hasTaskPermission(code: string): boolean {
+    return this.hasPermission(code) || this.hasPermission('task_sheet.manage');
+  }
+
+  private hasPermission(code: string): boolean {
+    return this.permissionCodes().includes(code);
+  }
+
+  private isCreatorOrIssuer(detail: RdTaskSheetDetail): boolean {
+    const userId = this.currentUserId();
+    return Boolean(userId && (detail.creatorId === userId || detail.issuerUserId === userId));
+  }
+
+  private isCreatorOrIssuerOrReviewer(detail: RdTaskSheetDetail): boolean {
+    const userId = this.currentUserId();
+    return Boolean(userId && (detail.creatorId === userId || detail.issuerUserId === userId || detail.reviewerUserId === userId));
+  }
+
+  private isReceiverOrProcessor(detail: RdTaskSheetDetail): boolean {
+    if (this.hasPermission('task_sheet.manage')) {
+      return true;
+    }
+    const userId = this.currentUserId();
+    return Boolean(userId && (detail.receiverUserId === userId || detail.processorUserId === userId));
   }
 
   private activeFlowId(status: RdTaskSheetStatus): FlowStepId {

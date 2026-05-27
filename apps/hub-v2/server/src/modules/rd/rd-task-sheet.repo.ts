@@ -10,6 +10,8 @@ import type {
   RdTaskSheetBusinessType,
   RdTaskSheetDetail,
   RdTaskSheetEntity,
+  RdTaskSheetLinkedTargetEntity,
+  RdTaskSheetLinkedTargetType,
   RdTaskSheetListResult,
   RdTaskSheetLogEntity,
   RdTaskSheetResult,
@@ -90,6 +92,19 @@ type LogRow = {
   created_at: string;
 };
 
+type LinkRow = {
+  id: string;
+  sheet_id: string;
+  target_type: RdTaskSheetLinkedTargetType;
+  target_id: string;
+  target_no: string | null;
+  title: string | null;
+  status: string | null;
+  completed: number;
+  created_by_user_id: string | null;
+  created_at: string;
+};
+
 type DefaultRouteRow = {
   id: string;
   issuer_user_id: string | null;
@@ -160,6 +175,17 @@ export interface ListVisibilityInput {
   userId: string;
   accessibleProjectIds: string[];
   canManage: boolean;
+  canReviewWorkflow?: boolean;
+  canAssignWorkflow?: boolean;
+}
+
+export interface CreateTaskSheetLinkInput {
+  id: string;
+  sheetId: string;
+  targetType: RdTaskSheetLinkedTargetType;
+  targetId: string;
+  createdByUserId: string | null;
+  createdAt: string;
 }
 
 export type CreateDefaultRouteRowInput = RdTaskSheetDefaultRouteEntity;
@@ -397,6 +423,10 @@ export class RdTaskSheetRepo {
     return row ? this.mapSheet(row) : null;
   }
 
+  delete(id: string): boolean {
+    return this.db.prepare("DELETE FROM rd_task_sheets WHERE id = ?").run(id).changes > 0;
+  }
+
   getDetail(id: string): RdTaskSheetDetail | null {
     const entity = this.findById(id);
     if (!entity) {
@@ -405,7 +435,8 @@ export class RdTaskSheetRepo {
     return {
       ...entity,
       attachments: this.listAttachments(id),
-      logs: this.listLogs(id)
+      logs: this.listLogs(id),
+      linkedTargets: this.listLinkedTargets(id)
     };
   }
 
@@ -439,6 +470,68 @@ export class RdTaskSheetRepo {
     return this.db
       .prepare("DELETE FROM rd_task_sheet_attachments WHERE sheet_id = ? AND id = ?")
       .run(sheetId, attachmentId).changes > 0;
+  }
+
+  addLink(entity: CreateTaskSheetLinkInput): void {
+    this.db
+      .prepare(
+        `
+          INSERT OR IGNORE INTO rd_task_sheet_links (id, sheet_id, target_type, target_id, created_by_user_id, created_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(entity.id, entity.sheetId, entity.targetType, entity.targetId, entity.createdByUserId, entity.createdAt);
+  }
+
+  listLinkedTargets(sheetId: string): RdTaskSheetLinkedTargetEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT
+            l.id,
+            l.sheet_id,
+            l.target_type,
+            l.target_id,
+            r.rd_no AS target_no,
+            r.title,
+            r.status,
+            CASE WHEN r.status IN ('accepted', 'closed') THEN 1 ELSE 0 END AS completed,
+            l.created_by_user_id,
+            l.created_at
+          FROM rd_task_sheet_links l
+          INNER JOIN rd_items r ON r.id = l.target_id
+          WHERE l.sheet_id = ? AND l.target_type = 'rd_item'
+          UNION ALL
+          SELECT
+            l.id,
+            l.sheet_id,
+            l.target_type,
+            l.target_id,
+            i.issue_no AS target_no,
+            i.title,
+            i.status,
+            CASE WHEN i.status IN ('verified', 'closed') THEN 1 ELSE 0 END AS completed,
+            l.created_by_user_id,
+            l.created_at
+          FROM rd_task_sheet_links l
+          INNER JOIN issues i ON i.id = l.target_id
+          WHERE l.sheet_id = ? AND l.target_type = 'issue'
+          ORDER BY created_at ASC
+        `
+      )
+      .all(sheetId, sheetId) as LinkRow[];
+    return rows.map((row) => ({
+      id: row.id,
+      sheetId: row.sheet_id,
+      targetType: row.target_type,
+      targetId: row.target_id,
+      targetNo: row.target_no,
+      title: row.title,
+      status: row.status,
+      completed: row.completed === 1,
+      createdByUserId: row.created_by_user_id,
+      createdAt: row.created_at
+    }));
   }
 
   listAttachments(sheetId: string): RdTaskSheetAttachmentEntity[] {
@@ -506,8 +599,22 @@ export class RdTaskSheetRepo {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
-    if (visibility.canManage && query.scope === "workflow") {
-      conditions.push("(status = 'pending_review' OR (status = 'issued' AND processor_user_id IS NULL))");
+    if (query.scope === "workflow") {
+      const workflowConditions: string[] = [];
+      if (visibility.canManage || visibility.canReviewWorkflow) {
+        workflowConditions.push("status = 'pending_review'");
+      }
+      if (visibility.canManage) {
+        workflowConditions.push("(status IN ('issued', 'processing'))");
+      } else if (visibility.canAssignWorkflow) {
+        workflowConditions.push("(status IN ('issued', 'processing') AND (receiver_user_id = ? OR processor_user_id = ?))");
+        params.push(visibility.userId, visibility.userId);
+      }
+      if (workflowConditions.length > 0) {
+        conditions.push(`(${workflowConditions.join(" OR ")})`);
+      } else if (!visibility.canManage) {
+        conditions.push("1 = 0");
+      }
     } else if (!visibility.canManage) {
       const visibleConditions = [
         "creator_id = ?",

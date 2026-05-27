@@ -99,6 +99,12 @@ export default async function rdTaskSheetRoutes(app: FastifyInstance) {
     return ok(await app.container.rdTaskSheetCommand.update(sheetId, body, ctx), "rd task sheet updated");
   });
 
+  app.delete("/rd/task-sheets/:sheetId", async (request) => {
+    const ctx = requireAuth(request);
+    const { sheetId } = request.params as { sheetId: string };
+    return ok(await app.container.rdTaskSheetCommand.delete(sheetId, ctx), "rd task sheet deleted");
+  });
+
   app.post("/rd/task-sheets/:sheetId/issue", async (request) => {
     const ctx = requireAuth(request);
     const { sheetId } = request.params as { sheetId: string };

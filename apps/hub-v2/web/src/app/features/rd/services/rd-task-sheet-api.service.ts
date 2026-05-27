@@ -44,6 +44,10 @@ export class RdTaskSheetApiService {
     return this.api.patch<RdTaskSheetDetail, UpdateRdTaskSheetInput>(`/rd/task-sheets/${sheetId}`, input);
   }
 
+  delete(sheetId: string) {
+    return this.api.delete<{ id: string }>(`/rd/task-sheets/${sheetId}`);
+  }
+
   issue(sheetId: string) {
     return this.api.post<RdTaskSheetDetail>(`/rd/task-sheets/${sheetId}/issue`);
   }

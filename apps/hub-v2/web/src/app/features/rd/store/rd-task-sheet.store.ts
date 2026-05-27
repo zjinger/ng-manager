@@ -107,6 +107,28 @@ export class RdTaskSheetStore {
     this.runDetailAction(() => this.api.update(sheetId, input), done);
   }
 
+  delete(sheetId: string, done?: () => void): void {
+    this.busyState.set(true);
+    this.api.delete(sheetId).subscribe({
+      next: () => {
+        this.busyState.set(false);
+        this.selectedState.set(null);
+        const result = this.resultState();
+        if (result) {
+          this.resultState.set({
+            ...result,
+            total: Math.max(0, result.total - 1),
+            items: result.items.filter((item) => item.id !== sheetId),
+          });
+        }
+        done?.();
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
   issue(sheetId: string): void {
     this.runDetailAction(() => this.api.issue(sheetId));
   }

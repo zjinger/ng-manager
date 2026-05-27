@@ -22,5 +22,10 @@ export const ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION = 'announcement.global.manage
 export const TASK_SHEET_PERMISSIONS = [
   'task_sheet.submit',
   'task_sheet.view.self',
+  'task_sheet.review',
+  'task_sheet.receive',
+  'task_sheet.assign',
+  'task_sheet.deliver',
+  'task_sheet.accept',
   'task_sheet.manage',
 ] as const;

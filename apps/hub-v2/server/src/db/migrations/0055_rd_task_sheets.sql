@@ -80,6 +80,21 @@ CREATE TABLE IF NOT EXISTS rd_task_sheet_attachments (
 CREATE INDEX IF NOT EXISTS idx_rd_task_sheet_attachments_sheet ON rd_task_sheet_attachments(sheet_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_rd_task_sheet_attachments_upload ON rd_task_sheet_attachments(upload_id);
 
+CREATE TABLE IF NOT EXISTS rd_task_sheet_links (
+  id TEXT PRIMARY KEY,
+  sheet_id TEXT NOT NULL,
+  target_type TEXT NOT NULL CHECK (target_type IN ('rd_item', 'issue')),
+  target_id TEXT NOT NULL,
+  created_by_user_id TEXT,
+  created_at TEXT NOT NULL,
+  UNIQUE(sheet_id, target_type, target_id),
+  FOREIGN KEY (sheet_id) REFERENCES rd_task_sheets(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_rd_task_sheet_links_sheet ON rd_task_sheet_links(sheet_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_rd_task_sheet_links_target ON rd_task_sheet_links(target_type, target_id);
+
 CREATE TABLE IF NOT EXISTS rd_task_sheet_logs (
   id TEXT PRIMARY KEY,
   sheet_id TEXT NOT NULL,
@@ -126,12 +141,26 @@ INSERT OR IGNORE INTO system_permissions (
 VALUES
   ('sperm_task_sheet_submit', 'task_sheet.submit', '提交任务单', 'task_sheet', '任务单', 'rd', '研发管理', '创建并下发任务单。', 10, datetime('now'), datetime('now')),
   ('sperm_task_sheet_view_self', 'task_sheet.view.self', '查看本人任务单', 'task_sheet', '任务单', 'rd', '研发管理', '查看与本人相关的任务单。', 20, datetime('now'), datetime('now')),
-  ('sperm_task_sheet_manage', 'task_sheet.manage', '管理任务单', 'task_sheet', '任务单', 'rd', '研发管理', '管理和处理全部任务单。', 30, datetime('now'), datetime('now'));
+  ('sperm_task_sheet_review', 'task_sheet.review', '审核任务单', 'task_sheet', '任务单', 'rd', '研发管理', '审核下发或退回任务单。', 30, datetime('now'), datetime('now')),
+  ('sperm_task_sheet_receive', 'task_sheet.receive', '接收任务单', 'task_sheet', '任务单', 'rd', '研发管理', '接收并开始处理已下发任务单。', 40, datetime('now'), datetime('now')),
+  ('sperm_task_sheet_assign', 'task_sheet.assign', '分派任务单', 'task_sheet', '任务单', 'rd', '研发管理', '分派任务单并转为研发项或测试单。', 50, datetime('now'), datetime('now')),
+  ('sperm_task_sheet_deliver', 'task_sheet.deliver', '交付任务单', 'task_sheet', '任务单', 'rd', '研发管理', '完成任务单交付或答复。', 60, datetime('now'), datetime('now')),
+  ('sperm_task_sheet_accept', 'task_sheet.accept', '验收任务单', 'task_sheet', '任务单', 'rd', '研发管理', '验收通过已交付任务单。', 70, datetime('now'), datetime('now')),
+  ('sperm_task_sheet_manage', 'task_sheet.manage', '管理任务单', 'task_sheet', '任务单', 'rd', '研发管理', '管理和处理全部任务单。', 80, datetime('now'), datetime('now'));
 
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
 SELECT 'srole_super_admin', id, datetime('now')
 FROM system_permissions
-WHERE code IN ('task_sheet.submit', 'task_sheet.view.self', 'task_sheet.manage');
+WHERE code IN (
+  'task_sheet.submit',
+  'task_sheet.view.self',
+  'task_sheet.review',
+  'task_sheet.receive',
+  'task_sheet.assign',
+  'task_sheet.deliver',
+  'task_sheet.accept',
+  'task_sheet.manage'
+);
 
 INSERT OR IGNORE INTO system_role_permissions (role_id, permission_id, created_at)
 SELECT 'srole_member', id, datetime('now')

@@ -92,9 +92,25 @@ export interface RdTaskSheetLogEntity {
   createdAt: string;
 }
 
+export type RdTaskSheetLinkedTargetType = "rd_item" | "issue";
+
+export interface RdTaskSheetLinkedTargetEntity {
+  id: string;
+  sheetId: string;
+  targetType: RdTaskSheetLinkedTargetType;
+  targetId: string;
+  targetNo: string | null;
+  title: string | null;
+  status: string | null;
+  completed: boolean;
+  createdByUserId: string | null;
+  createdAt: string;
+}
+
 export interface RdTaskSheetDetail extends RdTaskSheetEntity {
   attachments: RdTaskSheetAttachmentEntity[];
   logs: RdTaskSheetLogEntity[];
+  linkedTargets: RdTaskSheetLinkedTargetEntity[];
 }
 
 export type RdTaskSheetDefaultRouteStatus = "active" | "inactive";

@@ -41,7 +41,22 @@ import type {
 
 const SUBMIT_PERMISSION = "task_sheet.submit";
 const VIEW_SELF_PERMISSION = "task_sheet.view.self";
+const REVIEW_PERMISSION = "task_sheet.review";
+const RECEIVE_PERMISSION = "task_sheet.receive";
+const ASSIGN_PERMISSION = "task_sheet.assign";
+const DELIVER_PERMISSION = "task_sheet.deliver";
+const ACCEPT_PERMISSION = "task_sheet.accept";
 const MANAGE_PERMISSION = "task_sheet.manage";
+const TASK_SHEET_ACCESS_PERMISSIONS = [
+  SUBMIT_PERMISSION,
+  VIEW_SELF_PERMISSION,
+  REVIEW_PERMISSION,
+  RECEIVE_PERMISSION,
+  ASSIGN_PERMISSION,
+  DELIVER_PERMISSION,
+  ACCEPT_PERMISSION,
+  MANAGE_PERMISSION
+];
 
 export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskSheetQueryContract {
   constructor(
@@ -175,6 +190,16 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
     return this.requireDetail(id);
   }
 
+  async delete(id: string, ctx: RequestContext): Promise<{ id: string }> {
+    const current = await this.requireEntityWithAccess(id, ctx);
+    this.requireDeleteAccess(current, ctx);
+    this.requireStatus(current, ["draft", "returned"], "delete task sheet");
+    if (!this.repo.delete(id)) {
+      throw new AppError(ERROR_CODES.NOT_FOUND, "rd task sheet not found", 404);
+    }
+    return { id };
+  }
+
   async issue(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail> {
     return this.approveReview(id, ctx);
   }
@@ -193,7 +218,7 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
   }
 
   async approveReview(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail> {
-    this.requireAnyPermission(ctx, [MANAGE_PERMISSION]);
+    this.requireAnyPermission(ctx, [REVIEW_PERMISSION, MANAGE_PERMISSION]);
     const current = await this.requireEntityWithAccess(id, ctx);
     this.requireStatus(current, ["pending_review", "draft"], "approve task sheet review");
     const actor = this.requireCurrentUser(ctx);
@@ -212,7 +237,7 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
   }
 
   async returnReview(id: string, input: ReturnReviewRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail> {
-    this.requireAnyPermission(ctx, [MANAGE_PERMISSION]);
+    this.requireAnyPermission(ctx, [REVIEW_PERMISSION, MANAGE_PERMISSION]);
     const current = await this.requireEntityWithAccess(id, ctx);
     this.requireStatus(current, ["pending_review"], "return task sheet review");
     const actor = this.requireCurrentUser(ctx);
@@ -231,8 +256,9 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
   }
 
   async assign(id: string, input: AssignRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail> {
-    this.requireAnyPermission(ctx, [MANAGE_PERMISSION]);
+    this.requireAnyPermission(ctx, [ASSIGN_PERMISSION, MANAGE_PERMISSION]);
     const current = await this.requireEntityWithAccess(id, ctx);
+    this.requireAssignerAccess(current, ctx, "assign task sheet");
     this.requireStatus(current, ["issued", "processing"], "assign task sheet");
     const projectId = input.projectId === undefined ? current.projectId : await this.resolveProjectId(input.projectId, ctx, "assign rd task sheet");
     const processor = input.processorUserId === undefined ? null : this.resolveOptionalUser(input.processorUserId);
@@ -264,7 +290,7 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
 
   async startProcessing(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail> {
     const current = await this.requireEntityWithAccess(id, ctx);
-    this.requireHandlerAccess(current, ctx, "start processing task sheet");
+    this.requireReceiverAccess(current, ctx, "start processing task sheet");
     this.requireStatus(current, ["issued"], "start processing task sheet");
     const actor = this.requireCurrentUser(ctx);
     const now = nowIso();
@@ -281,8 +307,9 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
 
   async reply(id: string, input: ReplyRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail> {
     const current = await this.requireEntityWithAccess(id, ctx);
-    this.requireHandlerAccess(current, ctx, "reply task sheet");
+    this.requireDeliverAccess(current, ctx, "reply task sheet");
     this.requireStatus(current, ["issued", "processing"], "reply task sheet");
+    this.ensureLinkedTargetsCompleted(id);
     const actor = this.requireCurrentUser(ctx);
     const now = nowIso();
     this.repo.update(id, {
@@ -301,9 +328,7 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
 
   async close(id: string, input: CloseRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail> {
     const current = await this.requireEntityWithAccess(id, ctx);
-    if (!this.isManager(ctx) && !this.isRelatedUser(current, currentUserId(ctx))) {
-      throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "close task sheet forbidden", 403);
-    }
+    this.requireAcceptAccess(current, ctx, "close task sheet");
     if (current.status === "closed") {
       return this.requireDetail(id);
     }
@@ -347,7 +372,7 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
   }
 
   async list(query: ListRdTaskSheetsQuery, ctx: RequestContext): Promise<RdTaskSheetListResult> {
-    this.requireAnyPermission(ctx, [VIEW_SELF_PERMISSION, MANAGE_PERMISSION]);
+    this.requireAnyPermission(ctx, TASK_SHEET_ACCESS_PERMISSIONS);
     if (query.projectId?.trim()) {
       await this.projectAccess.requireProjectAccess(query.projectId.trim(), ctx, "list rd task sheets");
     }
@@ -356,7 +381,9 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
     return this.repo.list(query, {
       userId: currentUserId(ctx),
       accessibleProjectIds,
-      canManage: canManageAll
+      canManage: canManageAll,
+      canReviewWorkflow: hasPermission(ctx, REVIEW_PERMISSION),
+      canAssignWorkflow: hasPermission(ctx, ASSIGN_PERMISSION)
     });
   }
 
@@ -394,11 +421,10 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
 
   async convertToRdItem(id: string, input: ConvertRdTaskSheetToRdItemInput, ctx: RequestContext): Promise<RdTaskSheetDetail> {
     const current = await this.requireEntityWithAccess(id, ctx);
+    this.requireAnyPermission(ctx, [ASSIGN_PERMISSION, MANAGE_PERMISSION]);
+    this.requireAssignerAccess(current, ctx, "convert task sheet to rd item");
     if (!this.rdCommand) {
       throw new AppError(ERROR_CODES.INTERNAL_ERROR, "rd conversion is not configured", 500);
-    }
-    if (current.convertedRdItemId) {
-      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "任务单已转为研发项", 409);
     }
     const projectId = normalizeNullable(input.projectId) || current.projectId;
     if (!projectId) {
@@ -419,18 +445,30 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
       ctx
     );
     const now = nowIso();
-    this.repo.update(id, { converted_rd_item_id: rdItem.id, updated_at: now });
-    this.createLog(id, "convert.rd_item", ctx, `转为研发项 ${rdItem.rdNo}`, now, { rdItemId: rdItem.id });
+    this.repo.transaction(() => {
+      this.repo.update(id, {
+        converted_rd_item_id: current.convertedRdItemId || rdItem.id,
+        updated_at: now
+      });
+      this.repo.addLink({
+        id: genId("rdtslk"),
+        sheetId: id,
+        targetType: "rd_item",
+        targetId: rdItem.id,
+        createdByUserId: currentUserId(ctx) || null,
+        createdAt: now
+      });
+      this.createLog(id, "convert.rd_item", ctx, `转为研发项 ${rdItem.rdNo}`, now, { rdItemId: rdItem.id });
+    });
     return this.requireDetail(id);
   }
 
   async convertToIssue(id: string, input: ConvertRdTaskSheetToIssueInput, ctx: RequestContext): Promise<RdTaskSheetDetail> {
     const current = await this.requireEntityWithAccess(id, ctx);
+    this.requireAnyPermission(ctx, [ASSIGN_PERMISSION, MANAGE_PERMISSION]);
+    this.requireAssignerAccess(current, ctx, "convert task sheet to issue");
     if (!this.issueCommand) {
       throw new AppError(ERROR_CODES.INTERNAL_ERROR, "issue conversion is not configured", 500);
-    }
-    if (current.convertedIssueId) {
-      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "任务单已转为测试单", 409);
     }
     const projectId = normalizeNullable(input.projectId) || current.projectId;
     if (!projectId) {
@@ -450,8 +488,21 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
       ctx
     );
     const now = nowIso();
-    this.repo.update(id, { converted_issue_id: issue.id, updated_at: now });
-    this.createLog(id, "convert.issue", ctx, `转为测试单 ${issue.issueNo}`, now, { issueId: issue.id });
+    this.repo.transaction(() => {
+      this.repo.update(id, {
+        converted_issue_id: current.convertedIssueId || issue.id,
+        updated_at: now
+      });
+      this.repo.addLink({
+        id: genId("rdtslk"),
+        sheetId: id,
+        targetType: "issue",
+        targetId: issue.id,
+        createdByUserId: currentUserId(ctx) || null,
+        createdAt: now
+      });
+      this.createLog(id, "convert.issue", ctx, `转为测试单 ${issue.issueNo}`, now, { issueId: issue.id });
+    });
     return this.requireDetail(id);
   }
 
@@ -548,12 +599,18 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
   }
 
   private async requireEntityWithAccess(id: string, ctx: RequestContext): Promise<RdTaskSheetEntity> {
-    this.requireAnyPermission(ctx, [VIEW_SELF_PERMISSION, MANAGE_PERMISSION]);
+    this.requireAnyPermission(ctx, TASK_SHEET_ACCESS_PERMISSIONS);
     const entity = this.repo.findById(id);
     if (!entity) {
       throw new AppError(ERROR_CODES.NOT_FOUND, "rd task sheet not found", 404);
     }
     if (this.isManager(ctx) || this.isRelatedUser(entity, currentUserId(ctx))) {
+      return entity;
+    }
+    if (hasPermission(ctx, REVIEW_PERMISSION) && entity.status === "pending_review") {
+      return entity;
+    }
+    if (hasPermission(ctx, ASSIGN_PERMISSION) && (entity.status === "issued" || entity.status === "processing")) {
       return entity;
     }
     if (entity.projectId) {
@@ -607,6 +664,7 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
   }
 
   private requireEditAccess(entity: RdTaskSheetEntity, ctx: RequestContext): void {
+    this.requireAnyPermission(ctx, [SUBMIT_PERMISSION, MANAGE_PERMISSION]);
     if (this.isManager(ctx)) {
       return;
     }
@@ -615,6 +673,16 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
     }
     if (entity.creatorId !== currentUserId(ctx) && entity.issuerUserId !== currentUserId(ctx)) {
       throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "edit task sheet forbidden", 403);
+    }
+  }
+
+  private requireDeleteAccess(entity: RdTaskSheetEntity, ctx: RequestContext): void {
+    this.requireAnyPermission(ctx, [SUBMIT_PERMISSION, MANAGE_PERMISSION]);
+    if (this.isManager(ctx)) {
+      return;
+    }
+    if (entity.creatorId !== currentUserId(ctx) && entity.issuerUserId !== currentUserId(ctx)) {
+      throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "delete task sheet forbidden", 403);
     }
   }
 
@@ -637,6 +705,65 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
       return;
     }
     throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, `${action} forbidden`, 403);
+  }
+
+  private requireReceiverAccess(entity: RdTaskSheetEntity, ctx: RequestContext, action: string): void {
+    if (this.isManager(ctx)) {
+      return;
+    }
+    const userId = currentUserId(ctx);
+    if (userId && (entity.receiverUserId === userId || entity.processorUserId === userId)) {
+      return;
+    }
+    this.requireAnyPermission(ctx, [RECEIVE_PERMISSION, MANAGE_PERMISSION]);
+    throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, `${action} forbidden`, 403);
+  }
+
+  private requireAssignerAccess(entity: RdTaskSheetEntity, ctx: RequestContext, action: string): void {
+    if (this.isManager(ctx)) {
+      return;
+    }
+    const userId = currentUserId(ctx);
+    if (userId && (entity.receiverUserId === userId || entity.processorUserId === userId)) {
+      return;
+    }
+    throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, `${action} forbidden`, 403);
+  }
+
+  private requireDeliverAccess(entity: RdTaskSheetEntity, ctx: RequestContext, action: string): void {
+    this.requireAnyPermission(ctx, [DELIVER_PERMISSION, MANAGE_PERMISSION]);
+    if (this.isManager(ctx)) {
+      return;
+    }
+    const userId = currentUserId(ctx);
+    if (userId && (entity.receiverUserId === userId || entity.processorUserId === userId)) {
+      return;
+    }
+    throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, `${action} forbidden`, 403);
+  }
+
+  private requireAcceptAccess(entity: RdTaskSheetEntity, ctx: RequestContext, action: string): void {
+    this.requireAnyPermission(ctx, [ACCEPT_PERMISSION, MANAGE_PERMISSION]);
+    if (this.isManager(ctx)) {
+      return;
+    }
+    const userId = currentUserId(ctx);
+    if (userId && (entity.creatorId === userId || entity.issuerUserId === userId || entity.reviewerUserId === userId)) {
+      return;
+    }
+    throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, `${action} forbidden`, 403);
+  }
+
+  private ensureLinkedTargetsCompleted(sheetId: string): void {
+    const incompleteTargets = this.repo.listLinkedTargets(sheetId).filter((target) => !target.completed);
+    if (incompleteTargets.length === 0) {
+      return;
+    }
+    const summary = incompleteTargets
+      .slice(0, 3)
+      .map((target) => `${target.targetNo || target.targetId} ${target.title || ""}`.trim())
+      .join("、");
+    throw new AppError(ERROR_CODES.VALIDATION_ERROR, `仍有关联项未完成，暂不能交付/答复：${summary}`, 400);
   }
 
   private requireStatus(entity: RdTaskSheetEntity, allowed: RdTaskSheetEntity["status"][], action: string): void {

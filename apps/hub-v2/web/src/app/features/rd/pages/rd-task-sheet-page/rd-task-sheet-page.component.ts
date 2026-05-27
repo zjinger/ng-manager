@@ -83,11 +83,11 @@ import { RdTaskSheetStore } from '../../store/rd-task-sheet.store';
 
     <app-page-toolbar>
       <div toolbar-primary class="toolbar-actions">
-        <button *appHasPermission="'task_sheet.manage'" nz-button nzType="primary" (click)="openCreate()">
+        <button *appHasPermission="['task_sheet.submit', 'task_sheet.manage']" nz-button nzType="primary" (click)="openCreate()">
           <span nz-icon nzType="plus"></span>
           新建任务单
         </button>
-        <button *appHasPermission="'task_sheet.manage'" nz-button (click)="openImport()">
+        <button *appHasPermission="['task_sheet.submit', 'task_sheet.manage']" nz-button (click)="openImport()">
           <span nz-icon nzType="import"></span>
           关联任务单
         </button>
@@ -95,7 +95,7 @@ import { RdTaskSheetStore } from '../../store/rd-task-sheet.store';
 
       <app-filter-bar toolbar-filters class="task-toolbar__main">
         <nz-select
-          *appHasPermission="'task_sheet.manage'"
+          *appHasPermission="['task_sheet.review', 'task_sheet.assign', 'task_sheet.manage']"
           nzPlaceHolder="任务范围"
           class="toolbar-select toolbar-select--scope"
           [ngModel]="store.query().scope"
@@ -214,6 +214,8 @@ import { RdTaskSheetStore } from '../../store/rd-task-sheet.store';
       [open]="!!store.selected()"
       [detail]="store.selected()"
       [projects]="projects()"
+      [currentUserId]="currentUserId()"
+      [permissionCodes]="permissionCodes()"
       [busy]="dialogBusy()"
       [exporting]="exporting()"
       (close)="closeDetail()"
@@ -228,6 +230,7 @@ import { RdTaskSheetStore } from '../../store/rd-task-sheet.store';
       (startProcessing)="store.startProcessing($event)"
       (reply)="openReply($event)"
       (closeSheet)="store.close($event, {})"
+      (deleteSheet)="deleteSheet($event)"
       (upload)="uploadForSelected($event)"
       (detach)="store.detach($event.sheetId, $event.attachmentId)"
     />
@@ -458,7 +461,9 @@ export class RdTaskSheetPageComponent implements OnInit {
 
   readonly statusOptions = RD_TASK_SHEET_STATUS_OPTIONS;
   readonly subtitle = computed(() => `共 ${this.store.total()} 张与我有关的任务单，支持关联或不关联项目。`);
-  readonly canSubmitTaskSheet = computed(() => this.authStore.currentUser()?.permissionCodes.includes('task_sheet.submit') === true);
+  readonly permissionCodes = computed(() => this.authStore.currentUser()?.permissionCodes ?? []);
+  readonly currentUserId = computed(() => this.authStore.currentUser()?.userId ?? this.authStore.currentUser()?.id ?? '');
+  readonly canSubmitTaskSheet = computed(() => this.hasPermission('task_sheet.submit') || this.hasPermission('task_sheet.manage'));
   readonly emptyDescription = computed(() =>
     this.canSubmitTaskSheet() ? '可以新建任务单，或调整筛选条件。' : '暂无与你相关的任务单，可调整筛选条件。',
   );
@@ -520,6 +525,10 @@ export class RdTaskSheetPageComponent implements OnInit {
     this.editingSheet.set(detail);
     this.prefillDraft.set(null);
     this.formOpen.set(true);
+  }
+
+  deleteSheet(sheetId: string): void {
+    this.store.delete(sheetId, () => this.message.success('任务单已删除'));
   }
 
   closeForm(): void {
@@ -746,6 +755,10 @@ export class RdTaskSheetPageComponent implements OnInit {
       replied: 'green',
       closed: 'default',
     }[status];
+  }
+
+  private hasPermission(code: string): boolean {
+    return this.permissionCodes().includes(code);
   }
 
 }

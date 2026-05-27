@@ -25,6 +25,7 @@ import type {
 export interface RdTaskSheetCommandContract {
   create(input: CreateRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail>;
   update(id: string, input: UpdateRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail>;
+  delete(id: string, ctx: RequestContext): Promise<{ id: string }>;
   submitReview(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail>;
   approveReview(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail>;
   returnReview(id: string, input: ReturnReviewRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail>;

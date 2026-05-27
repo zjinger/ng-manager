@@ -34,6 +34,18 @@ function createDb() {
       file_size INTEGER,
       status TEXT NOT NULL DEFAULT 'active'
     );
+    CREATE TABLE rd_items (
+      id TEXT PRIMARY KEY,
+      rd_no TEXT NOT NULL,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL
+    );
+    CREATE TABLE issues (
+      id TEXT PRIMARY KEY,
+      issue_no TEXT NOT NULL,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL
+    );
     CREATE TABLE rd_task_sheets (
       id TEXT PRIMARY KEY,
       project_id TEXT,
@@ -89,6 +101,15 @@ function createDb() {
       created_by_user_id TEXT,
       created_at TEXT NOT NULL,
       UNIQUE(sheet_id, upload_id)
+    );
+    CREATE TABLE rd_task_sheet_links (
+      id TEXT PRIMARY KEY,
+      sheet_id TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      created_by_user_id TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE(sheet_id, target_type, target_id)
     );
     CREATE TABLE rd_task_sheet_logs (
       id TEXT PRIMARY KEY,
@@ -214,13 +235,17 @@ describe("RdTaskSheetService", () => {
       const issued = await svc.approveReview(created.id, ctx("usr_other", ["task_sheet.manage", "task_sheet.view.self"]));
       assert.equal(issued.status, "issued");
       assert.equal(issued.reviewerUserId, "usr_other");
-      const processing = await svc.startProcessing(issued.id, ctx("usr_receiver"));
+      const processing = await svc.startProcessing(issued.id, ctx("usr_receiver", ["task_sheet.receive", "task_sheet.view.self"]));
       assert.equal(processing.status, "processing");
       assert.equal(processing.processorUserId, "usr_receiver");
-      const replied = await svc.reply(processing.id, { result: "resolved", deliveryContent: "已完成协议变更" }, ctx("usr_receiver"));
+      const replied = await svc.reply(
+        processing.id,
+        { result: "resolved", deliveryContent: "已完成协议变更" },
+        ctx("usr_receiver", ["task_sheet.deliver", "task_sheet.view.self"])
+      );
       assert.equal(replied.status, "replied");
       assert.equal(replied.result, "resolved");
-      const closed = await svc.close(replied.id, {}, ctx("usr_creator"));
+      const closed = await svc.close(replied.id, {}, ctx("usr_creator", ["task_sheet.accept", "task_sheet.view.self"]));
       assert.equal(closed.status, "closed");
       assert.deepEqual(closed.logs.map((log) => log.action), ["create", "submit_review", "review.approve", "start_processing", "reply", "close"]);
     } finally {
@@ -339,6 +364,52 @@ describe("RdTaskSheetService", () => {
           ),
         /仅支持 Word \/ PDF \/ JPG \/ PNG/
       );
+    } finally {
+      db.close();
+    }
+  });
+
+  it("blocks delivery until linked rd and issue targets are completed", async () => {
+    const db = createDb();
+    try {
+      const svc = service(db);
+      const managerCtx = ctx("usr_other", ["task_sheet.manage", "task_sheet.view.self"]);
+      const created = await svc.create(
+        { title: "有关联项任务", receiverUserId: "usr_receiver", businessDescription: "跟踪关联项" },
+        ctx("usr_creator")
+      );
+      const pending = await svc.submitReview(created.id, ctx("usr_creator"));
+      const issued = await svc.approveReview(pending.id, managerCtx);
+      const processing = await svc.startProcessing(issued.id, ctx("usr_receiver", ["task_sheet.receive", "task_sheet.view.self"]));
+
+      db.prepare("INSERT INTO rd_items (id, rd_no, title, status) VALUES (?, ?, ?, ?)").run("rdi_1", "RD-001", "研发项", "in_progress");
+      db.prepare("INSERT INTO issues (id, issue_no, title, status) VALUES (?, ?, ?, ?)").run("iss_1", "BUG-001", "测试单", "verified");
+      db.prepare(
+        "INSERT INTO rd_task_sheet_links (id, sheet_id, target_type, target_id, created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+      ).run("lnk_rd", processing.id, "rd_item", "rdi_1", "usr_receiver", new Date().toISOString());
+      db.prepare(
+        "INSERT INTO rd_task_sheet_links (id, sheet_id, target_type, target_id, created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+      ).run("lnk_issue", processing.id, "issue", "iss_1", "usr_receiver", new Date().toISOString());
+
+      await assert.rejects(
+        () =>
+          svc.reply(
+            processing.id,
+            { result: "resolved", deliveryContent: "已完成" },
+            ctx("usr_receiver", ["task_sheet.deliver", "task_sheet.view.self"])
+          ),
+        /仍有关联项未完成/
+      );
+
+      db.prepare("UPDATE rd_items SET status = 'accepted' WHERE id = ?").run("rdi_1");
+      const replied = await svc.reply(
+        processing.id,
+        { result: "resolved", deliveryContent: "已完成" },
+        ctx("usr_receiver", ["task_sheet.deliver", "task_sheet.view.self"])
+      );
+      assert.equal(replied.status, "replied");
+      assert.equal(replied.linkedTargets.length, 2);
+      assert.equal(replied.linkedTargets.every((target) => target.completed), true);
     } finally {
       db.close();
     }

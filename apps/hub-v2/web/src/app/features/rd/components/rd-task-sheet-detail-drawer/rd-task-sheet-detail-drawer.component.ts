@@ -7,6 +7,7 @@ import type { ProjectSummary } from '../../../projects/models/project.model';
 import { RD_TASK_SHEET_STATUS_LABELS, type RdTaskSheetDetail, type RdTaskSheetStatus } from '../../models/rd-task-sheet.model';
 import { RdTaskSheetAttachmentsPanelComponent } from './rd-task-sheet-attachments-panel.component';
 import { RdTaskSheetDetailHeaderComponent } from './rd-task-sheet-detail-header.component';
+import { RdTaskSheetLinkedTargetsPanelComponent } from './rd-task-sheet-linked-targets-panel.component';
 import { RdTaskSheetLogsPanelComponent } from './rd-task-sheet-logs-panel.component';
 import { RdTaskSheetMarkdownPanelComponent } from './rd-task-sheet-markdown-panel.component';
 import { RdTaskSheetPropsPanelComponent } from './rd-task-sheet-props-panel.component';
@@ -21,6 +22,7 @@ type ConvertKind = 'rd' | 'issue';
     NzIconModule,
     StatusBadgeComponent,
     RdTaskSheetDetailHeaderComponent,
+    RdTaskSheetLinkedTargetsPanelComponent,
     RdTaskSheetMarkdownPanelComponent,
     RdTaskSheetAttachmentsPanelComponent,
     RdTaskSheetLogsPanelComponent,
@@ -65,6 +67,8 @@ type ConvertKind = 'rd' | 'issue';
                 <app-rd-task-sheet-detail-header
                   class="drawer-content__panel"
                   [detail]="current"
+                  [currentUserId]="currentUserId()"
+                  [permissionCodes]="permissionCodes()"
                   [busy]="busy()"
                   [exporting]="exporting()"
                   (exportWord)="exportWord.emit($event)"
@@ -78,6 +82,11 @@ type ConvertKind = 'rd' | 'issue';
                   (startProcessing)="startProcessing.emit($event)"
                   (reply)="reply.emit($event)"
                   (closeSheet)="closeSheet.emit($event)"
+                  (deleteSheet)="deleteSheet.emit($event)"
+                />
+                <app-rd-task-sheet-linked-targets-panel
+                  class="drawer-content__panel"
+                  [targets]="current.linkedTargets || []"
                 />
                 <app-rd-task-sheet-markdown-panel
                   class="drawer-content__panel"
@@ -193,6 +202,8 @@ export class RdTaskSheetDetailDrawerComponent {
   readonly open = input(false);
   readonly detail = input<RdTaskSheetDetail | null>(null);
   readonly projects = input<ProjectSummary[]>([]);
+  readonly currentUserId = input('');
+  readonly permissionCodes = input<string[]>([]);
   readonly busy = input(false);
   readonly exporting = input(false);
   readonly close = output<void>();
@@ -207,6 +218,7 @@ export class RdTaskSheetDetailDrawerComponent {
   readonly startProcessing = output<string>();
   readonly reply = output<RdTaskSheetDetail>();
   readonly closeSheet = output<string>();
+  readonly deleteSheet = output<string>();
   readonly upload = output<File[]>();
   readonly detach = output<{ sheetId: string; attachmentId: string }>();
 
