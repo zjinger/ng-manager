@@ -32,7 +32,7 @@ interface TransitionUploadItem {
       [open]="open()"
       [width]="700"
       [title]="title()"
-      [subtitle]="issue() ? issue()!.title : subtitle()"
+      [subtitle]="issue()?.title || subtitle()"
       [icon]="mode() === 'resolve' ? 'check-circle' : 'rollback'"
       (cancel)="cancel.emit()"
     >

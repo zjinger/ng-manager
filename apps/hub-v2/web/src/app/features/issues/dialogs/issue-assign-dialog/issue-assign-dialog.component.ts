@@ -16,7 +16,7 @@ import type { IssueEntity } from '../../models/issue.model';
       [open]="open()"
       [width]="620"
       [title]="dialogTitle()"
-      [subtitle]="issue() ? issue()!.title : '选择新的负责人。'"
+      [subtitle]="issue()?.title || '选择新的负责人。'"
       [icon]="'swap'"
       (cancel)="cancel.emit()"
     >

@@ -16,7 +16,7 @@ import type { IssueEntity, IssueParticipantEntity } from '../../models/issue.mod
       [open]="open()"
       [width]="680"
       [title]="'创建协作分支'"
-      [subtitle]="issue() ? issue()!.title : '为协作人拆分处理分支。'"
+      [subtitle]="issue()?.title || '为协作人拆分处理分支。'"
       [icon]="'share-alt'"
       (cancel)="cancel.emit()"
     >

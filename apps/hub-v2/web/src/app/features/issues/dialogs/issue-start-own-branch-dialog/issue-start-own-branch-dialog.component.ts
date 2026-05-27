@@ -15,7 +15,7 @@ import type { IssueEntity } from '../../models/issue.model';
       [open]="open()"
       [width]="640"
       [title]="'开始协作'"
-      [subtitle]="issue() ? issue()!.title : '填写本次协作内容。'"
+      [subtitle]="issue()?.title || '填写本次协作内容。'"
       [icon]="'play-circle'"
       (cancel)="cancel.emit()"
     >

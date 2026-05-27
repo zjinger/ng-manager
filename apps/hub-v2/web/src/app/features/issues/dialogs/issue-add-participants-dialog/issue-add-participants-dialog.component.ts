@@ -17,7 +17,7 @@ import type { AddIssueParticipantTaskInput, IssueEntity } from '../../models/iss
       [open]="open()"
       [width]="680"
       [title]="'添加协作人'"
-      [subtitle]="issue() ? issue()!.title : '选择要添加的协作成员。'"
+      [subtitle]="issue()?.title || '选择要添加的协作成员。'"
       [icon]="'team'"
       (cancel)="cancel.emit()"
     >
