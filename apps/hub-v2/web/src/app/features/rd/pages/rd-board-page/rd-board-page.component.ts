@@ -748,6 +748,10 @@ export class RdBoardPageComponent {
     if (this.selectedItem()?.status === 'closed' || this.progressUpdating()) {
       return;
     }
+    if (data.quickStart) {
+      this.confirmUpdateProgress({ progress: Math.max(1, data.currentProgress), note: '' });
+      return;
+    }
     this.progressUpdateData.set(data);
     this.progressUpdateOpen.set(true);
   }

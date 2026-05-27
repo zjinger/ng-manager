@@ -92,7 +92,10 @@ export interface MemberProgressItem extends RdItemProgress {
                         nz-button
                         nzType="default"
                         nzSize="small"
-                        (click)="onStartProgress(item)"
+                        nz-popconfirm
+                        nzPopconfirmTitle="确认开始处理该研发项吗？"
+                        nzPopconfirmPlacement="topRight"
+                        (nzOnConfirm)="onStartProgress(item)"
                       >
                         开始
                       </button>
@@ -391,6 +394,7 @@ export class RdProgressPanelComponent {
       userId: item.userId,
       memberName: item.memberName,
       currentProgress: 1,
+      quickStart: true,
     });
   }
 }

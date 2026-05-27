@@ -493,6 +493,10 @@ export class RdDetailPageComponent {
     if (this.item()?.status === 'closed' || this.busy()) {
       return;
     }
+    if (data.quickStart) {
+      this.confirmUpdateProgress({ progress: Math.max(1, data.currentProgress), note: '' });
+      return;
+    }
     this.progressUpdateUserId.set(data.userId);
     this.progressUpdateMemberName.set(data.memberName);
     this.progressUpdateCurrentProgress.set(data.currentProgress);
