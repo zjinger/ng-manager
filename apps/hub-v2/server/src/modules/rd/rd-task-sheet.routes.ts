@@ -3,6 +3,7 @@ import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
 import {
   attachRdTaskSheetUploadSchema,
+  assignRdTaskSheetSchema,
   closeRdTaskSheetSchema,
   convertRdTaskSheetToIssueSchema,
   convertRdTaskSheetToRdItemSchema,
@@ -13,6 +14,7 @@ import {
   matchRdTaskSheetDefaultRouteQuerySchema,
   previewRdTaskSheetImportSchema,
   replyRdTaskSheetSchema,
+  returnReviewRdTaskSheetSchema,
   updateRdTaskSheetDefaultRouteSchema,
   updateRdTaskSheetSchema
 } from "./rd-task-sheet.schema";
@@ -101,6 +103,32 @@ export default async function rdTaskSheetRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     const { sheetId } = request.params as { sheetId: string };
     return ok(await app.container.rdTaskSheetCommand.issue(sheetId, ctx), "rd task sheet issued");
+  });
+
+  app.post("/rd/task-sheets/:sheetId/submit-review", async (request) => {
+    const ctx = requireAuth(request);
+    const { sheetId } = request.params as { sheetId: string };
+    return ok(await app.container.rdTaskSheetCommand.submitReview(sheetId, ctx), "rd task sheet submitted for review");
+  });
+
+  app.post("/rd/task-sheets/:sheetId/review/approve", async (request) => {
+    const ctx = requireAuth(request);
+    const { sheetId } = request.params as { sheetId: string };
+    return ok(await app.container.rdTaskSheetCommand.approveReview(sheetId, ctx), "rd task sheet review approved");
+  });
+
+  app.post("/rd/task-sheets/:sheetId/review/return", async (request) => {
+    const ctx = requireAuth(request);
+    const { sheetId } = request.params as { sheetId: string };
+    const body = returnReviewRdTaskSheetSchema.parse(request.body ?? {});
+    return ok(await app.container.rdTaskSheetCommand.returnReview(sheetId, body, ctx), "rd task sheet review returned");
+  });
+
+  app.post("/rd/task-sheets/:sheetId/assign", async (request) => {
+    const ctx = requireAuth(request);
+    const { sheetId } = request.params as { sheetId: string };
+    const body = assignRdTaskSheetSchema.parse(request.body ?? {});
+    return ok(await app.container.rdTaskSheetCommand.assign(sheetId, body, ctx), "rd task sheet assigned");
   });
 
   app.post("/rd/task-sheets/:sheetId/start-processing", async (request) => {

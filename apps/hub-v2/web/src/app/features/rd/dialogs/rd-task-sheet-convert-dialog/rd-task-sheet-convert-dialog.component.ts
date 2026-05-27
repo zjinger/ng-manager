@@ -202,7 +202,7 @@ export class RdTaskSheetConvertDialogComponent {
 
   private resetDraft(): void {
     const detail = this.detail();
-    const fallbackUserId = detail?.receiverUserId || detail?.processorUserId || null;
+    const fallbackUserId = detail?.processorUserId || detail?.receiverUserId || null;
     this.draft.set({
       projectId: detail?.projectId ?? null,
       title: detail?.title ?? '',

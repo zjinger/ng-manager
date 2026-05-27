@@ -1,13 +1,17 @@
 import type { PageResult } from '@core/types';
 
-export type RdTaskSheetStatus = 'draft' | 'issued' | 'processing' | 'replied' | 'closed';
+export type RdTaskSheetStatus = 'draft' | 'pending_review' | 'returned' | 'issued' | 'processing' | 'replied' | 'closed';
 export type RdTaskSheetUrgency = 'normal' | 'urgent';
 export type RdTaskSheetBusinessType = 'development' | 'after_sales' | 'consulting' | 'technical_service' | 'other';
 export type RdTaskSheetResult = 'resolved' | 'unresolved';
 export type RdTaskSheetAction =
   | 'create'
   | 'update'
+  | 'submit_review'
+  | 'review.approve'
+  | 'review.return'
   | 'issue'
+  | 'assign'
   | 'start_processing'
   | 'reply'
   | 'close'
@@ -50,6 +54,13 @@ export interface RdTaskSheetEntity {
   convertedIssueId: string | null;
   creatorId: string;
   creatorName: string;
+  preparedByName: string | null;
+  reviewerUserId: string | null;
+  reviewerName: string | null;
+  reviewedAt: string | null;
+  reviewComment: string | null;
+  assignedAt: string | null;
+  assignmentComment: string | null;
   issuedAt: string | null;
   processingStartedAt: string | null;
   repliedAt: string | null;
@@ -89,7 +100,7 @@ export interface RdTaskSheetDetail extends RdTaskSheetEntity {
 export interface RdTaskSheetListQuery {
   page: number;
   pageSize: number;
-  scope?: 'related' | 'all';
+  scope?: 'related' | 'workflow' | 'all';
   projectId?: string;
   unlinked?: boolean;
   status?: RdTaskSheetStatus[];
@@ -142,6 +153,17 @@ export interface CloseRdTaskSheetInput {
   reason?: string | null;
 }
 
+export interface ReturnReviewRdTaskSheetInput {
+  comment?: string | null;
+}
+
+export interface AssignRdTaskSheetInput {
+  projectId?: string | null;
+  processorUserId?: string | null;
+  processorName?: string | null;
+  comment?: string | null;
+}
+
 export interface PreviewRdTaskSheetImportResult {
   draft: CreateRdTaskSheetInput;
   upload: {
@@ -175,6 +197,8 @@ export interface ConvertRdTaskSheetToIssueInput {
 
 export const RD_TASK_SHEET_STATUS_LABELS: Record<RdTaskSheetStatus, string> = {
   draft: '草稿',
+  pending_review: '待审核',
+  returned: '已退回',
   issued: '已下发',
   processing: '处理中',
   replied: '已回复',
@@ -183,6 +207,8 @@ export const RD_TASK_SHEET_STATUS_LABELS: Record<RdTaskSheetStatus, string> = {
 
 export const RD_TASK_SHEET_STATUS_OPTIONS: Array<{ label: string; value: RdTaskSheetStatus }> = [
   { label: '草稿', value: 'draft' },
+  { label: '待审核', value: 'pending_review' },
+  { label: '已退回', value: 'returned' },
   { label: '已下发', value: 'issued' },
   { label: '处理中', value: 'processing' },
   { label: '已回复', value: 'replied' },

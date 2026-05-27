@@ -1,13 +1,17 @@
 import type { PageResult } from "../../shared/http/pagination";
 
-export type RdTaskSheetStatus = "draft" | "issued" | "processing" | "replied" | "closed";
+export type RdTaskSheetStatus = "draft" | "pending_review" | "returned" | "issued" | "processing" | "replied" | "closed";
 export type RdTaskSheetUrgency = "normal" | "urgent";
 export type RdTaskSheetBusinessType = "development" | "after_sales" | "consulting" | "technical_service" | "other";
 export type RdTaskSheetResult = "resolved" | "unresolved";
 export type RdTaskSheetAction =
   | "create"
   | "update"
+  | "submit_review"
+  | "review.approve"
+  | "review.return"
   | "issue"
+  | "assign"
   | "start_processing"
   | "reply"
   | "close"
@@ -50,6 +54,13 @@ export interface RdTaskSheetEntity {
   convertedIssueId: string | null;
   creatorId: string;
   creatorName: string;
+  preparedByName: string | null;
+  reviewerUserId: string | null;
+  reviewerName: string | null;
+  reviewedAt: string | null;
+  reviewComment: string | null;
+  assignedAt: string | null;
+  assignmentComment: string | null;
   issuedAt: string | null;
   processingStartedAt: string | null;
   repliedAt: string | null;
@@ -129,7 +140,7 @@ export type UpdateRdTaskSheetDefaultRouteInput = Partial<CreateRdTaskSheetDefaul
 export interface ListRdTaskSheetsQuery {
   page?: number;
   pageSize?: number;
-  scope?: "related" | "all";
+  scope?: "related" | "workflow" | "all";
   projectId?: string;
   unlinked?: boolean;
   status?: RdTaskSheetStatus[];
@@ -203,6 +214,17 @@ export interface ReplyRdTaskSheetInput {
 
 export interface CloseRdTaskSheetInput {
   reason?: string | null;
+}
+
+export interface ReturnReviewRdTaskSheetInput {
+  comment?: string | null;
+}
+
+export interface AssignRdTaskSheetInput {
+  projectId?: string | null;
+  processorUserId?: string | null;
+  processorName?: string | null;
+  comment?: string | null;
 }
 
 export interface AttachRdTaskSheetUploadInput {

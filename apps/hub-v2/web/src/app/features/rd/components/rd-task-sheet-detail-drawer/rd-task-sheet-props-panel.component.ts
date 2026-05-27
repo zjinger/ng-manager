@@ -1,104 +1,85 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { PanelCardComponent } from '@shared/ui';
+import { PanelCardComponent, StatusBadgeComponent } from '@shared/ui';
 import type { ProjectSummary } from '../../../projects/models/project.model';
-import { RD_TASK_SHEET_RESULT_LABELS, type RdTaskSheetDetail, type RdTaskSheetResult } from '../../models/rd-task-sheet.model';
+import {
+  RD_TASK_SHEET_BUSINESS_TYPE_LABELS,
+  RD_TASK_SHEET_RESULT_LABELS,
+  RD_TASK_SHEET_URGENCY_LABELS,
+  type RdTaskSheetBusinessType,
+  type RdTaskSheetDetail,
+  type RdTaskSheetResult,
+  type RdTaskSheetUrgency,
+} from '../../models/rd-task-sheet.model';
 
-type PropItem = { label: string; value: string };
+type PropItem = { label: string; value: string; badgeStatus?: string };
+type PropSection = { title: string; items: PropItem[] };
 
 @Component({
   selector: 'app-rd-task-sheet-props-panel',
   standalone: true,
-  imports: [PanelCardComponent],
+  imports: [PanelCardComponent, StatusBadgeComponent],
   template: `
     @if (detail(); as current) {
-      <app-panel-card title="任务单信息">
-        <div class="props-grid">
-          @for (row of propRows(current); track $index) {
-            <div class="prop-row" [class.prop-row--five]="row.length === 5" [class.prop-row--four]="row.length === 4">
-              @for (item of row; track item.label) {
-                <div class="prop-item">
-                  <span>{{ item.label }}</span>
-                  <strong>{{ item.value || '-' }}</strong>
+      <div class="props-stack">
+        @for (section of propSections(current); track section.title) {
+          <app-panel-card [title]="section.title">
+            <dl class="props">
+              @for (item of section.items; track item.label) {
+                <div>
+                  <dt>{{ item.label }}</dt>
+                  <dd>
+                    @if (item.badgeStatus) {
+                      <app-status-badge [status]="item.badgeStatus" [label]="item.value || '-'" />
+                    } @else {
+                      {{ item.value || '-' }}
+                    }
+                  </dd>
                 </div>
               }
-            </div>
-          }
-        </div>
-      </app-panel-card>
+            </dl>
+          </app-panel-card>
+        }
+      </div>
     }
   `,
   styles: [
     `
-      .props-grid {
+      .props-stack {
         display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+        align-items: start;
       }
-      .prop-row {
+      .props {
+        margin: 0;
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: 1fr;
       }
-      .prop-row--four {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-      }
-      .prop-row--five {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-      }
-      .prop-item {
-        display: grid;
-        gap: 4px;
+      .props div {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        min-width: 0;
         padding: 12px 16px;
         border-top: 1px solid var(--border-color-soft);
-        border-right: 1px solid var(--border-color-soft);
       }
-      .prop-row:first-child .prop-item {
-        border-top: 0;
-      }
-      .prop-item:last-child {
-        border-right: 0;
-      }
-      .prop-item span {
+      dt {
+        flex: 0 0 auto;
         color: var(--text-muted);
-        font-size: 12px;
-      }
-      .prop-item strong {
-        color: var(--text-primary);
         font-size: 13px;
-        font-weight: 500;
         line-height: 1.5;
-        word-break: break-word;
+        white-space: nowrap;
       }
-      @media (max-width: 900px) {
-        .prop-row,
-        .prop-row--four,
-        .prop-row--five {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        .prop-item:nth-child(odd) {
-          border-right: 1px solid var(--border-color-soft);
-        }
-        .prop-item:nth-child(even),
-        .prop-item:last-child {
-          border-right: 0;
-        }
-        .prop-row:first-child .prop-item:nth-child(n + 3) {
-          border-top: 1px solid var(--border-color-soft);
-        }
-      }
-      @media (max-width: 560px) {
-        .prop-row,
-        .prop-row--four,
-        .prop-row--five {
-          grid-template-columns: 1fr;
-        }
-        .prop-item,
-        .prop-item:nth-child(odd),
-        .prop-item:nth-child(even) {
-          border-right: 0;
-          border-top: 1px solid var(--border-color-soft);
-        }
-        .prop-row:first-child .prop-item:first-child {
-          border-top: 0;
-        }
+      dd {
+        min-width: 0;
+        margin: 0;
+        color: var(--text-primary);
+        font-weight: 600;
+        line-height: 1.5;
+        text-align: right;
+        overflow-wrap: anywhere;
       }
     `,
   ],
@@ -116,31 +97,52 @@ export class RdTaskSheetPropsPanelComponent {
     return lookup;
   });
 
-  propRows(detail: RdTaskSheetDetail): PropItem[][] {
+  propSections(detail: RdTaskSheetDetail): PropSection[] {
     const receiverText = [detail.receiverName, detail.receiverPhone].filter(Boolean).join('，');
-    const firstRow: PropItem[] = [
-      { label: '发起部门', value: detail.issuerDepartment || '-' },
-      { label: '发起人', value: detail.issuerName || '-' },
-      { label: '接收部门', value: detail.receiverDepartment || '-' },
-      { label: '接收人', value: receiverText || '-' },
-    ];
     return [
-      firstRow,
-      [
-        { label: '客户单位', value: detail.customerCompany || '-' },
-        { label: '客户联系人', value: detail.customerContact || '-' },
-        { label: '客户联系方式', value: detail.customerPhone || '-' },
-      ],
-      [
-        { label: '项目名称', value: detail.projectName || '-' },
-        { label: '项目联系人', value: detail.projectContact || '-' },
-        { label: '相关系统', value: detail.relatedSystem || this.projectName(detail.projectId) || '-' },
-      ],
-      [
-        { label: '期望解决时间', value: detail.expectedResolvedAt || '-' },
-        { label: '处理结果', value: detail.result ? this.resultLabel(detail.result) : '-' },
-        { label: '解决时间', value: detail.resolvedAt || '-' },
-      ],
+      {
+        title: '基础信息',
+        items: [
+          { label: '任务日期', value: detail.issueDate || '-' },
+          { label: '业务类型', value: this.businessTypeLabel(detail.businessType), badgeStatus: detail.businessType },
+          { label: '紧急程度', value: this.urgencyLabel(detail.urgency), badgeStatus: detail.urgency },
+          { label: '发起部门', value: detail.issuerDepartment || '-' },
+          { label: '发起人', value: detail.issuerName || '-' },
+          { label: '接收部门', value: detail.receiverDepartment || '-' },
+          { label: '接收人', value: receiverText || '-' },
+          { label: '制单人', value: detail.preparedByName || detail.creatorName || '-' },
+          { label: '处理人', value: detail.processorName || '-' },
+        ],
+      },
+      {
+        title: '客户与项目',
+        items: [
+          { label: '客户单位', value: detail.customerCompany || '-' },
+          { label: '客户联系人', value: detail.customerContact || '-' },
+          { label: '客户联系方式', value: detail.customerPhone || '-' },
+          { label: '项目名称', value: detail.projectName || '-' },
+          { label: '项目联系人', value: detail.projectContact || '-' },
+          { label: '相关系统', value: detail.relatedSystem || this.projectName(detail.projectId) || '-' },
+        ],
+      },
+      {
+        title: '时效要求',
+        items: [
+          { label: '期望解决时间', value: detail.expectedResolvedAt || '-' },
+          { label: '处理结果', value: detail.result ? this.resultLabel(detail.result) : '-' },
+          { label: '解决时间', value: detail.resolvedAt || '-' },
+        ],
+      },
+      // {
+      //   title: '流转时间',
+      //   items: [
+      //     { label: '下发时间', value: this.formatDateTime(detail.issuedAt) },
+      //     { label: '分派时间', value: this.formatDateTime(detail.assignedAt) },
+      //     { label: '开始处理', value: this.formatDateTime(detail.processingStartedAt) },
+      //     { label: '回复时间', value: this.formatDateTime(detail.repliedAt) },
+      //     { label: '关闭时间', value: this.formatDateTime(detail.closedAt) },
+      //   ],
+      // },
     ];
   }
 
@@ -150,5 +152,29 @@ export class RdTaskSheetPropsPanelComponent {
 
   resultLabel(result: RdTaskSheetResult): string {
     return RD_TASK_SHEET_RESULT_LABELS[result] ?? result;
+  }
+
+  urgencyLabel(urgency: RdTaskSheetUrgency): string {
+    return RD_TASK_SHEET_URGENCY_LABELS[urgency] ?? urgency;
+  }
+
+  businessTypeLabel(type: RdTaskSheetBusinessType): string {
+    return RD_TASK_SHEET_BUSINESS_TYPE_LABELS[type] ?? type;
+  }
+
+  formatDateTime(value: string | null): string {
+    if (!value) {
+      return '-';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    const hour = `${date.getHours()}`.padStart(2, '0');
+    const minute = `${date.getMinutes()}`.padStart(2, '0');
+    return `${year}-${month}-${day} ${hour}:${minute}`;
   }
 }

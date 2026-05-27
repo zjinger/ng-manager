@@ -1,6 +1,7 @@
 import type { RequestContext } from "../../shared/context/request-context";
 import type {
   AttachRdTaskSheetUploadInput,
+  AssignRdTaskSheetInput,
   CloseRdTaskSheetInput,
   ConvertRdTaskSheetToIssueInput,
   ConvertRdTaskSheetToRdItemInput,
@@ -16,6 +17,7 @@ import type {
   RdTaskSheetListResult,
   RenderedRdTaskSheetWord,
   ReplyRdTaskSheetInput,
+  ReturnReviewRdTaskSheetInput,
   UpdateRdTaskSheetDefaultRouteInput,
   UpdateRdTaskSheetInput
 } from "./rd-task-sheet.types";
@@ -23,7 +25,11 @@ import type {
 export interface RdTaskSheetCommandContract {
   create(input: CreateRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail>;
   update(id: string, input: UpdateRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail>;
+  submitReview(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail>;
+  approveReview(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail>;
+  returnReview(id: string, input: ReturnReviewRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail>;
   issue(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail>;
+  assign(id: string, input: AssignRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail>;
   startProcessing(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail>;
   reply(id: string, input: ReplyRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail>;
   close(id: string, input: CloseRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail>;

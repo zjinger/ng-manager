@@ -4,11 +4,13 @@ import type { Observable } from 'rxjs';
 import type { PageResult } from '@core/types';
 import type {
   CloseRdTaskSheetInput,
+  AssignRdTaskSheetInput,
   CreateRdTaskSheetInput,
   RdTaskSheetDetail,
   RdTaskSheetEntity,
   RdTaskSheetListQuery,
   ReplyRdTaskSheetInput,
+  ReturnReviewRdTaskSheetInput,
   UpdateRdTaskSheetInput,
 } from '../models/rd-task-sheet.model';
 import { RdTaskSheetApiService } from '../services/rd-task-sheet-api.service';
@@ -107,6 +109,22 @@ export class RdTaskSheetStore {
 
   issue(sheetId: string): void {
     this.runDetailAction(() => this.api.issue(sheetId));
+  }
+
+  submitReview(sheetId: string): void {
+    this.runDetailAction(() => this.api.submitReview(sheetId));
+  }
+
+  approveReview(sheetId: string): void {
+    this.runDetailAction(() => this.api.approveReview(sheetId));
+  }
+
+  returnReview(sheetId: string, input: ReturnReviewRdTaskSheetInput, done?: (detail: RdTaskSheetDetail) => void): void {
+    this.runDetailAction(() => this.api.returnReview(sheetId, input), done);
+  }
+
+  assign(sheetId: string, input: AssignRdTaskSheetInput, done?: (detail: RdTaskSheetDetail) => void): void {
+    this.runDetailAction(() => this.api.assign(sheetId, input), done);
   }
 
   startProcessing(sheetId: string): void {

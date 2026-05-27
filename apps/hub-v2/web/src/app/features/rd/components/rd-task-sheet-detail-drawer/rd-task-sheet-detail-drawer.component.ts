@@ -2,8 +2,9 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
+import { StatusBadgeComponent } from '@shared/ui';
 import type { ProjectSummary } from '../../../projects/models/project.model';
-import type { RdTaskSheetDetail } from '../../models/rd-task-sheet.model';
+import { RD_TASK_SHEET_STATUS_LABELS, type RdTaskSheetDetail, type RdTaskSheetStatus } from '../../models/rd-task-sheet.model';
 import { RdTaskSheetAttachmentsPanelComponent } from './rd-task-sheet-attachments-panel.component';
 import { RdTaskSheetDetailHeaderComponent } from './rd-task-sheet-detail-header.component';
 import { RdTaskSheetLogsPanelComponent } from './rd-task-sheet-logs-panel.component';
@@ -18,6 +19,7 @@ type ConvertKind = 'rd' | 'issue';
   imports: [
     NzDrawerModule,
     NzIconModule,
+    StatusBadgeComponent,
     RdTaskSheetDetailHeaderComponent,
     RdTaskSheetMarkdownPanelComponent,
     RdTaskSheetAttachmentsPanelComponent,
@@ -42,6 +44,9 @@ type ConvertKind = 'rd' | 'issue';
             @if (detail(); as current) {
               <span class="detail-drawer__subtitle">{{ current.sheetNo }}</span>
               <strong>{{ current.title }}</strong>
+              @if (current.status === 'draft') {
+                <app-status-badge [status]="current.status" [label]="statusLabel(current.status)" />
+              }
             } @else {
               <strong>任务单详情</strong>
             }
@@ -55,44 +60,50 @@ type ConvertKind = 'rd' | 'issue';
       <ng-template nzDrawerContent>
         @if (detail(); as current) {
           <div class="drawer-content">
-            <app-rd-task-sheet-detail-header
-              [detail]="current"
-              [busy]="busy()"
-              [exporting]="exporting()"
-              (exportWord)="exportWord.emit($event)"
-              (convert)="convert.emit($event)"
-              (edit)="edit.emit($event)"
-              (issue)="issue.emit($event)"
-              (startProcessing)="startProcessing.emit($event)"
-              (reply)="reply.emit($event)"
-              (closeSheet)="closeSheet.emit($event)"
-            />
-
             <div class="drawer-content__layout">
+              <div class="drawer-content__column">
+                <app-rd-task-sheet-detail-header
+                  class="drawer-content__panel"
+                  [detail]="current"
+                  [busy]="busy()"
+                  [exporting]="exporting()"
+                  (exportWord)="exportWord.emit($event)"
+                  (convert)="convert.emit($event)"
+                  (edit)="edit.emit($event)"
+                  (issue)="issue.emit($event)"
+                  (submitReview)="submitReview.emit($event)"
+                  (approveReview)="approveReview.emit($event)"
+                  (returnReview)="returnReview.emit($event)"
+                  (assign)="assign.emit($event)"
+                  (startProcessing)="startProcessing.emit($event)"
+                  (reply)="reply.emit($event)"
+                  (closeSheet)="closeSheet.emit($event)"
+                />
+                <app-rd-task-sheet-markdown-panel
+                  class="drawer-content__panel"
+                  title="业务描述"
+                  [content]="current.businessDescription"
+                />
+                <app-rd-task-sheet-markdown-panel
+                  class="drawer-content__panel"
+                  title="交付 / 答复内容"
+                  [content]="current.deliveryContent"
+                  emptyText="暂无回复"
+                />
+                <app-rd-task-sheet-attachments-panel
+                  class="drawer-content__panel"
+                  [detail]="current"
+                  [busy]="busy()"
+                  (upload)="upload.emit($event)"
+                  (detach)="detach.emit($event)"
+                />
+                <app-rd-task-sheet-logs-panel class="drawer-content__panel" [logs]="current.logs" />
+              </div>
               <app-rd-task-sheet-props-panel
-                class="drawer-content__panel drawer-content__panel--wide"
+                class="drawer-content__panel"
                 [detail]="current"
                 [projects]="projects()"
               />
-              <app-rd-task-sheet-markdown-panel
-                class="drawer-content__panel"
-                title="业务描述"
-                [content]="current.businessDescription"
-              />
-              <app-rd-task-sheet-attachments-panel
-                class="drawer-content__panel"
-                [detail]="current"
-                [busy]="busy()"
-                (upload)="upload.emit($event)"
-                (detach)="detach.emit($event)"
-              />
-              <app-rd-task-sheet-markdown-panel
-                class="drawer-content__panel"
-                title="交付 / 答复内容"
-                [content]="current.deliveryContent"
-                emptyText="暂无回复"
-              />
-              <app-rd-task-sheet-logs-panel class="drawer-content__panel" [logs]="current.logs" />
             </div>
           </div>
         }
@@ -156,18 +167,20 @@ type ConvertKind = 'rd' | 'issue';
       }
       .drawer-content__layout {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1.35fr) minmax(296px, 0.65fr);
         gap: 16px;
         align-items: start;
+      }
+      .drawer-content__column {
+        display: grid;
+        gap: 16px;
+        min-width: 0;
       }
       .drawer-content__panel {
         min-width: 0;
         display: block;
       }
-      .drawer-content__panel--wide {
-        grid-column: 1 / -1;
-      }
-      @media (max-width: 900px) {
+      @media (max-width: 1000px) {
         .drawer-content__layout {
           grid-template-columns: 1fr;
         }
@@ -187,6 +200,10 @@ export class RdTaskSheetDetailDrawerComponent {
   readonly convert = output<ConvertKind>();
   readonly edit = output<RdTaskSheetDetail>();
   readonly issue = output<string>();
+  readonly submitReview = output<string>();
+  readonly approveReview = output<string>();
+  readonly returnReview = output<RdTaskSheetDetail>();
+  readonly assign = output<RdTaskSheetDetail>();
   readonly startProcessing = output<string>();
   readonly reply = output<RdTaskSheetDetail>();
   readonly closeSheet = output<string>();
@@ -194,4 +211,8 @@ export class RdTaskSheetDetailDrawerComponent {
   readonly detach = output<{ sheetId: string; attachmentId: string }>();
 
   readonly drawerBodyStyle = { padding: '0', overflow: 'auto' };
+
+  statusLabel(status: RdTaskSheetStatus): string {
+    return RD_TASK_SHEET_STATUS_LABELS[status] ?? status;
+  }
 }

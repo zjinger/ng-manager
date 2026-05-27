@@ -13,16 +13,19 @@ import { AuthStore } from '@core/auth';
 import { HasPermissionDirective } from '@core/auth/has-permission.directive';
 import {
   FilterBarComponent,
+  DataTableComponent,
   ListStateComponent,
   PageHeaderComponent,
   PageToolbarComponent,
   SearchBoxComponent,
+  StatusBadgeComponent,
 } from '@shared/ui';
 import type { ProjectSummary } from '../../../projects/models/project.model';
 import { ProjectApiService } from '../../../projects/services/project-api.service';
 import type { UserEntity } from '../../../users/models/user.model';
 import { UserApiService } from '../../../users/services/user-api.service';
 import { RdTaskSheetDetailDrawerComponent } from '../../components/rd-task-sheet-detail-drawer/rd-task-sheet-detail-drawer.component';
+import { RdTaskSheetAssignDialogComponent } from '../../dialogs/rd-task-sheet-assign-dialog/rd-task-sheet-assign-dialog.component';
 import {
   RdTaskSheetConvertDialogComponent,
   type RdTaskSheetConvertKind,
@@ -30,10 +33,12 @@ import {
 } from '../../dialogs/rd-task-sheet-convert-dialog/rd-task-sheet-convert-dialog.component';
 import { RdTaskSheetDialogComponent } from '../../dialogs/rd-task-sheet-dialog/rd-task-sheet-dialog.component';
 import { RdTaskSheetImportDialogComponent } from '../../dialogs/rd-task-sheet-import-dialog/rd-task-sheet-import-dialog.component';
+import { RdTaskSheetReviewReturnDialogComponent } from '../../dialogs/rd-task-sheet-review-return-dialog/rd-task-sheet-review-return-dialog.component';
 import {
   RD_TASK_SHEET_STATUS_LABELS,
   RD_TASK_SHEET_STATUS_OPTIONS,
   RD_TASK_SHEET_URGENCY_LABELS,
+  type AssignRdTaskSheetInput,
   type CreateRdTaskSheetInput,
   type RdTaskSheetDetail,
   type RdTaskSheetEntity,
@@ -55,6 +60,8 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
     PageHeaderComponent,
     PageToolbarComponent,
     FilterBarComponent,
+    DataTableComponent,
+    StatusBadgeComponent,
     SearchBoxComponent,
     ListStateComponent,
     HasPermissionDirective,
@@ -62,6 +69,8 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
     RdTaskSheetDialogComponent,
     RdTaskSheetDetailDrawerComponent,
     RdTaskSheetConvertDialogComponent,
+    RdTaskSheetAssignDialogComponent,
+    RdTaskSheetReviewReturnDialogComponent,
     NzButtonModule,
     NzIconModule,
     NzPaginationModule,
@@ -80,11 +89,21 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
         </button>
         <button *appHasPermission="'task_sheet.manage'" nz-button (click)="openImport()">
           <span nz-icon nzType="import"></span>
-          关联历史任务单
+          关联任务单
         </button>
       </div>
 
       <app-filter-bar toolbar-filters class="task-toolbar__main">
+        <nz-select
+          *appHasPermission="'task_sheet.manage'"
+          nzPlaceHolder="任务范围"
+          class="toolbar-select toolbar-select--scope"
+          [ngModel]="store.query().scope"
+          (ngModelChange)="store.updateQuery({ scope: $event, page: 1 })"
+        >
+          <nz-option nzLabel="与我有关" nzValue="related"></nz-option>
+          <nz-option nzLabel="待审核/待分派" nzValue="workflow"></nz-option>
+        </nz-select>
         <nz-select
           nzPlaceHolder="项目范围"
           class="toolbar-select toolbar-select--project"
@@ -131,44 +150,47 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
       emptyTitle="暂无任务单"
       [emptyDescription]="emptyDescription()"
     >
-      <div class="task-table">
-        <div class="task-table__head">
+      <app-data-table class="task-table">
+        <div table-head class="task-table__head">
+          <div>序号</div>
           <div>编号</div>
           <div>任务</div>
           <div>关联项目</div>
           <div>发起 / 接收</div>
-          <div>状态</div>
           <div>期望解决</div>
           <div>更新</div>
         </div>
-        <div class="task-table__body">
-          @for (item of store.items(); track item.id) {
+        <div table-body class="task-table__body">
+          @for (item of store.items(); track item.id; let i = $index) {
             <button
               type="button"
               class="task-row"
               [class.is-active]="store.selected()?.id === item.id"
               (click)="openDetail(item)"
             >
-              <div class="task-row__no">{{ item.sheetNo }}</div>
+              <div class="task-cell task-cell__seq">{{ sequence(i) }}</div>
+              <div class="task-cell task-row__no">{{ item.sheetNo }}</div>
               <div class="task-row__main">
-                <strong>{{ item.title }}</strong>
-                <span>{{ item.businessDescription }}</span>
+                <div class="task-title-main-header">
+                  <strong class="task-name">{{ item.title }}</strong>
+                  <div class="task-title-badges">
+                    <app-status-badge [status]="item.status" [label]="statusLabel(item.status)" />
+                    <nz-tag [nzColor]="item.urgency === 'urgent' ? 'red' : 'default'">{{ urgencyLabel(item.urgency) }}</nz-tag>
+                  </div>
+                </div>
+                <span class="task-meta">{{ item.businessDescription || '暂无业务描述' }}</span>
               </div>
-              <div>{{ projectName(item.projectId) || '未关联' }}</div>
-              <div>
+              <div class="task-cell">{{ projectName(item.projectId) || '未关联' }}</div>
+              <div class="task-cell">
                 <span>{{ item.issuerName || '-' }}</span>
                 <span class="muted"> -> {{ item.receiverName || '未指定' }}</span>
               </div>
-              <div>
-                <nz-tag [nzColor]="statusColor(item.status)">{{ statusLabel(item.status) }}</nz-tag>
-                <nz-tag [nzColor]="item.urgency === 'urgent' ? 'red' : 'default'">{{ urgencyLabel(item.urgency) }}</nz-tag>
-              </div>
-              <div>{{ item.expectedResolvedAt || '-' }}</div>
-              <div>{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
+              <div class="task-cell task-cell__muted">{{ item.expectedResolvedAt || '-' }}</div>
+              <div class="task-cell task-cell__muted">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
             </button>
           }
         </div>
-      </div>
+      </app-data-table>
 
       @if (store.total() > 0) {
         <div class="pagination">
@@ -199,6 +221,10 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
       (convert)="store.selected() && openConvert(store.selected()!, $event)"
       (edit)="openEdit($event)"
       (issue)="store.issue($event)"
+      (submitReview)="store.submitReview($event)"
+      (approveReview)="store.approveReview($event)"
+      (returnReview)="openReturnReview($event)"
+      (assign)="openAssign($event)"
       (startProcessing)="store.startProcessing($event)"
       (reply)="openReply($event)"
       (closeSheet)="store.close($event, {})"
@@ -233,6 +259,24 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
       [users]="users()"
       (cancel)="convertOpen.set(false)"
       (confirm)="saveConvert($event)"
+    />
+
+    <app-rd-task-sheet-assign-dialog
+      [open]="assignOpen()"
+      [busy]="store.busy()"
+      [detail]="store.selected()"
+      [projects]="projects()"
+      [users]="users()"
+      (cancel)="assignOpen.set(false)"
+      (confirm)="saveAssign($event)"
+    />
+
+    <app-rd-task-sheet-review-return-dialog
+      [open]="returnReviewOpen()"
+      [busy]="store.busy()"
+      [detail]="store.selected()"
+      (cancel)="returnReviewOpen.set(false)"
+      (confirm)="saveReturnReview($event)"
     />
 
     @if (replyOpen()) {
@@ -285,6 +329,9 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
       .toolbar-select--project {
         width: 240px;
       }
+      .toolbar-select--scope {
+        width: 160px;
+      }
       .toolbar-select--status {
         width: 250px;
       }
@@ -292,55 +339,97 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
         min-width: 240px;
         max-width: 320px;
       }
-      .task-table {
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius-sm);
-        overflow: hidden;
-        background: var(--surface-card);
-      }
       .task-table__head,
       .task-row {
         display: grid;
-        grid-template-columns: 150px minmax(220px, 1.6fr) 160px 190px 170px 120px 120px;
-        gap: 12px;
+        grid-template-columns: 56px 120px minmax(240px, 2.4fr) 160px 190px 120px 110px;
+        gap: 16px;
         align-items: center;
       }
       .task-table__head {
-        padding: 12px 16px;
+        padding: 10px 16px;
         color: var(--text-muted);
-        background: var(--surface-subtle);
+        background: var(--bg-subtle);
+        border-bottom: 1px solid var(--border-color-soft);
         font-size: 12px;
-        font-weight: 600;
+        font-weight: 700;
       }
       .task-row {
         width: 100%;
         padding: 14px 16px;
         border: 0;
-        border-top: 1px solid var(--border-color-soft);
+        border-bottom: 1px solid var(--border-color-soft);
         background: transparent;
         text-align: left;
-        color: var(--text-body);
+        color: inherit;
         cursor: pointer;
+        appearance: none;
+        transition: var(--transition-base);
       }
-      .task-row:hover,
+      .task-row:last-child {
+        border-bottom: 0;
+      }
+      .task-row:hover {
+        background: var(--bg-subtle);
+      }
       .task-row.is-active {
-        background: var(--surface-hover);
+        background:
+          linear-gradient(90deg, rgba(99, 102, 241, 0.14), rgba(99, 102, 241, 0.04)),
+          var(--bg-subtle);
+        box-shadow: inset 3px 0 0 var(--primary-600);
       }
       .task-row__no {
-        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-family: 'SF Mono', 'Fira Code', ui-monospace, SFMono-Regular, Consolas, monospace;
+        color: var(--primary-700);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .task-cell {
+        min-width: 0;
+        color: var(--text-primary);
+      }
+      .task-cell__seq {
         color: var(--text-muted);
+        font-size: 12px;
       }
       .task-row__main {
         min-width: 0;
       }
-      .task-row__main strong,
-      .task-row__main span {
+      .task-title-main-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .task-name {
         display: block;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
+        color: var(--text-heading);
+        font-size: 14px;
+        font-weight: 700;
         white-space: nowrap;
       }
-      .task-row__main span,
+      .task-title-badges {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex: 0 0 auto;
+      }
+      .task-meta {
+        margin-top: 4px;
+        display: -webkit-box;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        white-space: normal;
+        line-height: 1.5;
+        font-size: 12px;
+      }
+      .task-meta,
+      .task-cell__muted,
       .muted {
         color: var(--text-muted);
       }
@@ -411,6 +500,14 @@ type ReplyForm = { result: RdTaskSheetResult; resolvedAt: string; deliveryConten
           grid-template-columns: 1fr;
         }
       }
+      :host-context(html[data-theme='dark']) .task-row.is-active {
+        background:
+          linear-gradient(90deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.06)),
+          var(--bg-subtle);
+      }
+      :host-context(html[data-theme='dark']) .task-row__no {
+        color: var(--text-muted);
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -438,6 +535,8 @@ export class RdTaskSheetPageComponent implements OnInit {
   readonly converting = signal(false);
   readonly convertOpen = signal(false);
   readonly convertKind = signal<RdTaskSheetConvertKind>('rd');
+  readonly assignOpen = signal(false);
+  readonly returnReviewOpen = signal(false);
   readonly replyForm = signal<ReplyForm>({
     result: 'resolved',
     resolvedAt: new Date().toISOString().slice(0, 10),
@@ -640,6 +739,36 @@ export class RdTaskSheetPageComponent implements OnInit {
     this.convertOpen.set(true);
   }
 
+  openAssign(_detail: RdTaskSheetDetail): void {
+    this.assignOpen.set(true);
+  }
+
+  saveAssign(input: AssignRdTaskSheetInput): void {
+    const detail = this.store.selected();
+    if (!detail) {
+      return;
+    }
+    this.store.assign(detail.id, input, () => {
+      this.assignOpen.set(false);
+      this.message.success('任务单已分派');
+    });
+  }
+
+  openReturnReview(_detail: RdTaskSheetDetail): void {
+    this.returnReviewOpen.set(true);
+  }
+
+  saveReturnReview(input: { comment?: string | null }): void {
+    const detail = this.store.selected();
+    if (!detail) {
+      return;
+    }
+    this.store.returnReview(detail.id, input, () => {
+      this.returnReviewOpen.set(false);
+      this.message.success('任务单已退回');
+    });
+  }
+
   saveConvert(event: RdTaskSheetConvertSubmit): void {
     const detail = this.store.selected();
     if (!detail) {
@@ -700,9 +829,15 @@ export class RdTaskSheetPageComponent implements OnInit {
     return RD_TASK_SHEET_URGENCY_LABELS[urgency] ?? urgency;
   }
 
+  sequence(index: number): number {
+    return (this.store.page() - 1) * this.store.pageSize() + index + 1;
+  }
+
   statusColor(status: RdTaskSheetStatus): string {
     return {
       draft: 'default',
+      pending_review: 'gold',
+      returned: 'red',
       issued: 'blue',
       processing: 'orange',
       replied: 'green',

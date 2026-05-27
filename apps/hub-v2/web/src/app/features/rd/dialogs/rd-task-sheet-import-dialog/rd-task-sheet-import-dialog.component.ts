@@ -13,7 +13,7 @@ import { DialogShellComponent, FileUploadDropzoneComponent, FormActionsComponent
     <app-dialog-shell
       [open]="open()"
       [width]="620"
-      [title]="'关联历史任务单'"
+      [title]="'关联任务单'"
       [subtitle]="'上传已有 .docx 任务单，解析后进入预览确认表单。'"
       [icon]="'import'"
       (cancel)="handleCancel()"

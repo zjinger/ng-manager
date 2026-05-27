@@ -9,7 +9,6 @@ interface TaskSheetTimelineItem {
   icon: string;
   actor: string;
   action: string;
-  comment: string;
   time: string;
 }
 
@@ -18,19 +17,14 @@ interface TaskSheetTimelineItem {
   standalone: true,
   imports: [NzIconModule, PanelCardComponent],
   template: `
-    <app-panel-card title="操作日志" [count]="logs().length" [empty]="logs().length === 0" [emptyText]="'暂无日志'">
+    <app-panel-card title="操作日志" [empty]="logs().length === 0" [emptyText]="'暂无操作记录'">
       <div class="timeline">
         @for (item of timelineItems(); track item.id) {
           <div class="timeline-log">
             <span nz-icon [nzType]="item.icon" class="timeline-log__icon"></span>
             <div class="timeline-log__body">
-              <div class="timeline-log__note">
-                <span class="timeline-log__user">{{ item.actor }}</span>
-                <span class="timeline-log__action">{{ item.action }}</span>
-                @if (item.comment) {
-                  <span class="timeline-log__comment">{{ item.comment }}</span>
-                }
-              </div>
+              <span class="timeline-log__user">{{ item.actor }}</span>
+              <span class="timeline-log__action">{{ item.action }}</span>
             </div>
             <span class="timeline-log__time">{{ item.time }}</span>
           </div>
@@ -42,19 +36,16 @@ interface TaskSheetTimelineItem {
     `
       .timeline {
         display: grid;
-        max-height: 420px;
+        max-height: 560px;
         overflow: auto;
       }
       .timeline-log {
         display: flex;
         align-items: flex-start;
         gap: 8px;
-        padding: 14px 16px;
+        padding: 14px 20px;
         border-top: 1px solid var(--border-color-soft);
         font-size: 13px;
-      }
-      .timeline-log:first-child {
-        border-top: 0;
       }
       .timeline-log__icon,
       .timeline-log__time {
@@ -68,16 +59,7 @@ interface TaskSheetTimelineItem {
       .timeline-log__body {
         min-width: 0;
         flex: 1 1 auto;
-      }
-      .timeline-log__note {
-        padding: 10px 12px;
-        border: 1px solid var(--border-color-soft);
-        border-radius: 10px;
-        background: var(--bg-container);
         color: var(--text-secondary);
-        line-height: 1.6;
-        white-space: pre-wrap;
-        word-break: break-word;
       }
       .timeline-log__user {
         margin-right: 6px;
@@ -86,11 +68,8 @@ interface TaskSheetTimelineItem {
       }
       .timeline-log__action {
         color: var(--text-secondary);
-      }
-      .timeline-log__comment {
-        display: block;
-        margin-top: 4px;
-        color: var(--text-primary);
+        white-space: pre-wrap;
+        word-break: break-word;
       }
       .timeline-log__time {
         margin-left: auto;
@@ -107,11 +86,11 @@ interface TaskSheetTimelineItem {
           flex-wrap: wrap;
         }
         .timeline-log__body {
-          flex-basis: calc(100% - 22px);
+          flex-basis: calc(100% - 21px);
         }
         .timeline-log__time {
           width: 100%;
-          margin-left: 22px;
+          margin-left: 21px;
         }
       }
     `,
@@ -126,8 +105,7 @@ export class RdTaskSheetLogsPanelComponent {
       id: log.id,
       icon: this.iconType(log.action),
       actor: log.actorName || '系统',
-      action: this.actionLabel(log.action),
-      comment: log.comment || '',
+      action: log.comment || this.actionLabel(log.action),
       time: this.formatTime(log.createdAt),
     })),
   );
@@ -136,7 +114,11 @@ export class RdTaskSheetLogsPanelComponent {
     const labels: Record<RdTaskSheetAction, string> = {
       create: '创建',
       update: '更新',
+      submit_review: '提交审核',
+      'review.approve': '审核通过',
+      'review.return': '审核退回',
       issue: '下发',
+      assign: '分派',
       start_processing: '开始处理',
       reply: '回复',
       close: '关闭',
@@ -152,7 +134,11 @@ export class RdTaskSheetLogsPanelComponent {
     const icons: Record<RdTaskSheetAction, string> = {
       create: 'plus-circle',
       update: 'edit',
+      submit_review: 'audit',
+      'review.approve': 'check-circle',
+      'review.return': 'rollback',
       issue: 'send',
+      assign: 'user-switch',
       start_processing: 'play-circle',
       reply: 'message',
       close: 'close-circle',

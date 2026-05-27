@@ -28,13 +28,16 @@ import { RD_STATUS_LABELS } from '../../constants';
       }
       .status-badge[data-status='open'],
       .status-badge[data-status='todo'],
-      .status-badge[data-status='submitted'] {
+      .status-badge[data-status='submitted'],
+      .status-badge[data-status='pending_review'] {
         background: rgba(245, 158, 11, 0.18);
         color: #b45309;
       }
       .status-badge[data-status='doing'],
       .status-badge[data-status='in_progress'],
-      .status-badge[data-status='approving'] {
+      .status-badge[data-status='approving'],
+      .status-badge[data-status='issued'],
+      .status-badge[data-status='processing'] {
         background: rgba(6, 182, 212, 0.2);
         color: #0e7490;
       }
@@ -47,12 +50,16 @@ import { RD_STATUS_LABELS } from '../../constants';
         color: #b45309;
       }
       .status-badge[data-status='blocked'],
-      .status-badge[data-status='rejected'] {
+      .status-badge[data-status='rejected'],
+      .status-badge[data-status='urgent'],
+      .status-badge[data-status='returned'] {
         background: rgba(239, 68, 68, 0.14);
         color: #dc2626;
       }
-      .status-badge[data-status='resolved']
-       {
+      .status-badge[data-status='resolved'],
+      .status-badge[data-status='replied'],
+      .status-badge[data-status='converted_rd'],
+      .status-badge[data-status='converted_issue'] {
         background: rgba(14, 165, 233, 0.14);
         color: #0284c7;
       }
@@ -75,13 +82,16 @@ import { RD_STATUS_LABELS } from '../../constants';
       }
       :host-context(html[data-theme='dark']) .status-badge[data-status='open'],
       :host-context(html[data-theme='dark']) .status-badge[data-status='todo'],
-      :host-context(html[data-theme='dark']) .status-badge[data-status='submitted'] {
+      :host-context(html[data-theme='dark']) .status-badge[data-status='submitted'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='pending_review'] {
         background: rgba(245, 158, 11, 0.26);
         color: #fcd34d;
       }
       :host-context(html[data-theme='dark']) .status-badge[data-status='doing'],
       :host-context(html[data-theme='dark']) .status-badge[data-status='in_progress'],
-      :host-context(html[data-theme='dark']) .status-badge[data-status='approving'] {
+      :host-context(html[data-theme='dark']) .status-badge[data-status='approving'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='issued'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='processing'] {
         background: rgba(34, 211, 238, 0.26);
         color: #67e8f9;
       }
@@ -94,9 +104,17 @@ import { RD_STATUS_LABELS } from '../../constants';
         color: #fcd34d;
       }
       :host-context(html[data-theme='dark']) .status-badge[data-status='blocked'],
-      :host-context(html[data-theme='dark']) .status-badge[data-status='rejected'] {
+      :host-context(html[data-theme='dark']) .status-badge[data-status='rejected'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='urgent'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='returned'] {
         background: rgba(239, 68, 68, 0.22);
         color: #fca5a5;
+      }
+      :host-context(html[data-theme='dark']) .status-badge[data-status='replied'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='converted_rd'],
+      :host-context(html[data-theme='dark']) .status-badge[data-status='converted_issue'] {
+        background: rgba(14, 165, 233, 0.22);
+        color: #7dd3fc;
       }
       :host-context(html[data-theme='dark']) .status-badge[data-status='verified'] {
         background: rgba(14, 165, 233, 0.22);

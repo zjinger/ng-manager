@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS rd_task_sheets (
   id TEXT PRIMARY KEY,
   project_id TEXT,
   sheet_no TEXT NOT NULL UNIQUE,
-  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'issued', 'processing', 'replied', 'closed')),
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'pending_review', 'returned', 'issued', 'processing', 'replied', 'closed')),
   title TEXT NOT NULL,
   issue_date TEXT NOT NULL,
   issuer_department TEXT,
@@ -34,6 +34,13 @@ CREATE TABLE IF NOT EXISTS rd_task_sheets (
   converted_issue_id TEXT,
   creator_id TEXT NOT NULL,
   creator_name TEXT NOT NULL,
+  prepared_by_name TEXT,
+  reviewer_user_id TEXT,
+  reviewer_name TEXT,
+  reviewed_at TEXT,
+  review_comment TEXT,
+  assigned_at TEXT,
+  assignment_comment TEXT,
   issued_at TEXT,
   processing_started_at TEXT,
   replied_at TEXT,
@@ -44,6 +51,7 @@ CREATE TABLE IF NOT EXISTS rd_task_sheets (
   FOREIGN KEY (issuer_user_id) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY (receiver_user_id) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY (processor_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (reviewer_user_id) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY (converted_rd_item_id) REFERENCES rd_items(id) ON DELETE SET NULL,
   FOREIGN KEY (converted_issue_id) REFERENCES issues(id) ON DELETE SET NULL,
   FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE RESTRICT
@@ -55,6 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_rd_task_sheets_creator ON rd_task_sheets(creator_
 CREATE INDEX IF NOT EXISTS idx_rd_task_sheets_issuer ON rd_task_sheets(issuer_user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_rd_task_sheets_receiver ON rd_task_sheets(receiver_user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_rd_task_sheets_processor ON rd_task_sheets(processor_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_rd_task_sheets_reviewer ON rd_task_sheets(reviewer_user_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS rd_task_sheet_attachments (
   id TEXT PRIMARY KEY,

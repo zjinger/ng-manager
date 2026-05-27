@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const taskSheetStatusSchema = z.enum(["draft", "issued", "processing", "replied", "closed"]);
+const taskSheetStatusSchema = z.enum(["draft", "pending_review", "returned", "issued", "processing", "replied", "closed"]);
 const taskSheetUrgencySchema = z.enum(["normal", "urgent"]);
 const taskSheetBusinessTypeSchema = z.enum(["development", "after_sales", "consulting", "technical_service", "other"]);
 const taskSheetResultSchema = z.enum(["resolved", "unresolved"]);
@@ -96,6 +96,17 @@ export const closeRdTaskSheetSchema = z.object({
   reason: nullableText
 });
 
+export const returnReviewRdTaskSheetSchema = z.object({
+  comment: nullableText
+});
+
+export const assignRdTaskSheetSchema = z.object({
+  projectId: nullableText,
+  processorUserId: nullableText,
+  processorName: nullableText,
+  comment: nullableText
+});
+
 export const previewRdTaskSheetImportSchema = z.object({
   uploadId: z.string().trim().min(1)
 });
@@ -126,7 +137,7 @@ export const convertRdTaskSheetToIssueSchema = z.object({
 export const listRdTaskSheetsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().optional(),
-  scope: z.enum(["related", "all"]).optional(),
+  scope: z.enum(["related", "workflow", "all"]).optional(),
   projectId: z.string().trim().optional(),
   unlinked: z.preprocess((value) => {
     if (value === undefined || value === null || value === "") {
@@ -134,7 +145,7 @@ export const listRdTaskSheetsQuerySchema = z.object({
     }
     return value === true || String(value).toLowerCase() === "true" || String(value) === "1";
   }, z.boolean().optional()),
-  status: csvEnumArray(["draft", "issued", "processing", "replied", "closed"]),
+  status: csvEnumArray(["draft", "pending_review", "returned", "issued", "processing", "replied", "closed"]),
   issuerUserId: z.string().trim().optional(),
   receiverUserId: z.string().trim().optional(),
   processorUserId: z.string().trim().optional(),

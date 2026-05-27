@@ -16,6 +16,7 @@ import { parseRdTaskSheetWord } from "./rd-task-sheet-word-import";
 import { renderRdTaskSheetWord } from "./rd-task-sheet-word-export";
 import type {
   AttachRdTaskSheetUploadInput,
+  AssignRdTaskSheetInput,
   CloseRdTaskSheetInput,
   ConvertRdTaskSheetToIssueInput,
   ConvertRdTaskSheetToRdItemInput,
@@ -32,6 +33,7 @@ import type {
   RdTaskSheetListResult,
   RenderedRdTaskSheetWord,
   ReplyRdTaskSheetInput,
+  ReturnReviewRdTaskSheetInput,
   UpdateRdTaskSheetDefaultRouteInput,
   UpdateRdTaskSheetInput,
   UserDisplayProfile
@@ -95,6 +97,13 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
       convertedIssueId: null,
       creatorId: creator.id,
       creatorName: creator.name,
+      preparedByName: creator.name,
+      reviewerUserId: null,
+      reviewerName: null,
+      reviewedAt: null,
+      reviewComment: null,
+      assignedAt: null,
+      assignmentComment: null,
       issuedAt: null,
       processingStartedAt: null,
       repliedAt: hasImportedReply ? now : null,
@@ -167,15 +176,89 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
   }
 
   async issue(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail> {
+    return this.approveReview(id, ctx);
+  }
+
+  async submitReview(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail> {
     this.requireAnyPermission(ctx, [SUBMIT_PERMISSION, MANAGE_PERMISSION]);
     const current = await this.requireEntityWithAccess(id, ctx);
     if (!this.isManager(ctx) && current.creatorId !== currentUserId(ctx) && current.issuerUserId !== currentUserId(ctx)) {
-      throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "issue task sheet forbidden", 403);
+      throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "submit task sheet review forbidden", 403);
     }
-    this.requireStatus(current, ["draft"], "issue task sheet");
+    this.requireStatus(current, ["draft", "returned"], "submit task sheet review");
     const now = nowIso();
-    this.repo.update(id, { status: "issued", issued_at: now, updated_at: now });
-    this.createLog(id, "issue", ctx, "下发任务单", now);
+    this.repo.update(id, { status: "pending_review", review_comment: null, updated_at: now });
+    this.createLog(id, "submit_review", ctx, "提交审核", now);
+    return this.requireDetail(id);
+  }
+
+  async approveReview(id: string, ctx: RequestContext): Promise<RdTaskSheetDetail> {
+    this.requireAnyPermission(ctx, [MANAGE_PERMISSION]);
+    const current = await this.requireEntityWithAccess(id, ctx);
+    this.requireStatus(current, ["pending_review", "draft"], "approve task sheet review");
+    const actor = this.requireCurrentUser(ctx);
+    const now = nowIso();
+    this.repo.update(id, {
+      status: "issued",
+      reviewer_user_id: actor.id,
+      reviewer_name: actor.name,
+      reviewed_at: now,
+      review_comment: null,
+      issued_at: now,
+      updated_at: now
+    });
+    this.createLog(id, current.status === "pending_review" ? "review.approve" : "issue", ctx, "审核通过并下发任务单", now);
+    return this.requireDetail(id);
+  }
+
+  async returnReview(id: string, input: ReturnReviewRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail> {
+    this.requireAnyPermission(ctx, [MANAGE_PERMISSION]);
+    const current = await this.requireEntityWithAccess(id, ctx);
+    this.requireStatus(current, ["pending_review"], "return task sheet review");
+    const actor = this.requireCurrentUser(ctx);
+    const now = nowIso();
+    const comment = normalizeNullable(input.comment);
+    this.repo.update(id, {
+      status: "returned",
+      reviewer_user_id: actor.id,
+      reviewer_name: actor.name,
+      reviewed_at: now,
+      review_comment: comment,
+      updated_at: now
+    });
+    this.createLog(id, "review.return", ctx, comment || "审核退回", now);
+    return this.requireDetail(id);
+  }
+
+  async assign(id: string, input: AssignRdTaskSheetInput, ctx: RequestContext): Promise<RdTaskSheetDetail> {
+    this.requireAnyPermission(ctx, [MANAGE_PERMISSION]);
+    const current = await this.requireEntityWithAccess(id, ctx);
+    this.requireStatus(current, ["issued", "processing"], "assign task sheet");
+    const projectId = input.projectId === undefined ? current.projectId : await this.resolveProjectId(input.projectId, ctx, "assign rd task sheet");
+    const processor = input.processorUserId === undefined ? null : this.resolveOptionalUser(input.processorUserId);
+    const processorUserId =
+      input.processorUserId === undefined ? current.processorUserId : processor?.id ?? normalizeNullable(input.processorUserId);
+    const processorName =
+      input.processorName === undefined && input.processorUserId === undefined
+        ? current.processorName
+        : normalizeNullable(input.processorName) || userDisplayName(processor);
+    if (!projectId && !processorUserId && !processorName) {
+      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "分派任务单需要选择项目或处理人", 400);
+    }
+    const now = nowIso();
+    this.repo.update(id, {
+      project_id: projectId,
+      processor_user_id: processorUserId,
+      processor_name: processorName,
+      assigned_at: now,
+      assignment_comment: normalizeNullable(input.comment),
+      updated_at: now
+    });
+    this.createLog(id, "assign", ctx, normalizeNullable(input.comment) || "分派任务单", now, {
+      projectId,
+      processorUserId,
+      processorName
+    });
     return this.requireDetail(id);
   }
 
@@ -187,8 +270,8 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
     const now = nowIso();
     this.repo.update(id, {
       status: "processing",
-      processor_user_id: actor.id,
-      processor_name: actor.name,
+      processor_user_id: current.processorUserId || actor.id,
+      processor_name: current.processorName || actor.name,
       processing_started_at: now,
       updated_at: now
     });
@@ -360,7 +443,7 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
         description: input.description?.trim() || buildConvertedDescription(current),
         type: (input.type as IssueType | undefined) ?? "bug",
         priority: (input.priority as IssuePriority | undefined) ?? (current.urgency === "urgent" ? "high" : "medium"),
-        assigneeId: normalizeNullable(input.assigneeId) ?? current.receiverUserId ?? current.processorUserId,
+        assigneeId: normalizeNullable(input.assigneeId) ?? current.processorUserId ?? current.receiverUserId,
         verifierId: normalizeNullable(input.verifierId),
         rdItemId: normalizeNullable(input.rdItemId) ?? current.convertedRdItemId
       },
@@ -527,8 +610,8 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
     if (this.isManager(ctx)) {
       return;
     }
-    if (entity.status !== "draft") {
-      throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "only draft task sheets can be edited", 403);
+    if (entity.status !== "draft" && entity.status !== "returned") {
+      throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "only draft or returned task sheets can be edited", 403);
     }
     if (entity.creatorId !== currentUserId(ctx) && entity.issuerUserId !== currentUserId(ctx)) {
       throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "edit task sheet forbidden", 403);
@@ -578,7 +661,8 @@ export class RdTaskSheetService implements RdTaskSheetCommandContract, RdTaskShe
         (entity.creatorId === userId ||
           entity.issuerUserId === userId ||
           entity.receiverUserId === userId ||
-          entity.processorUserId === userId)
+          entity.processorUserId === userId ||
+          entity.reviewerUserId === userId)
     );
   }
 
@@ -655,7 +739,7 @@ function isDocxUpload(fileName: string, originalName: string | null | undefined,
 }
 
 function defaultMemberIds(entity: RdTaskSheetEntity): string[] {
-  return Array.from(new Set([entity.receiverUserId, entity.processorUserId, entity.creatorId].filter(Boolean) as string[]));
+  return Array.from(new Set([entity.processorUserId, entity.receiverUserId, entity.creatorId].filter(Boolean) as string[]));
 }
 
 function buildConvertedDescription(entity: RdTaskSheetEntity): string {

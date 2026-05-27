@@ -1,61 +1,89 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 
+import { StatusBadgeComponent } from '@shared/ui';
 import {
-  RD_TASK_SHEET_BUSINESS_TYPE_LABELS,
   RD_TASK_SHEET_STATUS_LABELS,
-  RD_TASK_SHEET_URGENCY_LABELS,
-  type RdTaskSheetBusinessType,
   type RdTaskSheetDetail,
   type RdTaskSheetStatus,
-  type RdTaskSheetUrgency,
 } from '../../models/rd-task-sheet.model';
 
 type ConvertKind = 'rd' | 'issue';
+type FlowStepId = 'prepare' | 'review' | 'issued' | 'processing' | 'delivered' | 'verified';
 
 @Component({
   selector: 'app-rd-task-sheet-detail-header',
   standalone: true,
-  imports: [NzButtonModule, NzIconModule, NzTagModule],
+  imports: [NzButtonModule, NzIconModule, StatusBadgeComponent],
   template: `
     @if (detail(); as current) {
-      <section class="summary-card">
-        <div class="summary-card__main">
-          <div class="summary-card__tags">
-            <nz-tag [nzColor]="statusColor(current.status)">{{ statusLabel(current.status) }}</nz-tag>
-            <nz-tag>{{ businessTypeLabel(current.businessType) }}</nz-tag>
-            <nz-tag [nzColor]="current.urgency === 'urgent' ? 'red' : 'default'">{{ urgencyLabel(current.urgency) }}</nz-tag>
+      <section class="detail-header">
+        <div class="detail-header__top">
+          <div class="detail-header__meta">
+            <span></span>
+            <span class="detail-header__status">当前：{{ currentFlowLabel(current.status) }}</span>
           </div>
-          <div class="summary-card__actions">
-            <button nz-button [nzLoading]="exporting()" (click)="exportWord.emit(current)">
+          <div class="state-flow">
+            @for (step of statusFlow(current.status); track step.id; let last = $last) {
+              <span
+                class="state-flow__step"
+                [class.is-done]="step.state === 'done'"
+                [class.is-active]="step.state === 'active'"
+              >
+                {{ step.label }}
+              </span>
+              @if (!last) {
+                <span
+                  nz-icon
+                  nzType="right"
+                  class="state-flow__arrow"
+                  [class.is-done]="step.state !== 'pending'"
+                ></span>
+              }
+            }
+          </div>
+        </div>
+        <div class="detail-header__bottom">
+          <div class="detail-header__bottom-main">
+            <div class="detail-header__actions">
+            <button nz-button class="detail-header__action-btn" [nzLoading]="exporting()" (click)="exportWord.emit(current)">
               <span nz-icon nzType="download"></span>
               导出 Word
             </button>
             @if (!current.convertedRdItemId) {
-              <button nz-button (click)="convert.emit('rd')">转研发项</button>
+              <button nz-button class="detail-header__action-btn" (click)="convert.emit('rd')">转研发项</button>
             } @else {
-              <nz-tag nzColor="blue">已转研发项</nz-tag>
+              <app-status-badge status="converted_rd" label="已转研发项" />
             }
             @if (!current.convertedIssueId) {
-              <button nz-button (click)="convert.emit('issue')">转测试单</button>
+              <button nz-button class="detail-header__action-btn" (click)="convert.emit('issue')">转测试单</button>
             } @else {
-              <nz-tag nzColor="purple">已转测试单</nz-tag>
+              <app-status-badge status="converted_issue" label="已转测试单" />
             }
             @if (current.status === 'draft') {
-              <button nz-button (click)="edit.emit(current)">编辑</button>
-              <button nz-button nzType="primary" [nzLoading]="busy()" (click)="issue.emit(current.id)">下发</button>
+              <button nz-button class="detail-header__action-btn" (click)="edit.emit(current)">编辑</button>
+              <button nz-button class="detail-header__action-btn" nzType="primary" [nzLoading]="busy()" (click)="submitReview.emit(current.id)">提交审核</button>
+            }
+            @if (current.status === 'returned') {
+              <button nz-button class="detail-header__action-btn" (click)="edit.emit(current)">编辑</button>
+              <button nz-button class="detail-header__action-btn" nzType="primary" [nzLoading]="busy()" (click)="submitReview.emit(current.id)">重新提交</button>
+            }
+            @if (current.status === 'pending_review') {
+              <button nz-button class="detail-header__action-btn" (click)="returnReview.emit(current)">退回</button>
+              <button nz-button class="detail-header__action-btn" nzType="primary" [nzLoading]="busy()" (click)="approveReview.emit(current.id)">审核下发</button>
             }
             @if (current.status === 'issued') {
-              <button nz-button nzType="primary" [nzLoading]="busy()" (click)="startProcessing.emit(current.id)">开始处理</button>
+              <button nz-button class="detail-header__action-btn" (click)="assign.emit(current)">分派处理</button>
+              <button nz-button class="detail-header__action-btn" nzType="primary" [nzLoading]="busy()" (click)="startProcessing.emit(current.id)">开始处理</button>
             }
             @if (current.status === 'issued' || current.status === 'processing') {
-              <button nz-button (click)="reply.emit(current)">回复</button>
+              <button nz-button class="detail-header__action-btn" (click)="reply.emit(current)">回复</button>
             }
             @if (current.status === 'replied') {
-              <button nz-button nzDanger [nzLoading]="busy()" (click)="closeSheet.emit(current.id)">关闭</button>
+              <button nz-button class="detail-header__action-btn" nzDanger [nzLoading]="busy()" (click)="closeSheet.emit(current.id)">关闭</button>
             }
+            </div>
           </div>
         </div>
       </section>
@@ -63,23 +91,148 @@ type ConvertKind = 'rd' | 'issue';
   `,
   styles: [
     `
-      .summary-card {
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        background: var(--bg-container);
-        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
-      }
-      .summary-card__main {
+      .detail-header {
         display: grid;
-        gap: 14px;
-        padding: 16px;
+        gap: 18px;
+        padding: 22px 20px;
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 32%),
+          var(--bg-container);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
       }
-      .summary-card__tags,
-      .summary-card__actions {
+      .detail-header__top {
+        display: grid;
+        gap: 10px;
+      }
+      .detail-header__bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color-soft);
+      }
+      .detail-header__bottom-main {
+        display: grid;
+        gap: 12px;
+        width: 100%;
+      }
+      .detail-header__meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 18px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .detail-header__status {
+        color: var(--text-secondary);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .detail-header__actions {
         display: flex;
         align-items: center;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 8px;
+      }
+      .detail-header__action-btn {
+        min-width: 76px;
+        max-width: 100%;
+        height: 36px;
+        border-radius: 999px;
+      }
+      .state-flow {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 6px;
+        flex-wrap: nowrap;
+        width: 100%;
+        min-width: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-right: 4px;
+        padding-bottom: 2px;
+        scrollbar-width: thin;
+      }
+      .state-flow__step {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        min-width: 64px;
+        height: 30px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: var(--bg-subtle);
+        border: 1px solid transparent;
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 600;
+        transition:
+          background-color 160ms ease,
+          border-color 160ms ease,
+          color 160ms ease,
+          box-shadow 160ms ease,
+          transform 160ms ease;
+      }
+      .state-flow__step.is-done {
+        background: rgba(99, 102, 241, 0.08);
+        border-color: rgba(99, 102, 241, 0.18);
+        color: rgba(79, 70, 229, 0.88);
+      }
+      .state-flow__step.is-active {
+        background: var(--primary-600);
+        border-color: var(--primary-600);
+        color: #fff;
+        font-weight: 700;
+        box-shadow: 0 10px 24px rgba(79, 70, 229, 0.28);
+        transform: translateY(-1px);
+      }
+      .state-flow__arrow {
+        flex: 0 0 auto;
+        color: var(--gray-300);
+        font-size: 11px;
+        transition: color 160ms ease;
+      }
+      .state-flow__arrow.is-done {
+        color: rgba(99, 102, 241, 0.5);
+      }
+      .state-flow::-webkit-scrollbar {
+        height: 6px;
+      }
+      .state-flow::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.35);
+        border-radius: 999px;
+      }
+      :host-context(html[data-theme='dark']) .detail-header {
+        border-color: rgba(148, 163, 184, 0.14);
+      }
+      :host-context(html[data-theme='dark']) .state-flow__step.is-done {
+        background: rgba(99, 102, 241, 0.14);
+        border-color: rgba(129, 140, 248, 0.26);
+        color: #c7d2fe;
+      }
+      :host-context(html[data-theme='dark']) .state-flow__step.is-active {
+        box-shadow: 0 12px 28px rgba(99, 102, 241, 0.32);
+      }
+      :host-context(html[data-theme='dark']) .state-flow__arrow.is-done {
+        color: rgba(165, 180, 252, 0.55);
+      }
+      @media (max-width: 720px) {
+        .detail-header__top,
+        .detail-header__bottom {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .detail-header__actions,
+        .state-flow {
+          justify-content: flex-start;
+        }
       }
     `,
   ],
@@ -93,6 +246,10 @@ export class RdTaskSheetDetailHeaderComponent {
   readonly convert = output<ConvertKind>();
   readonly edit = output<RdTaskSheetDetail>();
   readonly issue = output<string>();
+  readonly submitReview = output<string>();
+  readonly approveReview = output<string>();
+  readonly returnReview = output<RdTaskSheetDetail>();
+  readonly assign = output<RdTaskSheetDetail>();
   readonly startProcessing = output<string>();
   readonly reply = output<RdTaskSheetDetail>();
   readonly closeSheet = output<string>();
@@ -101,21 +258,56 @@ export class RdTaskSheetDetailHeaderComponent {
     return RD_TASK_SHEET_STATUS_LABELS[status] ?? status;
   }
 
-  urgencyLabel(urgency: RdTaskSheetUrgency): string {
-    return RD_TASK_SHEET_URGENCY_LABELS[urgency] ?? urgency;
+  statusFlow(status: RdTaskSheetStatus): Array<{ id: FlowStepId; label: string; state: 'done' | 'active' | 'pending' }> {
+    const steps: Array<{ id: FlowStepId; label: string }> = [
+      { id: 'prepare', label: '制单' },
+      { id: 'review', label: '审核' },
+      { id: 'issued', label: '已下发' },
+      { id: 'processing', label: '处理中' },
+      { id: 'delivered', label: '已交付' },
+      { id: 'verified', label: '已验证' },
+    ];
+    const activeId = this.activeFlowId(status);
+    return steps.map((step) => {
+      if (step.id === activeId) {
+        return { ...step, state: 'active' as const };
+      }
+      if (this.isReachedFlow(step.id, activeId)) {
+        return { ...step, state: 'done' as const };
+      }
+      return { ...step, state: 'pending' as const };
+    });
   }
 
-  businessTypeLabel(type: RdTaskSheetBusinessType): string {
-    return RD_TASK_SHEET_BUSINESS_TYPE_LABELS[type] ?? type;
+  currentFlowLabel(status: RdTaskSheetStatus): string {
+    return this.statusFlow(status).find((step) => step.state === 'active')?.label ?? statusLabel(status);
   }
 
-  statusColor(status: RdTaskSheetStatus): string {
-    return {
-      draft: 'default',
-      issued: 'blue',
-      processing: 'orange',
-      replied: 'green',
-      closed: 'default',
-    }[status];
+  private activeFlowId(status: RdTaskSheetStatus): FlowStepId {
+    if (status === 'pending_review') {
+      return 'review';
+    }
+    if (status === 'issued') {
+      return 'issued';
+    }
+    if (status === 'processing') {
+      return 'processing';
+    }
+    if (status === 'replied') {
+      return 'delivered';
+    }
+    if (status === 'closed') {
+      return 'verified';
+    }
+    return 'prepare';
   }
+
+  private isReachedFlow(target: FlowStepId, active: FlowStepId): boolean {
+    const order: FlowStepId[] = ['prepare', 'review', 'issued', 'processing', 'delivered', 'verified'];
+    return order.indexOf(target) < order.indexOf(active);
+  }
+}
+
+function statusLabel(status: RdTaskSheetStatus): string {
+  return RD_TASK_SHEET_STATUS_LABELS[status] ?? status;
 }

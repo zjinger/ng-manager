@@ -68,6 +68,13 @@ function createDb() {
       converted_issue_id TEXT,
       creator_id TEXT NOT NULL,
       creator_name TEXT NOT NULL,
+      prepared_by_name TEXT,
+      reviewer_user_id TEXT,
+      reviewer_name TEXT,
+      reviewed_at TEXT,
+      review_comment TEXT,
+      assigned_at TEXT,
+      assignment_comment TEXT,
       issued_at TEXT,
       processing_started_at TEXT,
       replied_at TEXT,
@@ -202,8 +209,11 @@ describe("RdTaskSheetService", () => {
       assert.equal(created.attachments.length, 1);
       assert.match(created.sheetNo, /^\d{6}0001$/);
 
-      const issued = await svc.issue(created.id, ctx("usr_creator"));
+      const pending = await svc.submitReview(created.id, ctx("usr_creator"));
+      assert.equal(pending.status, "pending_review");
+      const issued = await svc.approveReview(created.id, ctx("usr_other", ["task_sheet.manage", "task_sheet.view.self"]));
       assert.equal(issued.status, "issued");
+      assert.equal(issued.reviewerUserId, "usr_other");
       const processing = await svc.startProcessing(issued.id, ctx("usr_receiver"));
       assert.equal(processing.status, "processing");
       assert.equal(processing.processorUserId, "usr_receiver");
@@ -212,7 +222,7 @@ describe("RdTaskSheetService", () => {
       assert.equal(replied.result, "resolved");
       const closed = await svc.close(replied.id, {}, ctx("usr_creator"));
       assert.equal(closed.status, "closed");
-      assert.deepEqual(closed.logs.map((log) => log.action), ["create", "issue", "start_processing", "reply", "close"]);
+      assert.deepEqual(closed.logs.map((log) => log.action), ["create", "submit_review", "review.approve", "start_processing", "reply", "close"]);
     } finally {
       db.close();
     }
@@ -284,6 +294,13 @@ describe("RdTaskSheetService", () => {
 
       const all = await svc.list({ scope: "all" }, managerCtx);
       assert.deepEqual(new Set(all.items.map((item) => item.title)), new Set(["无关任务", "接收任务", "项目任务"]));
+
+      const pending = await svc.create({ title: "待审核", businessDescription: "D" }, ctx("usr_creator"));
+      await svc.submitReview(pending.id, ctx("usr_creator"));
+      const issued = await svc.create({ title: "待分派", businessDescription: "E" }, ctx("usr_creator"));
+      await svc.approveReview(issued.id, managerCtx);
+      const workflow = await svc.list({ scope: "workflow" }, managerCtx);
+      assert.deepEqual(new Set(workflow.items.map((item) => item.title)), new Set(["待审核", "待分派"]));
     } finally {
       db.close();
     }

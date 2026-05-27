@@ -52,6 +52,13 @@ type SheetRow = {
   converted_issue_id: string | null;
   creator_id: string;
   creator_name: string;
+  prepared_by_name: string | null;
+  reviewer_user_id: string | null;
+  reviewer_name: string | null;
+  reviewed_at: string | null;
+  review_comment: string | null;
+  assigned_at: string | null;
+  assignment_comment: string | null;
   issued_at: string | null;
   processing_started_at: string | null;
   replied_at: string | null;
@@ -134,6 +141,13 @@ export type UpdateTaskSheetRowInput = Partial<{
   close_reason: string | null;
   converted_rd_item_id: string | null;
   converted_issue_id: string | null;
+  prepared_by_name: string | null;
+  reviewer_user_id: string | null;
+  reviewer_name: string | null;
+  reviewed_at: string | null;
+  review_comment: string | null;
+  assigned_at: string | null;
+  assignment_comment: string | null;
   processor_started_at: string | null;
   issued_at: string | null;
   processing_started_at: string | null;
@@ -299,7 +313,8 @@ export class RdTaskSheetRepo {
             project_name, project_contact, related_system,
             urgency, business_type, expected_resolved_at, resolved_at, result,
             business_description, delivery_content, close_reason, converted_rd_item_id, converted_issue_id,
-            creator_id, creator_name, issued_at, processing_started_at, replied_at, closed_at,
+            creator_id, creator_name, prepared_by_name, reviewer_user_id, reviewer_name, reviewed_at, review_comment,
+            assigned_at, assignment_comment, issued_at, processing_started_at, replied_at, closed_at,
             created_at, updated_at
           )
           VALUES (
@@ -311,6 +326,7 @@ export class RdTaskSheetRepo {
             ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?
           )
@@ -350,6 +366,13 @@ export class RdTaskSheetRepo {
         entity.convertedIssueId,
         entity.creatorId,
         entity.creatorName,
+        entity.preparedByName,
+        entity.reviewerUserId,
+        entity.reviewerName,
+        entity.reviewedAt,
+        entity.reviewComment,
+        entity.assignedAt,
+        entity.assignmentComment,
         entity.issuedAt,
         entity.processingStartedAt,
         entity.repliedAt,
@@ -483,14 +506,17 @@ export class RdTaskSheetRepo {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
-    if (!visibility.canManage) {
+    if (visibility.canManage && query.scope === "workflow") {
+      conditions.push("(status = 'pending_review' OR (status = 'issued' AND processor_user_id IS NULL))");
+    } else if (!visibility.canManage) {
       const visibleConditions = [
         "creator_id = ?",
         "issuer_user_id = ?",
         "receiver_user_id = ?",
-        "processor_user_id = ?"
+        "processor_user_id = ?",
+        "reviewer_user_id = ?"
       ];
-      params.push(visibility.userId, visibility.userId, visibility.userId, visibility.userId);
+      params.push(visibility.userId, visibility.userId, visibility.userId, visibility.userId, visibility.userId);
       if (visibility.accessibleProjectIds.length > 0) {
         visibleConditions.push(`project_id IN (${visibility.accessibleProjectIds.map(() => "?").join(", ")})`);
         params.push(...visibility.accessibleProjectIds);
@@ -571,6 +597,13 @@ export class RdTaskSheetRepo {
       convertedIssueId: row.converted_issue_id,
       creatorId: row.creator_id,
       creatorName: row.creator_name,
+      preparedByName: row.prepared_by_name,
+      reviewerUserId: row.reviewer_user_id,
+      reviewerName: row.reviewer_name,
+      reviewedAt: row.reviewed_at,
+      reviewComment: row.review_comment,
+      assignedAt: row.assigned_at,
+      assignmentComment: row.assignment_comment,
       issuedAt: row.issued_at,
       processingStartedAt: row.processing_started_at,
       repliedAt: row.replied_at,

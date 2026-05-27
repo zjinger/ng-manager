@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "build": "rimraf dist && tsc -p tsconfig.json && node scripts/copy-reimbursement-templates.cjs",
+    "build": "rimraf dist && tsc -p tsconfig.json && node scripts/copy-templates.cjs",
     "test": "node scripts/run-tests.cjs",
     "uploads:cleanup-temp": "tsx src/scripts/cleanup-temp-uploads.ts",
     "uploads:cleanup-temp:dist": "node dist/scripts/cleanup-temp-uploads.js",

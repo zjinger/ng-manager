@@ -5,6 +5,7 @@ import { API_BASE_URL, ApiClientService } from '@core/http';
 import { buildUploadFormData, UPLOAD_TARGETS } from '@shared/constants';
 import type {
   CloseRdTaskSheetInput,
+  AssignRdTaskSheetInput,
   ConvertRdTaskSheetToIssueInput,
   ConvertRdTaskSheetToRdItemInput,
   CreateRdTaskSheetInput,
@@ -13,6 +14,7 @@ import type {
   RdTaskSheetListQuery,
   RdTaskSheetListResult,
   ReplyRdTaskSheetInput,
+  ReturnReviewRdTaskSheetInput,
   UpdateRdTaskSheetInput,
 } from '../models/rd-task-sheet.model';
 
@@ -44,6 +46,22 @@ export class RdTaskSheetApiService {
 
   issue(sheetId: string) {
     return this.api.post<RdTaskSheetDetail>(`/rd/task-sheets/${sheetId}/issue`);
+  }
+
+  submitReview(sheetId: string) {
+    return this.api.post<RdTaskSheetDetail>(`/rd/task-sheets/${sheetId}/submit-review`);
+  }
+
+  approveReview(sheetId: string) {
+    return this.api.post<RdTaskSheetDetail>(`/rd/task-sheets/${sheetId}/review/approve`);
+  }
+
+  returnReview(sheetId: string, input: ReturnReviewRdTaskSheetInput) {
+    return this.api.post<RdTaskSheetDetail, ReturnReviewRdTaskSheetInput>(`/rd/task-sheets/${sheetId}/review/return`, input);
+  }
+
+  assign(sheetId: string, input: AssignRdTaskSheetInput) {
+    return this.api.post<RdTaskSheetDetail, AssignRdTaskSheetInput>(`/rd/task-sheets/${sheetId}/assign`, input);
   }
 
   startProcessing(sheetId: string) {

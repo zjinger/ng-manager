@@ -241,9 +241,14 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
       .flow-card__actions--below {
         justify-content: flex-start;
         margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color-soft);
       }
       .flow-card__action-btn {
         min-width: 78px;
+        max-width: 100%;
+        height: 36px;
+        border-radius: 999px;
       }
       .state-flow {
         display: flex;
