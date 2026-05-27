@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createReadStream } from "node:fs";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import announcementPublicRoutes from "../modules/announcement/announcement-public.routes";
 import announcementRoutes from "../modules/announcement/announcement.routes";
 import approvalTemplateRoutes from "../modules/approval-template/approval-template.routes";
@@ -50,6 +50,8 @@ import surveyRoutes from "../modules/survey/survey.routes";
 import reportPublicRoutes from "../modules/report-public/report-public.routes";
 import reimbursementRoutes from "../modules/reimbursement/reimbursement.routes";
 
+const SPA_ENTRY_CACHE_CONTROL = "no-store, no-cache, must-revalidate, proxy-revalidate";
+
 function resolveSpaRoot(cwd = process.cwd()) {
   const candidates = [
     path.join(cwd, "www", "browser"),
@@ -97,6 +99,18 @@ function guessContentType(filePath: string) {
     default:
       return "application/octet-stream";
   }
+}
+
+function setNoStoreHeaders(reply: FastifyReply) {
+  reply.header("Cache-Control", SPA_ENTRY_CACHE_CONTROL);
+  reply.header("Pragma", "no-cache");
+  reply.header("Expires", "0");
+}
+
+function sendSpaIndex(reply: FastifyReply, spaIndexPath: string) {
+  setNoStoreHeaders(reply);
+  reply.type("text/html; charset=utf-8");
+  return reply.send(createReadStream(spaIndexPath));
 }
 
 export async function registerRoutes(app: FastifyInstance) {
@@ -162,8 +176,7 @@ export async function registerRoutes(app: FastifyInstance) {
   app.log.info({ spaRoot }, "[hub-v2] SPA static root enabled");
 
   app.get("/", async (_request, reply) => {
-    reply.type("text/html; charset=utf-8");
-    return reply.send(createReadStream(spaIndexPath));
+    return sendSpaIndex(reply, spaIndexPath);
   });
 
   app.get("/*", async (request, reply) => {
@@ -191,11 +204,13 @@ export async function registerRoutes(app: FastifyInstance) {
     }
 
     if (normalized && fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()) {
+      if (normalized === "index.html" || normalized.endsWith(".html")) {
+        setNoStoreHeaders(reply);
+      }
       reply.type(guessContentType(resolvedPath));
       return reply.send(createReadStream(resolvedPath));
     }
 
-    reply.type("text/html; charset=utf-8");
-    return reply.send(createReadStream(spaIndexPath));
+    return sendSpaIndex(reply, spaIndexPath);
   });
 }
