@@ -10,9 +10,16 @@ import type {
     SpriteGroupItemDto,
     SpriteSnapshotDto,
     SpriteConfigDto,
+    QuickGenerateResponseDto,
 } from "@yinuo-ngm/protocol";
 import type { GenerateSpriteOptions, SpriteConfig, SpriteGroupItem, SpriteSnapshot } from "@yinuo-ngm/sprite";
 import type { ProjectAssets } from "@yinuo-ngm/project";
+import {
+    quickFetch,
+    mapQuickGroupsToSnapshot,
+    fetchRemoteProject,
+    resolveEnabledRemoteProjectId,
+} from "./sprite-quick.utils";
 
 function toSpriteConfigDto(cfg: SpriteConfig): SpriteConfigDto {
     return {
@@ -30,6 +37,8 @@ function toSpriteConfigDto(cfg: SpriteConfig): SpriteConfigDto {
         updatedAt: cfg.updatedAt,
         localImageRoot: cfg.localImageRoot,
         localCacheDir: cfg.localCacheDir,
+        quickSpriteProjectId: cfg.quickSpriteProjectId,
+        quickSpriteEnabled: cfg.quickSpriteEnabled,
     };
 }
 
@@ -130,6 +139,27 @@ export async function spriteRoutes(fastify: FastifyInstance) {
         const { projectId } = req.params;
         const body = req.body || ({} as Partial<GenerateSpriteOptionsDto>);
 
+        // ========== 快捷雪碧图分流：若配置了 quickSpriteProjectId，从远端拉取已生成列表 ==========
+        const quickProjectId = await resolveEnabledRemoteProjectId(fastify, projectId);
+        if (quickProjectId) {
+            const [results, remoteProj, localCfg] = await Promise.all([
+                quickFetch<QuickGenerateResponseDto[]>(
+                    fastify,
+                    `/api/project-sprites?projectId=${encodeURIComponent(quickProjectId)}`,
+                ),
+                fetchRemoteProject(fastify, quickProjectId),
+                fastify.core.sprite.getConfig(projectId),
+            ]);
+            if (!results?.length) {
+                throw new GlobalError(
+                    GlobalErrorCodes.NOT_FOUND,
+                    `远端项目「${quickProjectId}」尚未生成任何雪碧图，请先在远端服务中为该项目生成雪碧图后再试`,
+                );
+            }
+            return mapQuickGroupsToSnapshot(projectId, results, remoteProj, localCfg);
+        }
+        // ========== 本地生成逻辑 ==========
+
         const result = await fastify.core.sprite.generate(projectId, {
             groups: body.groups,
             forceRefresh: !!body.forceRefresh,
@@ -145,6 +175,22 @@ export async function spriteRoutes(fastify: FastifyInstance) {
         async (req) => {
             const { projectId } = req.params;
             const local = String(req.query?.local ?? "").toLowerCase() === "true";
+
+            // ========== 快捷雪碧图分流：若配置了 quickSpriteProjectId，从远端拉取已生成列表 ==========
+            const quickProjectId = await resolveEnabledRemoteProjectId(fastify, projectId);
+            if (quickProjectId) {
+                const [results, remoteProj, localCfg] = await Promise.all([
+                    quickFetch<QuickGenerateResponseDto[]>(
+                        fastify,
+                        `/api/project-sprites?projectId=${encodeURIComponent(quickProjectId)}`,
+                    ),
+                    fetchRemoteProject(fastify, quickProjectId),
+                    fastify.core.sprite.getConfig(projectId),
+                ]);
+                return mapQuickGroupsToSnapshot(projectId, results, remoteProj, localCfg);
+            }
+            // ========== 本地查询逻辑 ==========
+
             const snapshot = await fastify.core.sprite.getSprites(projectId, local);
             return toSpriteSnapshotDto(snapshot);
         }

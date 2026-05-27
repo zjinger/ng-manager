@@ -17,6 +17,10 @@ export interface SpriteConfig {
     updatedAt: number;
     localImageRoot?: string;
     localCacheDir?: string;
+    /** 映射到远端快捷雪碧图服务的项目 ID */
+    quickSpriteProjectId?: string;
+    /** 是否启用远端快捷雪碧图（代替本地 SVN 拉取） */
+    quickSpriteEnabled?: boolean;
 }
 
 export type GenerateSpriteOptions = {

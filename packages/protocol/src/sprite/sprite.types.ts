@@ -36,3 +36,5 @@ export interface SvgMetaFile {
 }
 
 export type GenerateGroupResult = SpriteMetaFile | SvgMetaFile;
+
+export type IconGroupType = "png" | "svg" | "mixed" | "empty";

@@ -28,3 +28,14 @@ export type {
     SvgMetaFile,
     GenerateGroupResult,
 } from "./sprite.types";
+
+export type {
+    QuickSpriteProjectDto,
+    QuickSpriteRuntimeDto,
+    SyncMode,
+    QuickGenerateRequestDto,
+    QuickGenerateResponseDto,
+    QuickSvnUpdateResultDto,
+    QuickMiscItemDto,
+    QuickMiscResultDto,
+} from "./sprite-quick.dto";
