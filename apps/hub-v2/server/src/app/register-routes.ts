@@ -50,7 +50,22 @@ import surveyRoutes from "../modules/survey/survey.routes";
 import reportPublicRoutes from "../modules/report-public/report-public.routes";
 import reimbursementRoutes from "../modules/reimbursement/reimbursement.routes";
 
-const SPA_ENTRY_CACHE_CONTROL = "no-store, no-cache, must-revalidate, proxy-revalidate";
+const NO_STORE_CACHE_CONTROL = "no-store, no-cache, must-revalidate, proxy-revalidate";
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+const SHORT_STATIC_CACHE_CONTROL = "public, max-age=3600";
+const IMMUTABLE_ASSET_EXTENSIONS = new Set([
+  ".js",
+  ".css",
+  ".woff",
+  ".woff2",
+  ".png",
+  ".svg",
+  ".ico",
+  ".webp",
+  ".jpg",
+  ".jpeg",
+  ".gif"
+]);
 
 function resolveSpaRoot(cwd = process.cwd()) {
   const candidates = [
@@ -102,9 +117,42 @@ function guessContentType(filePath: string) {
 }
 
 function setNoStoreHeaders(reply: FastifyReply) {
-  reply.header("Cache-Control", SPA_ENTRY_CACHE_CONTROL);
+  reply.header("Cache-Control", NO_STORE_CACHE_CONTROL);
   reply.header("Pragma", "no-cache");
   reply.header("Expires", "0");
+}
+
+function setStaticCacheHeaders(reply: FastifyReply, normalizedPath: string, filePath: string) {
+  if (shouldNoStoreStaticFile(normalizedPath)) {
+    setNoStoreHeaders(reply);
+    return;
+  }
+
+  if (isImmutableAsset(filePath)) {
+    reply.header("Cache-Control", IMMUTABLE_CACHE_CONTROL);
+    return;
+  }
+
+  if (isCacheableStaticAsset(filePath)) {
+    reply.header("Cache-Control", SHORT_STATIC_CACHE_CONTROL);
+  }
+}
+
+function shouldNoStoreStaticFile(normalizedPath: string) {
+  return normalizedPath === "index.html" || normalizedPath.endsWith(".html") || normalizedPath === "version.json";
+}
+
+function isImmutableAsset(filePath: string) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (!IMMUTABLE_ASSET_EXTENSIONS.has(ext)) {
+    return false;
+  }
+
+  return /(?:^|[-.])[a-zA-Z0-9]{8,}(?=\.[^.]+$)/.test(path.basename(filePath));
+}
+
+function isCacheableStaticAsset(filePath: string) {
+  return IMMUTABLE_ASSET_EXTENSIONS.has(path.extname(filePath).toLowerCase());
 }
 
 function sendSpaIndex(reply: FastifyReply, spaIndexPath: string) {
@@ -204,9 +252,7 @@ export async function registerRoutes(app: FastifyInstance) {
     }
 
     if (normalized && fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()) {
-      if (normalized === "index.html" || normalized.endsWith(".html")) {
-        setNoStoreHeaders(reply);
-      }
+      setStaticCacheHeaders(reply, normalized, resolvedPath);
       reply.type(guessContentType(resolvedPath));
       return reply.send(createReadStream(resolvedPath));
     }

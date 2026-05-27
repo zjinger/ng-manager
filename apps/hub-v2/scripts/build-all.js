@@ -29,6 +29,7 @@ function main() {
   run("npm run build:web");
   run("npm run build:server");
   run("npm run copy");
+  run("node ./scripts/generate-version.js");
   console.log("[build] done");
 }
 
