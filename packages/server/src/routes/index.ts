@@ -4,15 +4,14 @@ import depsRoutes from './deps.route';
 import fsRoutes from './fs.routes';
 import projectRoutes from './project.routes';
 import rssRoutes from './rss.routes';
-import { spriteRoutes } from './sprite.routes';
+import { spriteRoutes } from './sprite/sprite.routes';
 import systemRoutes from './system.routes';
 import taskRoutes from './task.routes';
 import { apiClientCollectionsRoutes, apiClientEnvsRoutes, apiClientHistoryRoutes, apiClientHubTokenRoutes, apiClientRequestsRoutes, apiClientSendRoutes } from './api-client';
 import { nginxRoutes } from './nginx.routes';
 import { FastifyInstance } from 'fastify';
 import svnRoutes from './svn.routes';
-import spriteBrowseRoutes from './sprite-browse.routes';
-import spriteQuickRoutes from './sprite-quick.routes';
+import spriteBrowseRoutes from './sprite/sprite-browse.routes';
 import staticFileRoutes from './static-files.routes';
 import hubRoutes from './hub.routes';
 import nodeVersionRoutes from './node-version.routes';
@@ -34,17 +33,13 @@ export default async function routes(fastify: FastifyInstance) {
     await fastify.register(dashboardRoutes, { prefix: '/api/dashboard' });
     // rss
     await fastify.register(rssRoutes, { prefix: '/api/rss' });
-    // sprite
-    await fastify.register(spriteRoutes, { prefix: '/api/sprite' });
     // svn
     await fastify.register(svnRoutes, { prefix: '/api/svn' });
 
+    // sprite
+    await fastify.register(spriteRoutes, { prefix: '/api/sprite' });
     // sprite browse
     await fastify.register(spriteBrowseRoutes, { prefix: '/api/sprite/browse' });
-
-    // sprite quick (远端快捷雪碧图)
-    await fastify.register(spriteQuickRoutes, { prefix: '/api/sprite/quick' });
-
     // static files 访问接口（cache sprites + svn files）
     await fastify.register(staticFileRoutes, { prefix: '/api/static' });
 

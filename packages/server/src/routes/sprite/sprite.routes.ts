@@ -11,6 +11,7 @@ import type {
     SpriteSnapshotDto,
     SpriteConfigDto,
     QuickGenerateResponseDto,
+    QuickSpriteProjectDto,
 } from "@yinuo-ngm/protocol";
 import type { GenerateSpriteOptions, SpriteConfig, SpriteGroupItem, SpriteSnapshot } from "@yinuo-ngm/sprite";
 import type { ProjectAssets } from "@yinuo-ngm/project";
@@ -195,4 +196,27 @@ export async function spriteRoutes(fastify: FastifyInstance) {
             return toSpriteSnapshotDto(snapshot);
         }
     );
+
+    // ========== 快捷雪碧图代理路由（供配置弹窗下拉选择） ==========
+    // - GET /projects：获取远端项目列表
+    fastify.get<{ Reply: QuickSpriteProjectDto[] }>("/quick/projects", async (_req) => {
+        const projects = await quickFetch<QuickSpriteProjectDto[]>(
+            fastify,
+            "/api/projects",
+        );
+        return projects;
+    });
+
+    // - GET /groups/:projectId：获取远端项目的分组列表
+    fastify.get<{
+        Params: { projectId: string };
+        Reply: string[];
+    }>("/quick/groups/:projectId", async (req) => {
+        const { projectId } = req.params;
+        const groups = await quickFetch<string[]>(
+            fastify,
+            `/api/groups?projectId=${encodeURIComponent(projectId)}`,
+        );
+        return groups;
+    });
 }
