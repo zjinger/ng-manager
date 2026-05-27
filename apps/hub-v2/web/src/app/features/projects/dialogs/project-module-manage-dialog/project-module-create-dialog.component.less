@@ -1,0 +1,33 @@
+.create-form {
+  display: grid;
+  gap: 10px;
+}
+
+::ng-deep .project-module-parent-cascader-menu .project-module-parent-cascader-column {
+  width: var(--project-module-parent-cascader-col-width, 260px);
+  min-width: var(--project-module-parent-cascader-col-width, 260px);
+}
+
+::ng-deep .project-module-parent-cascader-menu.ant-cascader-menus {
+  width: auto;
+}
+
+.parent-module-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.parent-module-option nz-icon {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.parent-module-option[data-kind='subsystem'] nz-icon {
+  color: var(--primary-600);
+}
+
+.parent-module-option[data-kind='module'] nz-icon {
+  color: #64748b;
+}
