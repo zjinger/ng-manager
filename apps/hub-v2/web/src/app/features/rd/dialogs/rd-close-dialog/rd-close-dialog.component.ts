@@ -15,7 +15,7 @@ import type { RdItemEntity } from '../../models/rd.model';
       [open]="open()"
       [width]="680"
       [title]="'关闭研发项'"
-      [subtitle]="item() ? item()!.title : '填写关闭原因。'"
+      [subtitle]="item()?.title || '填写关闭原因。'"
       [icon]="'close-circle'"
       (cancel)="cancel.emit()"
     >
@@ -77,4 +77,3 @@ export class RdCloseDialogComponent {
     this.confirm.emit({ reason });
   }
 }
-

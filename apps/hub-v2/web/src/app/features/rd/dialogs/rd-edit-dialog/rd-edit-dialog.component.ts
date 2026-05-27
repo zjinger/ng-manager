@@ -24,7 +24,7 @@ export interface RdEditDialogSaveInput {
       [open]="open()"
       [width]="900"
       [title]="'编辑研发项'"
-      [subtitle]="item() ? item()!.rdNo : ''"
+      [subtitle]="item()?.rdNo || ''"
       [icon]="'edit'"
       (cancel)="cancel.emit()"
     >

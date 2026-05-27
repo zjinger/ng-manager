@@ -16,7 +16,7 @@ import type { RdItemEntity } from '../../models/rd.model';
       [open]="open()"
       [width]="680"
       [title]="'标记完成'"
-      [subtitle]="item() ? item()!.title : '确认研发项已完成。'"
+      [subtitle]="item()?.title || '确认研发项已完成。'"
       [icon]="'check-circle'"
       (cancel)="cancel.emit()"
     >

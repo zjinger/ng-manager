@@ -15,7 +15,7 @@ import type { RdItemEntity } from '../../models/rd.model';
       [open]="open()"
       [width]="640"
       [title]="'标记为阻塞'"
-      [subtitle]="item() ? item()!.title : '记录当前研发项的阻塞原因。'"
+      [subtitle]="item()?.title || '记录当前研发项的阻塞原因。'"
       [icon]="'pause-circle'"
       (cancel)="cancel.emit()"
     >
