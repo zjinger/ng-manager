@@ -3,6 +3,8 @@ import type { PageResult } from "../../shared/http/pagination";
 export type ProjectStatus = "active" | "inactive";
 export type ProjectVisibility = "internal" | "private";
 export type ProjectType = "entrust_dev" | "self_dev" | "tech_service";
+export type ProjectFeaturePointStatus = "todo" | "in_progress" | "done" | "paused";
+export type ProjectFeatureProgressTargetType = "project" | "module";
 export type ProjectMemberRole =
   | "member"
   | "product"
@@ -140,6 +142,41 @@ export interface ProjectVersionItemEntity {
   updatedAt: string;
 }
 
+export interface ProjectFeatureProgressSettings {
+  projectId: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectFeaturePointEntity {
+  id: string;
+  projectId: string;
+  moduleId: string | null;
+  moduleName?: string | null;
+  ownerUserId: string | null;
+  ownerName?: string | null;
+  name: string;
+  status: ProjectFeaturePointStatus;
+  progress: number;
+  enabled: boolean;
+  sort: number;
+  remark: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectFeatureProgressOverrideEntity {
+  id: string;
+  projectId: string;
+  targetType: ProjectFeatureProgressTargetType;
+  targetId: string;
+  progress: number;
+  remark: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CreateProjectConfigItemInput {
   name: string;
   code?: string;
@@ -170,6 +207,91 @@ export interface UpdateProjectConfigItemInput {
   enabled?: boolean;
   sort?: number;
   description?: string | null;
+}
+
+export interface UpdateProjectFeatureProgressSettingsInput {
+  enabled: boolean;
+}
+
+export interface CreateProjectFeaturePointInput {
+  name: string;
+  moduleId?: string | null;
+  ownerUserId?: string | null;
+  status?: ProjectFeaturePointStatus;
+  progress?: number;
+  enabled?: boolean;
+  sort?: number;
+  remark?: string | null;
+}
+
+export interface UpdateProjectFeaturePointInput {
+  name?: string;
+  moduleId?: string | null;
+  ownerUserId?: string | null;
+  status?: ProjectFeaturePointStatus;
+  progress?: number;
+  enabled?: boolean;
+  sort?: number;
+  remark?: string | null;
+}
+
+export interface UpsertProjectFeatureProgressOverrideInput {
+  targetType: ProjectFeatureProgressTargetType;
+  targetId: string;
+  progress: number;
+  remark?: string | null;
+}
+
+export interface DeleteProjectFeatureProgressOverrideInput {
+  targetType: ProjectFeatureProgressTargetType;
+  targetId: string;
+}
+
+export interface ProjectFeatureProgressMetric {
+  computedProgress: number;
+  overrideProgress: number | null;
+  displayProgress: number;
+  overrideRemark: string | null;
+}
+
+export interface ProjectFeatureProgressSummary extends ProjectFeatureProgressMetric {
+  projectId: string;
+  totalCount: number;
+  completedCount: number;
+  inProgressCount: number;
+  notStartedCount: number;
+}
+
+export interface ProjectFeatureProgressModuleNode extends ProjectFeatureProgressMetric {
+  id: string;
+  projectId: string;
+  name: string;
+  code: string | null;
+  nodeType: "subsystem" | "module";
+  parentId: string | null;
+  parentName?: string | null;
+  sort: number;
+  featureCount: number;
+  children: ProjectFeatureProgressModuleNode[];
+  featurePoints: ProjectFeaturePointEntity[];
+}
+
+export interface ProjectFeatureProgressView {
+  projectId: string;
+  enabled: boolean;
+  settings: ProjectFeatureProgressSettings;
+  summary: ProjectFeatureProgressSummary;
+  modules: ProjectFeatureProgressModuleNode[];
+  ungrouped: {
+    id: "ungrouped";
+    name: string;
+    computedProgress: number;
+    overrideProgress: null;
+    displayProgress: number;
+    overrideRemark: null;
+    featureCount: number;
+    featurePoints: ProjectFeaturePointEntity[];
+  };
 }
 
 export interface AddProjectModuleMemberInput {

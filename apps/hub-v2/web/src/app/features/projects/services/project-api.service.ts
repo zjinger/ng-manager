@@ -9,10 +9,14 @@ import type {
   AddProjectMemberInput,
   CreateProjectApiTokenInput,
   CreateProjectApiTokenResult,
+  CreateProjectFeaturePointInput,
   CreateProjectInput,
   CreateProjectMetaItemInput,
   CreateProjectVersionItemInput,
   ProjectApiTokenEntity,
+  ProjectFeaturePoint,
+  ProjectFeatureProgressOverrideEntity,
+  ProjectFeatureProgressView,
   ProjectListQuery,
   ProjectMemberCandidate,
   ProjectMemberEntity,
@@ -23,8 +27,11 @@ import type {
   ProjectVersionItem,
   ReplaceModuleRdLinksInput,
   UpdateProjectMemberInput,
+  UpdateProjectFeaturePointInput,
+  UpdateProjectFeatureProgressSettingsInput,
   UpdateProjectInput,
   UpdateProjectMetaItemInput,
+  UpsertProjectFeatureProgressOverrideInput,
   UpdateProjectVersionItemInput
 } from '../models/project.model';
 
@@ -105,6 +112,44 @@ export class ProjectApiService {
 
   removeModule(projectId: string, moduleId: string) {
     return this.api.delete<{ id: string }>(`/projects/${projectId}/modules/${moduleId}`);
+  }
+
+  getFeatureProgress(projectId: string) {
+    return this.api.get<ProjectFeatureProgressView>(`/projects/${projectId}/feature-progress`);
+  }
+
+  updateFeatureProgressSettings(projectId: string, input: UpdateProjectFeatureProgressSettingsInput) {
+    return this.api.put<unknown, UpdateProjectFeatureProgressSettingsInput>(
+      `/projects/${projectId}/feature-progress/settings`,
+      input
+    );
+  }
+
+  addFeaturePoint(projectId: string, input: CreateProjectFeaturePointInput) {
+    return this.api.post<ProjectFeaturePoint, CreateProjectFeaturePointInput>(`/projects/${projectId}/feature-points`, input);
+  }
+
+  updateFeaturePoint(projectId: string, featurePointId: string, input: UpdateProjectFeaturePointInput) {
+    return this.api.patch<ProjectFeaturePoint, UpdateProjectFeaturePointInput>(
+      `/projects/${projectId}/feature-points/${featurePointId}`,
+      input
+    );
+  }
+
+  removeFeaturePoint(projectId: string, featurePointId: string) {
+    return this.api.delete<{ id: string }>(`/projects/${projectId}/feature-points/${featurePointId}`);
+  }
+
+  upsertFeatureProgressOverride(projectId: string, input: UpsertProjectFeatureProgressOverrideInput) {
+    return this.api.put<ProjectFeatureProgressOverrideEntity, UpsertProjectFeatureProgressOverrideInput>(
+      `/projects/${projectId}/feature-progress/overrides`,
+      input
+    );
+  }
+
+  removeFeatureProgressOverride(projectId: string, targetType: 'project' | 'module', targetId: string) {
+    const query = `targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`;
+    return this.api.delete<{ targetType: string; targetId: string }>(`/projects/${projectId}/feature-progress/overrides?${query}`);
   }
 
   listModuleMembers(projectId: string, moduleId: string) {

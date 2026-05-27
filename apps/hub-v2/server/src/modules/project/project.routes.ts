@@ -4,13 +4,18 @@ import { ok } from "../../shared/http/response";
 import {
   addProjectModuleMemberSchema,
   addProjectMemberSchema,
+  createProjectFeaturePointSchema,
   createProjectConfigItemSchema,
   createProjectSchema,
   createProjectVersionItemSchema,
+  deleteProjectFeatureProgressOverrideQuerySchema,
   listProjectsQuerySchema,
   replaceModuleRdLinksSchema,
+  updateProjectFeaturePointSchema,
+  updateProjectFeatureProgressSettingsSchema,
   updateProjectMemberSchema,
   updateProjectConfigItemSchema,
+  upsertProjectFeatureProgressOverrideSchema,
   updateProjectSchema,
   updateProjectVersionItemSchema
 } from "./project.schema";
@@ -110,6 +115,71 @@ export default async function projectRoutes(app: FastifyInstance) {
     const params = request.params as { projectId: string; moduleId: string };
     await app.container.projectCommand.removeModule(params.projectId, params.moduleId, ctx);
     return ok({ id: params.moduleId }, "project module deleted");
+  });
+
+  app.get("/projects/:projectId/feature-progress/settings", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string };
+    return ok(await app.container.projectQuery.getFeatureProgressSettings(params.projectId, ctx));
+  });
+
+  app.put("/projects/:projectId/feature-progress/settings", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string };
+    const body = updateProjectFeatureProgressSettingsSchema.parse(request.body);
+    return ok(
+      await app.container.projectCommand.updateFeatureProgressSettings(params.projectId, body, ctx),
+      "project feature progress settings updated"
+    );
+  });
+
+  app.get("/projects/:projectId/feature-progress", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string };
+    return ok(await app.container.projectQuery.getFeatureProgress(params.projectId, ctx));
+  });
+
+  app.post("/projects/:projectId/feature-points", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string };
+    const body = createProjectFeaturePointSchema.parse(request.body);
+    const item = await app.container.projectCommand.addFeaturePoint(params.projectId, body, ctx);
+    return reply.status(201).send(ok(item, "project feature point created"));
+  });
+
+  app.patch("/projects/:projectId/feature-points/:featurePointId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; featurePointId: string };
+    const body = updateProjectFeaturePointSchema.parse(request.body);
+    return ok(
+      await app.container.projectCommand.updateFeaturePoint(params.projectId, params.featurePointId, body, ctx),
+      "project feature point updated"
+    );
+  });
+
+  app.delete("/projects/:projectId/feature-points/:featurePointId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; featurePointId: string };
+    await app.container.projectCommand.removeFeaturePoint(params.projectId, params.featurePointId, ctx);
+    return ok({ id: params.featurePointId }, "project feature point deleted");
+  });
+
+  app.put("/projects/:projectId/feature-progress/overrides", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string };
+    const body = upsertProjectFeatureProgressOverrideSchema.parse(request.body);
+    return ok(
+      await app.container.projectCommand.upsertFeatureProgressOverride(params.projectId, body, ctx),
+      "project feature progress override updated"
+    );
+  });
+
+  app.delete("/projects/:projectId/feature-progress/overrides", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string };
+    const query = deleteProjectFeatureProgressOverrideQuerySchema.parse(request.query);
+    await app.container.projectCommand.removeFeatureProgressOverride(params.projectId, query, ctx);
+    return ok({ targetType: query.targetType, targetId: query.targetId }, "project feature progress override deleted");
   });
 
   app.get("/projects/:projectId/modules/:moduleId/members", async (request) => {

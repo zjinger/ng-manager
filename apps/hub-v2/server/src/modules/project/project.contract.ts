@@ -2,6 +2,7 @@ import type { RequestContext } from "../../shared/context/request-context";
 import type {
   AddProjectModuleMemberInput,
   AddProjectMemberInput,
+  CreateProjectFeaturePointInput,
   CreateProjectConfigItemInput,
   CreateProjectInput,
   ProjectModuleRdLinkEntity,
@@ -10,11 +11,19 @@ import type {
   ListProjectsQuery,
   ProjectEntity,
   ProjectConfigItemEntity,
+  ProjectFeaturePointEntity,
+  ProjectFeatureProgressOverrideEntity,
+  ProjectFeatureProgressSettings,
+  ProjectFeatureProgressView,
   ProjectListResult,
   ProjectMemberCandidate,
   ProjectMemberEntity,
   ProjectModuleMemberEntity,
   UpdateProjectMemberInput,
+  UpdateProjectFeaturePointInput,
+  UpdateProjectFeatureProgressSettingsInput,
+  UpsertProjectFeatureProgressOverrideInput,
+  DeleteProjectFeatureProgressOverrideInput,
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
   UpdateProjectInput,
@@ -35,6 +44,33 @@ export interface ProjectCommandContract {
     ctx: RequestContext
   ): Promise<ProjectConfigItemEntity>;
   removeModule(projectId: string, moduleId: string, ctx: RequestContext): Promise<void>;
+  updateFeatureProgressSettings(
+    projectId: string,
+    input: UpdateProjectFeatureProgressSettingsInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeatureProgressSettings>;
+  addFeaturePoint(
+    projectId: string,
+    input: CreateProjectFeaturePointInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeaturePointEntity>;
+  updateFeaturePoint(
+    projectId: string,
+    featurePointId: string,
+    input: UpdateProjectFeaturePointInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeaturePointEntity>;
+  removeFeaturePoint(projectId: string, featurePointId: string, ctx: RequestContext): Promise<void>;
+  upsertFeatureProgressOverride(
+    projectId: string,
+    input: UpsertProjectFeatureProgressOverrideInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeatureProgressOverrideEntity>;
+  removeFeatureProgressOverride(
+    projectId: string,
+    input: DeleteProjectFeatureProgressOverrideInput,
+    ctx: RequestContext
+  ): Promise<void>;
   addModuleMember(
     projectId: string,
     moduleId: string,
@@ -78,6 +114,8 @@ export interface ProjectQueryContract {
   listMemberCandidates(projectId: string, ctx: RequestContext): Promise<ProjectMemberCandidate[]>;
   listModules(projectId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity[]>;
   getModule(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity>;
+  getFeatureProgressSettings(projectId: string, ctx: RequestContext): Promise<ProjectFeatureProgressSettings>;
+  getFeatureProgress(projectId: string, ctx: RequestContext): Promise<ProjectFeatureProgressView>;
   listModuleMembers(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectModuleMemberEntity[]>;
   listModuleRdLinks(projectId: string, moduleId: string, ctx: RequestContext): Promise<ProjectModuleRdLinkEntity[]>;
   listProjectModuleRdLinks(projectId: string, ctx: RequestContext): Promise<ProjectModuleRdLinkEntity[]>;

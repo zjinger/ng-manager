@@ -16,10 +16,17 @@ import { ProjectRepo } from "./project.repo";
 import type {
   AddProjectModuleMemberInput,
   AddProjectMemberInput,
+  CreateProjectFeaturePointInput,
   CreateProjectConfigItemInput,
   CreateProjectInput,
   CreateProjectVersionItemInput,
   ListProjectsQuery,
+  ProjectFeaturePointEntity,
+  ProjectFeatureProgressMetric,
+  ProjectFeatureProgressModuleNode,
+  ProjectFeatureProgressOverrideEntity,
+  ProjectFeatureProgressSettings,
+  ProjectFeatureProgressView,
   ProjectConfigItemEntity,
   ProjectEntity,
   ProjectListResult,
@@ -30,10 +37,14 @@ import type {
   ProjectModuleMemberEntity,
   ProjectType,
   ReplaceModuleRdLinksInput,
+  DeleteProjectFeatureProgressOverrideInput,
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
+  UpdateProjectFeaturePointInput,
+  UpdateProjectFeatureProgressSettingsInput,
   UpdateProjectMemberInput,
   UpdateProjectInput,
+  UpsertProjectFeatureProgressOverrideInput,
   UpdateProjectVersionItemInput
 } from "./project.types";
 import type { RdStageEntity } from "../rd/rd.types";
@@ -477,6 +488,153 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     }
   }
 
+  async getFeatureProgressSettings(projectId: string, ctx: RequestContext): Promise<ProjectFeatureProgressSettings> {
+    await this.getById(projectId, ctx);
+    return this.resolveFeatureProgressSettings(projectId);
+  }
+
+  async updateFeatureProgressSettings(
+    projectId: string,
+    input: UpdateProjectFeatureProgressSettingsInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeatureProgressSettings> {
+    await this.requireProjectMaintainer(projectId, ctx, "update project feature progress settings");
+    await this.getById(projectId, ctx);
+    const now = nowIso();
+    const current = this.repo.getFeatureProgressSettings(projectId);
+    const settings: ProjectFeatureProgressSettings = {
+      projectId,
+      enabled: input.enabled,
+      createdAt: current?.createdAt ?? now,
+      updatedAt: now
+    };
+    this.repo.upsertFeatureProgressSettings(settings);
+    return this.resolveFeatureProgressSettings(projectId);
+  }
+
+  async getFeatureProgress(projectId: string, ctx: RequestContext): Promise<ProjectFeatureProgressView> {
+    const project = await this.getById(projectId, ctx);
+    const settings = this.resolveFeatureProgressSettings(projectId);
+    if (!settings.enabled) {
+      return this.buildDisabledFeatureProgressView(projectId, settings);
+    }
+
+    const modules = this.repo.listModules(projectId);
+    const featurePoints = this.repo.listFeaturePoints(projectId).filter((item) => item.enabled);
+    const overrides = this.repo.listFeatureProgressOverrides(projectId);
+    return this.buildFeatureProgressView(project, settings, modules, featurePoints, overrides);
+  }
+
+  async addFeaturePoint(
+    projectId: string,
+    input: CreateProjectFeaturePointInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeaturePointEntity> {
+    await this.requireProjectMaintainer(projectId, ctx, "add project feature point");
+    await this.getById(projectId, ctx);
+    this.assertFeatureModuleBelongsToProject(projectId, input.moduleId);
+    this.resolveFeatureOwnerUserId(projectId, input.ownerUserId);
+
+    const now = nowIso();
+    const id = genId("pfp");
+    this.repo.addFeaturePoint(projectId, {
+      id,
+      name: input.name.trim(),
+      moduleId: this.trimToNull(input.moduleId),
+      ownerUserId: this.trimToNull(input.ownerUserId),
+      status: input.status,
+      progress: input.progress,
+      enabled: input.enabled,
+      sort: input.sort ?? this.getNextSort(this.repo.listFeaturePoints(projectId).map((item) => item.sort)),
+      remark: this.trimToNull(input.remark),
+      createdAt: now,
+      updatedAt: now
+    });
+
+    const created = this.repo.findFeaturePointById(projectId, id);
+    if (!created) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点创建失败", 500);
+    }
+    return created;
+  }
+
+  async updateFeaturePoint(
+    projectId: string,
+    featurePointId: string,
+    input: UpdateProjectFeaturePointInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeaturePointEntity> {
+    await this.requireProjectMaintainer(projectId, ctx, "update project feature point");
+    await this.getById(projectId, ctx);
+    const current = this.repo.findFeaturePointById(projectId, featurePointId);
+    if (!current) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点不存在", 404);
+    }
+    this.assertFeatureModuleBelongsToProject(projectId, input.moduleId);
+    this.resolveFeatureOwnerUserId(projectId, input.ownerUserId);
+
+    const changed = this.repo.updateFeaturePoint(projectId, featurePointId, {
+      name: input.name?.trim(),
+      moduleId: input.moduleId === undefined ? undefined : this.trimToNull(input.moduleId),
+      ownerUserId: input.ownerUserId === undefined ? undefined : this.trimToNull(input.ownerUserId),
+      status: input.status,
+      progress: input.progress,
+      enabled: input.enabled,
+      sort: input.sort,
+      remark: input.remark === undefined ? undefined : this.trimToNull(input.remark),
+      updatedAt: nowIso()
+    });
+    if (!changed) {
+      return current;
+    }
+
+    const updated = this.repo.findFeaturePointById(projectId, featurePointId);
+    if (!updated) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点不存在", 404);
+    }
+    return updated;
+  }
+
+  async removeFeaturePoint(projectId: string, featurePointId: string, ctx: RequestContext): Promise<void> {
+    await this.requireProjectMaintainer(projectId, ctx, "remove project feature point");
+    await this.getById(projectId, ctx);
+    if (!this.repo.removeFeaturePoint(projectId, featurePointId)) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点不存在", 404);
+    }
+  }
+
+  async upsertFeatureProgressOverride(
+    projectId: string,
+    input: UpsertProjectFeatureProgressOverrideInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeatureProgressOverrideEntity> {
+    await this.requireProjectMaintainer(projectId, ctx, "upsert project feature progress override");
+    await this.getById(projectId, ctx);
+    this.assertValidFeatureOverrideTarget(projectId, input.targetType, input.targetId);
+    const now = nowIso();
+    return this.repo.upsertFeatureProgressOverride({
+      id: genId("pfpo"),
+      projectId,
+      targetType: input.targetType,
+      targetId: input.targetId.trim(),
+      progress: input.progress,
+      remark: this.trimToNull(input.remark),
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+
+  async removeFeatureProgressOverride(
+    projectId: string,
+    input: DeleteProjectFeatureProgressOverrideInput,
+    ctx: RequestContext
+  ): Promise<void> {
+    await this.requireProjectMaintainer(projectId, ctx, "remove project feature progress override");
+    await this.getById(projectId, ctx);
+    this.assertValidFeatureOverrideTarget(projectId, input.targetType, input.targetId);
+    this.repo.removeFeatureProgressOverride(projectId, input.targetType, input.targetId.trim());
+  }
+
   async addModuleMember(
     projectId: string,
     moduleId: string,
@@ -671,6 +829,214 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     await this.requireProjectMaintainer(projectId, ctx, "remove project version");
     if (!this.repo.removeVersion(projectId, versionId)) {
       throw new AppError(ERROR_CODES.PROJECT_VERSION_NOT_FOUND, `version not found: ${versionId}`, 404);
+    }
+  }
+
+  private resolveFeatureProgressSettings(projectId: string): ProjectFeatureProgressSettings {
+    const settings = this.repo.getFeatureProgressSettings(projectId);
+    if (settings) {
+      return settings;
+    }
+    const now = nowIso();
+    return {
+      projectId,
+      enabled: false,
+      createdAt: now,
+      updatedAt: now
+    };
+  }
+
+  private buildDisabledFeatureProgressView(
+    projectId: string,
+    settings: ProjectFeatureProgressSettings
+  ): ProjectFeatureProgressView {
+    return {
+      projectId,
+      enabled: false,
+      settings,
+      summary: {
+        projectId,
+        totalCount: 0,
+        completedCount: 0,
+        inProgressCount: 0,
+        notStartedCount: 0,
+        computedProgress: 0,
+        overrideProgress: null,
+        displayProgress: 0,
+        overrideRemark: null
+      },
+      modules: [],
+      ungrouped: {
+        id: "ungrouped",
+        name: "未分组",
+        computedProgress: 0,
+        overrideProgress: null,
+        displayProgress: 0,
+        overrideRemark: null,
+        featureCount: 0,
+        featurePoints: []
+      }
+    };
+  }
+
+  private buildFeatureProgressView(
+    project: ProjectEntity,
+    settings: ProjectFeatureProgressSettings,
+    modules: ProjectConfigItemEntity[],
+    featurePoints: ProjectFeaturePointEntity[],
+    overrides: ProjectFeatureProgressOverrideEntity[]
+  ): ProjectFeatureProgressView {
+    const overrideMap = new Map(overrides.map((item) => [`${item.targetType}:${item.targetId}`, item]));
+    const featuresByModule = new Map<string, ProjectFeaturePointEntity[]>();
+    const knownModuleIds = new Set(modules.map((item) => item.id));
+    const ungroupedFeatures: ProjectFeaturePointEntity[] = [];
+
+    for (const feature of featurePoints) {
+      if (feature.moduleId && knownModuleIds.has(feature.moduleId)) {
+        featuresByModule.set(feature.moduleId, [...(featuresByModule.get(feature.moduleId) ?? []), feature]);
+      } else {
+        ungroupedFeatures.push(feature);
+      }
+    }
+
+    const childModules = new Map<string, ProjectConfigItemEntity[]>();
+    const roots: ProjectConfigItemEntity[] = [];
+    for (const module of [...modules].sort((left, right) => left.sort - right.sort || left.name.localeCompare(right.name))) {
+      if (module.parentId && knownModuleIds.has(module.parentId)) {
+        childModules.set(module.parentId, [...(childModules.get(module.parentId) ?? []), module]);
+      } else {
+        roots.push(module);
+      }
+    }
+
+    const buildNode = (module: ProjectConfigItemEntity): ProjectFeatureProgressModuleNode => {
+      const children = (childModules.get(module.id) ?? []).map(buildNode);
+      const directFeatures = featuresByModule.get(module.id) ?? [];
+      const descendantFeatures = [
+        ...directFeatures,
+        ...children.flatMap((child) => this.collectFeaturePointsFromNode(child))
+      ];
+      const computedProgress = this.averageProgress(descendantFeatures);
+      const metric = this.applyFeatureProgressOverride(
+        computedProgress,
+        overrideMap.get(`module:${module.id}`) ?? null
+      );
+      return {
+        ...metric,
+        id: module.id,
+        projectId: module.projectId,
+        name: module.name,
+        code: module.code,
+        nodeType: module.nodeType,
+        parentId: module.parentId,
+        parentName: module.parentName,
+        sort: module.sort,
+        featureCount: descendantFeatures.length,
+        children,
+        featurePoints: directFeatures
+      };
+    };
+
+    const moduleNodes = roots.map(buildNode).filter((node) => node.featureCount > 0 || node.children.length > 0);
+    const computedProgress = this.averageProgress(featurePoints);
+    const summaryMetric = this.applyFeatureProgressOverride(
+      computedProgress,
+      overrideMap.get(`project:${project.id}`) ?? null
+    );
+    const ungroupedProgress = this.averageProgress(ungroupedFeatures);
+
+    return {
+      projectId: project.id,
+      enabled: settings.enabled,
+      settings,
+      summary: {
+        projectId: project.id,
+        totalCount: featurePoints.length,
+        completedCount: featurePoints.filter((item) => item.status === "done" || item.progress >= 100).length,
+        inProgressCount: featurePoints.filter((item) => item.status === "in_progress" || (item.progress > 0 && item.progress < 100)).length,
+        notStartedCount: featurePoints.filter((item) => item.status === "todo" || item.progress <= 0).length,
+        ...summaryMetric
+      },
+      modules: moduleNodes,
+      ungrouped: {
+        id: "ungrouped",
+        name: "未分组",
+        computedProgress: ungroupedProgress,
+        overrideProgress: null,
+        displayProgress: ungroupedProgress,
+        overrideRemark: null,
+        featureCount: ungroupedFeatures.length,
+        featurePoints: ungroupedFeatures
+      }
+    };
+  }
+
+  private collectFeaturePointsFromNode(node: ProjectFeatureProgressModuleNode): ProjectFeaturePointEntity[] {
+    return [
+      ...node.featurePoints,
+      ...node.children.flatMap((child) => this.collectFeaturePointsFromNode(child))
+    ];
+  }
+
+  private averageProgress(items: ProjectFeaturePointEntity[]): number {
+    if (items.length === 0) {
+      return 0;
+    }
+    return Math.round(items.reduce((sum, item) => sum + this.normalizeProgress(item.progress), 0) / items.length);
+  }
+
+  private applyFeatureProgressOverride(
+    computedProgress: number,
+    override: ProjectFeatureProgressOverrideEntity | null
+  ): ProjectFeatureProgressMetric {
+    const overrideProgress = override ? this.normalizeProgress(override.progress) : null;
+    return {
+      computedProgress,
+      overrideProgress,
+      displayProgress: overrideProgress ?? computedProgress,
+      overrideRemark: override?.remark ?? null
+    };
+  }
+
+  private normalizeProgress(progress: number | null | undefined): number {
+    const value = Number(progress ?? 0);
+    return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
+  }
+
+  private assertFeatureModuleBelongsToProject(projectId: string, moduleId: string | null | undefined): void {
+    const normalizedModuleId = this.trimToNull(moduleId);
+    if (!normalizedModuleId) {
+      return;
+    }
+    const exists = this.repo.listModules(projectId).some((item) => item.id === normalizedModuleId);
+    if (!exists) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点关联的模块必须属于当前项目", 400);
+    }
+  }
+
+  private resolveFeatureOwnerUserId(projectId: string, value: string | null | undefined): string | null {
+    const ownerUserId = this.trimToNull(value);
+    if (!ownerUserId) {
+      return null;
+    }
+    const member = this.repo.findMemberByProjectAndUserId(projectId, ownerUserId);
+    if (!member) {
+      throw new AppError(ERROR_CODES.PROJECT_MEMBER_NOT_FOUND, "功能点负责人必须是项目成员", 400);
+    }
+    return ownerUserId;
+  }
+
+  private assertValidFeatureOverrideTarget(projectId: string, targetType: "project" | "module", targetId: string): void {
+    const normalizedTargetId = targetId.trim();
+    if (targetType === "project") {
+      if (normalizedTargetId !== projectId) {
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "项目进度覆盖目标必须是当前项目", 400);
+      }
+      return;
+    }
+    const exists = this.repo.listModules(projectId).some((item) => item.id === normalizedTargetId);
+    if (!exists) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "模块进度覆盖目标必须属于当前项目", 400);
     }
   }
 

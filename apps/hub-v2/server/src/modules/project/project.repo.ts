@@ -2,8 +2,12 @@ import type Database from "better-sqlite3";
 import { normalizePage } from "../../shared/http/pagination";
 import type {
   AddProjectModuleMemberInput,
+  CreateProjectFeaturePointInput,
   CreateProjectConfigItemInput,
   CreateProjectVersionItemInput,
+  ProjectFeaturePointEntity,
+  ProjectFeatureProgressOverrideEntity,
+  ProjectFeatureProgressSettings,
   ListProjectsQuery,
   ProjectConfigItemEntity,
   ProjectEntity,
@@ -15,6 +19,7 @@ import type {
   ProjectMemberRole,
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
+  UpdateProjectFeaturePointInput,
   UpdateProjectMemberInput,
   UpdateProjectInput,
   UpdateProjectVersionItemInput
@@ -123,6 +128,41 @@ type ProjectModuleRdLinkRow = {
   rd_no: string | null;
   rd_title: string | null;
   rd_status: string | null;
+};
+
+type ProjectFeatureProgressSettingsRow = {
+  project_id: string;
+  enabled: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type ProjectFeaturePointRow = {
+  id: string;
+  project_id: string;
+  module_id: string | null;
+  module_name: string | null;
+  owner_user_id: string | null;
+  owner_name: string | null;
+  name: string;
+  status: "todo" | "in_progress" | "done" | "paused";
+  progress: number;
+  enabled: number;
+  sort: number;
+  remark: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ProjectFeatureProgressOverrideRow = {
+  id: string;
+  project_id: string;
+  target_type: "project" | "module";
+  target_id: string;
+  progress: number;
+  remark: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export class ProjectRepo {
@@ -759,6 +799,205 @@ export class ProjectRepo {
       .run(input.id, input.projectId, input.moduleId, input.rdItemId, input.sort, input.createdAt, input.updatedAt);
   }
 
+  getFeatureProgressSettings(projectId: string): ProjectFeatureProgressSettings | null {
+    const row = this.db
+      .prepare("SELECT * FROM project_feature_progress_settings WHERE project_id = ?")
+      .get(projectId) as ProjectFeatureProgressSettingsRow | undefined;
+    return row ? this.mapFeatureProgressSettings(row) : null;
+  }
+
+  upsertFeatureProgressSettings(input: ProjectFeatureProgressSettings): void {
+    this.db
+      .prepare(
+        `
+        INSERT INTO project_feature_progress_settings (project_id, enabled, created_at, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(project_id) DO UPDATE SET
+          enabled = excluded.enabled,
+          updated_at = excluded.updated_at
+        `
+      )
+      .run(input.projectId, input.enabled ? 1 : 0, input.createdAt, input.updatedAt);
+  }
+
+  listFeaturePoints(projectId: string): ProjectFeaturePointEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+        SELECT
+          pfp.*,
+          pm.name AS module_name,
+          COALESCE(owner.display_name, owner.username) AS owner_name
+        FROM project_feature_points pfp
+        LEFT JOIN project_modules pm ON pm.id = pfp.module_id
+        LEFT JOIN users owner ON owner.id = pfp.owner_user_id
+        WHERE pfp.project_id = ?
+        ORDER BY pfp.sort ASC, pfp.created_at ASC, pfp.id ASC
+        `
+      )
+      .all(projectId) as ProjectFeaturePointRow[];
+    return rows.map((row) => this.mapFeaturePoint(row));
+  }
+
+  findFeaturePointById(projectId: string, featurePointId: string): ProjectFeaturePointEntity | null {
+    const row = this.db
+      .prepare(
+        `
+        SELECT
+          pfp.*,
+          pm.name AS module_name,
+          COALESCE(owner.display_name, owner.username) AS owner_name
+        FROM project_feature_points pfp
+        LEFT JOIN project_modules pm ON pm.id = pfp.module_id
+        LEFT JOIN users owner ON owner.id = pfp.owner_user_id
+        WHERE pfp.project_id = ? AND pfp.id = ?
+        `
+      )
+      .get(projectId, featurePointId) as ProjectFeaturePointRow | undefined;
+    return row ? this.mapFeaturePoint(row) : null;
+  }
+
+  addFeaturePoint(projectId: string, input: CreateProjectFeaturePointInput & { id: string; createdAt: string; updatedAt: string }): void {
+    this.db
+      .prepare(
+        `
+        INSERT INTO project_feature_points (
+          id, project_id, module_id, owner_user_id, name, status, progress, enabled, sort, remark, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        input.id,
+        projectId,
+        input.moduleId ?? null,
+        input.ownerUserId ?? null,
+        input.name,
+        input.status ?? "todo",
+        input.progress ?? 0,
+        input.enabled === false ? 0 : 1,
+        input.sort ?? 0,
+        input.remark?.trim() || null,
+        input.createdAt,
+        input.updatedAt
+      );
+  }
+
+  updateFeaturePoint(
+    projectId: string,
+    featurePointId: string,
+    patch: UpdateProjectFeaturePointInput & { updatedAt: string }
+  ): boolean {
+    const fields: string[] = [];
+    const params: unknown[] = [];
+
+    if (patch.name !== undefined) {
+      fields.push("name = ?");
+      params.push(patch.name);
+    }
+    if (patch.moduleId !== undefined) {
+      fields.push("module_id = ?");
+      params.push(patch.moduleId ?? null);
+    }
+    if (patch.ownerUserId !== undefined) {
+      fields.push("owner_user_id = ?");
+      params.push(patch.ownerUserId ?? null);
+    }
+    if (patch.status !== undefined) {
+      fields.push("status = ?");
+      params.push(patch.status);
+    }
+    if (patch.progress !== undefined) {
+      fields.push("progress = ?");
+      params.push(patch.progress);
+    }
+    if (patch.enabled !== undefined) {
+      fields.push("enabled = ?");
+      params.push(patch.enabled ? 1 : 0);
+    }
+    if (patch.sort !== undefined) {
+      fields.push("sort = ?");
+      params.push(patch.sort);
+    }
+    if (patch.remark !== undefined) {
+      fields.push("remark = ?");
+      params.push(patch.remark ?? null);
+    }
+
+    fields.push("updated_at = ?");
+    params.push(patch.updatedAt, projectId, featurePointId);
+
+    const result = this.db
+      .prepare(
+        `
+        UPDATE project_feature_points
+        SET ${fields.join(", ")}
+        WHERE project_id = ? AND id = ?
+        `
+      )
+      .run(...params);
+    return result.changes > 0;
+  }
+
+  removeFeaturePoint(projectId: string, featurePointId: string): boolean {
+    const result = this.db
+      .prepare("DELETE FROM project_feature_points WHERE project_id = ? AND id = ?")
+      .run(projectId, featurePointId);
+    return result.changes > 0;
+  }
+
+  listFeatureProgressOverrides(projectId: string): ProjectFeatureProgressOverrideEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+        SELECT *
+        FROM project_feature_progress_overrides
+        WHERE project_id = ?
+        ORDER BY target_type ASC, target_id ASC
+        `
+      )
+      .all(projectId) as ProjectFeatureProgressOverrideRow[];
+    return rows.map((row) => this.mapFeatureProgressOverride(row));
+  }
+
+  upsertFeatureProgressOverride(input: ProjectFeatureProgressOverrideEntity): ProjectFeatureProgressOverrideEntity {
+    this.db
+      .prepare(
+        `
+        INSERT INTO project_feature_progress_overrides (
+          id, project_id, target_type, target_id, progress, remark, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(project_id, target_type, target_id) DO UPDATE SET
+          progress = excluded.progress,
+          remark = excluded.remark,
+          updated_at = excluded.updated_at
+        `
+      )
+      .run(
+        input.id,
+        input.projectId,
+        input.targetType,
+        input.targetId,
+        input.progress,
+        input.remark,
+        input.createdAt,
+        input.updatedAt
+      );
+
+    const row = this.db
+      .prepare("SELECT * FROM project_feature_progress_overrides WHERE project_id = ? AND target_type = ? AND target_id = ?")
+      .get(input.projectId, input.targetType, input.targetId) as ProjectFeatureProgressOverrideRow | undefined;
+    return row ? this.mapFeatureProgressOverride(row) : input;
+  }
+
+  removeFeatureProgressOverride(projectId: string, targetType: "project" | "module", targetId: string): boolean {
+    const result = this.db
+      .prepare("DELETE FROM project_feature_progress_overrides WHERE project_id = ? AND target_type = ? AND target_id = ?")
+      .run(projectId, targetType, targetId);
+    return result.changes > 0;
+  }
+
   listEnvironments(projectId: string): ProjectConfigItemEntity[] {
     const rows = this.db
       .prepare(
@@ -973,6 +1212,47 @@ export class ProjectRepo {
       .run(...params);
 
     return result.changes > 0;
+  }
+
+  private mapFeatureProgressSettings(row: ProjectFeatureProgressSettingsRow): ProjectFeatureProgressSettings {
+    return {
+      projectId: row.project_id,
+      enabled: row.enabled === 1,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private mapFeaturePoint(row: ProjectFeaturePointRow): ProjectFeaturePointEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      moduleId: row.module_id ?? null,
+      moduleName: row.module_name ?? null,
+      ownerUserId: row.owner_user_id ?? null,
+      ownerName: row.owner_name ?? null,
+      name: row.name,
+      status: row.status,
+      progress: row.progress,
+      enabled: row.enabled === 1,
+      sort: row.sort,
+      remark: row.remark ?? null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private mapFeatureProgressOverride(row: ProjectFeatureProgressOverrideRow): ProjectFeatureProgressOverrideEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      targetType: row.target_type,
+      targetId: row.target_id,
+      progress: row.progress,
+      remark: row.remark ?? null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
   }
 
   private mapProject(row: ProjectRow): ProjectEntity {

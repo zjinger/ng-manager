@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const projectTypeSchema = z.enum(["entrust_dev", "self_dev", "tech_service"]);
 const projectDateSchema = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be yyyy-MM-dd");
+const featurePointStatusSchema = z.enum(["todo", "in_progress", "done", "paused"]);
+const featureProgressTargetTypeSchema = z.enum(["project", "module"]);
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1),
@@ -92,6 +94,44 @@ export const updateProjectConfigItemSchema = z.object({
   enabled: z.boolean().optional(),
   sort: z.number().int().min(0).optional(),
   description: z.string().trim().nullable().optional()
+});
+
+export const updateProjectFeatureProgressSettingsSchema = z.object({
+  enabled: z.boolean()
+});
+
+export const createProjectFeaturePointSchema = z.object({
+  name: z.string().trim().min(1),
+  moduleId: z.string().trim().nullable().optional(),
+  ownerUserId: z.string().trim().nullable().optional(),
+  status: featurePointStatusSchema.optional(),
+  progress: z.number().int().min(0).max(100).optional(),
+  enabled: z.boolean().optional(),
+  sort: z.number().int().min(0).optional(),
+  remark: z.string().trim().nullable().optional()
+});
+
+export const updateProjectFeaturePointSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  moduleId: z.string().trim().nullable().optional(),
+  ownerUserId: z.string().trim().nullable().optional(),
+  status: featurePointStatusSchema.optional(),
+  progress: z.number().int().min(0).max(100).optional(),
+  enabled: z.boolean().optional(),
+  sort: z.number().int().min(0).optional(),
+  remark: z.string().trim().nullable().optional()
+});
+
+export const upsertProjectFeatureProgressOverrideSchema = z.object({
+  targetType: featureProgressTargetTypeSchema,
+  targetId: z.string().trim().min(1),
+  progress: z.number().int().min(0).max(100),
+  remark: z.string().trim().nullable().optional()
+});
+
+export const deleteProjectFeatureProgressOverrideQuerySchema = z.object({
+  targetType: featureProgressTargetTypeSchema,
+  targetId: z.string().trim().min(1)
 });
 
 export const addProjectModuleMemberSchema = z.object({
