@@ -182,6 +182,9 @@ export class UserService implements UserCommandContract, UserQueryContract {
     } else if (account && account.status !== "inactive") {
       this.authRepo.updateStatus(account.id, "inactive", updated.updatedAt);
     }
+    if (account && input.displayName !== undefined) {
+      this.authRepo.updateNickname(account.id, updated.displayName || updated.username, updated.updatedAt);
+    }
 
     this.repo.update(id, updated, updated.updatedAt);
     this.organization.replaceUserDepartmentsFromUserModule(id, input.departments);

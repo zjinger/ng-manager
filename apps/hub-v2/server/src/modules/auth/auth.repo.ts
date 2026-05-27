@@ -53,7 +53,7 @@ export class AuthRepo {
             u.organization_title_code,
             ot.name as organization_title_name,
             a.password_hash,
-            a.nickname,
+            COALESCE(NULLIF(u.display_name, ''), a.nickname) AS nickname,
             ${this.hasAvatarUploadColumn ? "a.avatar_upload_id," : ""}
             a.role,
             CASE WHEN u.id IS NOT NULL AND u.status = 'inactive' THEN 'inactive' ELSE a.status END AS status,
@@ -87,7 +87,7 @@ export class AuthRepo {
             u.organization_title_code,
             ot.name as organization_title_name,
             a.password_hash,
-            a.nickname,
+            COALESCE(NULLIF(u.display_name, ''), a.nickname) AS nickname,
             ${this.hasAvatarUploadColumn ? "a.avatar_upload_id," : ""}
             a.role,
             CASE WHEN u.id IS NOT NULL AND u.status = 'inactive' THEN 'inactive' ELSE a.status END AS status,
@@ -120,7 +120,7 @@ export class AuthRepo {
             u.organization_title_code,
             ot.name as organization_title_name,
             a.password_hash,
-            a.nickname,
+            COALESCE(NULLIF(u.display_name, ''), a.nickname) AS nickname,
             ${this.hasAvatarUploadColumn ? "a.avatar_upload_id," : ""}
             a.role,
             CASE WHEN u.id IS NOT NULL AND u.status = 'inactive' THEN 'inactive' ELSE a.status END AS status,
@@ -287,6 +287,18 @@ export class AuthRepo {
     });
 
     tx();
+  }
+
+  updateNickname(id: string, nickname: string, updatedAt: string): void {
+    this.db
+      .prepare(
+        `
+          UPDATE admin_accounts
+          SET nickname = ?, updated_at = ?
+          WHERE id = ?
+        `
+      )
+      .run(nickname, updatedAt, id);
   }
 
   updateStatus(id: string, status: "active" | "inactive", updatedAt: string): void {
