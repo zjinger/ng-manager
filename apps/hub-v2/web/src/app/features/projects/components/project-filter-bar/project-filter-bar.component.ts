@@ -93,7 +93,7 @@ export class ProjectFilterBarComponent {
   readonly viewModeChange = output<ProjectViewMode>();
   readonly searchSubmitted = output<string>();
 
-  readonly status = signal('');
+  readonly status = signal('active');
   readonly keyword = signal('');
 
   readonly viewOptions = [

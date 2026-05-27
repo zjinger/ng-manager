@@ -79,7 +79,7 @@ export class ProjectListPageComponent {
   private readonly clipboard = inject(Clipboard);
 
   readonly keyword = signal('');
-  readonly status = signal<ProjectStatus | ''>('');
+  readonly status = signal<ProjectStatus | ''>('active');
   readonly dialogOpen = signal(false);
   readonly editDialogOpen = signal(false);
   readonly moduleDialogOpen = signal(false);

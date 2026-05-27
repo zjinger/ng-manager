@@ -132,6 +132,7 @@ HAVING SUM(CASE WHEN sr.code = 'super_admin' THEN 1 ELSE 0 END) = 0;
 | `super_admin` | 超级管理员 | 系统全部权限，唯一不可修改的内置角色 |
 | `admin` | 管理员 | 后台管理基础能力，可由具备角色管理权限的管理员调整权限与成员 |
 | `member` | 成员 | 普通员工基础角色，可提交并查看本人报销，可使用项目基础能力 |
+| `project_observer` | 项目观察员 | 面向领导或观察者的只读项目角色，可查看全部项目情况，不授予项目写入和治理操作能力 |
 | `expense_manager` | 报销管理员 | 报销审核管理、报销规则配置、报表查看 |
 | `finance` | 财务 | 个人报销提交、本人报销查看、报表查看、财务复核、出纳处理 |
 
@@ -163,6 +164,10 @@ HAVING SUM(CASE WHEN sr.code = 'super_admin' THEN 1 ELSE 0 END) = 0;
 - `expense.report.view`
 - `finance.review`
 - `finance.cashier`
+
+`project_observer` 默认权限：
+
+- `project.read.all`
 
 项目权限当前基线：
 

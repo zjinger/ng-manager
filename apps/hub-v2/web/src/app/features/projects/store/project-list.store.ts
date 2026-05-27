@@ -9,7 +9,7 @@ const DEFAULT_QUERY: ProjectListQuery = {
   page: 1,
   pageSize: 100,
   keyword: '',
-  status: '',
+  status: 'active',
 };
 
 @Injectable()
