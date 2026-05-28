@@ -24,9 +24,12 @@ import type {
   ListProjectsQuery,
   ProjectFeaturePointEntity,
   ProjectFeaturePointGroupEntity,
+  ProjectFeaturePointGroupUpdateResult,
   ProjectFeatureProgressMetric,
   ProjectFeatureProgressModuleNode,
+  ProjectFeatureProgressNodePatch,
   ProjectFeatureProgressOverrideEntity,
+  ProjectFeatureProgressSectionPatch,
   ProjectFeatureProgressSettings,
   ProjectFeatureProgressView,
   ProjectConfigItemEntity,
@@ -603,9 +606,9 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     groupId: string,
     input: UpdateProjectFeaturePointGroupInput,
     ctx: RequestContext
-  ): Promise<ProjectFeaturePointGroupEntity> {
+  ): Promise<ProjectFeaturePointGroupUpdateResult> {
     await this.requireProjectMaintainer(projectId, ctx, "update project feature point group");
-    await this.getById(projectId, ctx);
+    const project = await this.getById(projectId, ctx);
     const current = this.findFeaturePointGroup(projectId, groupId);
     const parentId =
       input.parentId === undefined ? current.parentId : this.resolveFeaturePointGroupParent(projectId, input.parentId, groupId);
@@ -626,7 +629,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     if (!changed) {
       throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点分组不存在", 404);
     }
-    return this.findFeaturePointGroup(projectId, groupId);
+    return this.buildFeaturePointGroupUpdateResult(project, this.findFeaturePointGroup(projectId, groupId));
   }
 
   async removeFeaturePointGroup(projectId: string, groupId: string, ctx: RequestContext): Promise<void> {
@@ -1075,6 +1078,105 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
         featurePoints: ungroupedFeatures
       }
     };
+  }
+
+  private buildFeaturePointGroupUpdateResult(
+    project: ProjectEntity,
+    group: ProjectFeaturePointGroupEntity
+  ): ProjectFeaturePointGroupUpdateResult {
+    const settings = { ...this.resolveFeatureProgressSettings(project.id), enabled: true };
+    const groups = this.repo.listFeaturePointGroups(project.id);
+    const featurePoints = this.repo.listFeaturePoints(project.id).filter((item) => item.enabled);
+    const overrides = this.repo.listFeatureProgressOverrides(project.id);
+    const view = this.buildFeatureProgressView(project, settings, groups, featurePoints, overrides);
+    const nodeById = new Map(
+      view.modules
+        .flatMap((node) => this.collectProgressNodesFromNode(node))
+        .map((node) => [node.id, node])
+    );
+    const affectedNodeIds = new Set([group.id]);
+    if (group.parentId) {
+      affectedNodeIds.add(group.parentId);
+    }
+    const affectedSectionKeys = this.findAffectedFeatureProgressSectionKeys(group, featurePoints);
+    const sectionPatches = this.buildFeatureProgressSectionPatches(view)
+      .filter((section) => affectedSectionKeys.has(section.key));
+
+    return {
+      group,
+      summary: view.summary,
+      nodes: Array.from(affectedNodeIds)
+        .map((id) => nodeById.get(id))
+        .filter((node): node is ProjectFeatureProgressModuleNode => !!node)
+        .map((node) => this.toFeatureProgressNodePatch(node)),
+      sections: sectionPatches
+    };
+  }
+
+  private toFeatureProgressNodePatch(node: ProjectFeatureProgressModuleNode): ProjectFeatureProgressNodePatch {
+    return {
+      id: node.id,
+      name: node.name,
+      computedProgress: node.computedProgress,
+      manualProgress: node.manualProgress,
+      displayProgress: node.displayProgress,
+      overrideRemark: node.overrideRemark,
+      sort: node.sort
+    };
+  }
+
+  private buildFeatureProgressSectionPatches(view: ProjectFeatureProgressView): ProjectFeatureProgressSectionPatch[] {
+    const nodeById = new Map(
+      view.modules
+        .flatMap((node) => this.collectProgressNodesFromNode(node))
+        .map((node) => [node.id, node])
+    );
+    const sectionMap = new Map<string, Map<string, { progress: number; featureCount: number }>>();
+    const features = [
+      ...view.modules.flatMap((node) => this.collectFeaturePointsFromNode(node)),
+      ...view.ungrouped.featurePoints
+    ];
+
+    for (const feature of features) {
+      const sectionKey = this.groupName(feature.groupTitle);
+      const moduleKey = `${sectionKey}::${feature.moduleGroupId || this.groupName(feature.moduleName)}`;
+      const moduleProgress = feature.moduleGroupId ? nodeById.get(feature.moduleGroupId)?.displayProgress ?? 0 : 0;
+      if (!sectionMap.has(sectionKey)) {
+        sectionMap.set(sectionKey, new Map());
+      }
+      const moduleMap = sectionMap.get(sectionKey)!;
+      const current = moduleMap.get(moduleKey);
+      moduleMap.set(moduleKey, {
+        progress: current?.progress ?? moduleProgress,
+        featureCount: (current?.featureCount ?? 0) + 1
+      });
+    }
+
+    return Array.from(sectionMap.entries()).map(([title, moduleMap]) => {
+      const groups = Array.from(moduleMap.values());
+      return {
+        key: title,
+        title,
+        progress: this.averageProgressValues(groups.map((group) => group.progress)),
+        completedCount: groups.filter((group) => group.progress >= 100).length,
+        featureCount: groups.reduce((sum, group) => sum + group.featureCount, 0),
+        groupCount: groups.length
+      };
+    });
+  }
+
+  private findAffectedFeatureProgressSectionKeys(
+    group: ProjectFeaturePointGroupEntity,
+    featurePoints: ProjectFeaturePointEntity[]
+  ): Set<string> {
+    const isSubmodule = !!group.parentId;
+    return new Set(
+      featurePoints
+        .filter((feature) =>
+          isSubmodule ? feature.submoduleGroupId === group.id : feature.moduleGroupId === group.id
+        )
+        .map((feature) => this.groupName(feature.groupTitle))
+    );
   }
 
   private collectFeaturePointsFromNode(node: ProjectFeatureProgressModuleNode): ProjectFeaturePointEntity[] {
@@ -1639,6 +1741,10 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   private trimToNull(value: string | null | undefined): string | null {
     const normalized = value?.trim();
     return normalized ? normalized : null;
+  }
+
+  private groupName(value: string | null | undefined): string {
+    return this.trimToNull(value) ?? "未分组";
   }
 
   private resolveModuleOwnerUserId(projectId: string, value: string | null | undefined): string | null {

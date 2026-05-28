@@ -372,16 +372,64 @@ describe("project feature progress", () => {
       assert.equal(module.computedProgress, 0);
       assert.equal(module.displayProgress, 0);
 
-      await service.updateFeaturePointGroup("prj_1", module.id, {
+      const submoduleResult = await service.updateFeaturePointGroup("prj_1", submodule.id, {
+        manualProgress: 100,
+        remark: "子模块口径"
+      }, ownerCtx());
+      assert.deepEqual(
+        submoduleResult.nodes.map((node) => node.id).sort(),
+        [module.id, submodule.id].sort()
+      );
+      assert.equal(submoduleResult.summary.computedProgress, 100);
+      assert.equal(submoduleResult.sections[0]?.key, "未分组");
+      assert.equal(submoduleResult.sections[0]?.progress, 100);
+
+      const moduleResult = await service.updateFeaturePointGroup("prj_1", module.id, {
         manualProgress: 83,
         remark: "主管口径"
       }, ownerCtx());
+      assert.deepEqual(moduleResult.nodes.map((node) => node.id), [module.id]);
+      assert.equal(moduleResult.summary.displayProgress, 92);
       view = await service.getFeatureProgress("prj_1", memberCtx());
-      assert.equal(view.modules[0]?.computedProgress, 0);
+      assert.equal(view.modules[0]?.computedProgress, 100);
       assert.equal(view.modules[0]?.manualProgress, 83);
       assert.equal(view.modules[0]?.displayProgress, 83);
 
       await assert.rejects(() => service.removeFeaturePointGroup("prj_1", submodule.id, ownerCtx()), /当前分组下仍有功能点/);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("returns section patches for every group title affected by a module update", async () => {
+    const db = createDb();
+    try {
+      const service = createService(db);
+      await service.addFeaturePoint("prj_1", {
+        name: "功能点 A",
+        groupTitle: "一、国家中心系统",
+        moduleName: "统一监控管理",
+        submoduleName: "链路显示"
+      }, ownerCtx());
+      await service.addFeaturePoint("prj_1", {
+        name: "功能点 B",
+        groupTitle: "二、接口服务子系统",
+        moduleName: "统一监控管理",
+        submoduleName: "链路显示"
+      }, ownerCtx());
+
+      const view = await service.getFeatureProgress("prj_1", memberCtx());
+      const module = view.modules[0]!;
+      const result = await service.updateFeaturePointGroup("prj_1", module.id, {
+        manualProgress: 80
+      }, ownerCtx());
+
+      assert.deepEqual(
+        result.sections.map((section) => section.key).sort(),
+        ["一、国家中心系统", "二、接口服务子系统"].sort()
+      );
+      assert.equal(result.sections.every((section) => section.progress === 80), true);
+      assert.equal(result.sections.every((section) => section.groupCount === 1), true);
     } finally {
       db.close();
     }

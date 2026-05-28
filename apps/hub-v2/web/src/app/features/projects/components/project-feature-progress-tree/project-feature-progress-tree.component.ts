@@ -4,7 +4,13 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 
-import { DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS, type ProjectFeaturePoint, type ProjectFeaturePointStatus, type ProjectFeatureProgressStatusOption } from '../../models/project.model';
+import {
+  DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS,
+  type ProjectFeaturePoint,
+  type ProjectFeaturePointStatus,
+  type ProjectFeatureProgressSectionPatch,
+  type ProjectFeatureProgressStatusOption,
+} from '../../models/project.model';
 
 export interface FeatureProgressSubGroup {
   id: string;
@@ -103,13 +109,13 @@ export type FeatureProgressGroupDeleteTarget =
                     编辑
                   </button>
                 }
-                <small>{{ section.groups.length }} 个一级模块 · {{ section.featureCount }} 个功能点 · 完成模块 {{ section.completedCount }} 个</small>
+                <small>{{ sectionGroupCount(section) }} 个一级模块 · {{ sectionFeatureCount(section) }} 个功能点 · 完成模块 {{ sectionCompletedCount(section) }} 个</small>
               </span>
               <span class="feature-tree__section-progress">
-                <span class="feature-tree__bar"><span [style.width.%]="section.progress"></span></span>
-                <strong>{{ section.progress }}%</strong>
+                <span class="feature-tree__bar"><span [style.width.%]="sectionProgress(section)"></span></span>
+                <strong>{{ sectionProgress(section) }}%</strong>
               </span>
-              <span class="feature-tree__section-status">{{ progressText(section.progress) }}</span>
+              <span class="feature-tree__section-status">{{ progressText(sectionProgress(section)) }}</span>
             </div>
           </section>
 
@@ -627,6 +633,7 @@ export class ProjectFeatureProgressTreeComponent {
   readonly collapseSectionsByDefault = input(false);
   readonly progressStatusOptions = input<ProjectFeatureProgressStatusOption[]>(DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS);
   readonly progressPatches = input<Record<string, FeatureProgressGroupDisplayPatch>>({});
+  readonly sectionPatches = input<Record<string, ProjectFeatureProgressSectionPatch>>({});
 
   readonly edit = output<ProjectFeaturePoint>();
   readonly delete = output<string>();
@@ -769,6 +776,22 @@ export class ProjectFeatureProgressTreeComponent {
       .sort((left, right) => right.progress - left.progress)
       .find((item) => normalized >= item.progress);
     return option?.label ?? '未开始';
+  }
+
+  sectionProgress(section: FeatureProgressTitleGroup): number {
+    return this.sectionPatches()[section.key]?.progress ?? section.progress;
+  }
+
+  sectionCompletedCount(section: FeatureProgressTitleGroup): number {
+    return this.sectionPatches()[section.key]?.completedCount ?? section.completedCount;
+  }
+
+  sectionFeatureCount(section: FeatureProgressTitleGroup): number {
+    return this.sectionPatches()[section.key]?.featureCount ?? section.featureCount;
+  }
+
+  sectionGroupCount(section: FeatureProgressTitleGroup): number {
+    return this.sectionPatches()[section.key]?.groupCount ?? section.groups.length;
   }
 
   groupName(group: FeatureProgressModuleGroup | FeatureProgressSubGroup): string {

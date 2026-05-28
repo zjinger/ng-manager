@@ -358,6 +358,32 @@ export interface ProjectFeatureProgressView {
   };
 }
 
+export interface ProjectFeatureProgressNodePatch {
+  id: string;
+  name: string;
+  computedProgress: number;
+  manualProgress: number | null;
+  displayProgress: number;
+  overrideRemark: string | null;
+  sort: number;
+}
+
+export interface ProjectFeatureProgressSectionPatch {
+  key: string;
+  title: string;
+  progress: number;
+  completedCount: number;
+  featureCount: number;
+  groupCount: number;
+}
+
+export interface ProjectFeaturePointGroupUpdateResult {
+  group: ProjectFeaturePointGroupEntity;
+  summary: ProjectFeatureProgressSummary;
+  nodes: ProjectFeatureProgressNodePatch[];
+  sections: ProjectFeatureProgressSectionPatch[];
+}
+
 export interface AddProjectModuleMemberInput {
   userId: string;
   roleCode?: ProjectMemberRole;

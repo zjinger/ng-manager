@@ -17,6 +17,7 @@ import type {
   ProjectApiTokenEntity,
   ProjectFeaturePoint,
   ProjectFeaturePointGroup,
+  ProjectFeaturePointGroupUpdateResult,
   ProjectFeatureProgressSettings,
   ProjectFeatureProgressOverrideEntity,
   ProjectFeatureProgressView,
@@ -141,7 +142,7 @@ export class ProjectApiService {
   }
 
   updateFeaturePointGroup(projectId: string, groupId: string, input: UpdateProjectFeaturePointGroupInput) {
-    return this.api.patch<ProjectFeaturePointGroup, UpdateProjectFeaturePointGroupInput>(
+    return this.api.patch<ProjectFeaturePointGroupUpdateResult, UpdateProjectFeaturePointGroupInput>(
       `/projects/${projectId}/feature-point-groups/${groupId}`,
       input
     );

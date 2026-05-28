@@ -27,7 +27,9 @@ import type {
 } from '../../components/project-feature-progress-tree/project-feature-progress-tree.component';
 import type {
   ProjectFeaturePoint,
-  ProjectFeaturePointGroup,
+  ProjectFeaturePointGroupUpdateResult,
+  ProjectFeatureProgressSectionPatch,
+  ProjectFeatureProgressSummary,
   ProjectFeatureProgressStatusOption,
   ProjectFeaturePointStatus,
   ProjectFeatureProgressModuleNode,
@@ -99,7 +101,7 @@ interface FeatureProgressTitleEditor {
           </section>
         } @else if (vm(); as data) {
           <app-project-feature-progress-stats
-            [summary]="data.summary"
+            [summary]="effectiveSummary() ?? data.summary"
             [canManage]="canManage()"
             (editOverall)="startEditOverall()"
           />
@@ -150,6 +152,7 @@ interface FeatureProgressTitleEditor {
             [collapseSectionsByDefault]="!hasActiveFilter()"
             [progressStatusOptions]="data.settings.statusOptions"
             [progressPatches]="groupProgressPatches()"
+            [sectionPatches]="sectionProgressPatches()"
             (edit)="startEdit($event)"
             (delete)="deleteFeaturePoint($event)"
             (editTitle)="startEditTitle($event)"
@@ -210,7 +213,7 @@ interface FeatureProgressTitleEditor {
           <app-project-feature-progress-overall-drawer
             [open]="overallEditorOpen()"
             [saving]="saving()"
-            [summary]="data.summary"
+            [summary]="effectiveSummary() ?? data.summary"
             [settings]="data.settings"
             (save)="saveOverallProgress($event)"
             (saveSettings)="saveFeatureProgressSettings($event.statusOptions)"
@@ -341,6 +344,8 @@ export class ProjectFeatureProgressPageComponent {
   readonly titleEditor = signal<FeatureProgressTitleEditor | null>(null);
   readonly titleDraft = signal('');
   readonly groupProgressPatches = signal<Record<string, FeatureProgressGroupDisplayPatch>>({});
+  readonly sectionProgressPatches = signal<Record<string, ProjectFeatureProgressSectionPatch>>({});
+  readonly summaryPatch = signal<ProjectFeatureProgressSummary | null>(null);
 
   readonly statusOptions = computed<Array<{ value: ProjectFeaturePointStatus; label: string }>>(() =>
     (this.vm()?.settings.statusOptions ?? DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS).map((option) => ({
@@ -351,6 +356,7 @@ export class ProjectFeatureProgressPageComponent {
 
   readonly projectId = computed(() => this.projectContext.currentProjectId());
   readonly subtitle = computed(() => this.projectContext.currentProject()?.name || '请先选择项目');
+  readonly effectiveSummary = computed(() => this.summaryPatch() ?? this.vm()?.summary ?? null);
   readonly hasActiveFilter = computed(() =>
     !!this.keyword().trim() || !!this.moduleFilter() || !!this.statusFilter()
   );
@@ -443,6 +449,8 @@ export class ProjectFeatureProgressPageComponent {
       const projectId = this.projectId();
       this.resetEditor();
       this.groupProgressPatches.set({});
+      this.sectionProgressPatches.set({});
+      this.summaryPatch.set(null);
       this.loadForProject(projectId);
     });
 
@@ -715,12 +723,12 @@ export class ProjectFeatureProgressPageComponent {
       sort: input.sort,
       remark: input.remark,
     }).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (group) => {
+      next: (result) => {
         const target = this.editingGroup();
         this.saving.set(false);
         this.cancelGroupEdit();
         this.message.success(`${targetLabel}进度已保存`);
-        this.applyFeaturePointGroupDisplayPatch(group, target);
+        this.applyFeaturePointGroupUpdateResult(result, target);
       },
       error: () => undefined,
     });
@@ -800,6 +808,8 @@ export class ProjectFeatureProgressPageComponent {
         if (requestId !== this.loadRequestId || vm.projectId !== this.projectId()) return;
         this.vm.set(vm);
         this.groupProgressPatches.set({});
+        this.sectionProgressPatches.set({});
+        this.summaryPatch.set(null);
         this.loading.set(false);
       },
       error: (error: unknown) => {
@@ -835,24 +845,42 @@ export class ProjectFeatureProgressPageComponent {
     this.cancelTitleEdit();
   }
 
-  private applyFeaturePointGroupDisplayPatch(
-    group: ProjectFeaturePointGroup,
+  private applyFeaturePointGroupUpdateResult(
+    result: ProjectFeaturePointGroupUpdateResult,
     target: FeaturePointGroupDrawerTarget | null
   ): void {
-    if (!target) return;
-    const computedProgress = target.computedProgress;
-    const progress = group.manualProgress ?? computedProgress;
-    this.groupProgressPatches.update((patches) => ({
-      ...patches,
-      [group.id]: {
-        name: group.name,
-        progress,
-        computedProgress,
-        manualProgress: group.manualProgress,
-        sort: group.sort,
-        remark: group.manualProgress === null ? null : group.remark,
-      },
-    }));
+    this.summaryPatch.set(result.summary);
+    this.groupProgressPatches.update((patches) => {
+      const next = { ...patches };
+      for (const node of result.nodes) {
+        next[node.id] = {
+          name: node.name,
+          progress: node.displayProgress,
+          computedProgress: node.computedProgress,
+          manualProgress: node.manualProgress,
+          sort: node.sort,
+          remark: node.overrideRemark,
+        };
+      }
+      if (result.nodes.length === 0 && target) {
+        next[result.group.id] = {
+          name: result.group.name,
+          progress: result.group.manualProgress ?? target.computedProgress,
+          computedProgress: target.computedProgress,
+          manualProgress: result.group.manualProgress,
+          sort: result.group.sort,
+          remark: result.group.manualProgress === null ? null : result.group.remark,
+        };
+      }
+      return next;
+    });
+    this.sectionProgressPatches.update((patches) => {
+      const next = { ...patches };
+      for (const section of result.sections) {
+        next[section.key] = section;
+      }
+      return next;
+    });
   }
 
   saveFeatureProgressSettings(statusOptions: ProjectFeatureProgressStatusOption[]): void {

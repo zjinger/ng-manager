@@ -14,6 +14,7 @@ import type {
   ProjectConfigItemEntity,
   ProjectFeaturePointEntity,
   ProjectFeaturePointGroupEntity,
+  ProjectFeaturePointGroupUpdateResult,
   ProjectFeatureProgressOverrideEntity,
   ProjectFeatureProgressSettings,
   ProjectFeatureProgressView,
@@ -67,7 +68,7 @@ export interface ProjectCommandContract {
     groupId: string,
     input: UpdateProjectFeaturePointGroupInput,
     ctx: RequestContext
-  ): Promise<ProjectFeaturePointGroupEntity>;
+  ): Promise<ProjectFeaturePointGroupUpdateResult>;
   removeFeaturePointGroup(projectId: string, groupId: string, ctx: RequestContext): Promise<void>;
   updateFeaturePoint(
     projectId: string,
