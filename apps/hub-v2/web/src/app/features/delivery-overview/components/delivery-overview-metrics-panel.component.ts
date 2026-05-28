@@ -14,12 +14,12 @@ import type { DeliveryOverviewVm } from '../models/delivery-overview.model';
           <strong>{{ vm().progress }}%</strong>
         </div>
         <div>
-          <h2>{{ vm().headline }}</h2>
-          <p>{{ vm().headlineDetail }}</p>
-          <div class="next-step">
-            <span nz-icon nzType="arrow-right"></span>
-            {{ vm().nextStep }}
-          </div>
+          <h2>研发整体进度</h2>
+          <p>
+            周报纳入 {{ vm().sampledRdCount }} 个研发项，{{ vm().completedCount }} 个本周完成，{{
+              vm().inProgressCount
+            }} 个仍在推进，{{ vm().attentionCount }} 个需要关注。
+          </p>
         </div>
       </article>
 
@@ -83,14 +83,6 @@ import type { DeliveryOverviewVm } from '../models/delivery-overview.model';
         margin: 8px 0 0;
         color: var(--text-muted);
         line-height: 1.6;
-      }
-      .next-step {
-        display: inline-flex;
-        gap: 8px;
-        align-items: center;
-        margin-top: 12px;
-        color: var(--primary-600);
-        font-weight: 700;
       }
       .metric-card {
         padding: 18px;

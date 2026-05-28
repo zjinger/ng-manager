@@ -59,7 +59,4 @@ export interface DeliveryOverviewVm {
   truncated: boolean;
   totalRdCount: number;
   sampledRdCount: number;
-  headline: string;
-  headlineDetail: string;
-  nextStep: string;
 }

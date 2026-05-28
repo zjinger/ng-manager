@@ -1,35 +1,78 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 @Component({
   selector: 'app-delivery-overview-hero',
-  standalone: true,
-  imports: [NzIconModule],
+  imports: [NzIconModule, NzPopconfirmModule],
   template: `
     <header class="hero">
       <div class="hero__main">
         <div class="hero__meta">
           <span class="tag tag--blue">{{ projectCode() }}</span>
-          <span>汇报周期：{{ reportPeriod() }}</span>
-          <span class="tag tag--green">只读汇报</span>
+          <span>周报周期：{{ reportPeriod() }}</span>
+          <span class="tag tag--green">周报</span>
           <span class="tag tag--gray">研发进度</span>
         </div>
-        <h1>{{ projectTitle() }} · 研发项进度总览</h1>
-        <p>聚合研发项交付状态，突出完成比例、当前卡点、延期风险和下一步动作。</p>
+        <h1>{{ projectTitle() }} · 周报</h1>
+        <p>聚合研发项交付状态，突出完成比例、当前重点、延期风险和下一步动作。</p>
       </div>
 
-      <div class="hero__actions">
-        <button type="button" class="action-btn" disabled title="导出图片">
+      <div class="hero__actions" data-export-hidden>
+        <button
+          type="button"
+          class="action-btn"
+          [disabled]="disabled()"
+          title="历史周报"
+          (click)="openHistory.emit()"
+        >
+          <span nz-icon nzType="history"></span>
+          历史周报
+        </button>
+        <button
+          type="button"
+          class="action-btn"
+          nz-popconfirm
+          nzPopconfirmTitle="确认导出当前周报图片？"
+          nzPopconfirmOkText="导出"
+          nzPopconfirmCancelText="取消"
+          nzPopconfirmPlacement="bottomRight"
+          [disabled]="disabled() || exportingImage()"
+          title="导出图片"
+          (nzOnConfirm)="exportImage.emit()"
+        >
           <span nz-icon nzType="picture"></span>
-          导出图片
+          {{ exportingImage() ? '导出中…' : '导出图片' }}
         </button>
-        <button type="button" class="action-btn" disabled title="导出 PDF">
+        <button
+          type="button"
+          class="action-btn"
+          nz-popconfirm
+          nzPopconfirmTitle="确认导出当前周报 PDF？"
+          nzPopconfirmOkText="导出"
+          nzPopconfirmCancelText="取消"
+          nzPopconfirmPlacement="bottomRight"
+          [disabled]="disabled() || exportingPdf()"
+          title="导出 PDF"
+          (nzOnConfirm)="exportPdf.emit()"
+        >
           <span nz-icon nzType="file-pdf"></span>
-          导出 PDF
+          {{ exportingPdf() ? '导出中…' : '导出 PDF' }}
         </button>
-        <button type="button" class="action-btn action-btn--primary" disabled title="生成汇报快照">
+        <button
+          type="button"
+          class="action-btn action-btn--primary"
+          nz-popconfirm
+          nzPopconfirmTitle="确认生成一份新的历史周报？"
+          nzPopconfirmOkText="生成"
+          nzPopconfirmCancelText="取消"
+          nzPopconfirmPlacement="bottomRight"
+          [disabled]="disabled() || !canGenerateReport() || generatingReport()"
+          [title]="canGenerateReport() ? '生成周报快照' : '仅项目管理员可生成周报'"
+          (nzOnConfirm)="generateReport.emit()"
+        >
           <span nz-icon nzType="camera"></span>
-          生成快照
+          {{ generatingReport() ? '生成中…' : '生成周报' }}
         </button>
       </div>
     </header>
@@ -90,10 +133,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         font-weight: 600;
         cursor: pointer;
       }
-      .action-btn:disabled {
-        cursor: not-allowed;
-        opacity: 0.62;
-      }
+      .action-btn:disabled { cursor: not-allowed; opacity: 0.62; }
       .action-btn--primary {
         background: var(--primary-600);
         border-color: var(--primary-600);
@@ -142,4 +182,13 @@ export class DeliveryOverviewHeroComponent {
   readonly projectCode = input.required<string>();
   readonly projectTitle = input.required<string>();
   readonly reportPeriod = input.required<string>();
+  readonly disabled = input(false);
+  readonly exportingImage = input(false);
+  readonly exportingPdf = input(false);
+  readonly generatingReport = input(false);
+  readonly canGenerateReport = input(false);
+  readonly openHistory = output<void>();
+  readonly exportImage = output<void>();
+  readonly exportPdf = output<void>();
+  readonly generateReport = output<void>();
 }

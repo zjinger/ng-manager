@@ -94,7 +94,10 @@ export class BreadcrumbService {
     }
 
     if (path.startsWith('/delivery-overview')) {
-      return [{ label: '实施总览' }];
+      return [
+        { label: '项目管理', route: '/projects' },
+        { label: '周报' },
+      ];
     }
 
     if (path.startsWith('/content')) {
@@ -149,6 +152,13 @@ export class BreadcrumbService {
     }
     if (path.startsWith('/my-todos')) {
       return [{ label: '我的待办' }];
+    }
+
+    if (path.startsWith('/projects/progress')) {
+      return [
+        { label: '项目管理', route: '/projects' },
+        { label: '功能点进度' },
+      ];
     }
 
     if (path.startsWith('/projects')) {

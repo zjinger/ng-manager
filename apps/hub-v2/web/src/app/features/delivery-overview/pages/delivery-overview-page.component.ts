@@ -1,14 +1,14 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
+import { AuthStore } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
 import { ListStateComponent } from '@shared/ui';
 import { DeliveryOverviewAttentionPanelComponent } from '../components/delivery-overview-attention-panel.component';
 import { DeliveryOverviewHeroComponent } from '../components/delivery-overview-hero.component';
+import { DeliveryOverviewHistoryDrawerComponent } from '../components/delivery-overview-history-drawer.component';
 import { DeliveryOverviewKeyItemsPanelComponent } from '../components/delivery-overview-key-items-panel.component';
-import { DeliveryOverviewLinksPanelComponent } from '../components/delivery-overview-links-panel.component';
 import { DeliveryOverviewMetricsPanelComponent } from '../components/delivery-overview-metrics-panel.component';
-import { DeliveryOverviewSnapshotPanelComponent } from '../components/delivery-overview-snapshot-panel.component';
 import { DeliveryOverviewStagesPanelComponent } from '../components/delivery-overview-stages-panel.component';
 import { DeliveryOverviewSummaryPanelComponent } from '../components/delivery-overview-summary-panel.component';
 import type {
@@ -21,12 +21,22 @@ import type {
   SummaryBlock,
 } from '../models/delivery-overview.model';
 import { IssueApiService } from '../../issues/services/issue-api.service';
+import type { ProjectMemberEntity } from '../../projects/models/project.model';
+import { ProjectApiService } from '../../projects/services/project-api.service';
 import type { RdItemEntity, RdStageEntity } from '../../rd/models/rd.model';
 import { RdApiService } from '../../rd/services/rd-api.service';
+import { NzMessageService } from 'ng-zorro-antd/message';
+import { DeliveryOverviewExportService } from '../services/delivery-overview-export.service';
+import { DeliveryWeeklyReportApiService, type DeliveryWeeklyReportSnapshotPayload } from '../services/delivery-weekly-report-api.service';
 
 const PAGE_SIZE = 100;
 const MAX_RD_ITEMS = 1000;
 const UNFINISHED_ISSUE_STATUS = ['open', 'in_progress', 'pending_update', 'resolved', 'verified', 'reopened'];
+
+interface ReportPeriodRange {
+  start: string;
+  end: string;
+}
 
 @Component({
   selector: 'app-delivery-overview-page',
@@ -34,33 +44,41 @@ const UNFINISHED_ISSUE_STATUS = ['open', 'in_progress', 'pending_update', 'resol
   imports: [
     DeliveryOverviewAttentionPanelComponent,
     DeliveryOverviewHeroComponent,
+    DeliveryOverviewHistoryDrawerComponent,
     DeliveryOverviewKeyItemsPanelComponent,
-    DeliveryOverviewLinksPanelComponent,
     DeliveryOverviewMetricsPanelComponent,
-    DeliveryOverviewSnapshotPanelComponent,
     DeliveryOverviewStagesPanelComponent,
     DeliveryOverviewSummaryPanelComponent,
     ListStateComponent,
   ],
   template: `
-    <section class="delivery-page">
+    <section #exportRoot class="delivery-page">
       <app-delivery-overview-hero
         [projectCode]="projectCode()"
         [projectTitle]="projectTitle()"
         [reportPeriod]="reportPeriod()"
+        [disabled]="!vm()"
+        [exportingImage]="exportingImage()"
+        [exportingPdf]="exportingPdf()"
+        [generatingReport]="generatingReport()"
+        [canGenerateReport]="canGenerateReport()"
+        (openHistory)="openHistoryDrawer()"
+        (exportImage)="exportImage()"
+        (exportPdf)="exportPdf()"
+        (generateReport)="generateReport()"
       />
 
       @if (!projectContext.currentProjectId()) {
         <app-list-state
           [empty]="true"
           emptyTitle="请先选择项目"
-          emptyDescription="选择项目后再查看对应的研发项实施总览。"
+          emptyDescription="选择项目后再查看对应的周报汇报。"
         />
       } @else {
-        <app-list-state [loading]="loading()" [empty]="false" loadingText="正在汇总项目实施进度…">
+        <app-list-state [loading]="loading()" [empty]="false" loadingText="正在汇总周报数据…">
           @if (error()) {
             <section class="state-card state-card--error">
-              <h2>实施总览加载失败</h2>
+              <h2>周报汇报加载失败</h2>
               <p>{{ error() }}</p>
               <button type="button" class="action-btn action-btn--primary" (click)="reload()">重新加载</button>
             </section>
@@ -68,7 +86,7 @@ const UNFINISHED_ISSUE_STATUS = ['open', 'in_progress', 'pending_update', 'resol
             @if (vm(); as data) {
               @if (data.truncated) {
                 <div class="notice">
-                  当前项目共有 {{ data.totalRdCount }} 个研发项，本页展示前 {{ data.sampledRdCount }} 条的统计结果。
+                  当前项目研发项较多，本页周报统计基于已加载数据，当前纳入 {{ data.totalRdCount }} 个研发项。
                 </div>
               }
 
@@ -78,12 +96,16 @@ const UNFINISHED_ISSUE_STATUS = ['open', 'in_progress', 'pending_update', 'resol
 
               <section class="content-grid overview-section">
                 <div class="main-stack">
+                  <app-delivery-overview-summary-panel
+                    [summaries]="visibleSummaries()"
+                    (summariesChange)="editedSummaries.set($event)"
+                    (restoreDefault)="editedSummaries.set(null)"
+                  />
                   <app-delivery-overview-stages-panel
                     [stages]="data.stages"
                     [totalCount]="data.totalRdCount"
                   />
                   <app-delivery-overview-key-items-panel [items]="data.keyItems" />
-                  <app-delivery-overview-summary-panel [summaries]="data.summaries" />
                 </div>
 
                 <aside class="side-stack">
@@ -91,8 +113,6 @@ const UNFINISHED_ISSUE_STATUS = ['open', 'in_progress', 'pending_update', 'resol
                     [items]="data.attentions"
                     [count]="data.attentionCount"
                   />
-                  <app-delivery-overview-snapshot-panel [vm]="data" />
-                  <app-delivery-overview-links-panel />
                 </aside>
               </section>
             }
@@ -100,12 +120,35 @@ const UNFINISHED_ISSUE_STATUS = ['open', 'in_progress', 'pending_update', 'resol
         </app-list-state>
       }
     </section>
+
+    <app-delivery-overview-history-drawer
+      [open]="historyDrawerOpen()"
+      [projectId]="projectContext.currentProjectId()"
+      [canDelete]="canGenerateReport()"
+      [refreshKey]="historyRefreshKey()"
+      (close)="historyDrawerOpen.set(false)"
+    />
   `,
   styles: [
     `
       .delivery-page {
         display: grid;
         gap: 20px;
+      }
+      .delivery-page--exporting {
+        width: 1440px !important;
+        max-width: none !important;
+        padding: 24px;
+        background: #f5f7fb;
+      }
+      .delivery-page--exporting [data-export-hidden] {
+        display: none !important;
+      }
+      .delivery-page--exporting .content-grid {
+        grid-template-columns: minmax(0, 1fr) 360px !important;
+      }
+      .delivery-page--exporting .side-stack {
+        grid-template-columns: 1fr !important;
       }
       .overview-section {
         display: block;
@@ -189,17 +232,31 @@ const UNFINISHED_ISSUE_STATUS = ['open', 'in_progress', 'pending_update', 'resol
 })
 export class DeliveryOverviewPageComponent {
   readonly projectContext = inject(ProjectContextStore);
+  private readonly authStore = inject(AuthStore);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly exportService = inject(DeliveryOverviewExportService);
   private readonly issueApi = inject(IssueApiService);
+  private readonly message = inject(NzMessageService);
+  private readonly projectApi = inject(ProjectApiService);
   private readonly rdApi = inject(RdApiService);
+  private readonly weeklyReportApi = inject(DeliveryWeeklyReportApiService);
+
+  @ViewChild('exportRoot', { read: ElementRef }) private exportRoot?: ElementRef<HTMLElement>;
 
   readonly error = signal('');
   readonly loading = signal(false);
+  readonly exportingImage = signal(false);
+  readonly exportingPdf = signal(false);
+  readonly generatingReport = signal(false);
+  readonly historyDrawerOpen = signal(false);
+  readonly historyRefreshKey = signal(0);
   readonly rdItems = signal<RdItemEntity[]>([]);
   readonly rdStages = signal<RdStageEntity[]>([]);
+  readonly members = signal<ProjectMemberEntity[]>([]);
   readonly totalRdCount = signal(0);
   readonly truncated = signal(false);
   readonly unfinishedIssueCount = signal(0);
+  readonly editedSummaries = signal<SummaryBlock[] | null>(null);
 
   private loadToken = 0;
 
@@ -213,9 +270,23 @@ export class DeliveryOverviewPageComponent {
     if (!this.projectContext.currentProjectId() || this.loading() || this.error()) return null;
     return this.buildVm(this.rdItems(), this.rdStages(), this.unfinishedIssueCount(), this.totalRdCount(), this.truncated());
   });
+  readonly visibleSummaries = computed(() => this.editedSummaries() ?? this.vm()?.summaries ?? []);
+  readonly canGenerateReport = computed(() => {
+    const user = this.authStore.currentUser();
+    const permissions = user?.permissionCodes ?? [];
+    if (permissions.includes('project.manage') || permissions.includes('project.manage.all')) {
+      return true;
+    }
+    const userId = user?.userId?.trim();
+    return !!userId && this.members().some((member) => member.userId === userId && (member.isOwner || member.roleCode === 'project_admin'));
+  });
 
   constructor() {
-    effect(() => this.loadForProject(this.projectContext.currentProjectId()));
+    effect(() => {
+      const projectId = this.projectContext.currentProjectId();
+      this.editedSummaries.set(null);
+      this.loadForProject(projectId);
+    });
     this.destroyRef.onDestroy(() => {
       this.loadToken++;
     });
@@ -223,6 +294,53 @@ export class DeliveryOverviewPageComponent {
 
   reload(): void {
     this.loadForProject(this.projectContext.currentProjectId());
+  }
+
+  openHistoryDrawer(): void {
+    this.historyDrawerOpen.set(true);
+  }
+
+  async exportImage(): Promise<void> {
+    if (!this.exportRoot || this.exportingImage()) return;
+    this.exportingImage.set(true);
+    try {
+      await this.exportService.exportPng(this.exportRoot.nativeElement, this.buildExportFilename('png'));
+    } catch (error) {
+      this.message.error(error instanceof Error ? error.message : '导出图片失败');
+    } finally {
+      this.exportingImage.set(false);
+    }
+  }
+
+  async exportPdf(): Promise<void> {
+    if (!this.exportRoot || this.exportingPdf()) return;
+    this.exportingPdf.set(true);
+    try {
+      await this.exportService.exportPdf(this.exportRoot.nativeElement, this.buildExportFilename('pdf'));
+    } catch (error) {
+      this.message.error(error instanceof Error ? error.message : '导出 PDF 失败');
+    } finally {
+      this.exportingPdf.set(false);
+    }
+  }
+
+  async generateReport(): Promise<void> {
+    if (!this.canGenerateReport()) {
+      this.message.warning('仅项目管理员可生成周报');
+      return;
+    }
+    const payload = this.buildSnapshotPayload();
+    if (!payload || this.generatingReport()) return;
+    this.generatingReport.set(true);
+    try {
+      await firstValueFrom(this.weeklyReportApi.createSnapshot(payload));
+      this.message.success('周报已生成');
+      this.historyRefreshKey.update((value) => value + 1);
+    } catch (error) {
+      this.message.error(error instanceof Error ? error.message : '生成周报失败');
+    } finally {
+      this.generatingReport.set(false);
+    }
   }
 
   private async loadForProject(projectId: string | null): Promise<void> {
@@ -236,6 +354,7 @@ export class DeliveryOverviewPageComponent {
         firstValueFrom(this.rdApi.listStages(projectId)),
         this.loadAllRdItems(projectId, token),
         this.loadUnfinishedIssueCount(projectId),
+        this.loadProjectMembers(projectId),
       ]);
       if (token !== this.loadToken) return;
       this.rdStages.set(stages);
@@ -256,6 +375,7 @@ export class DeliveryOverviewPageComponent {
     this.loading.set(false);
     this.rdItems.set([]);
     this.rdStages.set([]);
+    this.members.set([]);
     this.totalRdCount.set(0);
     this.truncated.set(false);
     this.unfinishedIssueCount.set(0);
@@ -299,6 +419,43 @@ export class DeliveryOverviewPageComponent {
     }
   }
 
+  private async loadProjectMembers(projectId: string): Promise<void> {
+    try {
+      this.members.set(await firstValueFrom(this.projectApi.listMembers(projectId)));
+    } catch {
+      this.members.set([]);
+    }
+  }
+
+  private buildSnapshotPayload(): DeliveryWeeklyReportSnapshotPayload | null {
+    const vm = this.vm();
+    const project = this.projectContext.currentProject();
+    if (!vm || !project) return null;
+    const period = this.reportPeriodRange(new Date());
+    return {
+      projectId: project.id,
+      projectKey: project.projectKey,
+      projectName: project.name,
+      periodStart: period.start,
+      periodEnd: period.end,
+      title: `${project.name}-周报`,
+      summary: this.visibleSummaries(),
+      metrics: vm.metrics,
+      stages: vm.stages,
+      keyItems: vm.keyItems.map((row) => ({
+        id: row.item.id,
+        rdNo: row.item.rdNo,
+        title: row.item.title,
+        stageName: row.stageName,
+        progress: this.normalizeProgress(row.item.progress),
+        status: row.item.status,
+        healthLabel: row.healthLabel,
+        reportNote: row.reportNote,
+      })),
+      attentions: vm.attentions,
+    };
+  }
+
   private buildVm(
     items: RdItemEntity[],
     stages: RdStageEntity[],
@@ -306,37 +463,36 @@ export class DeliveryOverviewPageComponent {
     totalRdCount: number,
     truncated: boolean,
   ): DeliveryOverviewVm {
-    const activeItems = items.filter((item) => item.status !== 'closed');
-    const completedCount = items.filter((item) => this.isCompleted(item)).length;
-    const inProgressCount = items.filter((item) => this.isInProgress(item)).length;
-    const attentionRows = items.filter((item) => this.needsAttention(item));
+    const period = this.reportPeriodRange(new Date());
+    const reportItems = items.filter((item) => this.isInReportScope(item, period));
+    const activeItems = reportItems.filter((item) => item.status !== 'closed');
+    const completedCount = reportItems.filter((item) => this.isCompletedInPeriod(item, period)).length;
+    const inProgressCount = reportItems.filter((item) => this.isInProgress(item)).length;
+    const attentionRows = reportItems.filter((item) => this.needsAttention(item));
     const progress = activeItems.length
       ? Math.round(activeItems.reduce((sum, item) => sum + this.normalizeProgress(item.progress), 0) / activeItems.length)
       : 0;
 
     return {
       progress,
-      metrics: this.buildMetrics(totalRdCount, items.length, completedCount, inProgressCount, attentionRows.length, unfinishedIssueCount, truncated),
-      stages: this.buildStages(items, stages),
-      keyItems: this.buildKeyItems(items, stages),
+      metrics: this.buildMetrics(reportItems.length, totalRdCount, completedCount, inProgressCount, attentionRows.length, unfinishedIssueCount, truncated),
+      stages: this.buildStages(reportItems, stages),
+      keyItems: this.buildKeyItems(reportItems, stages),
       attentions: this.buildAttentionItems(attentionRows),
-      summaries: this.buildSummaries(items, attentionRows, unfinishedIssueCount, progress),
+      summaries: this.buildSummaries(reportItems, attentionRows, unfinishedIssueCount, progress, period),
       completedCount,
       inProgressCount,
       attentionCount: attentionRows.length,
       unfinishedIssueCount,
       truncated,
-      totalRdCount,
-      sampledRdCount: items.length,
-      headline: this.buildHeadline(progress, attentionRows.length),
-      headlineDetail: this.buildHeadlineDetail(items, completedCount, inProgressCount, attentionRows.length),
-      nextStep: this.buildNextStep(attentionRows, inProgressCount),
+      totalRdCount: reportItems.length,
+      sampledRdCount: reportItems.length,
     };
   }
 
   private buildMetrics(
     total: number,
-    sampled: number,
+    sourceTotal: number,
     completed: number,
     inProgress: number,
     attention: number,
@@ -344,9 +500,15 @@ export class DeliveryOverviewPageComponent {
     truncated: boolean,
   ): MetricItem[] {
     return [
-      { label: '本期研发项', value: total, hint: `当前展示 ${sampled} 项${truncated ? '，仅展示部分数据' : ''}`, icon: 'unordered-list', tone: 'blue' },
-      { label: '已完成', value: completed, hint: '包含已完成、已关闭和 100% 进度', icon: 'check-circle', tone: 'green' },
-      { label: '进行中', value: inProgress, hint: '开发、待确认或部分完成项', icon: 'sync', tone: 'blue' },
+      {
+        label: '纳入周报研发项',
+        value: total,
+        hint: `未完成 + 本周完成/更新${truncated ? `，源项目共 ${sourceTotal} 项` : ''}`,
+        icon: 'unordered-list',
+        tone: 'blue',
+      },
+      { label: '本周完成', value: completed, hint: '按实际完成时间或本周完成更新判断', icon: 'check-circle', tone: 'green' },
+      { label: '仍在推进', value: inProgress, hint: '周报范围内仍未完成的推进项', icon: 'sync', tone: 'blue' },
       { label: '需关注', value: attention, hint: '阻塞、延期或存在阻塞原因', icon: 'warning', tone: attention > 0 ? 'red' : 'green' },
       { label: '未关闭测试单', value: unfinishedIssues, hint: '用于判断测试风险', icon: 'bug', tone: unfinishedIssues > 0 ? 'orange' : 'green' },
     ];
@@ -425,8 +587,9 @@ export class DeliveryOverviewPageComponent {
     attentionRows: RdItemEntity[],
     unfinishedIssueCount: number,
     progress: number,
+    period: ReportPeriodRange,
   ): SummaryBlock[] {
-    const completed = items.filter((item) => this.isCompleted(item));
+    const completed = items.filter((item) => this.isCompletedInPeriod(item, period));
     const inProgress = items.filter((item) => this.isInProgress(item));
     const blocked = attentionRows.filter((item) => item.status === 'blocked' || !!item.blockerReason?.trim());
     const nextItems = [...inProgress]
@@ -439,7 +602,7 @@ export class DeliveryOverviewPageComponent {
         title: '本周进展',
         icon: 'check-circle',
         tone: 'green',
-        content: completed.length > 0 ? `本周已完成 ${completed.length} 个研发项，当前整体进度 ${progress}%。` : `当前整体进度 ${progress}%，暂无已完成研发项。`,
+        content: completed.length > 0 ? `本周已完成 ${completed.length} 个研发项，当前整体进度 ${progress}%。` : `当前整体进度 ${progress}%，暂无本周完成研发项。`,
         meta: '来自研发项完成状态',
       },
       {
@@ -475,6 +638,21 @@ export class DeliveryOverviewPageComponent {
     return item.status === 'accepted' || item.status === 'closed' || this.normalizeProgress(item.progress) >= 100;
   }
 
+  private isInReportScope(item: RdItemEntity, period: ReportPeriodRange): boolean {
+    if (!this.isCompleted(item)) return true;
+    return (
+      this.isCompletedInPeriod(item, period) ||
+      this.isDateInPeriod(item.createdAt, period) ||
+      this.isDateInPeriod(item.updatedAt, period)
+    );
+  }
+
+  private isCompletedInPeriod(item: RdItemEntity, period: ReportPeriodRange): boolean {
+    if (!this.isCompleted(item)) return false;
+    if (item.actualEndAt) return this.isDateInPeriod(item.actualEndAt, period);
+    return this.isDateInPeriod(item.updatedAt, period);
+  }
+
   private isInProgress(item: RdItemEntity): boolean {
     if (this.isCompleted(item)) return false;
     const progress = this.normalizeProgress(item.progress);
@@ -505,27 +683,9 @@ export class DeliveryOverviewPageComponent {
   private reportNote(item: RdItemEntity, late: boolean, blocked: boolean): string {
     if (blocked) return item.blockerReason?.trim() || '当前被阻塞，需要确认处理时间。';
     if (late) return '计划完成时间已过，需确认延期影响。';
-    if (this.isCompleted(item)) return '已完成，可作为本周进展。';
+    if (this.isCompleted(item)) return '已完成。';
     if (item.status === 'done') return '研发已完成，等待验收确认。';
     return '按当前研发进度推进。';
-  }
-
-  private buildHeadline(progress: number, attentionCount: number): string {
-    if (attentionCount > 0) return '研发整体推进中，存在需关注事项';
-    if (progress >= 80) return '研发整体进度良好，可进入交付收口';
-    if (progress === 0) return '暂无研发推进数据';
-    return '研发整体按计划推进';
-  }
-
-  private buildHeadlineDetail(items: RdItemEntity[], completed: number, inProgress: number, attentionCount: number): string {
-    if (items.length === 0) return '当前项目下还没有研发项数据，建议先在 RD 页面建立研发项后再查看汇报视角。';
-    return `当前统计 ${items.length} 个研发项，${completed} 个已完成，${inProgress} 个仍在推进，${attentionCount} 个需要关注。`;
-  }
-
-  private buildNextStep(attentionRows: RdItemEntity[], inProgressCount: number): string {
-    if (attentionRows.length > 0) return `优先处理 ${attentionRows[0].title} 的阻塞或延期风险`;
-    if (inProgressCount > 0) return '推进进行中研发项进入测试验证和验收确认';
-    return '补充研发项计划或确认当前项目已完成交付';
   }
 
   private formatDate(value: string | null | undefined): string {
@@ -534,16 +694,49 @@ export class DeliveryOverviewPageComponent {
     return Number.isNaN(date.getTime()) ? '-' : `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
+  private isDateInPeriod(value: string | null | undefined, period: ReportPeriodRange): boolean {
+    const date = this.parseDate(value);
+    const start = this.parseDate(period.start);
+    const end = this.parseDate(period.end);
+    if (!date || !start || !end) return false;
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    return date.getTime() >= start.getTime() && date.getTime() <= end.getTime();
+  }
+
+  private parseDate(value: string | null | undefined): Date | null {
+    if (!value) return null;
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    const date = dateOnly
+      ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+      : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
   private formatReportPeriod(date: Date): string {
+    const period = this.reportPeriodRange(date);
+    return `${period.start} 至 ${period.end}`;
+  }
+
+  private reportPeriodRange(date: Date): ReportPeriodRange {
     const day = date.getDay() || 7;
     const start = new Date(date);
     start.setDate(date.getDate() - day + 1);
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
-    return `${this.formatMonthDay(start)} 至 ${this.formatMonthDay(end)}`;
+    return { start: this.formatMonthDay(start), end: this.formatMonthDay(end) };
   }
 
   private formatMonthDay(date: Date): string {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  private buildExportFilename(ext: 'png' | 'pdf'): string {
+    const projectName = this.projectContext.currentProject()?.name || '当前项目';
+    return `${this.sanitizeFilename(projectName)}-周报-${this.formatMonthDay(new Date())}.${ext}`;
+  }
+
+  private sanitizeFilename(value: string): string {
+    return value.replace(/[\\/:*?"<>|]/g, '_').trim() || '当前项目';
   }
 }

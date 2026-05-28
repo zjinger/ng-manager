@@ -34,6 +34,8 @@
     "crypto-js": "^4.2.0",
     "easymde": "^2.20.0",
     "echarts": "^5.5.1",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.1",
     "marked": "^16.4.2",
     "ng-zorro-antd": "^20.4.4",
     "ngx-markdown": "^20.1.0",

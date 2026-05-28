@@ -10,7 +10,7 @@ import type { KeyRdItem } from '../models/delivery-overview.model';
   imports: [PanelCardComponent, RouterLink],
   template: `
     <app-panel-card title="关键研发项进度" [empty]="items().length === 0" emptyText="当前项目暂无研发项数据">
-      <a panel-actions class="panel-link" [routerLink]="['/rd']">打开 RD 明细</a>
+      <!-- <a panel-actions class="panel-link" [routerLink]="['/rd']">打开 RD 明细</a> -->
       <div class="table-wrap">
         <table>
           <thead>
@@ -22,7 +22,7 @@ import type { KeyRdItem } from '../models/delivery-overview.model';
               <th>计划完成</th>
               <th>健康状态</th>
               <th>进展说明</th>
-              <th>明细</th>
+              <th data-export-hidden>明细</th>
             </tr>
           </thead>
           <tbody>
@@ -44,7 +44,7 @@ import type { KeyRdItem } from '../models/delivery-overview.model';
                 <td>{{ formatDate(row.item.planEndAt) }}</td>
                 <td><span class="health" [attr.data-tone]="row.healthTone">{{ row.healthLabel }}</span></td>
                 <td><span class="report-note">{{ row.reportNote }}</span></td>
-                <td><a class="table-link" [routerLink]="['/rd', row.item.id]">查看</a></td>
+                <td data-export-hidden><a class="table-link" [routerLink]="['/rd', row.item.id]">查看</a></td>
               </tr>
             }
           </tbody>

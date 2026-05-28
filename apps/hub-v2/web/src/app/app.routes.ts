@@ -96,7 +96,7 @@ export const routes: Routes = [
         data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS, ...TASK_SHEET_PERMISSIONS] },
         loadChildren: () => import('./features/rd/routes').then((m) => m.RD_ROUTES),
       },
-      // 项目实施总览
+      // 周报
       {
         path: 'delivery-overview',
         canActivate: [permissionGuard],

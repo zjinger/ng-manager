@@ -1,16 +1,19 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import { PanelCardComponent } from '@shared/ui';
 import type { SummaryBlock } from '../models/delivery-overview.model';
+import { DeliveryOverviewSummaryEditDialogComponent } from './delivery-overview-summary-edit-dialog.component';
 
 @Component({
   selector: 'app-delivery-overview-summary-panel',
   standalone: true,
-  imports: [NzIconModule, PanelCardComponent],
+  imports: [DeliveryOverviewSummaryEditDialogComponent, NzIconModule, PanelCardComponent],
   template: `
-    <app-panel-card title="汇报摘要">
-      <button panel-actions type="button" class="action-btn" disabled title="编辑汇报摘要">编辑摘要</button>
+    <app-panel-card title="周报摘要">
+      <button panel-actions type="button" class="action-btn" title="编辑周报摘要" data-export-hidden (click)="dialogOpen.set(true)">
+        编辑摘要
+      </button>
       <div class="summary-grid">
         @for (summary of summaries(); track summary.title) {
           <div class="summary-card" [attr.data-tone]="summary.tone">
@@ -21,6 +24,14 @@ import type { SummaryBlock } from '../models/delivery-overview.model';
         }
       </div>
     </app-panel-card>
+
+    <app-delivery-overview-summary-edit-dialog
+      [open]="dialogOpen()"
+      [summaries]="summaries()"
+      (cancel)="dialogOpen.set(false)"
+      (confirm)="applySummaries($event)"
+      (restore)="restoreSummaries()"
+    />
   `,
   styles: [
     `
@@ -36,10 +47,6 @@ import type { SummaryBlock } from '../models/delivery-overview.model';
         padding: 0 12px;
         font-weight: 600;
         cursor: pointer;
-      }
-      .action-btn:disabled {
-        cursor: not-allowed;
-        opacity: 0.62;
       }
       .summary-grid {
         display: grid;
@@ -96,4 +103,18 @@ import type { SummaryBlock } from '../models/delivery-overview.model';
 })
 export class DeliveryOverviewSummaryPanelComponent {
   readonly summaries = input.required<SummaryBlock[]>();
+  readonly summariesChange = output<SummaryBlock[]>();
+  readonly restoreDefault = output<void>();
+
+  readonly dialogOpen = signal(false);
+
+  applySummaries(summaries: SummaryBlock[]): void {
+    this.summariesChange.emit(summaries);
+    this.dialogOpen.set(false);
+  }
+
+  restoreSummaries(): void {
+    this.restoreDefault.emit();
+    this.dialogOpen.set(false);
+  }
 }
