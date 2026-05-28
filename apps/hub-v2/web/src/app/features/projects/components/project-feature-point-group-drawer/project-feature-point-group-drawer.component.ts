@@ -98,7 +98,7 @@ export interface FeaturePointGroupDrawerSaveInput {
 
               <div nz-col [nzSpan]="12">
                 <nz-form-item>
-                  <nz-form-label nzFor="manualProgress">手动进度</nz-form-label>
+                  <nz-form-label nzFor="manualProgress">进度</nz-form-label>
                   <nz-form-control>
                     <nz-input-number
                       name="manualProgress"

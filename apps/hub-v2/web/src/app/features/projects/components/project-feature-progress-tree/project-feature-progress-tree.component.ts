@@ -1,16 +1,16 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
-import { NzTagModule } from 'ng-zorro-antd/tag';
 
-import {
-  DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS,
-  type ProjectFeaturePoint,
-  type ProjectFeaturePointStatus,
-  type ProjectFeatureProgressSectionPatch,
-  type ProjectFeatureProgressStatusOption,
+import { DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS } from '../../models/project.model';
+import type {
+  ProjectFeaturePoint,
+  ProjectFeatureProgressSectionPatch,
+  ProjectFeatureProgressStatusOption,
 } from '../../models/project.model';
+import type { FeatureProgressFlatNode } from '../../pages/project-feature-progress-page/models/project-feature-progress-page.model';
 
 export interface FeatureProgressSubGroup {
   id: string;
@@ -71,7 +71,7 @@ export type FeatureProgressGroupDeleteTarget =
 @Component({
   selector: 'app-project-feature-progress-tree',
   standalone: true,
-  imports: [NzButtonModule, NzIconModule, NzPopconfirmModule, NzTagModule],
+  imports: [ScrollingModule, NzButtonModule, NzIconModule, NzPopconfirmModule],
   template: `
     <section class="feature-tree-card">
       <div class="feature-tree">
@@ -79,190 +79,141 @@ export type FeatureProgressGroupDeleteTarget =
           <span>功能结构</span>
           <span>完成进度</span>
           <span>完成情况</span>
-          <span class="feature-tree__head-actions">
-            <button nz-button nzType="text" type="button" title="展开全部" [disabled]="expandingAll()" (click)="expandAll()">
-              <span nz-icon [nzType]="expandingAll() ? 'loading' : 'fullscreen'"></span>
-            </button>
-            <button nz-button nzType="text" type="button" title="折叠全部" [disabled]="expandingAll()" (click)="collapseAll()">
-              <span nz-icon nzType="fullscreen-exit"></span>
-            </button>
-          </span>
+          <span>操作</span>
         </div>
 
-        @for (section of sections(); track section.key) {
-          <section class="feature-tree__section">
-            <div class="feature-tree__section-title" (click)="toggleSection(section.key)">
-              <span class="feature-tree__section-main">
-                <span class="feature-tree__toggle" [class.feature-tree__toggle--collapsed]="isSectionCollapsed(section.key)">
-                  <span nz-icon [nzType]="isNodeExpanding(section.key) ? 'loading' : 'down'"></span>
-                </span>
-                <span nz-icon [nzType]="isSectionCollapsed(section.key) ? 'folder' : 'folder-open'"></span>
-                <strong>{{ section.title }}</strong>
-                @if (canManage()) {
-                  <button
-                    class="feature-tree__section-edit"
-                    nz-button
-                    nzType="link"
-                    type="button"
-                    (click)="editTitle.emit(section); $event.stopPropagation()"
-                  >
-                    编辑
-                  </button>
-                }
-                <small>{{ sectionGroupCount(section) }} 个一级模块 · {{ sectionFeatureCount(section) }} 个功能点 · 完成模块 {{ sectionCompletedCount(section) }} 个</small>
-              </span>
-              <span class="feature-tree__section-progress">
-                <span class="feature-tree__bar"><span [style.width.%]="sectionProgress(section)"></span></span>
-                <strong>{{ sectionProgress(section) }}%</strong>
-              </span>
-              <span class="feature-tree__section-status">{{ progressText(sectionProgress(section)) }}</span>
-            </div>
-          </section>
-
-          @if (!isSectionCollapsed(section.key)) {
-            @for (group of section.groups; track group.key) {
-              <section class="feature-tree__group">
-              <div class="feature-tree__row feature-tree__row--module" (click)="toggleModule(group.key)">
-                <span class="feature-tree__main">
-                  <span class="feature-tree__toggle" [class.feature-tree__toggle--collapsed]="isModuleCollapsed(group.key)">
-                    <span nz-icon [nzType]="isNodeExpanding(group.key) ? 'loading' : 'down'"></span>
-                  </span>
-                  <span class="feature-tree__node-icon">
-                    <span nz-icon nzType="partition"></span>
-                  </span>
-                    <span class="feature-tree__text">
-                      <span class="feature-tree__title">
-                        <strong>{{ groupName(group) }}</strong>
-                        <span class="feature-tree__badge">模块</span>
-                      </span>
-                      <small>{{ group.subgroups.length }} 个子模块 · {{ group.featureCount }} 个功能点 · 完成子模块 {{ group.completedCount }} 个</small>
-                    </span>
-                  </span>
-                <span class="feature-tree__progress">
-                  <span class="feature-tree__bar"><span [style.width.%]="groupProgress(group)"></span></span>
-                  <strong>{{ groupProgress(group) }}%</strong>
-                  @if (groupManualProgress(group) !== null) {
-                    <nz-tag nzColor="processing" [title]="'自动计算：' + groupComputedProgress(group) + '%'">手动</nz-tag>
+        @if (nodes().length > 0) {
+          <cdk-virtual-scroll-viewport
+            class="feature-tree__viewport"
+            itemSize="58"
+            minBufferPx="580"
+            maxBufferPx="1160"
+          >
+            <div
+              *cdkVirtualFor="let node of nodes(); trackBy: trackByNode"
+              class="feature-tree__row"
+              [class.feature-tree__row--section]="node.type === 'section'"
+              [class.feature-tree__row--module]="node.type === 'module'"
+              [class.feature-tree__row--submodule]="node.type === 'submodule'"
+              [class.feature-tree__row--feature]="node.type === 'feature'"
+              [class.feature-tree__row--force-expanded]="forceExpanded()"
+              (click)="toggleExpandableNode(node)"
+            >
+              <span class="feature-tree__main">
+                <span class="feature-tree__branches" aria-hidden="true">
+                  @for (guide of node.branchGuides; track $index) {
+                    <span
+                      class="feature-tree__branch"
+                      [class.feature-tree__branch--blank]="guide === 'blank'"
+                      [class.feature-tree__branch--line]="guide === 'line'"
+                      [class.feature-tree__branch--tee]="guide === 'tee'"
+                      [class.feature-tree__branch--elbow]="guide === 'elbow'"
+                    ></span>
                   }
                 </span>
-                <span class="feature-tree__status">{{ progressText(groupProgress(group)) }}</span>
-                <span class="feature-tree__actions">
-                  @if (canManage() && !group.virtual) {
-                    <button nz-button nzType="link" type="button" (click)="editGroup.emit({ level: 'module', group: patchedModuleGroup(group) }); $event.stopPropagation()">编辑</button>
+                @if (node.expandable && !forceExpanded()) {
+                  <button
+                    class="feature-tree__toggle"
+                    type="button"
+                    [class.feature-tree__toggle--expanded]="node.expanded"
+                    (click)="toggleNode.emit(node.key); $event.stopPropagation()"
+                  >
+                    <span nz-icon nzType="caret-right"></span>
+                  </button>
+                } @else {
+                  <span class="feature-tree__toggle feature-tree__toggle--spacer"></span>
+                }
+                <span class="feature-tree__node-icon">
+                  <span nz-icon [nzType]="iconType(node)"></span>
+                </span>
+                <span class="feature-tree__text">
+                  <span class="feature-tree__title">
+                    <strong>{{ node.name }}</strong>
+                    <!-- @if (node.type !== 'section') {
+                      <span class="feature-tree__badge" [class.feature-tree__badge--sub]="node.type === 'submodule'">
+                        {{ node.typeText }}
+                      </span>
+                    } -->
+                  </span>
+                  <small [title]="nodeDescription(node)">{{ nodeDescription(node) }}</small>
+                </span>
+              </span>
+
+              <span class="feature-tree__progress" [class.feature-tree__progress--hidden]="node.type === 'feature'">
+                @if (node.type !== 'feature') {
+                  <span class="feature-tree__bar"><span [style.width.%]="node.progress"></span></span>
+                  <strong>{{ node.progress }}%</strong>
+                }
+              </span>
+
+              <span class="feature-tree__status" [class.feature-tree__status--hidden]="node.type === 'feature'">
+                {{ node.type === 'feature' ? '' : node.progressText }}
+              </span>
+
+              <span class="feature-tree__actions">
+                @if (canManage()) {
+                  @if (node.type === 'feature' && node.feature) {
+                    <button nz-button nzType="link" type="button" (click)="editFeature.emit(node.feature); $event.stopPropagation()">编辑</button>
                     <button
                       nz-button
                       nzType="link"
                       nzDanger
                       type="button"
                       nz-popconfirm
-                      nzPopconfirmTitle="确认删除该模块？"
+                      nzPopconfirmTitle="确认删除该功能点？"
                       (click)="$event.stopPropagation()"
-                      (nzOnConfirm)="deleteGroup.emit({ level: 'module', id: group.id, name: groupName(group), featureCount: group.featureCount, childCount: group.subgroups.length })"
+                      (nzOnConfirm)="editDeleteFeature(node.feature.id)"
                     >
                       删除
                     </button>
+                  } @else if (node.type === 'section' && node.section) {
+                    <button nz-button nzType="link" type="button" (click)="editTitle.emit(node.section); $event.stopPropagation()">编辑</button>
+                  } @else if (node.type === 'module' && node.group) {
+                    @if (!node.group.virtual) {
+                      <button nz-button nzType="link" type="button" (click)="editModuleGroup(node); $event.stopPropagation()">编辑</button>
+                      <button
+                        nz-button
+                        nzType="link"
+                        nzDanger
+                        type="button"
+                        nz-popconfirm
+                        nzPopconfirmTitle="确认删除该模块？"
+                        (click)="$event.stopPropagation()"
+                        (nzOnConfirm)="deleteGroup.emit({ level: 'module', id: node.group.id, name: node.name, featureCount: node.featureCount ?? 0, childCount: node.childrenCount })"
+                      >
+                        删除
+                      </button>
+                    } @else {
+                      <span class="feature-tree__muted">-</span>
+                    }
+                  } @else if (node.type === 'submodule' && node.group && node.parentGroup) {
+                    @if (!node.group.virtual) {
+                      <button nz-button nzType="link" type="button" (click)="editSubmoduleGroup(node); $event.stopPropagation()">编辑</button>
+                      <button
+                        nz-button
+                        nzType="link"
+                        nzDanger
+                        type="button"
+                        nz-popconfirm
+                        nzPopconfirmTitle="确认删除该子模块？"
+                        (click)="$event.stopPropagation()"
+                        (nzOnConfirm)="deleteGroup.emit({ level: 'submodule', id: node.group.id, name: node.name, featureCount: node.featureCount ?? 0, childCount: 0 })"
+                      >
+                        删除
+                      </button>
+                    } @else {
+                      <span class="feature-tree__muted">-</span>
+                    }
                   } @else {
                     <span class="feature-tree__muted">-</span>
                   }
-                </span>
-              </div>
-
-              @if (!isModuleCollapsed(group.key)) {
-                @for (subgroup of group.subgroups; track subgroup.key) {
-                  <div class="feature-tree__row feature-tree__row--submodule" (click)="toggleSubmodule(subgroup.key)">
-                    <span class="feature-tree__main">
-                      <span class="feature-tree__toggle" [class.feature-tree__toggle--collapsed]="isSubmoduleCollapsed(subgroup.key)">
-                        <span nz-icon [nzType]="isNodeExpanding(subgroup.key) ? 'loading' : 'down'"></span>
-                      </span>
-                      <span class="feature-tree__node-icon">
-                        <span nz-icon nzType="branches"></span>
-                      </span>
-                      <span class="feature-tree__text">
-                        <span class="feature-tree__title">
-                          <strong>{{ groupName(subgroup) }}</strong>
-                          <span class="feature-tree__badge feature-tree__badge--sub">子模块</span>
-                        </span>
-                        <small>{{ subgroup.features.length }} 个功能点 · 子模块进度 {{ groupProgress(subgroup) }}%</small>
-                      </span>
-                    </span>
-                    <span class="feature-tree__progress">
-                      <span class="feature-tree__bar"><span [style.width.%]="groupProgress(subgroup)"></span></span>
-                      <strong>{{ groupProgress(subgroup) }}%</strong>
-                      @if (groupManualProgress(subgroup) !== null) {
-                        <nz-tag nzColor="processing" [title]="'自动计算：' + groupComputedProgress(subgroup) + '%'">手动</nz-tag>
-                      }
-                    </span>
-                    <span class="feature-tree__status">{{ progressText(groupProgress(subgroup)) }}</span>
-                    <span class="feature-tree__actions">
-                      @if (canManage() && !subgroup.virtual) {
-                        <button nz-button nzType="link" type="button" (click)="editGroup.emit({ level: 'submodule', group: patchedSubGroup(subgroup), parent: patchedModuleGroup(group) }); $event.stopPropagation()">编辑</button>
-                        <button
-                          nz-button
-                          nzType="link"
-                          nzDanger
-                          type="button"
-                          nz-popconfirm
-                          nzPopconfirmTitle="确认删除该子模块？"
-                          (click)="$event.stopPropagation()"
-                          (nzOnConfirm)="deleteGroup.emit({ level: 'submodule', id: subgroup.id, name: groupName(subgroup), featureCount: subgroup.featureCount, childCount: 0 })"
-                        >
-                          删除
-                        </button>
-                      } @else {
-                        <span class="feature-tree__muted">-</span>
-                      }
-                    </span>
-                  </div>
-
-                  @if (!isSubmoduleCollapsed(subgroup.key)) {
-                    @for (feature of subgroup.features; track feature.id) {
-                      <div class="feature-tree__row feature-tree__row--feature">
-                        <span class="feature-tree__main">
-                          <span class="feature-tree__node-icon feature-tree__node-icon--feature">
-                            <span nz-icon nzType="appstore"></span>
-                          </span>
-                          <span class="feature-tree__text">
-                            <span class="feature-tree__title">
-                              <strong>{{ feature.name }}</strong>
-                            </span>
-                            <small class="feature-tree__meta" [title]="featureMetaText(feature)">
-                              <span class="feature-tree__meta-text">{{ featureMetaText(feature) }}</span>
-                            </small>
-                          </span>
-                        </span>
-                        <span class="feature-tree__progress feature-tree__progress--feature-hidden">
-                          <!-- 功能点仅作为展示节点，不展示进度。 -->
-                        </span>
-                        <span class="feature-tree__status feature-tree__status--feature-hidden">
-                          <!-- 功能点仅作为展示节点，不展示状态。 -->
-                        </span>
-                        <span class="feature-tree__actions">
-                          @if (canManage()) {
-                            <button nz-button nzType="link" type="button" (click)="edit.emit(feature)">编辑</button>
-                            <button
-                              nz-button
-                              nzType="link"
-                              nzDanger
-                              type="button"
-                              nz-popconfirm
-                              nzPopconfirmTitle="确认删除该功能点？"
-                              (nzOnConfirm)="delete.emit(feature.id)"
-                            >
-                              删除
-                            </button>
-                          } @else {
-                            <span class="feature-tree__muted">-</span>
-                          }
-                        </span>
-                      </div>
-                    }
-                  }
+                } @else {
+                  <span class="feature-tree__muted">-</span>
                 }
-              }
-            </section>
-            }
-          }
-        } @empty {
+              </span>
+            </div>
+          </cdk-virtual-scroll-viewport>
+        } @else {
           <div class="feature-tree__empty">暂无功能点数据</div>
         }
       </div>
@@ -288,11 +239,12 @@ export type FeatureProgressGroupDeleteTarget =
         grid-template-columns: minmax(420px, 1fr) 220px 150px 150px;
         align-items: center;
         column-gap: 18px;
+        min-width: 940px;
       }
 
       .feature-tree__head {
-        min-width: 940px;
-        padding: 12px 18px;
+        height: 44px;
+        padding: 0 18px;
         color: var(--text-muted);
         font-size: 12px;
         font-weight: 600;
@@ -300,163 +252,40 @@ export type FeatureProgressGroupDeleteTarget =
         border-bottom: 1px solid var(--border-color-soft);
       }
 
-      .feature-tree__head-actions {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        justify-content: flex-start;
-      }
-
-      .feature-tree__head-actions button {
-        width: 28px;
-        height: 28px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .feature-tree__group + .feature-tree__group {
-        border-top: 1px solid var(--border-color-soft);
-      }
-
-      .feature-tree__section {
-        border-top: 1px solid var(--border-color);
-        background: color-mix(in srgb, var(--color-primary-light) 48%, var(--bg-container));
-      }
-
-      .feature-tree__section:first-of-type {
-        border-top: 0;
-      }
-
-      .feature-tree__section-title {
-        display: grid;
-        grid-template-columns: minmax(420px, 1fr) 220px 150px 150px;
-        align-items: center;
-        min-width: 940px;
-        column-gap: 18px;
-        padding: 13px 18px;
-        color: var(--text-heading);
-        cursor: pointer;
-        font-size: 13px;
-      }
-
-      .feature-tree__section-title:hover {
-        background: color-mix(in srgb, var(--primary-600) 5%, transparent);
-      }
-
-      .feature-tree__section-main,
-      .feature-tree__section-progress {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .feature-tree__section-main {
-        min-width: 0;
-        font-size: 15px;
-      }
-
-      .feature-tree__section-main strong {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .feature-tree__section-main small {
-        flex: 0 1 auto;
-        min-width: 0;
-        overflow: hidden;
-        color: var(--text-muted);
-        font-size: 12px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .feature-tree__section-status {
-        color: var(--text-muted);
-        font-size: 13px;
-      }
-
-      .feature-tree__section-edit {
-        height: auto;
-        padding: 0 4px;
-        font-size: 12px;
+      .feature-tree__viewport {
+        height: max(360px, calc(100vh - 360px));
+        overflow-x: hidden;
       }
 
       .feature-tree__row {
-        width: 100%;
-        min-width: 940px;
-        min-height: 58px;
-        padding: 10px 18px;
-        border: 0;
+        position: relative;
+        height: 58px;
+        padding: 0 18px;
         background: var(--bg-container);
         color: inherit;
-        position: relative;
-        text-align: left;
+        border-bottom: 1px solid var(--border-color-soft);
       }
 
-      .feature-tree__row--module,
-      .feature-tree__row--submodule {
-        cursor: pointer;
-      }
-
-      .feature-tree__row--module:hover,
-      .feature-tree__row--submodule:hover,
-      .feature-tree__row--feature:hover {
-        background: var(--bg-subtle);
+      .feature-tree__row--section {
+        color: var(--text-heading);
       }
 
       .feature-tree__row--module {
         background: color-mix(in srgb, var(--primary-600) 4%, var(--bg-container));
       }
 
-      .feature-tree__row--submodule::before,
-      .feature-tree__row--submodule::after,
-      .feature-tree__row--feature::before,
-      .feature-tree__row--feature::after {
-        content: '';
-        position: absolute;
-        pointer-events: none;
-      }
-
+      .feature-tree__row--section,
+      .feature-tree__row--module,
       .feature-tree__row--submodule {
-        padding-left: 44px;
+        cursor: pointer;
       }
 
-      .feature-tree__row--submodule::before {
-        left: 30px;
-        top: 0;
-        bottom: 0;
-        width: 67px;
-        background:
-          repeating-linear-gradient(to bottom, var(--feature-tree-line-color) 0 2px, transparent 2px 4px) 0 0 / 1px 50% no-repeat,
-          repeating-linear-gradient(to bottom, var(--feature-tree-line-color) 0 2px, transparent 2px 4px) 67px 50% / 1px 50% no-repeat;
+      .feature-tree__row--force-expanded {
+        cursor: default;
       }
 
-      .feature-tree__row--submodule::after {
-        left: 30px;
-        top: 50%;
-        width: 17px;
-        border-top: 1px dashed var(--feature-tree-line-color);
-      }
-
-      .feature-tree__row--feature {
-        padding-left: 130px;
-      }
-
-      .feature-tree__row--feature::before {
-        left: 97px;
-        top: 0;
-        bottom: 0;
-        border-left: 1px dashed var(--feature-tree-line-color);
-      }
-
-      .feature-tree__row--feature::after {
-        left: 97px;
-        top: 50%;
-        width: 30px;
-        border-top: 1px dashed var(--feature-tree-line-color);
+      .feature-tree__row:hover {
+        background: var(--bg-subtle);
       }
 
       .feature-tree__main,
@@ -468,52 +297,103 @@ export type FeatureProgressGroupDeleteTarget =
       }
 
       .feature-tree__main {
-        gap: 10px;
+        gap: 6px;
         min-width: 0;
         overflow: hidden;
+      }
+
+      .feature-tree__branches {
+        display: inline-flex;
+        align-self: stretch;
+        flex: 0 0 auto;
+        margin-right: -2px;
+      }
+
+      .feature-tree__branch {
+        position: relative;
+        width: 28px;
+        height: 58px;
+        flex: 0 0 28px;
+      }
+
+      .feature-tree__branch--line::before,
+      .feature-tree__branch--tee::before,
+      .feature-tree__branch--elbow::before,
+      .feature-tree__branch--tee::after,
+      .feature-tree__branch--elbow::after {
+        content: '';
+        position: absolute;
+        pointer-events: none;
+      }
+
+      .feature-tree__branch--line::before,
+      .feature-tree__branch--tee::before {
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        border-left: 1px dashed var(--feature-tree-line-color);
+      }
+
+      .feature-tree__branch--elbow::before {
+        left: 50%;
+        top: 0;
+        height: 50%;
+        border-left: 1px dashed var(--feature-tree-line-color);
+      }
+
+      .feature-tree__branch--tee::after,
+      .feature-tree__branch--elbow::after {
+        left: 50%;
+        top: 50%;
+        width: 32px;
+        border-top: 1px dashed var(--feature-tree-line-color);
       }
 
       .feature-tree__toggle {
         width: 24px;
         height: 24px;
+        flex: 0 0 24px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        padding: 0;
         border: 0;
-        border-radius: 0;
         color: var(--text-muted);
         background: transparent;
-        position: relative;
-        z-index: 1;
+        cursor: pointer;
+        margin-right: -4px;
         transition: transform 0.16s ease;
       }
 
-      .feature-tree__toggle--collapsed {
-        transform: rotate(-90deg);
+      .feature-tree__toggle--expanded {
+        transform: rotate(90deg);
+      }
+
+      .feature-tree__toggle--spacer {
+        cursor: default;
+        visibility: hidden;
       }
 
       .feature-tree__node-icon {
-        width: 38px;
-        height: 38px;
-        flex: 0 0 38px;
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         border-radius: var(--border-radius);
         color: var(--primary-600);
         background: color-mix(in srgb, var(--primary-600) 10%, var(--bg-container));
-        position: relative;
-        z-index: 1;
       }
 
-      .feature-tree__node-icon--feature {
-        color: var(--color-info);
-        background: var(--color-info-light);
-      }
+      // .feature-tree__row--feature .feature-tree__node-icon {
+      //   // color: var(--color-info);
+      //   // background: var(--color-info-light);
+      // }
 
       .feature-tree__text {
         display: grid;
-        gap: 4px;
+        gap: 2px;
         min-width: 0;
         overflow: hidden;
       }
@@ -523,47 +403,27 @@ export type FeatureProgressGroupDeleteTarget =
         min-width: 0;
       }
 
-      .feature-tree__title strong {
+      .feature-tree__title strong,
+      .feature-tree__text small {
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+
+      .feature-tree__title strong {
         color: var(--text-heading);
         font-size: 14px;
       }
 
       .feature-tree__text small {
-        overflow: hidden;
         color: var(--text-muted);
         font-size: 12px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .feature-tree__meta {
-        display: block;
-        max-width: 100%;
-        overflow: hidden;
-      }
-
-      .feature-tree__meta-text {
-        display: inline-block;
-        max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        vertical-align: bottom;
-        white-space: nowrap;
-      }
-
-      .feature-tree__meta:hover {
-        overflow-x: auto;
-        text-overflow: clip;
-        scrollbar-width: thin;
       }
 
       .feature-tree__badge {
         flex: 0 0 auto;
-        padding: 2px 7px;
+        padding: 1px 6px;
         border-radius: 999px;
         color: var(--primary-600);
         background: color-mix(in srgb, var(--primary-600) 10%, var(--bg-container));
@@ -578,6 +438,7 @@ export type FeatureProgressGroupDeleteTarget =
 
       .feature-tree__progress {
         gap: 10px;
+        min-width: 0;
       }
 
       .feature-tree__progress strong {
@@ -611,6 +472,8 @@ export type FeatureProgressGroupDeleteTarget =
         gap: 4px;
       }
 
+      .feature-tree__progress--hidden,
+      .feature-tree__status--hidden,
       .feature-tree__muted {
         color: var(--text-muted);
       }
@@ -620,304 +483,69 @@ export type FeatureProgressGroupDeleteTarget =
         color: var(--text-muted);
         text-align: center;
       }
-
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProjectFeatureProgressTreeComponent {
-  private readonly destroyRef = inject(DestroyRef);
-
-  readonly sections = input<FeatureProgressTitleGroup[]>([]);
+  readonly nodes = input<FeatureProgressFlatNode[]>([]);
   readonly canManage = input(false);
-  readonly collapseSectionsByDefault = input(false);
+  readonly forceExpanded = input(false);
   readonly progressStatusOptions = input<ProjectFeatureProgressStatusOption[]>(DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS);
   readonly progressPatches = input<Record<string, FeatureProgressGroupDisplayPatch>>({});
   readonly sectionPatches = input<Record<string, ProjectFeatureProgressSectionPatch>>({});
 
-  readonly edit = output<ProjectFeaturePoint>();
-  readonly delete = output<string>();
+  readonly toggleNode = output<string>();
+  readonly editFeature = output<ProjectFeaturePoint>();
+  readonly deleteFeature = output<string>();
   readonly editTitle = output<FeatureProgressTitleGroup>();
   readonly editGroup = output<FeatureProgressGroupEditTarget>();
   readonly deleteGroup = output<FeatureProgressGroupDeleteTarget>();
 
-  private readonly collapsedModules = signal<ReadonlySet<string>>(new Set());
-  private readonly collapsedSubmodules = signal<ReadonlySet<string>>(new Set());
-  private readonly collapsedSections = signal<ReadonlySet<string>>(new Set());
-  private readonly expandingNodes = signal<ReadonlySet<string>>(new Set());
-  readonly expandingAll = signal(false);
+  readonly trackByNode = (_: number, node: FeatureProgressFlatNode): string => node.id;
 
-  private expandFrameId: number | null = null;
-  private nodeExpandFrameId: number | null = null;
-  private defaultCollapseInitialized = false;
-  private previousCollapseSectionsByDefault = false;
-
-  readonly featureCount = computed(() =>
-    this.sections().reduce((sum, section) => sum + section.featureCount, 0)
-  );
-
-  constructor() {
-    effect(() => {
-      this.cancelPendingExpand();
-      const sections = this.sections();
-      const shouldCollapseByDefault = this.collapseSectionsByDefault();
-      if (sections.length === 0) {
-        this.defaultCollapseInitialized = false;
-        this.previousCollapseSectionsByDefault = shouldCollapseByDefault;
-        this.clearCollapsedState();
-        return;
-      }
-      if (!shouldCollapseByDefault) {
-        this.defaultCollapseInitialized = false;
-        this.previousCollapseSectionsByDefault = false;
-        this.clearCollapsedState();
-        return;
-      }
-      if (!this.defaultCollapseInitialized || !this.previousCollapseSectionsByDefault) {
-        this.setCollapsedState(sections, true);
-        this.defaultCollapseInitialized = true;
-        this.previousCollapseSectionsByDefault = true;
-        return;
-      }
-      this.pruneCollapsedState(sections);
-    });
-
-    this.destroyRef.onDestroy(() => this.cancelPendingExpand());
-  }
-
-  isSectionCollapsed(key: string): boolean {
-    return this.collapsedSections().has(key);
-  }
-
-  isModuleCollapsed(key: string): boolean {
-    return this.collapsedModules().has(key);
-  }
-
-  isSubmoduleCollapsed(key: string): boolean {
-    return this.collapsedSubmodules().has(key);
-  }
-
-  isNodeExpanding(key: string): boolean {
-    return this.expandingNodes().has(key);
-  }
-
-  toggleSection(key: string): void {
-    this.cancelPendingExpand();
-    const next = new Set(this.collapsedSections());
-    if (next.has(key)) {
-      this.expandNodeOnNextFrame(key, this.collapsedSections);
-    } else {
-      next.add(key);
-      this.collapsedSections.set(next);
+  toggleExpandableNode(node: FeatureProgressFlatNode): void {
+    if (node.expandable && !this.forceExpanded()) {
+      this.toggleNode.emit(node.key);
     }
   }
 
-  toggleModule(key: string): void {
-    this.cancelPendingExpand();
-    const next = new Set(this.collapsedModules());
-    if (next.has(key)) {
-      this.expandNodeOnNextFrame(key, this.collapsedModules);
-    } else {
-      next.add(key);
-      this.collapsedModules.set(next);
+  editDeleteFeature(featureId: string): void {
+    this.deleteFeature.emit(featureId);
+  }
+
+  editModuleGroup(node: FeatureProgressFlatNode): void {
+    if (node.type === 'module' && node.group && 'subgroups' in node.group) {
+      this.editGroup.emit({ level: 'module', group: node.group });
     }
   }
 
-  toggleSubmodule(key: string): void {
-    this.cancelPendingExpand();
-    const next = new Set(this.collapsedSubmodules());
-    if (next.has(key)) {
-      this.expandNodeOnNextFrame(key, this.collapsedSubmodules);
-    } else {
-      next.add(key);
-      this.collapsedSubmodules.set(next);
+  editSubmoduleGroup(node: FeatureProgressFlatNode): void {
+    if (node.type === 'submodule' && node.group && node.parentGroup && 'features' in node.group) {
+      this.editGroup.emit({ level: 'submodule', group: node.group, parent: node.parentGroup });
     }
   }
 
-  expandAll(): void {
-    this.cancelPendingExpand();
-    const submoduleKeys = this.sections().flatMap((section) =>
-      section.groups.flatMap((group) => group.subgroups.map((subgroup) => subgroup.key))
-    );
-    this.collapsedSections.set(new Set());
-    this.collapsedModules.set(new Set());
-    this.collapsedSubmodules.set(new Set(submoduleKeys));
-    if (submoduleKeys.length === 0) {
-      return;
+  iconType(node: FeatureProgressFlatNode): string {
+    if (node.type === 'section') return node.expanded ? 'folder-open' : 'folder';
+    if (node.type === 'module') return 'partition';
+    if (node.type === 'submodule') return 'branches';
+    return 'appstore';
+  }
+
+  nodeDescription(node: FeatureProgressFlatNode): string {
+    if (node.type === 'section') {
+      return `${node.childrenCount} 个一级模块 · ${node.featureCount ?? 0} 个功能点 · 完成模块 ${node.completedCount ?? 0} 个`;
     }
-    this.expandingAll.set(true);
-    this.expandSubmodulesInBatches(submoduleKeys, 0);
-  }
-
-  collapseAll(): void {
-    this.cancelPendingExpand();
-    this.setCollapsedState(this.sections(), true);
-  }
-
-  statusLabel(status: ProjectFeaturePointStatus): string {
-    if (status === 'done') return '已完成';
-    if (status === 'testing') return '测试中';
-    if (status === 'developing') return '开发中';
-    if (status === 'designing') return '设计中';
-    return '未开始';
-  }
-
-  statusColor(status: ProjectFeaturePointStatus): string {
-    if (status === 'done') return 'success';
-    if (status === 'testing') return 'processing';
-    if (status === 'developing') return 'warning';
-    if (status === 'designing') return 'default';
-    return 'default';
-  }
-
-  progressText(progress: number): string {
-    const normalized = Math.max(0, Math.min(100, Math.round(progress)));
-    const option = [...this.progressStatusOptions()]
-      .sort((left, right) => right.progress - left.progress)
-      .find((item) => normalized >= item.progress);
-    return option?.label ?? '未开始';
-  }
-
-  sectionProgress(section: FeatureProgressTitleGroup): number {
-    return this.sectionPatches()[section.key]?.progress ?? section.progress;
-  }
-
-  sectionCompletedCount(section: FeatureProgressTitleGroup): number {
-    return this.sectionPatches()[section.key]?.completedCount ?? section.completedCount;
-  }
-
-  sectionFeatureCount(section: FeatureProgressTitleGroup): number {
-    return this.sectionPatches()[section.key]?.featureCount ?? section.featureCount;
-  }
-
-  sectionGroupCount(section: FeatureProgressTitleGroup): number {
-    return this.sectionPatches()[section.key]?.groupCount ?? section.groups.length;
-  }
-
-  groupName(group: FeatureProgressModuleGroup | FeatureProgressSubGroup): string {
-    return this.progressPatches()[group.id]?.name ?? group.name;
-  }
-
-  groupProgress(group: FeatureProgressModuleGroup | FeatureProgressSubGroup): number {
-    return this.progressPatches()[group.id]?.progress ?? group.progress;
-  }
-
-  groupComputedProgress(group: FeatureProgressModuleGroup | FeatureProgressSubGroup): number {
-    return this.progressPatches()[group.id]?.computedProgress ?? group.computedProgress;
-  }
-
-  groupManualProgress(group: FeatureProgressModuleGroup | FeatureProgressSubGroup): number | null {
-    const patch = this.progressPatches()[group.id];
-    return patch ? patch.manualProgress : group.manualProgress;
-  }
-
-  patchedModuleGroup(group: FeatureProgressModuleGroup): FeatureProgressModuleGroup {
-    const patch = this.progressPatches()[group.id];
-    return patch
-      ? {
-          ...group,
-          name: patch.name,
-          progress: patch.progress,
-          computedProgress: patch.computedProgress,
-          manualProgress: patch.manualProgress,
-          sort: patch.sort,
-          remark: patch.remark,
-        }
-      : group;
-  }
-
-  patchedSubGroup(group: FeatureProgressSubGroup): FeatureProgressSubGroup {
-    const patch = this.progressPatches()[group.id];
-    return patch
-      ? {
-          ...group,
-          name: patch.name,
-          progress: patch.progress,
-          computedProgress: patch.computedProgress,
-          manualProgress: patch.manualProgress,
-          sort: patch.sort,
-          remark: patch.remark,
-        }
-      : group;
-  }
-
-  ownerText(feature: ProjectFeaturePoint): string {
-    return feature.ownerNames?.length ? feature.ownerNames.join('、') : feature.ownerName || '';
-  }
-
-  featureMetaText(feature: ProjectFeaturePoint): string {
-    const owner = this.ownerText(feature);
+    if (node.type === 'module') {
+      return `${node.childrenCount} 个子模块 · ${node.featureCount ?? 0} 个功能点 · 完成子模块 ${node.completedCount ?? 0} 个`;
+    }
+    if (node.type === 'submodule') {
+      return `${node.featureCount ?? 0} 个功能点 · 子模块进度 ${node.progress}%`;
+    }
+    const feature = node.feature;
+    if (!feature) return '';
+    const owner = feature.ownerNames?.length ? feature.ownerNames.join('、') : feature.ownerName || '';
     return owner ? `${owner} · ${feature.remark || ''}` : feature.remark || '';
-  }
-
-  private clearCollapsedState(): void {
-    this.collapsedSections.set(new Set());
-    this.collapsedModules.set(new Set());
-    this.collapsedSubmodules.set(new Set());
-  }
-
-  private cancelPendingExpand(): void {
-    if (this.nodeExpandFrameId !== null) {
-      window.cancelAnimationFrame(this.nodeExpandFrameId);
-      this.nodeExpandFrameId = null;
-    }
-    if (this.expandFrameId !== null) {
-      window.cancelAnimationFrame(this.expandFrameId);
-      this.expandFrameId = null;
-    }
-    this.expandingNodes.set(new Set());
-    this.expandingAll.set(false);
-  }
-
-  private expandNodeOnNextFrame(key: string, target: typeof this.collapsedSections): void {
-    this.expandingNodes.set(new Set([key]));
-    this.nodeExpandFrameId = window.requestAnimationFrame(() => {
-      const next = new Set(target());
-      next.delete(key);
-      target.set(next);
-      this.expandingNodes.set(new Set());
-      this.nodeExpandFrameId = null;
-    });
-  }
-
-  private expandSubmodulesInBatches(keys: string[], start: number): void {
-    const batchSize = 12;
-    this.expandFrameId = window.requestAnimationFrame(() => {
-      const next = new Set(this.collapsedSubmodules());
-      for (let index = start; index < Math.min(start + batchSize, keys.length); index += 1) {
-        next.delete(keys[index]!);
-      }
-      this.collapsedSubmodules.set(next);
-      const nextStart = start + batchSize;
-      if (nextStart < keys.length) {
-        this.expandSubmodulesInBatches(keys, nextStart);
-        return;
-      }
-      this.expandFrameId = null;
-      this.expandingAll.set(false);
-    });
-  }
-
-  private setCollapsedState(sections: FeatureProgressTitleGroup[], collapseSections: boolean): void {
-    this.collapsedSections.set(collapseSections ? new Set(sections.map((section) => section.key)) : new Set());
-    this.collapsedModules.set(new Set(sections.flatMap((section) => section.groups.map((group) => group.key))));
-    this.collapsedSubmodules.set(
-      new Set(sections.flatMap((section) => section.groups.flatMap((group) => group.subgroups.map((subgroup) => subgroup.key))))
-    );
-  }
-
-  private pruneCollapsedState(sections: FeatureProgressTitleGroup[]): void {
-    const sectionKeys = new Set(sections.map((section) => section.key));
-    const moduleKeys = new Set(sections.flatMap((section) => section.groups.map((group) => group.key)));
-    const submoduleKeys = new Set(
-      sections.flatMap((section) => section.groups.flatMap((group) => group.subgroups.map((subgroup) => subgroup.key)))
-    );
-    this.collapsedSections.set(this.retainKeys(this.collapsedSections(), sectionKeys));
-    this.collapsedModules.set(this.retainKeys(this.collapsedModules(), moduleKeys));
-    this.collapsedSubmodules.set(this.retainKeys(this.collapsedSubmodules(), submoduleKeys));
-  }
-
-  private retainKeys(keys: ReadonlySet<string>, validKeys: ReadonlySet<string>): ReadonlySet<string> {
-    return new Set(Array.from(keys).filter((key) => validKeys.has(key)));
   }
 }

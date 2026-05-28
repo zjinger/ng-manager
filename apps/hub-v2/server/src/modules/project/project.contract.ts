@@ -15,7 +15,11 @@ import type {
   ProjectFeaturePointEntity,
   ProjectFeaturePointGroupEntity,
   ProjectFeaturePointGroupUpdateResult,
+  ProjectFeaturePointUpdateResult,
+  ProjectFeatureProgressIncrementalResult,
+  ProjectFeatureProgressOverrideDeleteResult,
   ProjectFeatureProgressOverrideEntity,
+  ProjectFeatureProgressOverrideUpdateResult,
   ProjectFeatureProgressSettings,
   ProjectFeatureProgressView,
   ProjectListResult,
@@ -69,24 +73,24 @@ export interface ProjectCommandContract {
     input: UpdateProjectFeaturePointGroupInput,
     ctx: RequestContext
   ): Promise<ProjectFeaturePointGroupUpdateResult>;
-  removeFeaturePointGroup(projectId: string, groupId: string, ctx: RequestContext): Promise<void>;
+  removeFeaturePointGroup(projectId: string, groupId: string, ctx: RequestContext): Promise<ProjectFeatureProgressIncrementalResult>;
   updateFeaturePoint(
     projectId: string,
     featurePointId: string,
     input: UpdateProjectFeaturePointInput,
     ctx: RequestContext
-  ): Promise<ProjectFeaturePointEntity>;
-  removeFeaturePoint(projectId: string, featurePointId: string, ctx: RequestContext): Promise<void>;
+  ): Promise<ProjectFeaturePointUpdateResult>;
+  removeFeaturePoint(projectId: string, featurePointId: string, ctx: RequestContext): Promise<ProjectFeatureProgressIncrementalResult>;
   upsertFeatureProgressOverride(
     projectId: string,
     input: UpsertProjectFeatureProgressOverrideInput,
     ctx: RequestContext
-  ): Promise<ProjectFeatureProgressOverrideEntity>;
+  ): Promise<ProjectFeatureProgressOverrideUpdateResult>;
   removeFeatureProgressOverride(
     projectId: string,
     input: DeleteProjectFeatureProgressOverrideInput,
     ctx: RequestContext
-  ): Promise<void>;
+  ): Promise<ProjectFeatureProgressOverrideDeleteResult>;
   addModuleMember(
     projectId: string,
     moduleId: string,

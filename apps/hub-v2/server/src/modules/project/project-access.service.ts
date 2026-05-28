@@ -88,6 +88,58 @@ export class ProjectAccessService {
     return member;
   }
 
+  async requireProjectMaintainer(projectId: string, ctx: RequestContext, action: string): Promise<void> {
+    if (this.authorization.canManageAllProjects(ctx)) {
+      return;
+    }
+
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
+    }
+
+    let member: ProjectMemberEntity;
+    try {
+      member = await this.requireProjectMember(projectId, userId, action);
+    } catch (error) {
+      if (error instanceof AppError && error.code === ERROR_CODES.PROJECT_MEMBER_NOT_FOUND) {
+        throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "无权限执行该操作，需要项目管理员权限", 403);
+      }
+      throw error;
+    }
+    if (member.roleCode !== "project_admin" && !member.isOwner) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "无权限执行该操作，需要项目管理员权限", 403);
+    }
+  }
+
+  assertCanTransferOwner(projectId: string, ctx: RequestContext): void {
+    if (this.authorization.canTransferAnyProjectOwner(ctx)) {
+      return;
+    }
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "无权限转移项目 Owner", 403);
+    }
+    const operator = this.repo.findMemberByProjectAndUserId(projectId, userId);
+    if (!operator?.isOwner) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "仅项目 Owner 可转移拥有者", 403);
+    }
+  }
+
+  async requireProjectArchiver(projectId: string, ctx: RequestContext, action: string): Promise<void> {
+    if (this.authorization.canArchiveAnyProject(ctx)) {
+      return;
+    }
+
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, `${action} forbidden`, 403);
+    }
+    if (!this.authorization.isProjectOwner(projectId, userId)) {
+      throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "无权限执行该操作，需要项目 Owner 或全局归档权限", 403);
+    }
+  }
+
   private isReadAction(action: string): boolean {
     const normalized = action.trim().toLowerCase();
     return normalized.startsWith("list ") || normalized.startsWith("get ") || normalized.startsWith("view ");

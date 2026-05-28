@@ -18,8 +18,12 @@ import type {
   ProjectFeaturePoint,
   ProjectFeaturePointGroup,
   ProjectFeaturePointGroupUpdateResult,
+  ProjectFeaturePointUpdateResult,
+  ProjectFeatureProgressIncrementalResult,
+  ProjectFeatureProgressOverrideDeleteResult,
   ProjectFeatureProgressSettings,
   ProjectFeatureProgressOverrideEntity,
+  ProjectFeatureProgressOverrideUpdateResult,
   ProjectFeatureProgressView,
   ProjectListQuery,
   ProjectMemberCandidate,
@@ -149,22 +153,22 @@ export class ProjectApiService {
   }
 
   removeFeaturePointGroup(projectId: string, groupId: string) {
-    return this.api.delete<{ id: string }>(`/projects/${projectId}/feature-point-groups/${groupId}`);
+    return this.api.delete<ProjectFeatureProgressIncrementalResult>(`/projects/${projectId}/feature-point-groups/${groupId}`);
   }
 
   updateFeaturePoint(projectId: string, featurePointId: string, input: UpdateProjectFeaturePointInput) {
-    return this.api.patch<ProjectFeaturePoint, UpdateProjectFeaturePointInput>(
+    return this.api.patch<ProjectFeaturePointUpdateResult, UpdateProjectFeaturePointInput>(
       `/projects/${projectId}/feature-points/${featurePointId}`,
       input
     );
   }
 
   removeFeaturePoint(projectId: string, featurePointId: string) {
-    return this.api.delete<{ id: string }>(`/projects/${projectId}/feature-points/${featurePointId}`);
+    return this.api.delete<ProjectFeatureProgressIncrementalResult>(`/projects/${projectId}/feature-points/${featurePointId}`);
   }
 
   upsertFeatureProgressOverride(projectId: string, input: UpsertProjectFeatureProgressOverrideInput) {
-    return this.api.put<ProjectFeatureProgressOverrideEntity, UpsertProjectFeatureProgressOverrideInput>(
+    return this.api.put<ProjectFeatureProgressOverrideUpdateResult, UpsertProjectFeatureProgressOverrideInput>(
       `/projects/${projectId}/feature-progress/overrides`,
       input
     );
@@ -172,7 +176,7 @@ export class ProjectApiService {
 
   removeFeatureProgressOverride(projectId: string, targetType: 'project' | 'module', targetId: string) {
     const query = `targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`;
-    return this.api.delete<{ targetType: string; targetId: string }>(`/projects/${projectId}/feature-progress/overrides?${query}`);
+    return this.api.delete<ProjectFeatureProgressOverrideDeleteResult>(`/projects/${projectId}/feature-progress/overrides?${query}`);
   }
 
   listModuleMembers(projectId: string, moduleId: string) {

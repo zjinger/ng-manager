@@ -28,6 +28,7 @@ import type {
 import type {
   ProjectFeaturePoint,
   ProjectFeaturePointGroupUpdateResult,
+  ProjectFeatureProgressIncrementalResult,
   ProjectFeatureProgressSectionPatch,
   ProjectFeatureProgressSummary,
   ProjectFeatureProgressStatusOption,
@@ -38,6 +39,8 @@ import type {
 } from '../../models/project.model';
 import { ProjectFeatureProgressExcelImportService, type ProjectFeatureProgressImportRow } from '../../services/project-feature-progress-excel-import.service';
 import { ProjectApiService } from '../../services/project-api.service';
+import { ProjectFeatureProgressPatchService } from './services/project-feature-progress-patch.service';
+import { ProjectFeatureProgressTreeBuilderService } from './services/project-feature-progress-tree-builder.service';
 
 interface FeatureProgressImportPreview {
   fileName: string;
@@ -45,11 +48,6 @@ interface FeatureProgressImportPreview {
   rows: ProjectFeatureProgressImportRow[];
   duplicateCount: number;
   warnings: string[];
-}
-
-interface FeatureSearchEntry {
-  feature: ProjectFeaturePoint;
-  searchText: string;
 }
 
 interface FeatureProgressTitleEditor {
@@ -147,14 +145,15 @@ interface FeatureProgressTitleEditor {
           }
 
           <app-project-feature-progress-tree
-            [sections]="featureTree()"
+            [nodes]="visibleNodes()"
             [canManage]="canManage()"
-            [collapseSectionsByDefault]="!hasActiveFilter()"
+            [forceExpanded]="hasActiveFilter()"
             [progressStatusOptions]="data.settings.statusOptions"
             [progressPatches]="groupProgressPatches()"
             [sectionPatches]="sectionProgressPatches()"
-            (edit)="startEdit($event)"
-            (delete)="deleteFeaturePoint($event)"
+            (toggleNode)="toggleNode($event)"
+            (editFeature)="startEdit($event)"
+            (deleteFeature)="deleteFeaturePoint($event)"
             (editTitle)="startEditTitle($event)"
             (editGroup)="startEditGroup($event)"
             (deleteGroup)="deleteFeaturePointGroup($event)"
@@ -322,6 +321,8 @@ export class ProjectFeatureProgressPageComponent {
   readonly projectContext = inject(ProjectContextStore);
   private readonly projectApi = inject(ProjectApiService);
   private readonly excelImport = inject(ProjectFeatureProgressExcelImportService);
+  private readonly progressPatch = inject(ProjectFeatureProgressPatchService);
+  private readonly treeBuilder = inject(ProjectFeatureProgressTreeBuilderService);
   private readonly authStore = inject(AuthStore);
   private readonly message = inject(NzMessageService);
   private readonly destroyRef = inject(DestroyRef);
@@ -346,6 +347,7 @@ export class ProjectFeatureProgressPageComponent {
   readonly groupProgressPatches = signal<Record<string, FeatureProgressGroupDisplayPatch>>({});
   readonly sectionProgressPatches = signal<Record<string, ProjectFeatureProgressSectionPatch>>({});
   readonly summaryPatch = signal<ProjectFeatureProgressSummary | null>(null);
+  readonly expandedIds = signal<ReadonlySet<string>>(new Set());
 
   readonly statusOptions = computed<Array<{ value: ProjectFeaturePointStatus; label: string }>>(() =>
     (this.vm()?.settings.statusOptions ?? DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS).map((option) => ({
@@ -378,59 +380,24 @@ export class ProjectFeatureProgressPageComponent {
     ].sort((left, right) => left.sort - right.sort || left.createdAt.localeCompare(right.createdAt));
   });
 
-  readonly filteredFeatures = computed(() => {
-    const keyword = this.keyword().trim().toLowerCase();
-    const moduleName = this.moduleFilter();
-    const status = this.statusFilter();
-    const progressStatusByFeatureId = this.featureProgressStatusByFeatureId();
-    return this.featureSearchEntries().filter(({ feature, searchText }) => {
-      if (moduleName && this.groupName(feature.moduleName) !== moduleName) return false;
-      if (status && progressStatusByFeatureId.get(feature.id) !== status) return false;
-      if (!keyword) return true;
-      return searchText.includes(keyword);
-    }).map((entry) => entry.feature);
-  });
-
-  readonly featureProgressStatusByFeatureId = computed(() => {
-    const data = this.vm();
-    const result = new Map<string, ProjectFeaturePointStatus>();
-    if (!data) return result;
-
-    const visitNode = (node: ProjectFeatureProgressModuleNode): void => {
-      const status = this.progressStatusKey(node.displayProgress, data.settings.statusOptions);
-      node.featurePoints.forEach((feature) => result.set(feature.id, status));
-      node.children.forEach(visitNode);
-    };
-
-    data.modules.forEach(visitNode);
-    const ungroupedStatus = this.progressStatusKey(0, data.settings.statusOptions);
-    data.ungrouped.featurePoints.forEach((feature) => result.set(feature.id, ungroupedStatus));
-    return result;
-  });
-
-  readonly featureSearchEntries = computed<FeatureSearchEntry[]>(() =>
-    this.allFeatures().map((feature) => ({
-      feature,
-      searchText: this.featureSearchText(feature),
-    }))
+  readonly treeBuild = computed(() =>
+    this.treeBuilder.build({
+      view: this.vm(),
+      keyword: this.keyword(),
+      moduleFilter: this.moduleFilter(),
+      statusFilter: this.statusFilter(),
+      expandedIds: this.expandedIds(),
+      expandAll: this.hasActiveFilter(),
+      groupPatches: this.groupProgressPatches(),
+      sectionPatches: this.sectionProgressPatches(),
+      statusOptions: this.vm()?.settings.statusOptions ?? DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS,
+    })
   );
 
-  readonly moduleOptions = computed(() => {
-    const names = new Set<string>();
-    const data = this.vm();
-    for (const module of data?.modules ?? []) {
-      names.add(module.name);
-    }
-    for (const feature of this.allFeatures()) {
-      if (!feature.moduleGroupId) names.add(this.groupName(feature.moduleName));
-    }
-    return Array.from(names).sort((left, right) => left.localeCompare(right, 'zh-Hans-CN'));
-  });
+  readonly visibleNodes = computed(() => this.treeBuild().visibleNodes);
 
-  readonly featureTree = computed(() => {
-    const data = this.vm();
-    if (!data) return [];
-    return this.buildFeatureTree(data.modules, this.filteredFeatures());
+  readonly moduleOptions = computed(() => {
+    return this.treeBuild().moduleOptions;
   });
   readonly editingFeature = computed(() => {
     const editingId = this.editingFeatureId();
@@ -451,6 +418,7 @@ export class ProjectFeatureProgressPageComponent {
       this.groupProgressPatches.set({});
       this.sectionProgressPatches.set({});
       this.summaryPatch.set(null);
+      this.expandedIds.set(new Set());
       this.loadForProject(projectId);
     });
 
@@ -471,6 +439,18 @@ export class ProjectFeatureProgressPageComponent {
       this.keyword.set(value);
       this.keywordTimer = null;
     }, 300);
+  }
+
+  toggleNode(key: string): void {
+    this.expandedIds.update((ids) => {
+      const next = new Set(ids);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   }
 
   async parseExcel(file: File): Promise<void> {
@@ -666,11 +646,11 @@ export class ProjectFeatureProgressPageComponent {
     this.saving.set(true);
     if (editingId) {
       this.projectApi.updateFeaturePoint(projectId, editingId, payload).subscribe({
-        next: () => {
+        next: (result) => {
           this.saving.set(false);
           this.message.success('功能点已更新');
           this.resetEditor();
-          this.reload();
+          this.applyIncrementalResult(result);
         },
         error: () => this.saving.set(false),
       });
@@ -702,10 +682,10 @@ export class ProjectFeatureProgressPageComponent {
     if (!projectId) return;
     this.saving.set(true);
     this.projectApi.removeFeaturePoint(projectId, featurePointId).subscribe({
-      next: () => {
+      next: (result) => {
         this.saving.set(false);
         this.message.success('功能点已删除');
-        this.reload();
+        this.applyIncrementalResult(result);
       },
       error: () => this.saving.set(false),
     });
@@ -728,6 +708,7 @@ export class ProjectFeatureProgressPageComponent {
         this.saving.set(false);
         this.cancelGroupEdit();
         this.message.success(`${targetLabel}进度已保存`);
+        this.applyIncrementalResult(result);
         this.applyFeaturePointGroupUpdateResult(result, target);
       },
       error: () => undefined,
@@ -744,10 +725,10 @@ export class ProjectFeatureProgressPageComponent {
     }
     this.saving.set(true);
     this.projectApi.removeFeaturePointGroup(projectId, target.id).subscribe({
-      next: () => {
+      next: (result) => {
         this.saving.set(false);
         this.message.success('分组已删除');
-        this.reload();
+        this.applyIncrementalResult(result);
       },
       error: () => this.saving.set(false),
     });
@@ -764,11 +745,11 @@ export class ProjectFeatureProgressPageComponent {
       progress: input.progress,
       remark: input.remark,
     }).subscribe({
-      next: () => {
+      next: (result) => {
         this.saving.set(false);
         this.message.success('整体进度已更新');
         this.overallEditorOpen.set(false);
-        this.reload();
+        this.applyIncrementalResult(result);
       },
       error: () => this.saving.set(false),
     });
@@ -780,11 +761,11 @@ export class ProjectFeatureProgressPageComponent {
     if (!projectId) return;
     this.saving.set(true);
     this.projectApi.removeFeatureProgressOverride(projectId, 'project', projectId).subscribe({
-      next: () => {
+      next: (result) => {
         this.saving.set(false);
         this.message.success('整体手动进度已清除');
         this.overallEditorOpen.set(false);
-        this.reload();
+        this.applyIncrementalResult(result);
       },
       error: () => this.saving.set(false),
     });
@@ -845,6 +826,22 @@ export class ProjectFeatureProgressPageComponent {
     this.cancelTitleEdit();
   }
 
+  private applyIncrementalResult(result: ProjectFeatureProgressIncrementalResult): void {
+    const current = this.vm();
+    if (!current) {
+      return;
+    }
+    this.vm.set(this.progressPatch.applyIncrementalResult(current, result));
+    this.summaryPatch.set(result.summary);
+    this.sectionProgressPatches.update((patches) => {
+      const next = { ...patches };
+      for (const section of result.sections) {
+        next[section.key] = section;
+      }
+      return next;
+    });
+  }
+
   private applyFeaturePointGroupUpdateResult(
     result: ProjectFeaturePointGroupUpdateResult,
     target: FeaturePointGroupDrawerTarget | null
@@ -898,80 +895,6 @@ export class ProjectFeatureProgressPageComponent {
     });
   }
 
-  private buildFeatureTree(
-    nodes: ProjectFeatureProgressModuleNode[],
-    features: ProjectFeaturePoint[]
-  ): FeatureProgressTitleGroup[] {
-    const allVisibleFeatures = this.sortFeatures(features);
-    const nodeById = new Map<string, ProjectFeatureProgressModuleNode>();
-    this.collectModuleNodes(nodes).forEach((node) => nodeById.set(node.id, node));
-    const sectionMap = new Map<string, Map<string, Map<string, ProjectFeaturePoint[]>>>();
-
-    for (const feature of allVisibleFeatures) {
-      const sectionKey = this.groupName(feature.groupTitle);
-      const moduleKey = `${sectionKey}::${feature.moduleGroupId || this.groupName(feature.moduleName)}`;
-      const submoduleKey = `${moduleKey}::${feature.submoduleGroupId || this.groupName(feature.submoduleName)}`;
-      if (!sectionMap.has(sectionKey)) sectionMap.set(sectionKey, new Map());
-      const moduleMap = sectionMap.get(sectionKey)!;
-      if (!moduleMap.has(moduleKey)) moduleMap.set(moduleKey, new Map());
-      const submoduleMap = moduleMap.get(moduleKey)!;
-      if (!submoduleMap.has(submoduleKey)) submoduleMap.set(submoduleKey, []);
-      submoduleMap.get(submoduleKey)!.push(feature);
-    }
-
-    return Array.from(sectionMap.entries()).map(([title, moduleMap]) => {
-      const groups = Array.from(moduleMap.entries()).map(([moduleKey, submoduleMap]) => {
-        const moduleFeatures = Array.from(submoduleMap.values()).flat();
-        const firstFeature = moduleFeatures[0]!;
-        const moduleNode = firstFeature.moduleGroupId ? nodeById.get(firstFeature.moduleGroupId) ?? null : null;
-        const subgroups = Array.from(submoduleMap.entries()).map(([submoduleKey, features]) => {
-          const subgroupFirst = features[0]!;
-          const submoduleNode = subgroupFirst.submoduleGroupId ? nodeById.get(subgroupFirst.submoduleGroupId) ?? null : null;
-          const progress = submoduleNode?.displayProgress ?? 0;
-          return {
-            id: subgroupFirst.submoduleGroupId || submoduleKey,
-            key: submoduleKey,
-            name: this.groupName(subgroupFirst.submoduleName),
-            progress,
-            computedProgress: submoduleNode?.computedProgress ?? progress,
-            manualProgress: submoduleNode?.manualProgress ?? null,
-            completedCount: progress >= 100 ? 1 : 0,
-            featureCount: features.length,
-            sort: submoduleNode?.sort ?? subgroupFirst.sort,
-            remark: submoduleNode?.overrideRemark ?? null,
-            virtual: !subgroupFirst.submoduleGroupId,
-            features: this.sortFeatures(features),
-          };
-        }).sort((left, right) => left.sort - right.sort || left.name.localeCompare(right.name, 'zh-Hans-CN'));
-        const computedProgress = this.averageProgressValues(subgroups.map((subgroup) => subgroup.progress));
-        const progress = moduleNode?.manualProgress ?? computedProgress;
-        return {
-          id: firstFeature.moduleGroupId || moduleKey,
-          key: moduleKey,
-          name: this.groupName(firstFeature.moduleName),
-          progress,
-          computedProgress,
-          manualProgress: moduleNode?.manualProgress ?? null,
-          completedCount: subgroups.filter((subgroup) => subgroup.progress >= 100).length,
-          featureCount: moduleFeatures.length,
-          sort: moduleNode?.sort ?? firstFeature.sort,
-          remark: moduleNode?.overrideRemark ?? null,
-          virtual: !firstFeature.moduleGroupId,
-          subgroups,
-        };
-      }).sort((left, right) => left.sort - right.sort || left.name.localeCompare(right.name, 'zh-Hans-CN'));
-      const features = groups.flatMap((group) => group.subgroups.flatMap((subgroup) => subgroup.features));
-      return {
-        key: title,
-        title,
-        progress: this.averageProgressValues(groups.map((group) => group.progress)),
-        completedCount: groups.filter((group) => group.progress >= 100).length,
-        featureCount: features.length,
-        groups,
-      };
-    });
-  }
-
   private groupName(value: string | null | undefined): string {
     return value?.trim() || '未分组';
   }
@@ -981,45 +904,6 @@ export class ProjectFeatureProgressPageComponent {
       clearTimeout(this.keywordTimer);
       this.keywordTimer = null;
     }
-  }
-
-  private featureSearchText(feature: ProjectFeaturePoint): string {
-    return [
-      feature.groupTitle,
-      feature.moduleName,
-      feature.submoduleName,
-      feature.name,
-      feature.ownerName,
-      ...(feature.ownerNames ?? []),
-      feature.remark,
-    ]
-      .filter((value): value is string => !!value)
-      .join('\n')
-      .toLowerCase();
-  }
-
-  private averageProgressValues(values: number[]): number {
-    if (values.length === 0) return 0;
-    return Math.round(values.reduce((sum, value) => sum + Math.max(0, Math.min(100, value)), 0) / values.length);
-  }
-
-  private progressStatusKey(
-    progress: number,
-    options: ProjectFeatureProgressStatusOption[]
-  ): ProjectFeaturePointStatus {
-    const normalized = Math.max(0, Math.min(100, Math.round(progress)));
-    const option = [...options]
-      .sort((left, right) => right.progress - left.progress)
-      .find((item) => normalized >= item.progress);
-    return option?.key ?? 'todo';
-  }
-
-  private sortFeatures(features: ProjectFeaturePoint[]): ProjectFeaturePoint[] {
-    return [...features].sort((left, right) => left.sort - right.sort || left.createdAt.localeCompare(right.createdAt));
-  }
-
-  private collectModuleNodes(nodes: ProjectFeatureProgressModuleNode[]): ProjectFeatureProgressModuleNode[] {
-    return nodes.flatMap((node) => [node, ...this.collectModuleNodes(node.children)]);
   }
 
   private buildFeatureKeySet(features: ProjectFeaturePoint[]): Set<string> {

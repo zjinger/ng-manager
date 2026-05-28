@@ -382,7 +382,34 @@ export interface ProjectFeaturePointGroupUpdateResult {
   group: ProjectFeaturePointGroup;
   summary: ProjectFeatureProgressSummary;
   nodes: ProjectFeatureProgressNodePatch[];
+  modules: ProjectFeatureProgressModuleNode[];
   sections: ProjectFeatureProgressSectionPatch[];
+}
+
+export interface ProjectFeatureProgressIncrementalResult {
+  summary: ProjectFeatureProgressSummary;
+  modules: ProjectFeatureProgressModuleNode[];
+  sections: ProjectFeatureProgressSectionPatch[];
+  affectedFeaturePoints?: ProjectFeaturePoint[];
+  removedFeaturePointIds?: string[];
+  affectedGroupIds?: string[];
+  removedGroupIds?: string[];
+  projectOverride?: ProjectFeatureProgressOverrideEntity | null;
+}
+
+export interface ProjectFeaturePointUpdateResult extends ProjectFeatureProgressIncrementalResult {
+  featurePoint: ProjectFeaturePoint;
+}
+
+export interface ProjectFeatureProgressOverrideUpdateResult extends ProjectFeatureProgressIncrementalResult {
+  override: ProjectFeatureProgressOverrideEntity;
+}
+
+export interface ProjectFeatureProgressOverrideDeleteResult extends ProjectFeatureProgressIncrementalResult {
+  removedOverride: {
+    targetType: ProjectFeatureProgressTargetType;
+    targetId: string;
+  };
 }
 
 export interface ProjectModuleMemberEntity {
