@@ -34,21 +34,21 @@ import type { ProjectFeatureProgressSummary } from '../../models/project.model';
       <app-stat-card
         label="已完成"
         [value]="summary().completedCount"
-        hint="状态为已完成"
+        hint="进度为 100%"
         icon="check-circle"
         tone="green"
       />
       <app-stat-card
         label="进行中"
         [value]="summary().inProgressCount"
-        hint="需要持续跟进"
+        hint="进度 1%-99%"
         icon="sync"
         tone="orange"
       />
       <app-stat-card
         label="未开始"
         [value]="summary().notStartedCount"
-        hint="尚未启动"
+        hint="进度为 0%"
         icon="clock-circle"
         tone="cyan"
       />
@@ -109,6 +109,6 @@ export class ProjectFeatureProgressStatsComponent {
     if (summary.overrideProgress !== null) {
       return `手动进度，自动计算 ${summary.computedProgress}%`;
     }
-    return '按功能点平均进度计算';
+    return '按模块与子模块进度计算';
   }
 }

@@ -190,6 +190,7 @@ function createDb() {
     CREATE TABLE project_feature_progress_settings (
       project_id TEXT PRIMARY KEY,
       enabled INTEGER NOT NULL DEFAULT 0,
+      status_options TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -211,6 +212,7 @@ function createDb() {
       module_id TEXT,
       module_group_id TEXT,
       submodule_group_id TEXT,
+      group_title TEXT,
       module_name TEXT,
       submodule_name TEXT,
       owner_user_id TEXT,
@@ -296,12 +298,13 @@ describe("project feature progress", () => {
     }
   });
 
-  it("summarizes feature points and applies project-level manual override", async () => {
+  it("summarizes module progress and applies project-level manual override", async () => {
     const db = createDb();
     try {
       const service = createService(db);
       await service.addFeaturePoint("prj_1", {
         name: "海区信息录入",
+        groupTitle: "一、国家中心系统",
         moduleName: "海区链路适配",
         submoduleName: "海区信息管理",
         ownerUserIds: ["usr_owner", "usr_member"],
@@ -311,20 +314,21 @@ describe("project feature progress", () => {
       }, ownerCtx());
       await service.addFeaturePoint("prj_1", {
         name: "监管报表口径确认",
-        status: "in_progress",
+        status: "developing",
         progress: 50,
         sort: 20
       }, ownerCtx());
 
       let view = await service.getFeatureProgress("prj_1", memberCtx());
       assert.equal(view.enabled, true);
-      assert.equal(view.summary.computedProgress, 75);
-      assert.equal(view.summary.displayProgress, 75);
-      assert.equal(view.modules[0]?.computedProgress, 100);
-      assert.equal(view.modules[0]?.displayProgress, 100);
+      assert.equal(view.summary.computedProgress, 0);
+      assert.equal(view.summary.displayProgress, 0);
+      assert.equal(view.modules[0]?.computedProgress, 0);
+      assert.equal(view.modules[0]?.displayProgress, 0);
       assert.deepEqual(view.modules[0]?.children[0]?.featurePoints[0]?.ownerUserIds, ["usr_owner", "usr_member"]);
       assert.deepEqual(view.modules[0]?.children[0]?.featurePoints[0]?.ownerNames, ["项目负责人", "项目成员"]);
-      assert.equal(view.ungrouped.computedProgress, 50);
+      assert.equal(view.modules[0]?.children[0]?.featurePoints[0]?.groupTitle, "一、国家中心系统");
+      assert.equal(view.ungrouped.computedProgress, 0);
 
       await service.upsertFeatureProgressOverride("prj_1", {
         targetType: "project",
@@ -334,7 +338,7 @@ describe("project feature progress", () => {
       }, ownerCtx());
       view = await service.getFeatureProgress("prj_1", memberCtx());
 
-      assert.equal(view.summary.computedProgress, 75);
+      assert.equal(view.summary.computedProgress, 0);
       assert.equal(view.summary.overrideProgress, 80);
       assert.equal(view.summary.displayProgress, 80);
       assert.equal(view.summary.overrideRemark, "主管汇报口径");
@@ -365,17 +369,38 @@ describe("project feature progress", () => {
       let view = await service.getFeatureProgress("prj_1", memberCtx());
       const module = view.modules[0]!;
       const submodule = module.children[0]!;
-      assert.equal(module.computedProgress, 50);
-      assert.equal(module.displayProgress, 50);
+      assert.equal(module.computedProgress, 0);
+      assert.equal(module.displayProgress, 0);
 
       await service.updateFeaturePointGroup("prj_1", module.id, {
         manualProgress: 83,
         remark: "主管口径"
       }, ownerCtx());
       view = await service.getFeatureProgress("prj_1", memberCtx());
-      assert.equal(view.modules[0]?.computedProgress, 50);
+      assert.equal(view.modules[0]?.computedProgress, 0);
       assert.equal(view.modules[0]?.manualProgress, 83);
       assert.equal(view.modules[0]?.displayProgress, 83);
+
+      await assert.rejects(() => service.removeFeaturePointGroup("prj_1", submodule.id, ownerCtx()), /当前分组下仍有功能点/);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("blocks group deletion when it only contains disabled feature points", async () => {
+    const db = createDb();
+    try {
+      const service = createService(db);
+      await service.addFeaturePoint("prj_1", {
+        name: "暂不展示的功能点",
+        moduleName: "国家中心系统",
+        submoduleName: "海区链路适配",
+        enabled: false
+      }, ownerCtx());
+
+      const submodule = db
+        .prepare("SELECT id FROM project_feature_point_groups WHERE project_id = ? AND name = ?")
+        .get("prj_1", "海区链路适配") as { id: string };
 
       await assert.rejects(() => service.removeFeaturePointGroup("prj_1", submodule.id, ownerCtx()), /当前分组下仍有功能点/);
     } finally {

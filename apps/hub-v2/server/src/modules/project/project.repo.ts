@@ -27,6 +27,7 @@ import type {
   UpdateProjectInput,
   UpdateProjectVersionItemInput
 } from "./project.types";
+import { DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS } from "./project.types";
 
 type ProjectRow = {
   id: string;
@@ -136,6 +137,7 @@ type ProjectModuleRdLinkRow = {
 type ProjectFeatureProgressSettingsRow = {
   project_id: string;
   enabled: number;
+  status_options?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -146,6 +148,7 @@ type ProjectFeaturePointRow = {
   module_id: string | null;
   module_group_id: string | null;
   submodule_group_id: string | null;
+  group_title: string | null;
   module_name: string | null;
   submodule_name: string | null;
   module_group_name: string | null;
@@ -156,7 +159,7 @@ type ProjectFeaturePointRow = {
   owner_user_ids: string | null;
   owner_names: string | null;
   name: string;
-  status: "todo" | "in_progress" | "done" | "paused";
+  status: "todo" | "designing" | "developing" | "testing" | "done";
   progress: number;
   enabled: number;
   sort: number;
@@ -833,14 +836,15 @@ export class ProjectRepo {
     this.db
       .prepare(
         `
-        INSERT INTO project_feature_progress_settings (project_id, enabled, created_at, updated_at)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO project_feature_progress_settings (project_id, enabled, status_options, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(project_id) DO UPDATE SET
           enabled = excluded.enabled,
+          status_options = excluded.status_options,
           updated_at = excluded.updated_at
         `
       )
-      .run(input.projectId, input.enabled ? 1 : 0, input.createdAt, input.updatedAt);
+      .run(input.projectId, input.enabled ? 1 : 0, JSON.stringify(input.statusOptions), input.createdAt, input.updatedAt);
   }
 
   listFeaturePointGroups(projectId: string): ProjectFeaturePointGroupEntity[] {
@@ -978,7 +982,6 @@ export class ProjectRepo {
         SELECT COUNT(*) AS total
         FROM project_feature_points
         WHERE project_id = ?
-          AND enabled = 1
           AND (module_group_id = ? OR submodule_group_id = ?)
         `
       )
@@ -1074,9 +1077,9 @@ export class ProjectRepo {
       .prepare(
         `
         INSERT INTO project_feature_points (
-          id, project_id, module_id, module_group_id, submodule_group_id, module_name, submodule_name, owner_user_id, name, status, progress, enabled, sort, remark, created_at, updated_at
+          id, project_id, module_id, module_group_id, submodule_group_id, group_title, module_name, submodule_name, owner_user_id, name, status, progress, enabled, sort, remark, created_at, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
       )
       .run(
@@ -1085,6 +1088,7 @@ export class ProjectRepo {
         input.moduleId ?? null,
         input.moduleGroupId ?? null,
         input.submoduleGroupId ?? null,
+        input.groupTitle?.trim() || null,
         input.moduleName?.trim() || null,
         input.submoduleName?.trim() || null,
         input.ownerUserId ?? null,
@@ -1123,6 +1127,10 @@ export class ProjectRepo {
     if (patch.submoduleGroupId !== undefined) {
       fields.push("submodule_group_id = ?");
       params.push(patch.submoduleGroupId ?? null);
+    }
+    if (patch.groupTitle !== undefined) {
+      fields.push("group_title = ?");
+      params.push(patch.groupTitle?.trim() || null);
     }
     if (patch.moduleName !== undefined) {
       fields.push("module_name = ?");
@@ -1457,9 +1465,41 @@ export class ProjectRepo {
     return {
       projectId: row.project_id,
       enabled: row.enabled === 1,
+      statusOptions: this.parseFeatureProgressStatusOptions(row.status_options),
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+  }
+
+  private parseFeatureProgressStatusOptions(value: string | null | undefined): ProjectFeatureProgressSettings["statusOptions"] {
+    if (!value) {
+      return DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS;
+    }
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (!Array.isArray(parsed)) {
+        return DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS;
+      }
+      const options = parsed
+        .map((item) => {
+          if (!item || typeof item !== "object") return null;
+          const record = item as Record<string, unknown>;
+          const key = `${record.key ?? ""}`;
+          if (!["todo", "designing", "developing", "testing", "done"].includes(key)) return null;
+          const label = `${record.label ?? ""}`.trim();
+          const progress = Number(record.progress);
+          if (!label || !Number.isFinite(progress)) return null;
+          return {
+            key: key as ProjectFeatureProgressSettings["statusOptions"][number]["key"],
+            label,
+            progress: Math.max(0, Math.min(100, Math.round(progress)))
+          };
+        })
+        .filter((item): item is ProjectFeatureProgressSettings["statusOptions"][number] => item !== null);
+      return options.length > 0 ? options : DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS;
+    } catch {
+      return DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS;
+    }
   }
 
   private mapFeaturePoint(row: ProjectFeaturePointRow): ProjectFeaturePointEntity {
@@ -1469,6 +1509,7 @@ export class ProjectRepo {
       moduleId: row.module_id ?? null,
       moduleGroupId: row.module_group_id ?? null,
       submoduleGroupId: row.submodule_group_id ?? null,
+      groupTitle: row.group_title ?? null,
       moduleName: row.module_group_name ?? row.module_name ?? row.linked_module_name ?? null,
       submoduleName: row.submodule_group_name ?? row.submodule_name ?? null,
       ownerUserId: row.owner_user_id ?? null,

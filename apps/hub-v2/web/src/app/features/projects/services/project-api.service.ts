@@ -17,6 +17,7 @@ import type {
   ProjectApiTokenEntity,
   ProjectFeaturePoint,
   ProjectFeaturePointGroup,
+  ProjectFeatureProgressSettings,
   ProjectFeatureProgressOverrideEntity,
   ProjectFeatureProgressView,
   ProjectListQuery,
@@ -122,7 +123,7 @@ export class ProjectApiService {
   }
 
   updateFeatureProgressSettings(projectId: string, input: UpdateProjectFeatureProgressSettingsInput) {
-    return this.api.put<unknown, UpdateProjectFeatureProgressSettingsInput>(
+    return this.api.put<ProjectFeatureProgressSettings, UpdateProjectFeatureProgressSettingsInput>(
       `/projects/${projectId}/feature-progress/settings`,
       input
     );

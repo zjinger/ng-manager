@@ -14,6 +14,22 @@ import type { ProjectFeaturePointStatus } from '../../models/project.model';
   template: `
     <app-page-toolbar>
       @if (canManage()) {
+        <div toolbar-primary class="feature-progress-toolbar__actions">
+          <button nz-button type="button" (click)="excelInput.click()">
+            <span nz-icon nzType="upload"></span>
+            导入 Excel
+          </button>
+          <input
+            #excelInput
+            class="feature-progress-toolbar__file"
+            type="file"
+            accept=".xlsx,.xls"
+            (change)="onExcelFileChange($event, excelInput)"
+          />
+        </div>
+      }
+
+      @if (canManage()) {
         <button toolbar-primary nz-button nzType="primary" (click)="create.emit()">
           <span nz-icon nzType="plus"></span>
           新增功能点
@@ -64,6 +80,12 @@ import type { ProjectFeaturePointStatus } from '../../models/project.model';
         gap: 12px;
       }
 
+      .feature-progress-toolbar__actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
       .feature-progress-toolbar__select {
         width: 180px;
       }
@@ -71,6 +93,10 @@ import type { ProjectFeaturePointStatus } from '../../models/project.model';
       .feature-progress-toolbar__search {
         min-width: 280px;
         max-width: 420px;
+      }
+
+      .feature-progress-toolbar__file {
+        display: none;
       }
 
       @media (max-width: 720px) {
@@ -96,4 +122,13 @@ export class ProjectFeatureProgressToolbarComponent {
   readonly moduleFilterChange = output<string>();
   readonly statusFilterChange = output<ProjectFeaturePointStatus | ''>();
   readonly create = output<void>();
+  readonly importExcel = output<File>();
+
+  onExcelFileChange(event: Event, input: HTMLInputElement): void {
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+    input.value = '';
+    if (file) {
+      this.importExcel.emit(file);
+    }
+  }
 }

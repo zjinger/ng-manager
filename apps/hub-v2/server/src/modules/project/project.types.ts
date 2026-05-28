@@ -3,8 +3,22 @@ import type { PageResult } from "../../shared/http/pagination";
 export type ProjectStatus = "active" | "inactive";
 export type ProjectVisibility = "internal" | "private";
 export type ProjectType = "entrust_dev" | "self_dev" | "tech_service";
-export type ProjectFeaturePointStatus = "todo" | "in_progress" | "done" | "paused";
+export type ProjectFeaturePointStatus = "todo" | "designing" | "developing" | "testing" | "done";
 export type ProjectFeatureProgressTargetType = "project" | "module";
+
+export interface ProjectFeatureProgressStatusOption {
+  key: ProjectFeaturePointStatus;
+  label: string;
+  progress: number;
+}
+
+export const DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS: ProjectFeatureProgressStatusOption[] = [
+  { key: "todo", label: "未开始", progress: 0 },
+  { key: "designing", label: "设计中", progress: 10 },
+  { key: "developing", label: "开发中", progress: 50 },
+  { key: "testing", label: "测试中", progress: 90 },
+  { key: "done", label: "已完成", progress: 100 }
+];
 export type ProjectMemberRole =
   | "member"
   | "product"
@@ -145,6 +159,7 @@ export interface ProjectVersionItemEntity {
 export interface ProjectFeatureProgressSettings {
   projectId: string;
   enabled: boolean;
+  statusOptions: ProjectFeatureProgressStatusOption[];
   createdAt: string;
   updatedAt: string;
 }
@@ -155,6 +170,7 @@ export interface ProjectFeaturePointEntity {
   moduleId: string | null;
   moduleGroupId: string | null;
   submoduleGroupId: string | null;
+  groupTitle?: string | null;
   moduleName?: string | null;
   submoduleName?: string | null;
   ownerUserId: string | null;
@@ -227,7 +243,8 @@ export interface UpdateProjectConfigItemInput {
 }
 
 export interface UpdateProjectFeatureProgressSettingsInput {
-  enabled: boolean;
+  enabled?: boolean;
+  statusOptions?: ProjectFeatureProgressStatusOption[];
 }
 
 export interface CreateProjectFeaturePointInput {
@@ -235,6 +252,7 @@ export interface CreateProjectFeaturePointInput {
   moduleId?: string | null;
   moduleGroupId?: string | null;
   submoduleGroupId?: string | null;
+  groupTitle?: string | null;
   moduleName?: string | null;
   submoduleName?: string | null;
   ownerUserId?: string | null;
@@ -251,6 +269,7 @@ export interface UpdateProjectFeaturePointInput {
   moduleId?: string | null;
   moduleGroupId?: string | null;
   submoduleGroupId?: string | null;
+  groupTitle?: string | null;
   moduleName?: string | null;
   submoduleName?: string | null;
   ownerUserId?: string | null;

@@ -6,6 +6,9 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
+import { NzSelectModule } from 'ng-zorro-antd/select';
+
+import type { ProjectFeaturePointStatus, ProjectFeatureProgressStatusOption } from '../../models/project.model';
 
 export interface FeaturePointGroupDrawerTarget {
   id: string;
@@ -37,6 +40,7 @@ export interface FeaturePointGroupDrawerSaveInput {
     NzGridModule,
     NzInputModule,
     NzInputNumberModule,
+    NzSelectModule,
   ],
   template: `
     <nz-drawer
@@ -72,12 +76,34 @@ export interface FeaturePointGroupDrawerSaveInput {
 
               <div nz-col [nzSpan]="12">
                 <nz-form-item>
+                  <nz-form-label nzFor="progressStatus">状态</nz-form-label>
+                  <nz-form-control>
+                    <nz-select
+                      name="progressStatus"
+                      nzAllowClear
+                      nzPlaceHolder="按百分比自定义"
+                      [ngModel]="draftStatus()"
+                      (ngModelChange)="setStatus($event)"
+                    >
+                      @for (option of statusOptions(); track option.key) {
+                        <nz-option
+                          [nzValue]="option.key"
+                          [nzLabel]="option.label"
+                        ></nz-option>
+                      }
+                    </nz-select>
+                  </nz-form-control>
+                </nz-form-item>
+              </div>
+
+              <div nz-col [nzSpan]="12">
+                <nz-form-item>
                   <nz-form-label nzFor="manualProgress">手动进度</nz-form-label>
                   <nz-form-control>
                     <nz-input-number
                       name="manualProgress"
                       [ngModel]="draftManualProgress()"
-                      (ngModelChange)="draftManualProgress.set(normalizeProgressOrNull($event))"
+                      (ngModelChange)="setManualProgress($event)"
                       [nzMin]="0"
                       [nzMax]="100"
                       [nzPlaceHolder]="'自动：' + item.computedProgress + '%'"
@@ -86,7 +112,7 @@ export interface FeaturePointGroupDrawerSaveInput {
                 </nz-form-item>
               </div>
 
-              <div nz-col [nzSpan]="12">
+              <div nz-col [nzSpan]="24">
                 <nz-form-item>
                   <nz-form-label nzFor="sort">排序</nz-form-label>
                   <nz-form-control>
@@ -118,7 +144,7 @@ export interface FeaturePointGroupDrawerSaveInput {
             </div>
 
             <footer class="feature-group-form__actions">
-              <button nz-button type="button" (click)="draftManualProgress.set(null)" [disabled]="saving()">清除手动进度</button>
+              <button nz-button type="button" (click)="clearManualProgress()" [disabled]="saving()">清除手动进度</button>
               <span class="feature-group-form__spacer"></span>
               <button nz-button type="button" (click)="cancel.emit()" [disabled]="saving()">取消</button>
               <button nz-button nzType="primary" htmlType="submit" [disabled]="saving() || !draftName().trim()" [nzLoading]="saving()">保存</button>
@@ -130,6 +156,7 @@ export interface FeaturePointGroupDrawerSaveInput {
   `,
   styles: [
     `
+      .feature-group-form nz-select,
       .feature-group-form nz-input-number {
         width: 100%;
       }
@@ -161,24 +188,60 @@ export class ProjectFeaturePointGroupDrawerComponent {
   readonly open = input(false);
   readonly saving = input(false);
   readonly target = input<FeaturePointGroupDrawerTarget | null>(null);
+  readonly statusOptions = input<ProjectFeatureProgressStatusOption[]>([]);
 
   readonly save = output<FeaturePointGroupDrawerSaveInput>();
   readonly cancel = output<void>();
 
   readonly draftName = signal('');
+  readonly draftStatus = signal<ProjectFeaturePointStatus | null>(null);
   readonly draftManualProgress = signal<number | null>(null);
   readonly draftSort = signal(0);
   readonly draftRemark = signal('');
+  private activeTargetKey = '';
 
   constructor() {
     effect(() => {
       const target = this.target();
-      if (!this.open() || !target) return;
+      if (!this.open() || !target) {
+        this.activeTargetKey = '';
+        return;
+      }
+      const targetKey = [
+        target.level,
+        target.id,
+        target.name,
+        target.manualProgress ?? 'auto',
+        target.sort,
+        target.remark ?? '',
+      ].join('::');
+      if (this.activeTargetKey === targetKey) return;
+      this.activeTargetKey = targetKey;
       this.draftName.set(target.name);
       this.draftManualProgress.set(target.manualProgress);
+      this.draftStatus.set(this.statusByProgress(target.manualProgress));
       this.draftSort.set(target.sort);
       this.draftRemark.set(target.remark ?? '');
     });
+  }
+
+  setStatus(status: ProjectFeaturePointStatus | null): void {
+    this.draftStatus.set(status);
+    const option = this.statusOptions().find((item) => item.key === status);
+    if (option) {
+      this.draftManualProgress.set(this.normalizeProgressOrNull(option.progress));
+    }
+  }
+
+  setManualProgress(value: unknown): void {
+    const progress = this.normalizeProgressOrNull(value);
+    this.draftManualProgress.set(progress);
+    this.draftStatus.set(this.statusByProgress(progress));
+  }
+
+  clearManualProgress(): void {
+    this.draftManualProgress.set(null);
+    this.draftStatus.set(null);
   }
 
   submit(id: string): void {
@@ -204,5 +267,10 @@ export class ProjectFeaturePointGroupDrawerComponent {
   normalizeSort(value: unknown): number {
     const n = Number(value ?? 0);
     return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0;
+  }
+
+  private statusByProgress(progress: number | null): ProjectFeaturePointStatus | null {
+    if (progress === null) return null;
+    return this.statusOptions().find((option) => option.progress === progress)?.key ?? null;
   }
 }

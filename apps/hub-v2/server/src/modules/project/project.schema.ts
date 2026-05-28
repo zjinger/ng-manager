@@ -2,8 +2,13 @@ import { z } from "zod";
 
 const projectTypeSchema = z.enum(["entrust_dev", "self_dev", "tech_service"]);
 const projectDateSchema = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be yyyy-MM-dd");
-const featurePointStatusSchema = z.enum(["todo", "in_progress", "done", "paused"]);
+const featurePointStatusSchema = z.enum(["todo", "designing", "developing", "testing", "done"]);
 const featureProgressTargetTypeSchema = z.enum(["project", "module"]);
+const featureProgressStatusOptionSchema = z.object({
+  key: featurePointStatusSchema,
+  label: z.string().trim().min(1).max(24),
+  progress: z.number().int().min(0).max(100)
+});
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1),
@@ -97,7 +102,8 @@ export const updateProjectConfigItemSchema = z.object({
 });
 
 export const updateProjectFeatureProgressSettingsSchema = z.object({
-  enabled: z.boolean()
+  enabled: z.boolean().optional(),
+  statusOptions: z.array(featureProgressStatusOptionSchema).min(1).max(8).optional()
 });
 
 export const createProjectFeaturePointSchema = z.object({
@@ -105,6 +111,7 @@ export const createProjectFeaturePointSchema = z.object({
   moduleId: z.string().trim().nullable().optional(),
   moduleGroupId: z.string().trim().nullable().optional(),
   submoduleGroupId: z.string().trim().nullable().optional(),
+  groupTitle: z.string().trim().nullable().optional(),
   moduleName: z.string().trim().nullable().optional(),
   submoduleName: z.string().trim().nullable().optional(),
   ownerUserId: z.string().trim().nullable().optional(),
@@ -121,6 +128,7 @@ export const updateProjectFeaturePointSchema = z.object({
   moduleId: z.string().trim().nullable().optional(),
   moduleGroupId: z.string().trim().nullable().optional(),
   submoduleGroupId: z.string().trim().nullable().optional(),
+  groupTitle: z.string().trim().nullable().optional(),
   moduleName: z.string().trim().nullable().optional(),
   submoduleName: z.string().trim().nullable().optional(),
   ownerUserId: z.string().trim().nullable().optional(),

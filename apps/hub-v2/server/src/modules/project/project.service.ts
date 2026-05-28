@@ -50,6 +50,7 @@ import type {
   UpsertProjectFeatureProgressOverrideInput,
   UpdateProjectVersionItemInput
 } from "./project.types";
+import { DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS } from "./project.types";
 import type { RdStageEntity } from "../rd/rd.types";
 
 const projectKeyNanoid = customAlphabet("1234567890abcdefghijklmnopqrstuvwxyz", 24);
@@ -507,7 +508,8 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     const current = this.repo.getFeatureProgressSettings(projectId);
     const settings: ProjectFeatureProgressSettings = {
       projectId,
-      enabled: true,
+      enabled: input.enabled ?? current?.enabled ?? true,
+      statusOptions: this.normalizeFeatureProgressStatusOptions(input.statusOptions ?? current?.statusOptions),
       createdAt: current?.createdAt ?? now,
       updatedAt: now
     };
@@ -542,6 +544,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       moduleId: null,
       moduleGroupId: groupSelection.moduleGroupId,
       submoduleGroupId: groupSelection.submoduleGroupId,
+      groupTitle: this.trimToNull(input.groupTitle),
       moduleName: groupSelection.moduleName,
       submoduleName: groupSelection.submoduleName,
       ownerUserId: ownerUserIds[0] ?? null,
@@ -665,6 +668,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       moduleId: Object.keys(groupSelection).length > 0 ? null : input.moduleId === undefined ? undefined : null,
       moduleGroupId: groupSelection.moduleGroupId,
       submoduleGroupId: groupSelection.submoduleGroupId,
+      groupTitle: input.groupTitle === undefined ? undefined : this.trimToNull(input.groupTitle),
       moduleName: groupSelection.moduleName,
       submoduleName: groupSelection.submoduleName,
       ownerUserId: ownerUserIds === undefined ? undefined : ownerUserIds[0] ?? null,
@@ -933,6 +937,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     return {
       projectId,
       enabled: true,
+      statusOptions: DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS,
       createdAt: now,
       updatedAt: now
     };
@@ -1017,7 +1022,9 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
         ...directFeatures,
         ...children.flatMap((child) => this.collectFeaturePointsFromNode(child))
       ];
-      const computedProgress = this.averageProgress(descendantFeatures);
+      const computedProgress = children.length > 0
+        ? this.averageProgressValues(children.map((child) => child.displayProgress))
+        : 0;
       const metric = this.applyFeatureGroupManualProgress(computedProgress, group.manualProgress, group.remark);
       return {
         ...metric,
@@ -1036,12 +1043,12 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     };
 
     const moduleNodes = roots.map(buildNode).filter((node) => node.featureCount > 0);
-    const computedProgress = this.averageProgress(featurePoints);
+    const progressNodes = moduleNodes.flatMap((node) => this.collectProgressNodesFromNode(node));
+    const computedProgress = this.averageProgressValues(progressNodes.map((node) => node.displayProgress));
     const summaryMetric = this.applyFeatureProgressOverride(
       computedProgress,
       overrideMap.get(`project:${project.id}`) ?? null
     );
-    const ungroupedProgress = this.averageProgress(ungroupedFeatures);
 
     return {
       projectId: project.id,
@@ -1050,19 +1057,19 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       summary: {
         projectId: project.id,
         totalCount: featurePoints.length,
-        completedCount: featurePoints.filter((item) => item.status === "done" || item.progress >= 100).length,
-        inProgressCount: featurePoints.filter((item) => item.status === "in_progress" || (item.progress > 0 && item.progress < 100)).length,
-        notStartedCount: featurePoints.filter((item) => item.status === "todo" || item.progress <= 0).length,
+        completedCount: progressNodes.filter((item) => item.displayProgress >= 100).length,
+        inProgressCount: progressNodes.filter((item) => item.displayProgress > 0 && item.displayProgress < 100).length,
+        notStartedCount: progressNodes.filter((item) => item.displayProgress <= 0).length,
         ...summaryMetric
       },
       modules: moduleNodes,
       ungrouped: {
         id: "ungrouped",
         name: "未分组",
-        computedProgress: ungroupedProgress,
+        computedProgress: 0,
         manualProgress: null,
         overrideProgress: null,
-        displayProgress: ungroupedProgress,
+        displayProgress: 0,
         overrideRemark: null,
         featureCount: ungroupedFeatures.length,
         featurePoints: ungroupedFeatures
@@ -1077,11 +1084,18 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     ];
   }
 
-  private averageProgress(items: ProjectFeaturePointEntity[]): number {
-    if (items.length === 0) {
+  private collectProgressNodesFromNode(node: ProjectFeatureProgressModuleNode): ProjectFeatureProgressModuleNode[] {
+    return [
+      node,
+      ...node.children.flatMap((child) => this.collectProgressNodesFromNode(child))
+    ];
+  }
+
+  private averageProgressValues(values: number[]): number {
+    if (values.length === 0) {
       return 0;
     }
-    return Math.round(items.reduce((sum, item) => sum + this.normalizeProgress(item.progress), 0) / items.length);
+    return Math.round(values.reduce((sum, value) => sum + this.normalizeProgress(value), 0) / values.length);
   }
 
   private applyFeatureProgressOverride(
@@ -1116,6 +1130,24 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   private normalizeProgress(progress: number | null | undefined): number {
     const value = Number(progress ?? 0);
     return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
+  }
+
+  private normalizeFeatureProgressStatusOptions(
+    options: ProjectFeatureProgressSettings["statusOptions"] | null | undefined
+  ): ProjectFeatureProgressSettings["statusOptions"] {
+    const fallbackByKey = new Map(DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS.map((option) => [option.key, option]));
+    const inputByKey = new Map((options ?? []).map((option) => [option.key, option]));
+    return DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS
+      .map((defaultOption) => {
+        const option = inputByKey.get(defaultOption.key) ?? fallbackByKey.get(defaultOption.key)!;
+        const label = option.label.trim() || defaultOption.label;
+        return {
+          key: defaultOption.key,
+          label: label.slice(0, 24),
+          progress: this.normalizeProgress(option.progress)
+        };
+      })
+      .sort((left, right) => left.progress - right.progress);
   }
 
   private findFeaturePointGroup(projectId: string, groupId: string): ProjectFeaturePointGroupEntity {

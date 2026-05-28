@@ -160,34 +160,7 @@ type ModuleCascaderOption = {
               </nz-form-item>
             </div>
 
-            <div nz-col [nzSpan]="8">
-              <nz-form-item>
-                <nz-form-label nzFor="progress">进度</nz-form-label>
-                <nz-form-control>
-                  <nz-input-number
-                    [ngModel]="draftProgress()"
-                    (ngModelChange)="onProgressChange($event)"
-                    name="progress"
-                    [nzMin]="0"
-                    [nzMax]="100"
-                  ></nz-input-number>
-                </nz-form-control>
-              </nz-form-item>
-            </div>
-
-            <div nz-col [nzSpan]="8">
-              <nz-form-item>
-                <nz-form-label nzFor="status">状态</nz-form-label>
-                <nz-form-control>
-                  <nz-select [ngModel]="draftStatus()" (ngModelChange)="onStatusChange($event)" name="status">
-                    @for (option of statusOptions(); track option.value) {
-                      <nz-option [nzValue]="option.value" [nzLabel]="option.label"></nz-option>
-                    }
-                  </nz-select>
-                </nz-form-control>
-              </nz-form-item>
-            </div>
-
+            <!-- 功能点仅作为功能结构展示节点，进度和状态由模块/子模块维护。 -->
             <div nz-col [nzSpan]="8">
               <nz-form-item>
                 <nz-form-label nzFor="sort">排序</nz-form-label>
@@ -348,8 +321,16 @@ export class ProjectFeaturePointDrawerComponent {
       this.draftStatus.set('done');
       return;
     }
-    if (this.draftStatus() === 'todo' || this.draftStatus() === 'done') {
-      this.draftStatus.set('in_progress');
+    if (progress >= 90) {
+      this.draftStatus.set('testing');
+      return;
+    }
+    if (progress >= 50) {
+      this.draftStatus.set('developing');
+      return;
+    }
+    if (progress >= 10) {
+      this.draftStatus.set('designing');
     }
   }
 
@@ -360,12 +341,20 @@ export class ProjectFeaturePointDrawerComponent {
       this.draftProgress.set(0);
       return;
     }
-    if (nextStatus === 'done') {
-      this.draftProgress.set(100);
+    if (nextStatus === 'designing') {
+      this.draftProgress.set(10);
       return;
     }
-    if (nextStatus === 'in_progress' && (this.draftProgress() <= 0 || this.draftProgress() >= 100)) {
+    if (nextStatus === 'developing') {
       this.draftProgress.set(50);
+      return;
+    }
+    if (nextStatus === 'testing') {
+      this.draftProgress.set(90);
+      return;
+    }
+    if (nextStatus === 'done') {
+      this.draftProgress.set(100);
     }
   }
 

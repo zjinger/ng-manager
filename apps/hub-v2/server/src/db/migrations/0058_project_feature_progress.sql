@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS project_feature_progress_settings (
   project_id TEXT PRIMARY KEY,
   enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
+  status_options TEXT NOT NULL DEFAULT '[{"key":"todo","label":"未开始","progress":0},{"key":"designing","label":"设计中","progress":10},{"key":"developing","label":"开发中","progress":50},{"key":"testing","label":"测试中","progress":90},{"key":"done","label":"已完成","progress":100}]',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -32,11 +33,12 @@ CREATE TABLE IF NOT EXISTS project_feature_points (
   module_id TEXT,
   module_group_id TEXT,
   submodule_group_id TEXT,
+  group_title TEXT,
   module_name TEXT,
   submodule_name TEXT,
   owner_user_id TEXT,
   name TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'done', 'paused')),
+  status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'designing', 'developing', 'testing', 'done')),
   progress INTEGER NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
   enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
   sort INTEGER NOT NULL DEFAULT 0,
@@ -57,7 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_project_feature_points_project_module
   ON project_feature_points(project_id, module_id);
 
 CREATE INDEX IF NOT EXISTS idx_project_feature_points_group_names
-  ON project_feature_points(project_id, module_name, submodule_name);
+  ON project_feature_points(project_id, group_title, module_name, submodule_name);
 
 CREATE INDEX IF NOT EXISTS idx_project_feature_points_group_ids
   ON project_feature_points(project_id, module_group_id, submodule_group_id);
