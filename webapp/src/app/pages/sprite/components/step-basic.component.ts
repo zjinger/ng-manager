@@ -9,6 +9,8 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { QuickSpriteProject } from '@models/sprite.model';
 import { SpriteDraft } from '../models/sprite-draft.model';
 
 @Component({
@@ -24,14 +26,49 @@ import { SpriteDraft } from '../models/sprite-draft.model';
     NzCardModule,
     NzTooltipModule,
     NzIconModule,
+    NzSpinModule,
   ],
   template: `
     <nz-card nzTitle="基础设置">
+      <div class="form-scroll">
       <form nz-form nzLayout="vertical">
+        <!-- 快捷雪碧图开关 -->
+        <nz-form-item>
+          <nz-form-label nzTooltipTitle="启用后直接从远端雪碧图服务获取雪碧图" [nzTooltipIcon]="{ type: 'question-circle', theme: 'outline' }">快捷雪碧图</nz-form-label>
+          <nz-form-control>
+            <nz-switch [(ngModel)]="draft.quickSpriteEnabled" name="quickSpriteEnabled" (ngModelChange)="onQuickToggle($event)"></nz-switch>
+          </nz-form-control>
+        </nz-form-item>
+
+        <!-- 快捷项目选择器（仅当启用快捷雪碧图时显示） -->
+        @if(draft.quickSpriteEnabled){
+        <nz-form-item>
+          <nz-form-label nzTooltipTitle="选择远端雪碧图项目" [nzTooltipIcon]="{ type: 'question-circle', theme: 'outline' }">远端项目</nz-form-label>
+          <nz-form-control>
+            <nz-spin [nzSpinning]="quickProjectsLoading">
+              <nz-select
+                nzShowSearch
+                nzAllowClear
+                nzPlaceHolder="选择远端雪碧图项目"
+                [ngModel]="draft.quickSpriteProjectId"
+                (ngModelChange)="onQuickProjectChange($event)"
+                name="quickSpriteProject"
+                style="width: 100%"
+                [nzNotFoundContent]="'无可用项目'"
+              >
+                @for(proj of quickProjects; track proj.id){
+                  <nz-option [nzValue]="proj.id" [nzLabel]="proj.name + ' (' + proj.id + ')'"></nz-option>
+                }
+              </nz-select>
+            </nz-spin>
+          </nz-form-control>
+        </nz-form-item>
+        }
+
         <nz-form-item>
           <nz-form-label nzTooltipTitle="项目的原尺寸图标SVN地址，用于制作项目所需雪碧图（可选）" [nzTooltipIcon]="{ type: 'question-circle', theme: 'outline' }">原尺寸图标 SVN 地址</nz-form-label>
           <nz-form-control>
-              <input nz-input [(ngModel)]="draft.iconSvnPath" name="iconSvnPath" placeholder="输入原尺寸图标SVN地址（可选）" />
+              <input nz-input [(ngModel)]="draft.iconSvnPath" name="iconSvnPath" placeholder="输入原尺寸图标SVN地址（可选）" [disabled]="!!draft.quickSpriteEnabled" />
           </nz-form-control>
           <div class="hint">示例：svn://192.168.1.10/项目管理/xx项目/02.项目文档/05.系统设计/02-原型设计/02-UI设计效果图&切图/3-原尺寸图标</div>
           </nz-form-item>
@@ -39,7 +76,7 @@ import { SpriteDraft } from '../models/sprite-draft.model';
         <nz-form-item>
           <nz-form-label nzTooltipTitle="项目的其他切图SVN地址，方便浏览和查看详情" [nzTooltipIcon]="{ type: 'question-circle', theme: 'outline' }">其他切图 SVN 地址</nz-form-label>
           <nz-form-control>
-            <input nz-input [(ngModel)]="draft.otherImagesSvnPath" name="otherImagesSvnPath" placeholder="输入其他切图 SVN 地址"/>
+            <input nz-input [(ngModel)]="draft.otherImagesSvnPath" name="otherImagesSvnPath" placeholder="输入其他切图 SVN 地址" [disabled]="!!draft.quickSpriteEnabled" />
           </nz-form-control>
         </nz-form-item>
 
@@ -76,13 +113,44 @@ import { SpriteDraft } from '../models/sprite-draft.model';
           </div>
         </nz-form-item>
       </form>
+      </div>
     </nz-card>
   `,
   styles: [`
+    .form-scroll {
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
     .hint { margin-top: 6px; font-size: 12px; opacity: .7; }
     .emit { margin-top: 8px; }
+    :host ::ng-deep .ant-select-selection-wrap{
+      max-width: 490px;
+    }
   `]
 })
 export class StepBasicComponent {
   @Input({ required: true }) draft!: SpriteDraft;
+  @Input() quickProjects: QuickSpriteProject[] = [];
+  @Input() quickProjectsLoading = false;
+
+  onQuickToggle(enabled: boolean) {
+    if (!enabled) {
+      // 关闭快捷模式时清除项目选择
+      this.draft.quickSpriteProjectId = undefined;
+    }
+  }
+
+  onQuickProjectChange(projectId: string | null) {
+    if (!projectId) {
+      this.draft.quickSpriteProjectId = undefined;
+      return;
+    }
+
+    const project = this.quickProjects.find(p => p.id === projectId);
+    if (!project) return;
+
+    // 保存快捷项目 ID
+    this.draft.quickSpriteProjectId = project.id;
+  }
 }

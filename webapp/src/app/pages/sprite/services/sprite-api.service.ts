@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiClient } from '@app/core/api';
 import { Project, ProjectAssets } from '@models/project.model';
-import { SpriteBrowseResult, SpriteConfig, SpriteSnapshot } from '@models/sprite.model';
+import { QuickSpriteProject, SpriteBrowseResult, SpriteConfig, SpriteSnapshot } from '@models/sprite.model';
 import { GenerateSpriteOptions, SvnCheckoutOptions } from '../models';
 import { SvnRuntime, SvnSyncResult } from '@models/svn.model';
 import { HttpParams } from '@angular/common/http';
@@ -54,5 +54,13 @@ export class SpriteApiService {
   browseImages(projectId: string, dir: string = '') {
     const params = new HttpParams().set('dir', dir);
     return this.api.get<SpriteBrowseResult>(`/api/sprite/browse/images/list/${projectId}`, params);
+  }
+  // 快捷雪碧图（通过远端雪碧图服务） 
+  getQuickProjects() {
+    return this.api.get<QuickSpriteProject[]>('/api/sprite/quick/projects');
+  }
+
+  getQuickGroups(quickProjectId: string) {
+    return this.api.get<string[]>(`/api/sprite/quick/groups/${quickProjectId}`);
   }
 }

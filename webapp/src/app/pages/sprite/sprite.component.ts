@@ -187,14 +187,16 @@ export class SpriteComponent implements OnInit, OnDestroy {
   isEmpty = computed(() => {
     const cfg = this.cfg();
     const p = this.state.project();
-    const hasSvnSource = cfg && (p?.assets?.iconsSvn || cfg?.sourceId);
+    const hasSvnSource = !!(cfg && (p?.assets?.iconsSvn || cfg?.sourceId));
+    const hasQuickSource = !!(cfg?.quickSpriteEnabled && cfg?.quickSpriteProjectId);
     const hasLocalSource = !!cfg?.localImageRoot;
-    return !hasSvnSource && !hasLocalSource;
+    return !hasSvnSource && !hasQuickSource && !hasLocalSource;
   });
   hasSvnSource = computed(() => {
     const cfg = this.cfg();
     const p = this.state.project();
-    return !!(cfg && (p?.assets?.iconsSvn || cfg?.sourceId));
+    const hasQuick = !!(cfg?.quickSpriteEnabled && cfg?.quickSpriteProjectId);
+    return !!(cfg && (p?.assets?.iconsSvn || cfg?.sourceId)) || hasQuick;
   });
 
   private async loadConfig() {

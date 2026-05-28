@@ -1,7 +1,7 @@
 import { computed, inject, Injectable } from '@angular/core';
 import { ProjectContextStore } from '@app/core/stores';
 import { ProjectAssets } from '@models/project.model';
-import { SpriteConfig, SpriteSnapshot } from '@models/sprite.model';
+import { QuickSpriteProject, SpriteConfig, SpriteSnapshot } from '@models/sprite.model';
 import { SvnRuntime, SvnSyncResult } from '@models/svn.model';
 import { firstValueFrom } from 'rxjs';
 import { SvnCheckoutOptions } from '../models';
@@ -64,6 +64,14 @@ export class SpriteStateService {
   async getLocalSprites(): Promise<SpriteSnapshot> {
     const projectId = this.ensureProjectId();
     return await firstValueFrom(this.api.getSprites(projectId, true));
+  }
+
+  async getQuickProjects(): Promise<QuickSpriteProject[]> {
+    return await firstValueFrom(this.api.getQuickProjects());
+  }
+
+  async getQuickGroups(quickProjectId: string): Promise<string[]> {
+    return await firstValueFrom(this.api.getQuickGroups(quickProjectId));
   }
 
   private ensureProjectId(): string {

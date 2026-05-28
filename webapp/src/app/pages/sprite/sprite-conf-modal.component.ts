@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ProjectAssets, ProjectAssetSourceSvn } from '@models/project.model';
+import { QuickSpriteProject, SpriteConfig } from '@models/sprite.model';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzGridModule } from 'ng-zorro-antd/grid';
@@ -13,7 +14,6 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
 import { StepAdvanceComponent, StepBasicComponent, StepSummaryAsideComponent } from './components';
 import { SpriteDraft } from './models/sprite-draft.model';
 import { SpriteStateService } from './services/sprite-state.service';
-import { SpriteConfig } from '@models/sprite.model';
 import { UiNotifierService } from '@app/core';
 
 @Component({
@@ -48,7 +48,7 @@ import { UiNotifierService } from '@app/core';
         <div class="content">
             <div class="main">
               @switch(step()){ @case(0){
-                <app-step-basic [draft]="draft()" />
+                <app-step-basic [draft]="draft()" [quickProjects]="quickProjects()" [quickProjectsLoading]="quickProjectsLoading()" />
                 } @case(1){
                 <app-step-advance [draft]="draft()" />
                 }
@@ -115,7 +115,7 @@ import { UiNotifierService } from '@app/core';
     `
   ],
 })
-export class SpriteConfModalComponent {
+export class SpriteConfModalComponent implements OnInit {
   step = signal(0);
   creating = signal(false);
   draft = signal<SpriteDraft>({ name: '', iconSvnPath: '', otherImagesSvnPath: '', localDir: '' });
@@ -124,6 +124,19 @@ export class SpriteConfModalComponent {
   private modal = inject(NzModalService);
   private state = inject(SpriteStateService);
   private notify = inject(UiNotifierService);
+  quickProjects = signal<QuickSpriteProject[]>([]);
+  quickProjectsLoading = signal(false);
+
+  async ngOnInit() {
+    try {
+      this.quickProjectsLoading.set(true);
+      const projects = await this.state.getQuickProjects();
+      this.quickProjects.set(projects);
+    } finally {
+      this.quickProjectsLoading.set(false);
+    }
+  }
+
   constructor() {
     const p = this.state.project();
     if (p) {
@@ -151,9 +164,10 @@ export class SpriteConfModalComponent {
     const s = this.step();
     const d = this.draft();
     if (s === 0) {
+      const hasQuickProject = !!(d.quickSpriteEnabled && d.quickSpriteProjectId?.trim());
       const hasIconSvn = d.iconSvnPath?.trim();
       const hasLocalImage = d.localImageRoot?.trim();
-      if (!hasIconSvn && !hasLocalImage) return false;
+      if (!hasQuickProject && !hasIconSvn && !hasLocalImage) return false;
       return true;
     }
     return true;
@@ -195,6 +209,8 @@ export class SpriteConfModalComponent {
       algorithm: 'binary-tree',
       spriteExportDir: d.spriteExportDir || '',
       lessExportDir: d.lessExportDir || '',
+      quickSpriteProjectId: d.quickSpriteProjectId,
+      quickSpriteEnabled: d.quickSpriteEnabled,
     }
 
     const cfg = await this.state.createConfig(assets, nextCfg);

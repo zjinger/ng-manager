@@ -16,6 +16,7 @@ import type {
     SpritesmithOptionsAlgorithm as SpritesmithOptionsAlgorithmDto,
     SvgIconMeta as SvgIconMetaDto,
     SvgMetaFile as SvgMetaFileDto,
+    QuickSpriteProjectDto,
 } from "@yinuo-ngm/protocol";
 
 export type SpritesmithOptionsAlgorithm = SpritesmithOptionsAlgorithmDto;
@@ -34,3 +35,4 @@ export type SpriteBrowseResult = BrowseEntriesDto | BrowseFilesDto;
 export type GenerateSpriteOptions = GenerateSpriteOptionsDto;
 export type SaveSpriteConfigBody = SaveSpriteConfigBodyDto;
 export type SaveSpriteConfigResponse = SaveSpriteConfigResponseDto;
+export type QuickSpriteProject = QuickSpriteProjectDto;

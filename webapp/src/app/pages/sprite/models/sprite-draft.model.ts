@@ -11,4 +11,8 @@ export interface SpriteDraft {
     template?: string; // 可选，默认为空
     /** 本地图片文件夹路径，支持两级遍历 */
     localImageRoot?: string;
+    /** 快捷雪碧图：远端项目 ID */
+    quickSpriteProjectId?: string;
+    /** 快捷雪碧图：是否启用快速模式 */
+    quickSpriteEnabled?: boolean;
 }
