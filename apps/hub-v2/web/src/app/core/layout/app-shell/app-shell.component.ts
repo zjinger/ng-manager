@@ -1,6 +1,7 @@
 import { Component, DestroyRef, HostListener, effect, inject, OnDestroy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 
 import { NAV_ITEMS } from '../../navigation/nav.config';
 import { NavigationBadgeStore } from '../../navigation/navigation-badge.store';
@@ -25,6 +26,7 @@ export class AppShellComponent implements OnDestroy {
   readonly uiStore = inject(UiStore);
   private readonly projectContext = inject(ProjectContextStore);
   private readonly navigationBadgeStore = inject(NavigationBadgeStore);
+  private readonly router = inject(Router);
   private readonly realtimeSync = inject(RealtimeSyncService);
   private readonly globalSearchStore = inject(GlobalSearchStore);
   private readonly systemNotification = inject(SystemNotificationService);
@@ -52,6 +54,18 @@ export class AppShellComponent implements OnDestroy {
       }
       this.navigationBadgeStore.load({ force: true });
     });
+
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((event) => {
+        if (this.keepsTransientProjectContext(event.urlAfterRedirects)) {
+          return;
+        }
+        this.projectContext.clearTransientCurrentProject();
+      });
   }
 
   ngOnDestroy(): void {
@@ -68,5 +82,9 @@ export class AppShellComponent implements OnDestroy {
     }
     event.preventDefault();
     this.globalSearchStore.openPanel();
+  }
+
+  private keepsTransientProjectContext(url: string): boolean {
+    return url.startsWith('/delivery-overview') || url.startsWith('/projects/progress');
   }
 }

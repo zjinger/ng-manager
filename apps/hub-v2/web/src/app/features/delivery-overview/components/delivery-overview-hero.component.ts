@@ -19,61 +19,65 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
       </div>
 
       <div class="hero__actions" data-export-hidden>
-        <button
-          type="button"
-          class="action-btn"
-          [disabled]="disabled()"
-          title="历史周报"
-          (click)="openHistory.emit()"
-        >
-          <span nz-icon nzType="history"></span>
-          历史周报
-        </button>
-        <button
-          type="button"
-          class="action-btn"
-          nz-popconfirm
-          nzPopconfirmTitle="确认导出当前周报图片？"
-          nzPopconfirmOkText="导出"
-          nzPopconfirmCancelText="取消"
-          nzPopconfirmPlacement="bottomRight"
-          [disabled]="disabled() || exportingImage()"
-          title="导出图片"
-          (nzOnConfirm)="exportImage.emit()"
-        >
-          <span nz-icon nzType="picture"></span>
-          {{ exportingImage() ? '导出中…' : '导出图片' }}
-        </button>
-        <button
-          type="button"
-          class="action-btn"
-          nz-popconfirm
-          nzPopconfirmTitle="确认导出当前周报 PDF？"
-          nzPopconfirmOkText="导出"
-          nzPopconfirmCancelText="取消"
-          nzPopconfirmPlacement="bottomRight"
-          [disabled]="disabled() || exportingPdf()"
-          title="导出 PDF"
-          (nzOnConfirm)="exportPdf.emit()"
-        >
-          <span nz-icon nzType="file-pdf"></span>
-          {{ exportingPdf() ? '导出中…' : '导出 PDF' }}
-        </button>
-        <button
-          type="button"
-          class="action-btn action-btn--primary"
-          nz-popconfirm
-          nzPopconfirmTitle="确认生成一份新的历史周报？"
-          nzPopconfirmOkText="生成"
-          nzPopconfirmCancelText="取消"
-          nzPopconfirmPlacement="bottomRight"
-          [disabled]="disabled() || !canGenerateReport() || generatingReport()"
-          [title]="canGenerateReport() ? '生成周报快照' : '仅项目管理员可生成周报'"
-          (nzOnConfirm)="generateReport.emit()"
-        >
-          <span nz-icon nzType="camera"></span>
-          {{ generatingReport() ? '生成中…' : '生成周报' }}
-        </button>
+        @if (canUseReportActions()) {
+          <button
+            type="button"
+            class="action-btn"
+            [disabled]="disabled()"
+            title="历史周报"
+            (click)="openHistory.emit()"
+          >
+            <span nz-icon nzType="history"></span>
+            历史周报
+          </button>
+          <button
+            type="button"
+            class="action-btn"
+            nz-popconfirm
+            nzPopconfirmTitle="确认导出当前周报图片？"
+            nzPopconfirmOkText="导出"
+            nzPopconfirmCancelText="取消"
+            nzPopconfirmPlacement="bottomRight"
+            [disabled]="disabled() || exportingImage()"
+            title="导出图片"
+            (nzOnConfirm)="exportImage.emit()"
+          >
+            <span nz-icon nzType="picture"></span>
+            {{ exportingImage() ? '导出中…' : '导出图片' }}
+          </button>
+          <button
+            type="button"
+            class="action-btn"
+            nz-popconfirm
+            nzPopconfirmTitle="确认导出当前周报 PDF？"
+            nzPopconfirmOkText="导出"
+            nzPopconfirmCancelText="取消"
+            nzPopconfirmPlacement="bottomRight"
+            [disabled]="disabled() || exportingPdf()"
+            title="导出 PDF"
+            (nzOnConfirm)="exportPdf.emit()"
+          >
+            <span nz-icon nzType="file-pdf"></span>
+            {{ exportingPdf() ? '导出中…' : '导出 PDF' }}
+          </button>
+        }
+        @if (canGenerateReport()) {
+          <button
+            type="button"
+            class="action-btn action-btn--primary"
+            nz-popconfirm
+            nzPopconfirmTitle="确认生成一份新的历史周报？"
+            nzPopconfirmOkText="生成"
+            nzPopconfirmCancelText="取消"
+            nzPopconfirmPlacement="bottomRight"
+            [disabled]="disabled() || generatingReport()"
+            title="生成周报快照"
+            (nzOnConfirm)="generateReport.emit()"
+          >
+            <span nz-icon nzType="camera"></span>
+            {{ generatingReport() ? '生成中…' : '生成周报' }}
+          </button>
+        }
       </div>
     </header>
   `,
@@ -186,6 +190,7 @@ export class DeliveryOverviewHeroComponent {
   readonly exportingImage = input(false);
   readonly exportingPdf = input(false);
   readonly generatingReport = input(false);
+  readonly canUseReportActions = input(false);
   readonly canGenerateReport = input(false);
   readonly openHistory = output<void>();
   readonly exportImage = output<void>();

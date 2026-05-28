@@ -111,23 +111,25 @@ import {
                         >
                           <span nz-icon [nzType]="exportingPdfId() === item.id ? 'loading' : 'file-pdf'"></span>
                         </button>
-                        <button
-                          nz-button
-                          nzType="text"
-                          nzSize="small"
-                          class="row-action-btn row-action-btn--danger"
-                          type="button"
-                          title="删除"
-                          nz-popconfirm
-                          nzPopconfirmTitle="确认删除这份历史周报？删除后不可恢复。"
-                          nzPopconfirmOkText="删除"
-                          nzPopconfirmCancelText="取消"
-                          nzPopconfirmPlacement="left"
-                          [disabled]="!canDelete() || deletingId() === item.id"
-                          (nzOnConfirm)="deleteReport(item)"
-                        >
-                          <span nz-icon [nzType]="deletingId() === item.id ? 'loading' : 'delete'"></span>
-                        </button>
+                        @if (canDelete()) {
+                          <button
+                            nz-button
+                            nzType="text"
+                            nzSize="small"
+                            class="row-action-btn row-action-btn--danger"
+                            type="button"
+                            title="删除"
+                            nz-popconfirm
+                            nzPopconfirmTitle="确认删除这份历史周报？删除后不可恢复。"
+                            nzPopconfirmOkText="删除"
+                            nzPopconfirmCancelText="取消"
+                            nzPopconfirmPlacement="left"
+                            [disabled]="deletingId() === item.id"
+                            (nzOnConfirm)="deleteReport(item)"
+                          >
+                            <span nz-icon [nzType]="deletingId() === item.id ? 'loading' : 'delete'"></span>
+                          </button>
+                        }
                       </div>
                     </td>
                   </tr>

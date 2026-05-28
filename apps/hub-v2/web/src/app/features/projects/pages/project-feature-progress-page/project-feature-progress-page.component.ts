@@ -270,11 +270,13 @@ export class ProjectFeatureProgressPageComponent {
   }
 
   startCreate(): void {
+    if (!this.canManage()) return;
     this.resetEditor();
     this.editorOpen.set(true);
   }
 
   startEdit(feature: ProjectFeaturePoint): void {
+    if (!this.canManage()) return;
     this.editingFeatureId.set(feature.id);
     this.editorOpen.set(true);
   }
@@ -284,6 +286,7 @@ export class ProjectFeatureProgressPageComponent {
   }
 
   startEditGroup(target: FeatureProgressGroupEditTarget): void {
+    if (!this.canManage()) return;
     if (target.level === 'module') {
       this.editingGroup.set({
         id: target.group.id,
@@ -315,10 +318,12 @@ export class ProjectFeatureProgressPageComponent {
   }
 
   startEditOverall(): void {
+    if (!this.canManage()) return;
     this.overallEditorOpen.set(true);
   }
 
   saveFeaturePoint(input: FeaturePointDrawerSaveInput): void {
+    if (!this.canManage()) return;
     const projectId = this.projectId();
     if (!projectId || !input.name.trim()) {
       this.message.warning('请填写功能点名称');
@@ -374,6 +379,7 @@ export class ProjectFeatureProgressPageComponent {
   }
 
   deleteFeaturePoint(featurePointId: string): void {
+    if (!this.canManage()) return;
     const projectId = this.projectId();
     if (!projectId) return;
     this.saving.set(true);
@@ -388,6 +394,7 @@ export class ProjectFeatureProgressPageComponent {
   }
 
   saveFeaturePointGroup(input: FeaturePointGroupDrawerSaveInput): void {
+    if (!this.canManage()) return;
     const projectId = this.projectId();
     if (!projectId) return;
     this.saving.set(true);
@@ -408,6 +415,7 @@ export class ProjectFeatureProgressPageComponent {
   }
 
   deleteFeaturePointGroup(target: FeatureProgressGroupDeleteTarget): void {
+    if (!this.canManage()) return;
     const projectId = this.projectId();
     if (!projectId) return;
     if (target.featureCount > 0 || target.childCount > 0) {
@@ -426,6 +434,7 @@ export class ProjectFeatureProgressPageComponent {
   }
 
   saveOverallProgress(input: FeatureProgressOverallSaveInput): void {
+    if (!this.canManage()) return;
     const projectId = this.projectId();
     if (!projectId) return;
     this.saving.set(true);
@@ -446,6 +455,7 @@ export class ProjectFeatureProgressPageComponent {
   }
 
   clearOverallProgress(): void {
+    if (!this.canManage()) return;
     const projectId = this.projectId();
     if (!projectId) return;
     this.saving.set(true);

@@ -329,12 +329,12 @@ export class ProjectListPageComponent {
   }
 
   openDeliveryOverview(project: ProjectSummary): void {
-    this.projectContext.setCurrentProjectId(project.id);
+    this.projectContext.setTransientCurrentProject(project);
     void this.router.navigate(['/delivery-overview']);
   }
 
   openFeatureProgress(project: ProjectSummary): void {
-    this.projectContext.setCurrentProjectId(project.id);
+    this.projectContext.setTransientCurrentProject(project);
     void this.router.navigate(['/projects/progress']);
   }
 

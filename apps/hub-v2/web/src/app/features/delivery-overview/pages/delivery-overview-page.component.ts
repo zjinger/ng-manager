@@ -61,7 +61,8 @@ interface ReportPeriodRange {
         [exportingImage]="exportingImage()"
         [exportingPdf]="exportingPdf()"
         [generatingReport]="generatingReport()"
-        [canGenerateReport]="canGenerateReport()"
+        [canUseReportActions]="canUseReportActions()"
+        [canGenerateReport]="canManageProject()"
         (openHistory)="openHistoryDrawer()"
         (exportImage)="exportImage()"
         (exportPdf)="exportPdf()"
@@ -98,6 +99,7 @@ interface ReportPeriodRange {
                 <div class="main-stack">
                   <app-delivery-overview-summary-panel
                     [summaries]="visibleSummaries()"
+                    [canEdit]="canManageProject()"
                     (summariesChange)="editedSummaries.set($event)"
                     (restoreDefault)="editedSummaries.set(null)"
                   />
@@ -124,7 +126,7 @@ interface ReportPeriodRange {
     <app-delivery-overview-history-drawer
       [open]="historyDrawerOpen()"
       [projectId]="projectContext.currentProjectId()"
-      [canDelete]="canGenerateReport()"
+      [canDelete]="canManageProject()"
       [refreshKey]="historyRefreshKey()"
       (close)="historyDrawerOpen.set(false)"
     />
@@ -271,10 +273,18 @@ export class DeliveryOverviewPageComponent {
     return this.buildVm(this.rdItems(), this.rdStages(), this.unfinishedIssueCount(), this.totalRdCount(), this.truncated());
   });
   readonly visibleSummaries = computed(() => this.editedSummaries() ?? this.vm()?.summaries ?? []);
-  readonly canGenerateReport = computed(() => {
+  readonly isProjectMember = computed(() => {
+    const userId = this.authStore.currentUser()?.userId?.trim();
+    return !!userId && this.members().some((member) => member.userId === userId);
+  });
+  readonly canUseReportActions = computed(() => {
+    const permissions = this.authStore.currentUser()?.permissionCodes ?? [];
+    return permissions.includes('project.manage.all') || this.isProjectMember();
+  });
+  readonly canManageProject = computed(() => {
     const user = this.authStore.currentUser();
     const permissions = user?.permissionCodes ?? [];
-    if (permissions.includes('project.manage') || permissions.includes('project.manage.all')) {
+    if (permissions.includes('project.manage.all')) {
       return true;
     }
     const userId = user?.userId?.trim();
@@ -297,11 +307,12 @@ export class DeliveryOverviewPageComponent {
   }
 
   openHistoryDrawer(): void {
+    if (!this.canUseReportActions()) return;
     this.historyDrawerOpen.set(true);
   }
 
   async exportImage(): Promise<void> {
-    if (!this.exportRoot || this.exportingImage()) return;
+    if (!this.canUseReportActions() || !this.exportRoot || this.exportingImage()) return;
     this.exportingImage.set(true);
     try {
       await this.exportService.exportPng(this.exportRoot.nativeElement, this.buildExportFilename('png'));
@@ -313,7 +324,7 @@ export class DeliveryOverviewPageComponent {
   }
 
   async exportPdf(): Promise<void> {
-    if (!this.exportRoot || this.exportingPdf()) return;
+    if (!this.canUseReportActions() || !this.exportRoot || this.exportingPdf()) return;
     this.exportingPdf.set(true);
     try {
       await this.exportService.exportPdf(this.exportRoot.nativeElement, this.buildExportFilename('pdf'));
@@ -325,7 +336,7 @@ export class DeliveryOverviewPageComponent {
   }
 
   async generateReport(): Promise<void> {
-    if (!this.canGenerateReport()) {
+    if (!this.canManageProject()) {
       this.message.warning('仅项目管理员可生成周报');
       return;
     }

@@ -11,9 +11,11 @@ import { DeliveryOverviewSummaryEditDialogComponent } from './delivery-overview-
   imports: [DeliveryOverviewSummaryEditDialogComponent, NzIconModule, PanelCardComponent],
   template: `
     <app-panel-card title="周报摘要">
-      <button panel-actions type="button" class="action-btn" title="编辑周报摘要" data-export-hidden (click)="dialogOpen.set(true)">
-        编辑摘要
-      </button>
+      @if (canEdit()) {
+        <button panel-actions type="button" class="action-btn" title="编辑周报摘要" data-export-hidden (click)="dialogOpen.set(true)">
+          编辑摘要
+        </button>
+      }
       <div class="summary-grid">
         @for (summary of summaries(); track summary.title) {
           <div class="summary-card" [attr.data-tone]="summary.tone">
@@ -103,6 +105,7 @@ import { DeliveryOverviewSummaryEditDialogComponent } from './delivery-overview-
 })
 export class DeliveryOverviewSummaryPanelComponent {
   readonly summaries = input.required<SummaryBlock[]>();
+  readonly canEdit = input(false);
   readonly summariesChange = output<SummaryBlock[]>();
   readonly restoreDefault = output<void>();
 

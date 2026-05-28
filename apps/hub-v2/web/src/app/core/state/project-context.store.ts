@@ -20,6 +20,7 @@ export class ProjectContextStore {
   private readonly authStore = inject(AuthStore);
 
   private readonly projectsState = signal<ProjectSummary[]>([]);
+  private readonly transientProjectIdState = signal<string | null>(null);
   private readonly currentProjectIdState = signal<string | null>(
     typeof localStorage === 'undefined' ? null : localStorage.getItem(STORAGE_KEY)
   );
@@ -59,12 +60,50 @@ export class ProjectContextStore {
         this.projectApi.listAccessible(scopeMode, { includeArchived: this.includeArchivedProjectsState() })
       ),
       tap((items) => {
-        this.projectsState.set(items);
         const currentId = this.currentProjectIdState();
-        const exists = items.some((item) => item.id === currentId);
-        this.setCurrentProjectId(exists ? currentId : (items[0]?.id ?? null));
+        const transientId = this.transientProjectIdState();
+        const transientProject = transientId ? this.projectsState().find((item) => item.id === transientId) : null;
+        const nextItems =
+          transientProject && !items.some((item) => item.id === transientProject.id)
+            ? [transientProject, ...items]
+            : items;
+        this.projectsState.set(nextItems);
+        const exists = nextItems.some((item) => item.id === currentId);
+        const nextProjectId = exists ? currentId : (items[0]?.id ?? null);
+        this.setCurrentProjectId(nextProjectId, { persist: nextProjectId !== transientId });
       })
     );
+  }
+
+  setTransientCurrentProject(project: ProjectSummary): void {
+    const exists = this.projectsState().some((item) => item.id === project.id);
+    if (exists) {
+      this.projectsState.update((items) => items.map((item) => (item.id === project.id ? project : item)));
+      this.setCurrentProjectId(project.id);
+      return;
+    }
+
+    this.transientProjectIdState.set(project.id);
+    this.projectsState.update((items) => {
+      const withoutCurrent = items.filter((item) => item.id !== project.id);
+      return [project, ...withoutCurrent];
+    });
+    this.setCurrentProjectId(project.id, { persist: false });
+  }
+
+  clearTransientCurrentProject(): void {
+    const transientId = this.transientProjectIdState();
+    if (!transientId) return;
+
+    const nextProjects = this.projectsState().filter((item) => item.id !== transientId);
+    this.transientProjectIdState.set(null);
+    this.projectsState.set(nextProjects);
+
+    if (this.currentProjectIdState() !== transientId) return;
+
+    const persistedId = typeof localStorage === 'undefined' ? null : localStorage.getItem(STORAGE_KEY);
+    const fallbackId = nextProjects.find((item) => item.id === persistedId)?.id ?? nextProjects[0]?.id ?? null;
+    this.setCurrentProjectId(fallbackId);
   }
 
   setProjectScopeMode(mode: ProjectScopeMode): void {
@@ -91,8 +130,15 @@ export class ProjectContextStore {
     return this.loadProjects();
   }
 
-  setCurrentProjectId(projectId: string | null): void {
+  setCurrentProjectId(projectId: string | null, options?: { persist?: boolean }): void {
+    const persist = options?.persist ?? true;
     this.currentProjectIdState.set(projectId);
+    if (projectId && projectId !== this.transientProjectIdState()) {
+      this.transientProjectIdState.set(null);
+    }
+    if (!persist) {
+      return;
+    }
     if (typeof localStorage !== 'undefined') {
       if (projectId) {
         localStorage.setItem(STORAGE_KEY, projectId);
