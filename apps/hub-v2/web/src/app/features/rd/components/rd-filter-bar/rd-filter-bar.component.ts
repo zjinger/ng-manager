@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { RD_STATUS_FILTER_OPTIONS } from '@shared/constants';
 import { ISSUE_PRIORITY_OPTIONS } from '@shared/constants';
 import { ViewToggleComponent, SearchBoxComponent, FilterBarComponent, PageToolbarComponent } from '@shared/ui';
-import type { RdListQuery, RdStageEntity } from '../../models/rd.model';
+import { RD_TYPE_OPTIONS, type RdListQuery, type RdStageEntity } from '../../models/rd.model';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import type { ProjectMemberEntity } from '@features/projects/models/project.model';
 
@@ -15,7 +16,7 @@ export type RdViewMode = 'board' | 'list';
 @Component({
   selector: 'app-rd-filter-bar',
   standalone: true,
-  imports: [FormsModule, NzIconModule, NzButtonModule, NzSelectModule, FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent],
+  imports: [FormsModule, NzIconModule, NzButtonModule, NzDrawerModule, NzSelectModule, FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent],
   template: `
     <app-page-toolbar>
       @if(canCreate()){
@@ -89,6 +90,7 @@ export type RdViewMode = 'board' | 'list';
           }
         </nz-select>
         <button nz-button class="toolbar-filter-btn" (click)="submit.emit(draft())">筛选</button>
+        <button nz-button class="toolbar-filter-btn" (click)="advancedOpen.set(true)">高级筛选</button>
         <button nz-button class="toolbar-filter-btn" (click)="reset.emit()">清空</button>
       </app-filter-bar>
 
@@ -108,6 +110,52 @@ export type RdViewMode = 'board' | 'list';
         (valueChange)="viewModeChange.emit($event)"
       />
     </app-page-toolbar>
+
+    <nz-drawer
+      [nzVisible]="advancedOpen()"
+      nzPlacement="right"
+      [nzClosable]="true"
+      [nzWidth]="420"
+      nzTitle="高级筛选"
+      (nzOnClose)="advancedOpen.set(false)"
+    >
+      <ng-template nzDrawerContent>
+        <div class="advanced-panel">
+          <div class="advanced-field">
+            <label>研发类型</label>
+            <nz-select
+              nzMode="multiple"
+              nzPlaceHolder="选择研发类型"
+              [nzAllowClear]="true"
+              [ngModel]="draft().type"
+              (ngModelChange)="updateField('type', $event)"
+            >
+              @for (item of typeOptions; track item.value) {
+                <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+              }
+            </nz-select>
+          </div>
+          <div class="advanced-field">
+            <label>排序字段</label>
+            <nz-select [ngModel]="draft().sortBy" (ngModelChange)="updateField('sortBy', $event)">
+              <nz-option nzLabel="创建时间" nzValue="createdAt"></nz-option>
+              <nz-option nzLabel="更新时间" nzValue="updatedAt"></nz-option>
+            </nz-select>
+          </div>
+          <div class="advanced-field">
+            <label>排序方向</label>
+            <nz-select [ngModel]="draft().sortOrder" (ngModelChange)="updateField('sortOrder', $event)">
+              <nz-option nzLabel="倒序（新到旧）" nzValue="desc"></nz-option>
+              <nz-option nzLabel="正序（旧到新）" nzValue="asc"></nz-option>
+            </nz-select>
+          </div>
+          <div class="advanced-actions">
+            <button nz-button (click)="clearAdvanced()">重置</button>
+            <button nz-button nzType="primary" (click)="applyAdvanced()">应用筛选</button>
+          </div>
+        </div>
+      </ng-template>
+    </nz-drawer>
   `,
   styles: [
     `
@@ -121,6 +169,24 @@ export type RdViewMode = 'board' | 'list';
         min-width: 240px;
         max-width: 320px;
         // flex: 0 0 clamp(240px, 28vw, 320px);
+      }
+      .advanced-panel {
+        display: grid;
+        gap: 14px;
+      }
+      .advanced-field {
+        display: grid;
+        gap: 8px;
+      }
+      .advanced-field label {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .advanced-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 6px;
       }
     `,
   ],
@@ -137,9 +203,11 @@ export class RdFilterBarComponent {
   readonly reset = output<void>();
   readonly create = output<void>();
   readonly viewModeChange = output<RdViewMode>();
+  readonly advancedOpen = signal(false);
 
   readonly priorityOptions = ISSUE_PRIORITY_OPTIONS;
   readonly statusOptions = RD_STATUS_FILTER_OPTIONS;
+  readonly typeOptions = RD_TYPE_OPTIONS;
   readonly viewOptions = [
     { value: 'list' as const, icon: 'unordered-list', ariaLabel: '列表视图' },
     { value: 'board' as const, icon: 'appstore', ariaLabel: '看板视图' },
@@ -171,6 +239,8 @@ export class RdFilterBarComponent {
     type: [],
     priority: [],
     assigneeIds: [],
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
   });
 
   constructor() {
@@ -181,5 +251,19 @@ export class RdFilterBarComponent {
 
   updateField<K extends keyof RdListQuery>(key: K, value: RdListQuery[K]): void {
     this.draft.update((draft) => ({ ...draft, [key]: value }));
+  }
+
+  applyAdvanced(): void {
+    this.submit.emit(this.draft());
+    this.advancedOpen.set(false);
+  }
+
+  clearAdvanced(): void {
+    this.draft.update((draft) => ({
+      ...draft,
+      type: [],
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    }));
   }
 }

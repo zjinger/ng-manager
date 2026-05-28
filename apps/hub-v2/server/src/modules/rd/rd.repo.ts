@@ -35,6 +35,7 @@ type RdItemRow = {
     | "tech_refactor"
     | "integration"
     | "env_setup"
+    | "bug_fix"
     | "requirement_confirmation"
     | "solution_design"
     | "testing_validation"
@@ -132,6 +133,7 @@ type UpdateRdItemRowInput = Partial<{
     | "tech_refactor"
     | "integration"
     | "env_setup"
+    | "bug_fix"
     | "requirement_confirmation"
     | "solution_design"
     | "testing_validation"
@@ -158,6 +160,7 @@ const RD_NO_PREFIX_BY_TYPE: Record<RdItemEntity["type"], string> = {
   tech_refactor: "REF",
   integration: "INT",
   env_setup: "ENV",
+  bug_fix: "BUG",
   requirement_confirmation: "REQ",
   solution_design: "DES",
   testing_validation: "TST",
@@ -317,8 +320,10 @@ INSERT INTO rd_items (
       params.push(...query.priority);
     }
     if (query.assigneeIds && query.assigneeIds.length > 0) {
-      conditions.push(`assignee_id IN (${query.assigneeIds.map(() => "?").join(", ")})`);
-      params.push(...query.assigneeIds);
+      const assigneePlaceholders = query.assigneeIds.map(() => "?").join(", ");
+      const memberPlaceholders = query.assigneeIds.map(() => "member_ids LIKE ?").join(" OR ");
+      conditions.push(`(assignee_id IN (${assigneePlaceholders}) OR ${memberPlaceholders})`);
+      params.push(...query.assigneeIds, ...query.assigneeIds.map((id) => `%${JSON.stringify(id)}%`));
     }
     if (query.assigneeId?.trim()) {
       conditions.push("assignee_id = ?");
@@ -331,6 +336,8 @@ INSERT INTO rd_items (
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const sortColumn = query.sortBy === "updatedAt" ? "updated_at" : "created_at";
+    const sortDirection = query.sortOrder === "asc" ? "ASC" : "DESC";
     const totalRow = this.db
       .prepare(`SELECT COUNT(*) as total FROM rd_items ${whereClause}`)
       .get(...params) as { total: number };
@@ -340,7 +347,7 @@ INSERT INTO rd_items (
         `
           SELECT * FROM rd_items
           ${whereClause}
-          ORDER BY updated_at DESC
+          ORDER BY ${sortColumn} ${sortDirection}, id DESC
           LIMIT ? OFFSET ?
         `
       )

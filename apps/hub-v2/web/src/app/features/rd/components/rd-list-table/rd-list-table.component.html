@@ -7,7 +7,7 @@
     <div>创建人</div>
     <div>执行人</div>
     <div>进度</div>
-    <div>更新时间</div>
+    <div>时间</div>
   </div>
   <div table-body class="rd-table__body">
     @for (item of items(); track item.id; let i = $index) {
@@ -79,7 +79,10 @@
             [nzSize]="'small'"
           ></nz-progress>
         </div>
-        <div class="rd-cell rd-cell__muted">{{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
+        <div class="rd-cell rd-cell__time">
+          <div class="rd-time-line">创建 {{ item.createdAt | date: 'MM-dd HH:mm' }}</div>
+          <div class="rd-time-line">更新 {{ item.updatedAt | date: 'MM-dd HH:mm' }}</div>
+        </div>
       </div>
     }
   </div>

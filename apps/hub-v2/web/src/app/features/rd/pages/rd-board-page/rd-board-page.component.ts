@@ -22,7 +22,7 @@ import { RdCompleteDialogComponent } from '../../dialogs/rd-complete-dialog/rd-c
 import { RdCreateDialogComponent } from '../../dialogs/rd-create-dialog/rd-create-dialog.component';
 import { RdEditDialogComponent, type RdEditDialogSaveInput } from '../../dialogs/rd-edit-dialog/rd-edit-dialog.component';
 import { RdProgressUpdateDialogComponent, type RdProgressUpdateDialogSaveInput } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
-import { getRdMemberIds, type CreateRdItemInput, type RdItemEntity, type RdItemProgress, type RdListQuery, type RdLogEntity, type RdMemberBlockEntity, type RdStageHistoryEntry } from '../../models/rd.model';
+import { getRdMemberIds, RD_TYPE_LABELS, type CreateRdItemInput, type RdItemEntity, type RdItemProgress, type RdListQuery, type RdLogEntity, type RdMemberBlockEntity, type RdStageHistoryEntry } from '../../models/rd.model';
 import type { MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
 import { RdApiService } from '../../services/rd-api.service';
 import { RdPermissionService } from '../../services/rd-permission.service';
@@ -351,7 +351,7 @@ export class RdBoardPageComponent {
       }
       return first ? `${prefix}: ${valueLabel}` : valueLabel;
     };
-    const tags: Array<{ kind: 'stageIds' | 'status' | 'priority' | 'assigneeIds' | 'keyword'; value: string; label: string }> = [];
+    const tags: Array<{ kind: 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeIds' | 'sortBy' | 'sortOrder' | 'keyword'; value: string; label: string }> = [];
     const stageIds = query.stageIds ?? [];
     if (stageIds.length > 0) {
       for (const stageId of stageIds) {
@@ -370,6 +370,16 @@ export class RdBoardPageComponent {
           kind: 'status',
           value: status,
           label: withPrefix('status', '状态', RD_STATUS_LABELS[status] || status),
+        });
+      }
+    }
+    const types = query.type ?? [];
+    if (types.length > 0) {
+      for (const type of types) {
+        tags.push({
+          kind: 'type',
+          value: type,
+          label: withPrefix('type', '类型', RD_TYPE_LABELS[type] || type),
         });
       }
     }
@@ -399,6 +409,20 @@ export class RdBoardPageComponent {
         kind: 'keyword',
         value: query.keyword.trim(),
         label: withPrefix('keyword', '关键词', query.keyword.trim()),
+      });
+    }
+    if (query.sortBy !== 'createdAt') {
+      tags.push({
+        kind: 'sortBy',
+        value: query.sortBy || 'updatedAt',
+        label: withPrefix('sortBy', '排序字段', '更新时间'),
+      });
+    }
+    if (query.sortOrder !== 'desc') {
+      tags.push({
+        kind: 'sortOrder',
+        value: query.sortOrder || 'asc',
+        label: withPrefix('sortOrder', '排序方向', query.sortOrder === 'asc' ? '正序' : '倒序'),
       });
     }
     return tags;
@@ -525,14 +549,7 @@ export class RdBoardPageComponent {
   }
 
   applyFilters(query: RdListQuery): void {
-    this.store.updateQuery({
-      keyword: query.keyword?.trim(),
-      stageIds: query.stageIds,
-      status: query.status,
-      priority: query.priority,
-      assigneeIds: query.assigneeIds,
-      page: 1,
-    });
+    this.store.updateQuery({ ...query, keyword: query.keyword?.trim(), page: 1 });
   }
 
   resetFilters(): void {
@@ -545,10 +562,12 @@ export class RdBoardPageComponent {
       type: [],
       priority: [],
       assigneeIds: [],
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
     });
   }
 
-  removeFilterTag(kind: 'stageIds' | 'status' | 'priority' | 'assigneeIds' | 'keyword', value: string): void {
+  removeFilterTag(kind: 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeIds' | 'sortBy' | 'sortOrder' | 'keyword', value: string): void {
     const current = this.store.query();
     if (kind === 'stageIds') {
       this.store.updateQuery({ page: 1, stageIds: (current.stageIds ?? []).filter((item) => item !== value) });
@@ -558,6 +577,13 @@ export class RdBoardPageComponent {
       this.store.updateQuery({
         page: 1,
         status: (current.status ?? []).filter((item) => item !== value),
+      });
+      return;
+    }
+    if (kind === 'type') {
+      this.store.updateQuery({
+        page: 1,
+        type: (current.type ?? []).filter((item) => item !== value),
       });
       return;
     }
@@ -575,11 +601,19 @@ export class RdBoardPageComponent {
       });
       return;
     }
+    if (kind === 'sortBy') {
+      this.store.updateQuery({ page: 1, sortBy: 'createdAt' });
+      return;
+    }
+    if (kind === 'sortOrder') {
+      this.store.updateQuery({ page: 1, sortOrder: 'desc' });
+      return;
+    }
     this.store.updateQuery({ page: 1, keyword: '' });
   }
 
   onActiveFilterRemove(event: { kind: string; value: string }): void {
-    this.removeFilterTag(event.kind as 'stageIds' | 'status' | 'priority' | 'assigneeIds' | 'keyword', event.value);
+    this.removeFilterTag(event.kind as 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeIds' | 'sortBy' | 'sortOrder' | 'keyword', event.value);
   }
 
   onPageIndexChange(page: number): void {
@@ -840,11 +874,13 @@ export class RdBoardPageComponent {
     });
   }
 
-  filterTagClass(kind: 'stageIds' | 'status' | 'priority' | 'assigneeIds' | 'keyword'): string {
+  filterTagClass(kind: 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeIds' | 'sortBy' | 'sortOrder' | 'keyword'): string {
     if (kind === 'status') return 'filter-tag filter-tag--status';
+    if (kind === 'type') return 'filter-tag filter-tag--type';
     if (kind === 'priority') return 'filter-tag filter-tag--priority';
     if (kind === 'assigneeIds') return 'filter-tag filter-tag--people';
     if (kind === 'stageIds') return 'filter-tag filter-tag--scope';
+    if (kind === 'sortBy' || kind === 'sortOrder') return 'filter-tag filter-tag--sort';
     return 'filter-tag filter-tag--keyword';
   }
 

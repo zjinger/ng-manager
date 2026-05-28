@@ -5,6 +5,7 @@ export type RdItemType =
   | "tech_refactor"
   | "integration"
   | "env_setup"
+  | "bug_fix"
   | "requirement_confirmation"
   | "solution_design"
   | "testing_validation"
@@ -218,6 +219,8 @@ export interface ListRdItemsQuery {
   assigneeIds?: string[];
   assigneeId?: string;
   keyword?: string;
+  sortBy?: "updatedAt" | "createdAt";
+  sortOrder?: "desc" | "asc";
 }
 
 export type RdItemListResult = PageResult<RdItemEntity>;

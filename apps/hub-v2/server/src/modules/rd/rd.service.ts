@@ -424,12 +424,16 @@ export class RdService implements RdCommandContract, RdQueryContract {
   }
 
   async listItems(query: ListRdItemsQuery, ctx: RequestContext): Promise<RdItemListResult> {
+    const stageIds = query.stageIds ?? (query.stageId?.trim() ? [query.stageId.trim()] : []);
+    const assigneeIds = query.assigneeIds ?? (query.assigneeId?.trim() ? [query.assigneeId.trim()] : []);
     const normalizedQuery: ListRdItemsQuery = {
       ...query,
-      stageIds: query.stageIds ?? (query.stageId?.trim() ? [query.stageId.trim()] : []),
-      assigneeIds: query.assigneeIds ?? (query.assigneeId?.trim() ? [query.assigneeId.trim()] : []),
-      stageId: query.stageIds && query.stageIds.length > 0 ? undefined : query.stageId,
-      assigneeId: query.assigneeIds && query.assigneeIds.length > 0 ? undefined : query.assigneeId,
+      stageIds,
+      assigneeIds,
+      stageId: stageIds.length > 0 ? undefined : query.stageId,
+      assigneeId: assigneeIds.length > 0 ? undefined : query.assigneeId,
+      sortBy: query.sortBy ?? "createdAt",
+      sortOrder: query.sortOrder ?? "desc",
     };
 
     if (query.projectId?.trim()) {

@@ -23,5 +23,6 @@ export const RD_STATUS_FILTER_OPTIONS = [
   { label: '进行中', value: 'doing' },
   { label: '阻塞中', value: 'blocked' },
   { label: '待确认', value: 'done' },
+  { label: '已完成', value: 'accepted' },
   { label: '已关闭', value: 'closed' },
 ] as const;

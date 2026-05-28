@@ -5,6 +5,7 @@ const rdTypeSchema = z.enum([
   "tech_refactor",
   "integration",
   "env_setup",
+  "bug_fix",
   "requirement_confirmation",
   "solution_design",
   "testing_validation",
@@ -132,6 +133,7 @@ export const listRdItemsQuerySchema = z.object({
     "tech_refactor",
     "integration",
     "env_setup",
+    "bug_fix",
     "requirement_confirmation",
     "solution_design",
     "testing_validation",
@@ -141,7 +143,9 @@ export const listRdItemsQuerySchema = z.object({
   priority: csvEnumArray(["low", "medium", "high", "critical"]),
   assigneeIds: csvStringArray(),
   assigneeId: z.string().trim().optional(),
-keyword: z.string().trim().optional()
+  keyword: z.string().trim().optional(),
+  sortBy: z.enum(["updatedAt", "createdAt"]).optional(),
+  sortOrder: z.enum(["desc", "asc"]).optional()
 });
 
 export const updateRdItemProgressSchema = z.object({

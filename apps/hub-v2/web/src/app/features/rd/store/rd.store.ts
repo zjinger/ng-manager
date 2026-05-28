@@ -27,6 +27,8 @@ const DEFAULT_QUERY: RdListQuery = {
   priority: [],
   assigneeIds: [],
   keyword: '',
+  sortBy: 'createdAt',
+  sortOrder: 'desc',
 };
 
 @Injectable()
@@ -217,7 +219,9 @@ export class RdStore {
       (query.type?.length ?? 0) > 0 ||
       (query.priority?.length ?? 0) > 0 ||
       (query.assigneeIds?.length ?? 0) > 0 ||
-      !!query.keyword?.trim();
+      !!query.keyword?.trim() ||
+      query.sortBy !== 'createdAt' ||
+      query.sortOrder !== 'desc';
 
     if (hasComplexFilter) {
       this.load();

@@ -159,6 +159,8 @@ export interface RdListQuery {
   assigneeIds?: string[];
   assigneeId?: string;
   keyword?: string;
+  sortBy?: 'updatedAt' | 'createdAt';
+  sortOrder?: 'desc' | 'asc';
 }
 
 export type RdListResult = PageResult<RdItemEntity>;
