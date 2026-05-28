@@ -68,7 +68,15 @@
               "node_modules/prismjs/components/prism-csharp.min.js",
               "node_modules/clipboard/dist/clipboard.min.js"
             ],
-            "allowedCommonJsDependencies": ["crypto-js", "easymde", "prismjs"]
+            "allowedCommonJsDependencies": [
+              "crypto-js",
+              "easymde",
+              "prismjs",
+              "core-js",
+              "raf",
+              "rgbcolor",
+              "html2canvas"
+            ]
           },
           "configurations": {
             "production": {
