@@ -13,14 +13,15 @@ export interface AppVersionInfo {
 
 type UpdateSource = 'version' | 'asset';
 
-interface PendingUpdate {
-  key: string;
-  source: UpdateSource;
+export interface PendingUpdate {
+  readonly key: string;
+  readonly source: UpdateSource;
 }
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const STARTUP_DELAY_MS = 15 * 1000;
-const FOCUS_CHECK_THROTTLE_MS = 60 * 1000;
+const ACTIVE_CHECK_THROTTLE_MS = 60 * 1000;
+const DEFER_UPDATE_MS = 30 * 60 * 1000;
 const UPDATE_CHECK_PARAM = '_appUpdateCheck';
 
 @Injectable({ providedIn: 'root' })
@@ -35,27 +36,24 @@ export class AppUpdateService {
   private checking = false;
   private intervalId: number | null = null;
   private startupTimerId: number | null = null;
-  private lastFocusCheckAt = 0;
-  private notifiedBuildId: string | undefined;
-  private notifiedAssetSignature: string | undefined;
+  private lastActiveCheckAt = 0;
+  private deferredUpdateKey: string | null = null;
+  private deferredUntil = 0;
 
   private readonly pendingUpdateState = signal<PendingUpdate | null>(null);
+  readonly pendingUpdate = computed(() => this.pendingUpdateState());
   readonly updateAvailable = computed(() => this.pendingUpdateState() !== null);
 
   private readonly onVisibilityChange = (): void => {
-    if (document.visibilityState === 'visible') {
+    if (document.visibilityState === 'visible' && this.shouldRunActiveCheck()) {
       void this.checkForUpdate();
     }
   };
 
   private readonly onWindowFocus = (): void => {
-    const now = Date.now();
-    if (now - this.lastFocusCheckAt < FOCUS_CHECK_THROTTLE_MS) {
-      return;
+    if (this.shouldRunActiveCheck()) {
+      void this.checkForUpdate();
     }
-
-    this.lastFocusCheckAt = now;
-    void this.checkForUpdate();
   };
 
   start(): void {
@@ -74,6 +72,13 @@ export class AppUpdateService {
   }
 
   deferUpdate(): void {
+    const pendingUpdate = this.pendingUpdateState();
+    if (pendingUpdate) {
+      // "稍后"只暂停当前检测到的版本 30 分钟，避免用户长期停留在旧 bundle。
+      this.deferredUpdateKey = pendingUpdate.key;
+      this.deferredUntil = Date.now() + DEFER_UPDATE_MS;
+    }
+
     this.pendingUpdateState.set(null);
   }
 
@@ -147,19 +152,17 @@ export class AppUpdateService {
 
     const currentKey = this.getVersionKey(this.currentVersion);
     if (!currentKey) {
-      this.currentVersion = latestVersion;
-      return true;
+      return false;
     }
 
     if (latestKey === currentKey) {
       return true;
     }
 
-    if (this.notifiedBuildId === latestKey) {
+    if (this.isUpdateDeferred(latestKey)) {
       return true;
     }
 
-    this.notifiedBuildId = latestKey;
     this.pendingUpdateState.set({ key: latestKey, source: 'version' });
     return true;
   }
@@ -174,11 +177,10 @@ export class AppUpdateService {
       return;
     }
 
-    if (this.notifiedAssetSignature === latestAssetSignature) {
+    if (this.isUpdateDeferred(latestAssetSignature)) {
       return;
     }
 
-    this.notifiedAssetSignature = latestAssetSignature;
     this.pendingUpdateState.set({ key: latestAssetSignature, source: 'asset' });
   }
 
@@ -196,11 +198,13 @@ export class AppUpdateService {
     });
 
     if (!response.ok) {
+      // null 表示 version manifest 不可用，调用方会继续走 index.html asset fallback。
       return null;
     }
 
     const data: unknown = await response.json();
     if (!this.isAppVersionInfo(data) || data.app !== 'hub-v2') {
+      // null 表示 version manifest 不可用，调用方会继续走 index.html asset fallback。
       return null;
     }
 
@@ -275,6 +279,30 @@ export class AppUpdateService {
     }
 
     return null;
+  }
+
+  private shouldRunActiveCheck(): boolean {
+    const now = Date.now();
+    if (now - this.lastActiveCheckAt < ACTIVE_CHECK_THROTTLE_MS) {
+      return false;
+    }
+
+    this.lastActiveCheckAt = now;
+    return true;
+  }
+
+  private isUpdateDeferred(updateKey: string): boolean {
+    if (this.deferredUpdateKey !== updateKey) {
+      return false;
+    }
+
+    if (Date.now() < this.deferredUntil) {
+      return true;
+    }
+
+    this.deferredUpdateKey = null;
+    this.deferredUntil = 0;
+    return false;
   }
 
   private isAppVersionInfo(value: unknown): value is AppVersionInfo {

@@ -11,12 +11,19 @@ import { hasRequiredPermissions } from '../../auth/permission.utils';
 import { NavigationBadgeStore } from '../../navigation/navigation-badge.store';
 import type { NavItem, NavSection } from '../../navigation/menu.types';
 import { UiStore } from '../../state/ui.store';
+import { AppUpdatePromptComponent } from '../app-update-prompt/app-update-prompt.component';
 import { ProjectSwitcherComponent } from '../project-switcher/project-switcher.component';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [RouterLink, NzIconModule, ProjectSwitcherComponent, HasPermissionDirective],
+  imports: [
+    RouterLink,
+    NzIconModule,
+    ProjectSwitcherComponent,
+    HasPermissionDirective,
+    AppUpdatePromptComponent,
+  ],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.less',
   changeDetection: ChangeDetectionStrategy.OnPush,

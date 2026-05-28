@@ -48,6 +48,10 @@
     }
   </nav>
 
+  @if (!collapsed()) {
+    <app-update-prompt />
+  }
+
   <!-- <a class="sidebar__user" [routerLink]="['/profile']">
     <div class="sidebar__user-avatar">
       {{ (currentUser()?.nickname || currentUser()?.username || 'U').slice(0, 1) }}
