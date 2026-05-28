@@ -74,43 +74,52 @@ export interface FeaturePointGroupDrawerSaveInput {
                 </nz-form-item>
               </div>
 
-              <div nz-col [nzSpan]="12">
-                <nz-form-item>
-                  <nz-form-label nzFor="progressStatus">状态</nz-form-label>
-                  <nz-form-control>
-                    <nz-select
-                      name="progressStatus"
-                      nzAllowClear
-                      nzPlaceHolder="按百分比自定义"
-                      [ngModel]="draftStatus()"
-                      (ngModelChange)="setStatus($event)"
-                    >
-                      @for (option of statusOptions(); track option.key) {
-                        <nz-option
-                          [nzValue]="option.key"
-                          [nzLabel]="option.label"
-                        ></nz-option>
-                      }
-                    </nz-select>
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
+              @if (item.level === 'submodule') {
+                <div nz-col [nzSpan]="12">
+                  <nz-form-item>
+                    <nz-form-label nzFor="progressStatus">状态</nz-form-label>
+                    <nz-form-control>
+                      <nz-select
+                        name="progressStatus"
+                        nzAllowClear
+                        nzPlaceHolder="按百分比自定义"
+                        [ngModel]="draftStatus()"
+                        (ngModelChange)="setStatus($event)"
+                      >
+                        @for (option of statusOptions(); track option.key) {
+                          <nz-option
+                            [nzValue]="option.key"
+                            [nzLabel]="option.label"
+                          ></nz-option>
+                        }
+                      </nz-select>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
 
-              <div nz-col [nzSpan]="12">
-                <nz-form-item>
-                  <nz-form-label nzFor="manualProgress">进度</nz-form-label>
-                  <nz-form-control>
-                    <nz-input-number
-                      name="manualProgress"
-                      [ngModel]="draftManualProgress()"
-                      (ngModelChange)="setManualProgress($event)"
-                      [nzMin]="0"
-                      [nzMax]="100"
-                      [nzPlaceHolder]="'自动：' + item.computedProgress + '%'"
-                    ></nz-input-number>
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
+                <div nz-col [nzSpan]="12">
+                  <nz-form-item>
+                    <nz-form-label nzFor="manualProgress">真实进度</nz-form-label>
+                    <nz-form-control>
+                      <nz-input-number
+                        name="manualProgress"
+                        [ngModel]="draftManualProgress()"
+                        (ngModelChange)="setManualProgress($event)"
+                        [nzMin]="0"
+                        [nzMax]="100"
+                        nzPlaceHolder="请输入真实进度"
+                      ></nz-input-number>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+              } @else {
+                <div nz-col [nzSpan]="24">
+                  <div class="feature-group-form__computed">
+                    <span>自动计算进度</span>
+                    <strong>{{ item.computedProgress }}%</strong>
+                  </div>
+                </div>
+              }
 
               <div nz-col [nzSpan]="24">
                 <nz-form-item>
@@ -130,21 +139,23 @@ export interface FeaturePointGroupDrawerSaveInput {
                 <nz-form-item>
                   <nz-form-label nzFor="remark">备注</nz-form-label>
                   <nz-form-control>
-                    <textarea
-                      nz-input
-                      rows="4"
-                      name="remark"
-                      [ngModel]="draftRemark()"
-                      (ngModelChange)="draftRemark.set($event)"
-                      placeholder="记录手动调整原因或补充说明"
-                    ></textarea>
+                  <textarea
+                    nz-input
+                    rows="4"
+                    name="remark"
+                    [ngModel]="draftRemark()"
+                    (ngModelChange)="draftRemark.set($event)"
+                    placeholder="记录进展说明或补充备注"
+                  ></textarea>
                   </nz-form-control>
                 </nz-form-item>
               </div>
             </div>
 
             <footer class="feature-group-form__actions">
-              <button nz-button type="button" (click)="clearManualProgress()" [disabled]="saving()">清除手动进度</button>
+              @if (item.level === 'submodule') {
+                <button nz-button type="button" (click)="clearManualProgress()" [disabled]="saving()">重置进度</button>
+              }
               <span class="feature-group-form__spacer"></span>
               <button nz-button type="button" (click)="cancel.emit()" [disabled]="saving()">取消</button>
               <button nz-button nzType="primary" htmlType="submit" [disabled]="saving() || !draftName().trim()" [nzLoading]="saving()">保存</button>
@@ -168,6 +179,23 @@ export interface FeaturePointGroupDrawerSaveInput {
         border-radius: var(--border-radius);
         color: var(--text-muted);
         background: var(--bg-subtle);
+      }
+
+      .feature-group-form__computed {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        padding: 10px 12px;
+        border: 1px solid var(--border-color-soft);
+        border-radius: var(--border-radius);
+        color: var(--text-muted);
+        background: var(--bg-subtle);
+      }
+
+      .feature-group-form__computed strong {
+        color: var(--text-heading);
+        font-size: 16px;
       }
 
       .feature-group-form__actions {
@@ -218,8 +246,8 @@ export class ProjectFeaturePointGroupDrawerComponent {
       if (this.activeTargetKey === targetKey) return;
       this.activeTargetKey = targetKey;
       this.draftName.set(target.name);
-      this.draftManualProgress.set(target.manualProgress);
-      this.draftStatus.set(this.statusByProgress(target.manualProgress));
+      this.draftManualProgress.set(target.level === 'submodule' ? target.manualProgress : null);
+      this.draftStatus.set(target.level === 'submodule' ? this.statusByProgress(target.manualProgress) : null);
       this.draftSort.set(target.sort);
       this.draftRemark.set(target.remark ?? '');
     });
@@ -245,12 +273,13 @@ export class ProjectFeaturePointGroupDrawerComponent {
   }
 
   submit(id: string): void {
+    const target = this.target();
     const name = this.draftName().trim();
     if (!name) return;
     this.save.emit({
       id,
       name,
-      manualProgress: this.draftManualProgress(),
+      manualProgress: target?.level === 'submodule' ? this.draftManualProgress() : null,
       sort: this.normalizeSort(this.draftSort()),
       remark: this.draftRemark().trim() || null,
     });

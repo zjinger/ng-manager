@@ -14,7 +14,7 @@ import type { FeaturePointDrawerSaveInput } from '../../components/project-featu
 import { ProjectFeaturePointGroupDrawerComponent } from '../../components/project-feature-point-group-drawer/project-feature-point-group-drawer.component';
 import type { FeaturePointGroupDrawerSaveInput, FeaturePointGroupDrawerTarget } from '../../components/project-feature-point-group-drawer/project-feature-point-group-drawer.component';
 import { ProjectFeatureProgressOverallDrawerComponent } from '../../components/project-feature-progress-overall-drawer/project-feature-progress-overall-drawer.component';
-import type { FeatureProgressOverallSaveInput } from '../../components/project-feature-progress-overall-drawer/project-feature-progress-overall-drawer.component';
+import type { FeatureProgressSettingsSaveInput } from '../../components/project-feature-progress-overall-drawer/project-feature-progress-overall-drawer.component';
 import { ProjectFeatureProgressStatsComponent } from '../../components/project-feature-progress-stats/project-feature-progress-stats.component';
 import { ProjectFeatureProgressToolbarComponent } from '../../components/project-feature-progress-toolbar/project-feature-progress-toolbar.component';
 import { ProjectFeatureProgressTreeComponent } from '../../components/project-feature-progress-tree/project-feature-progress-tree.component';
@@ -30,6 +30,7 @@ import type {
   ProjectFeaturePointGroupUpdateResult,
   ProjectFeatureProgressIncrementalResult,
   ProjectFeatureProgressSectionPatch,
+  ProjectFeatureProgressSettings,
   ProjectFeatureProgressSummary,
   ProjectFeatureProgressStatusOption,
   ProjectFeaturePointStatus,
@@ -115,6 +116,7 @@ interface FeatureProgressTitleEditor {
             (moduleFilterChange)="moduleFilter.set($event)"
             (statusFilterChange)="statusFilter.set($event)"
             (create)="startCreate()"
+            (settings)="startEditOverall()"
             (importExcel)="parseExcel($event)"
           />
 
@@ -214,9 +216,7 @@ interface FeatureProgressTitleEditor {
             [saving]="saving()"
             [summary]="effectiveSummary() ?? data.summary"
             [settings]="data.settings"
-            (save)="saveOverallProgress($event)"
-            (saveSettings)="saveFeatureProgressSettings($event.statusOptions)"
-            (clear)="clearOverallProgress()"
+            (save)="saveProgressSettings($event)"
             (cancel)="overallEditorOpen.set(false)"
           />
         }
@@ -349,16 +349,35 @@ export class ProjectFeatureProgressPageComponent {
   readonly summaryPatch = signal<ProjectFeatureProgressSummary | null>(null);
   readonly expandedIds = signal<ReadonlySet<string>>(new Set());
 
-  readonly statusOptions = computed<Array<{ value: ProjectFeaturePointStatus; label: string }>>(() =>
+  readonly statusOptions = computed<Array<{ value: ProjectFeaturePointStatus; label: string; progress: number }>>(() =>
     (this.vm()?.settings.statusOptions ?? DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS).map((option) => ({
       value: option.key,
       label: option.label,
+      progress: option.progress,
     }))
   );
 
   readonly projectId = computed(() => this.projectContext.currentProjectId());
   readonly subtitle = computed(() => this.projectContext.currentProject()?.name || '请先选择项目');
-  readonly effectiveSummary = computed(() => this.summaryPatch() ?? this.vm()?.summary ?? null);
+  readonly effectiveSummary = computed(() => {
+    const data = this.vm();
+    if (!data) return null;
+    const base = this.summaryPatch() ?? data.summary;
+    const submodules = this.collectSubmoduleNodes(data.modules);
+    const progressValues = submodules.map((node) => node.displayProgress);
+    const computedProgress = this.averageProgressValues(progressValues);
+    return {
+      ...base,
+      computedProgress,
+      manualProgress: null,
+      overrideProgress: null,
+      displayProgress: computedProgress,
+      overrideRemark: null,
+      completedCount: progressValues.filter((progress) => progress >= 100).length,
+      inProgressCount: progressValues.filter((progress) => progress > 0 && progress < 100).length,
+      notStartedCount: progressValues.filter((progress) => progress <= 0).length,
+    };
+  });
   readonly hasActiveFilter = computed(() =>
     !!this.keyword().trim() || !!this.moduleFilter() || !!this.statusFilter()
   );
@@ -695,11 +714,12 @@ export class ProjectFeatureProgressPageComponent {
     if (!this.canManage()) return;
     const projectId = this.projectId();
     if (!projectId) return;
-    const targetLabel = this.editingGroup()?.level === 'submodule' ? '子模块' : '模块';
+    const isSubmodule = this.editingGroup()?.level === 'submodule';
+    const targetLabel = isSubmodule ? '子模块' : '模块';
     this.saving.set(true);
     this.projectApi.updateFeaturePointGroup(projectId, input.id, {
       name: input.name,
-      manualProgress: input.manualProgress,
+      manualProgress: isSubmodule ? input.manualProgress : null,
       sort: input.sort,
       remark: input.remark,
     }).pipe(finalize(() => this.saving.set(false))).subscribe({
@@ -707,7 +727,7 @@ export class ProjectFeatureProgressPageComponent {
         const target = this.editingGroup();
         this.saving.set(false);
         this.cancelGroupEdit();
-        this.message.success(`${targetLabel}进度已保存`);
+        this.message.success(`${targetLabel}已保存`);
         this.applyIncrementalResult(result);
         this.applyFeaturePointGroupUpdateResult(result, target);
       },
@@ -734,41 +754,8 @@ export class ProjectFeatureProgressPageComponent {
     });
   }
 
-  saveOverallProgress(input: FeatureProgressOverallSaveInput): void {
-    if (!this.canManage()) return;
-    const projectId = this.projectId();
-    if (!projectId) return;
-    this.saving.set(true);
-    this.projectApi.upsertFeatureProgressOverride(projectId, {
-      targetType: 'project',
-      targetId: projectId,
-      progress: input.progress,
-      remark: input.remark,
-    }).subscribe({
-      next: (result) => {
-        this.saving.set(false);
-        this.message.success('整体进度已更新');
-        this.overallEditorOpen.set(false);
-        this.applyIncrementalResult(result);
-      },
-      error: () => this.saving.set(false),
-    });
-  }
-
-  clearOverallProgress(): void {
-    if (!this.canManage()) return;
-    const projectId = this.projectId();
-    if (!projectId) return;
-    this.saving.set(true);
-    this.projectApi.removeFeatureProgressOverride(projectId, 'project', projectId).subscribe({
-      next: (result) => {
-        this.saving.set(false);
-        this.message.success('整体手动进度已清除');
-        this.overallEditorOpen.set(false);
-        this.applyIncrementalResult(result);
-      },
-      error: () => this.saving.set(false),
-    });
+  saveProgressSettings(input: FeatureProgressSettingsSaveInput): void {
+    this.saveFeatureProgressSettings(input.statusOptions, { closeDrawer: true });
   }
 
   private loadForProject(projectId: string | null, options: { resetView?: boolean } = { resetView: true }): void {
@@ -816,6 +803,18 @@ export class ProjectFeatureProgressPageComponent {
       ...node.featurePoints,
       ...this.collectModuleFeatures(node.children),
     ]);
+  }
+
+  private collectSubmoduleNodes(nodes: ProjectFeatureProgressModuleNode[]): ProjectFeatureProgressModuleNode[] {
+    return nodes.flatMap((node) => [
+      ...(node.parentId ? [node] : []),
+      ...this.collectSubmoduleNodes(node.children),
+    ]);
+  }
+
+  private averageProgressValues(values: number[]): number {
+    if (values.length === 0) return 0;
+    return Math.round(values.reduce((sum, value) => sum + Math.max(0, Math.min(100, value)), 0) / values.length);
   }
 
   private resetEditor(): void {
@@ -880,15 +879,31 @@ export class ProjectFeatureProgressPageComponent {
     });
   }
 
-  saveFeatureProgressSettings(statusOptions: ProjectFeatureProgressStatusOption[]): void {
+  private applyFeatureProgressSettings(settings: ProjectFeatureProgressSettings): void {
+    const current = this.vm();
+    if (!current) return;
+    this.vm.set({
+      ...current,
+      settings,
+    });
+  }
+
+  saveFeatureProgressSettings(
+    statusOptions: ProjectFeatureProgressStatusOption[],
+    options: { closeDrawer?: boolean } = {}
+  ): void {
     if (!this.canManage()) return;
     const projectId = this.projectId();
     if (!projectId) return;
     this.saving.set(true);
     this.projectApi.updateFeatureProgressSettings(projectId, { statusOptions }).subscribe({
-      next: () => {
+      next: (settings) => {
         this.saving.set(false);
         this.message.success('进度状态配置已更新');
+        if (options.closeDrawer) {
+          this.overallEditorOpen.set(false);
+        }
+        this.applyFeatureProgressSettings(settings);
         this.reload();
       },
       error: () => this.saving.set(false),

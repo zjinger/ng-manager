@@ -12,9 +12,8 @@ import type {
   ProjectFeatureProgressSummary,
 } from '../../models/project.model';
 
-export interface FeatureProgressOverallSaveInput {
-  progress: number;
-  remark: string | null;
+export interface FeatureProgressSettingsSaveInput {
+  statusOptions: ProjectFeatureProgressStatusOption[];
 }
 
 @Component({
@@ -27,38 +26,16 @@ export interface FeatureProgressOverallSaveInput {
       nzPlacement="right"
       [nzClosable]="true"
       [nzWidth]="420"
-      nzTitle="调整整体进度"
+      nzTitle="进度设置"
       (nzOnClose)="cancel.emit()"
     >
       <ng-template nzDrawerContent>
         @if (summary(); as item) {
           <form nz-form nzLayout="vertical" class="overall-form" (ngSubmit)="submit()">
-            <div class="overall-form__computed">自动计算：{{ item.computedProgress }}%</div>
-            <nz-form-item>
-              <nz-form-label nzFor="overallProgress" nzRequired>整体进度</nz-form-label>
-              <nz-form-control>
-                <nz-input-number
-                  name="overallProgress"
-                  [ngModel]="draftProgress()"
-                  (ngModelChange)="draftProgress.set(normalizeProgress($event))"
-                  [nzMin]="0"
-                  [nzMax]="100"
-                ></nz-input-number>
-              </nz-form-control>
-            </nz-form-item>
-            <nz-form-item>
-              <nz-form-label nzFor="overallRemark">备注</nz-form-label>
-              <nz-form-control>
-                <textarea
-                  nz-input
-                  rows="4"
-                  name="overallRemark"
-                  [ngModel]="draftRemark()"
-                  (ngModelChange)="draftRemark.set($event)"
-                  placeholder="记录整体进度调整原因"
-                ></textarea>
-              </nz-form-control>
-            </nz-form-item>
+            <div class="overall-form__computed">
+              <span>整体进度（自动计算）</span>
+              <strong>{{ item.computedProgress }}%</strong>
+            </div>
             <section class="overall-form__status-options">
               <h3>进度状态配置</h3>
               <p>该配置仅影响当前项目的模块/子模块进度状态显示。</p>
@@ -79,12 +56,8 @@ export interface FeatureProgressOverallSaveInput {
                   ></nz-input-number>
                 </div>
               }
-              <button nz-button type="button" [disabled]="saving()" (click)="saveSettings.emit({ statusOptions: normalizedStatusOptions() })">
-                保存状态配置
-              </button>
             </section>
             <footer class="overall-form__actions">
-              <button nz-button type="button" (click)="clear.emit()" [disabled]="saving() || item.overrideProgress === null">清除手动进度</button>
               <span class="overall-form__spacer"></span>
               <button nz-button type="button" (click)="cancel.emit()" [disabled]="saving()">取消</button>
               <button nz-button nzType="primary" htmlType="submit" [disabled]="saving()" [nzLoading]="saving()">保存</button>
@@ -101,12 +74,20 @@ export interface FeatureProgressOverallSaveInput {
       }
 
       .overall-form__computed {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         margin-bottom: 14px;
         padding: 10px 12px;
         border: 1px solid var(--border-color-soft);
         border-radius: var(--border-radius);
         color: var(--text-muted);
         background: var(--bg-subtle);
+      }
+
+      .overall-form__computed strong {
+        color: var(--text-heading);
+        font-size: 18px;
       }
 
       .overall-form__status-options {
@@ -156,29 +137,22 @@ export class ProjectFeatureProgressOverallDrawerComponent {
   readonly summary = input<ProjectFeatureProgressSummary | null>(null);
   readonly settings = input<ProjectFeatureProgressSettings | null>(null);
 
-  readonly save = output<FeatureProgressOverallSaveInput>();
-  readonly saveSettings = output<{ statusOptions: ProjectFeatureProgressStatusOption[] }>();
-  readonly clear = output<void>();
+  readonly save = output<FeatureProgressSettingsSaveInput>();
   readonly cancel = output<void>();
 
-  readonly draftProgress = signal(0);
-  readonly draftRemark = signal('');
   readonly draftStatusOptions = signal<ProjectFeatureProgressStatusOption[]>([]);
 
   constructor() {
     effect(() => {
       const summary = this.summary();
       if (!this.open() || !summary) return;
-      this.draftProgress.set(summary.overrideProgress ?? summary.computedProgress);
-      this.draftRemark.set(summary.overrideRemark ?? '');
       this.draftStatusOptions.set(this.settings()?.statusOptions.map((option) => ({ ...option })) ?? []);
     });
   }
 
   submit(): void {
     this.save.emit({
-      progress: this.normalizeProgress(this.draftProgress()),
-      remark: this.draftRemark().trim() || null,
+      statusOptions: this.normalizedStatusOptions(),
     });
   }
 

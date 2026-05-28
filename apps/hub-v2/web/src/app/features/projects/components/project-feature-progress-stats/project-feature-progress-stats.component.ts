@@ -18,11 +18,11 @@ import type { ProjectFeatureProgressSummary } from '../../models/project.model';
           icon="bar-chart"
           tone="blue"
         />
-        @if (canManage()) {
+        <!-- @if (canManage()) {
           <button nz-button nzSize="small" type="button" class="feature-progress-stats__overall-action" (click)="editOverall.emit()">
-            调整
+            设置
           </button>
-        }
+        } -->
       </div>
       <app-stat-card
         label="功能点总数"
@@ -101,14 +101,10 @@ export class ProjectFeatureProgressStatsComponent {
   readonly editOverall = output<void>();
 
   progressValue(): string {
-    return `${this.summary().displayProgress}%`;
+    return `${this.summary().computedProgress}%`;
   }
 
   progressHint(): string {
-    const summary = this.summary();
-    if (summary.overrideProgress !== null) {
-      return `手动进度，自动计算 ${summary.computedProgress}%`;
-    }
-    return '按模块与子模块进度计算';
+    return '按子模块真实进度自动计算';
   }
 }

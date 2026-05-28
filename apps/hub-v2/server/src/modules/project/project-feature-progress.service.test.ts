@@ -401,6 +401,46 @@ describe("project feature progress", () => {
     }
   });
 
+  it("remaps existing status-based progress when project status options change", async () => {
+    const db = createDb();
+    try {
+      const service = createService(db);
+      await service.addFeaturePoint("prj_1", {
+        name: "海区信息录入",
+        moduleName: "国家中心系统",
+        submoduleName: "海区链路适配",
+        status: "developing",
+        progress: 50
+      }, ownerCtx());
+
+      let view = await service.getFeatureProgress("prj_1", memberCtx());
+      const submodule = view.modules[0]!.children[0]!;
+      await service.updateFeaturePointGroup("prj_1", submodule.id, {
+        manualProgress: 50,
+        remark: "开发中"
+      }, ownerCtx());
+
+      await service.updateFeatureProgressSettings("prj_1", {
+        statusOptions: [
+          { key: "todo", label: "未开始", progress: 0 },
+          { key: "designing", label: "设计中", progress: 20 },
+          { key: "developing", label: "开发中", progress: 65 },
+          { key: "testing", label: "测试中", progress: 90 },
+          { key: "done", label: "已完成", progress: 100 }
+        ]
+      }, ownerCtx());
+
+      view = await service.getFeatureProgress("prj_1", memberCtx());
+      const updatedSubmodule = view.modules[0]!.children[0]!;
+      assert.equal(view.settings.statusOptions.find((option) => option.key === "developing")?.progress, 65);
+      assert.equal(updatedSubmodule.manualProgress, 65);
+      assert.equal(updatedSubmodule.displayProgress, 65);
+      assert.equal(updatedSubmodule.featurePoints[0]?.progress, 65);
+    } finally {
+      db.close();
+    }
+  });
+
   it("returns section patches for every group title affected by a module update", async () => {
     const db = createDb();
     try {

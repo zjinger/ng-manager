@@ -40,14 +40,19 @@ export class ProjectFeatureProgressService {
     await this.baseService.getById(projectId, ctx);
     const now = nowIso();
     const current = this.repo.getFeatureProgressSettings(projectId);
+    const previousStatusOptions = this.aggregate.normalizeStatusOptions(current?.statusOptions);
+    const nextStatusOptions = this.aggregate.normalizeStatusOptions(input.statusOptions ?? current?.statusOptions);
     const settings: ProjectFeatureProgressSettings = {
       projectId,
       enabled: input.enabled ?? current?.enabled ?? true,
-      statusOptions: this.aggregate.normalizeStatusOptions(input.statusOptions ?? current?.statusOptions),
+      statusOptions: nextStatusOptions,
       createdAt: current?.createdAt ?? now,
       updatedAt: now
     };
     this.repo.upsertFeatureProgressSettings(settings);
+    if (input.statusOptions) {
+      this.remapProgressValuesByStatusOptions(projectId, previousStatusOptions, nextStatusOptions, now);
+    }
     return this.aggregate.resolveSettings(projectId);
   }
 
@@ -115,5 +120,64 @@ export class ProjectFeatureProgressService {
     if (!exists) {
       throw new AppError(ERROR_CODES.BAD_REQUEST, "模块进度覆盖目标必须属于当前功能点分组", 400);
     }
+  }
+
+  private remapProgressValuesByStatusOptions(
+    projectId: string,
+    previousOptions: ProjectFeatureProgressSettings["statusOptions"],
+    nextOptions: ProjectFeatureProgressSettings["statusOptions"],
+    updatedAt: string
+  ): void {
+    const progressRemap = this.buildProgressRemap(previousOptions, nextOptions);
+    if (progressRemap.size === 0) {
+      return;
+    }
+
+    for (const group of this.repo.listFeaturePointGroups(projectId)) {
+      const nextProgress = group.manualProgress === null ? undefined : progressRemap.get(group.manualProgress);
+      if (nextProgress !== undefined && nextProgress !== group.manualProgress) {
+        this.repo.updateFeaturePointGroup(projectId, group.id, {
+          manualProgress: nextProgress,
+          updatedAt
+        });
+      }
+    }
+
+    for (const featurePoint of this.repo.listFeaturePoints(projectId)) {
+      const previousProgress = previousOptions.find((option) => option.key === featurePoint.status)?.progress;
+      const nextProgress = previousProgress === featurePoint.progress ? progressRemap.get(featurePoint.progress) : undefined;
+      if (nextProgress !== undefined && nextProgress !== featurePoint.progress) {
+        this.repo.updateFeaturePoint(projectId, featurePoint.id, {
+          progress: nextProgress,
+          updatedAt
+        });
+      }
+    }
+  }
+
+  private buildProgressRemap(
+    previousOptions: ProjectFeatureProgressSettings["statusOptions"],
+    nextOptions: ProjectFeatureProgressSettings["statusOptions"]
+  ): Map<number, number> {
+    const previousByKey = new Map(previousOptions.map((option) => [option.key, option.progress]));
+    const nextByOldProgress = new Map<number, Set<number>>();
+    for (const option of nextOptions) {
+      const previousProgress = previousByKey.get(option.key);
+      if (previousProgress === undefined || previousProgress === option.progress) {
+        continue;
+      }
+      if (!nextByOldProgress.has(previousProgress)) {
+        nextByOldProgress.set(previousProgress, new Set());
+      }
+      nextByOldProgress.get(previousProgress)!.add(option.progress);
+    }
+
+    const remap = new Map<number, number>();
+    for (const [previousProgress, nextProgressValues] of nextByOldProgress) {
+      if (nextProgressValues.size === 1) {
+        remap.set(previousProgress, [...nextProgressValues][0]!);
+      }
+    }
+    return remap;
   }
 }

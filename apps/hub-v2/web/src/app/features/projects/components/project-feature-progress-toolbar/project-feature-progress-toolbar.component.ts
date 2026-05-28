@@ -36,6 +36,13 @@ import type { ProjectFeaturePointStatus } from '../../models/project.model';
         </button>
       }
 
+      @if (canManage()) {
+        <button toolbar-primary nz-button type="button" (click)="settings.emit()">
+          <span nz-icon nzType="setting"></span>
+          进度设置
+        </button>
+      }
+
       <app-filter-bar toolbar-filters class="feature-progress-toolbar__filters">
         <nz-select
           class="feature-progress-toolbar__select"
@@ -122,6 +129,7 @@ export class ProjectFeatureProgressToolbarComponent {
   readonly moduleFilterChange = output<string>();
   readonly statusFilterChange = output<ProjectFeaturePointStatus | ''>();
   readonly create = output<void>();
+  readonly settings = output<void>();
   readonly importExcel = output<File>();
 
   onExcelFileChange(event: Event, input: HTMLInputElement): void {

@@ -236,7 +236,7 @@ export class ProjectFeaturePointDrawerComponent {
   readonly moduleGroups = input<ProjectFeatureProgressModuleNode[]>([]);
   readonly feature = input<ProjectFeaturePoint | null>(null);
   readonly nextSort = input(10);
-  readonly statusOptions = input<Array<{ value: ProjectFeaturePointStatus; label: string }>>([]);
+  readonly statusOptions = input<Array<{ value: ProjectFeaturePointStatus; label: string; progress: number }>>([]);
 
   readonly save = output<FeaturePointDrawerSaveInput>();
   readonly cancel = output<void>();
@@ -313,48 +313,18 @@ export class ProjectFeaturePointDrawerComponent {
   onProgressChange(value: unknown): void {
     const progress = this.normalizeProgress(value);
     this.draftProgress.set(progress);
-    if (progress <= 0) {
-      this.draftStatus.set('todo');
-      return;
-    }
-    if (progress >= 100) {
-      this.draftStatus.set('done');
-      return;
-    }
-    if (progress >= 90) {
-      this.draftStatus.set('testing');
-      return;
-    }
-    if (progress >= 50) {
-      this.draftStatus.set('developing');
-      return;
-    }
-    if (progress >= 10) {
-      this.draftStatus.set('designing');
-    }
+    const status = [...this.statusOptions()]
+      .sort((left, right) => right.progress - left.progress)
+      .find((option) => progress >= this.normalizeProgress(option.progress));
+    this.draftStatus.set(status?.value ?? 'todo');
   }
 
   onStatusChange(status: ProjectFeaturePointStatus | null): void {
     const nextStatus = status ?? 'todo';
     this.draftStatus.set(nextStatus);
-    if (nextStatus === 'todo') {
-      this.draftProgress.set(0);
-      return;
-    }
-    if (nextStatus === 'designing') {
-      this.draftProgress.set(10);
-      return;
-    }
-    if (nextStatus === 'developing') {
-      this.draftProgress.set(50);
-      return;
-    }
-    if (nextStatus === 'testing') {
-      this.draftProgress.set(90);
-      return;
-    }
-    if (nextStatus === 'done') {
-      this.draftProgress.set(100);
+    const option = this.statusOptions().find((item) => item.value === nextStatus);
+    if (option) {
+      this.draftProgress.set(this.normalizeProgress(option.progress));
     }
   }
 

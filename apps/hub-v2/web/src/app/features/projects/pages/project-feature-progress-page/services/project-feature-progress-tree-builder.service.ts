@@ -126,14 +126,13 @@ export class ProjectFeatureProgressTreeBuilderService {
           };
         }).sort((left, right) => left.sort - right.sort || left.name.localeCompare(right.name, 'zh-Hans-CN'));
         const computedProgress = this.averageProgressValues(subgroups.map((subgroup) => subgroup.progress));
-        const progress = modulePatch?.progress ?? moduleNode?.manualProgress ?? computedProgress;
         return {
           id: firstFeature.moduleGroupId || moduleKey,
           key: moduleKey,
           name: modulePatch?.name ?? this.groupName(firstFeature.moduleName),
-          progress,
-          computedProgress: modulePatch?.computedProgress ?? computedProgress,
-          manualProgress: modulePatch ? modulePatch.manualProgress : moduleNode?.manualProgress ?? null,
+          progress: computedProgress,
+          computedProgress,
+          manualProgress: null,
           completedCount: subgroups.filter((subgroup) => subgroup.progress >= 100).length,
           featureCount: moduleFeatures.length,
           sort: modulePatch?.sort ?? moduleNode?.sort ?? firstFeature.sort,
@@ -147,8 +146,8 @@ export class ProjectFeatureProgressTreeBuilderService {
       return {
         key: title,
         title,
-        progress: patch?.progress ?? this.averageProgressValues(groups.map((group) => group.progress)),
-        completedCount: patch?.completedCount ?? groups.filter((group) => group.progress >= 100).length,
+        progress: this.averageProgressValues(groups.map((group) => group.progress)),
+        completedCount: groups.filter((group) => group.progress >= 100).length,
         featureCount: patch?.featureCount ?? sectionFeatures.length,
         groups,
       };
@@ -182,7 +181,7 @@ export class ProjectFeatureProgressTreeBuilderService {
         featureCount: section.featureCount,
         section,
         sectionPatch: sectionPatches[section.key],
-        progressText: this.progressText(section.progress, statusOptions),
+        progressText: this.aggregateProgressText(section.progress),
         typeText: '分组标题',
       });
       section.groups.forEach((group, groupIndex) => {
@@ -207,7 +206,7 @@ export class ProjectFeatureProgressTreeBuilderService {
           featureCount: group.featureCount,
           remark: group.remark,
           group,
-          progressText: this.progressText(group.progress, statusOptions),
+          progressText: this.aggregateProgressText(group.progress),
           typeText: '模块',
         });
         group.subgroups.forEach((subgroup, subgroupIndex) => {
@@ -383,5 +382,12 @@ export class ProjectFeatureProgressTreeBuilderService {
   private progressText(progress: number, options: ProjectFeatureProgressStatusOption[]): string {
     const key = this.progressStatusKey(progress, options);
     return options.find((option) => option.key === key)?.label ?? '未开始';
+  }
+
+  private aggregateProgressText(progress: number): string {
+    const normalized = Math.max(0, Math.min(100, Math.round(progress)));
+    if (normalized <= 0) return '未开始';
+    if (normalized >= 100) return '已完成';
+    return '进行中';
   }
 }
