@@ -121,13 +121,23 @@
           </a>
           <a
             nz-button
-            nz-tooltip="实施总览"
+            nz-tooltip="周报概览"
             nzType="text"
             class="project-action project-action--overview"
             type="button"
             (click)="openDeliveryOverview.emit(item)"
           >
             <nz-icon nzType="line-chart" nzTheme="outline" />
+          </a>
+          <a
+            nz-button
+            nz-tooltip="功能点进度"
+            nzType="text"
+            class="project-action"
+            type="button"
+            (click)="openFeatureProgress.emit(item)"
+          >
+            <nz-icon nzType="project" nzTheme="outline" />
           </a>
           @if (item.status === 'active') {
             <a

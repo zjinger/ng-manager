@@ -3,9 +3,11 @@ import { normalizePage } from "../../shared/http/pagination";
 import type {
   AddProjectModuleMemberInput,
   CreateProjectFeaturePointInput,
+  CreateProjectFeaturePointGroupInput,
   CreateProjectConfigItemInput,
   CreateProjectVersionItemInput,
   ProjectFeaturePointEntity,
+  ProjectFeaturePointGroupEntity,
   ProjectFeatureProgressOverrideEntity,
   ProjectFeatureProgressSettings,
   ListProjectsQuery,
@@ -20,6 +22,7 @@ import type {
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
   UpdateProjectFeaturePointInput,
+  UpdateProjectFeaturePointGroupInput,
   UpdateProjectMemberInput,
   UpdateProjectInput,
   UpdateProjectVersionItemInput
@@ -141,13 +144,33 @@ type ProjectFeaturePointRow = {
   id: string;
   project_id: string;
   module_id: string | null;
+  module_group_id: string | null;
+  submodule_group_id: string | null;
   module_name: string | null;
+  submodule_name: string | null;
+  module_group_name: string | null;
+  submodule_group_name: string | null;
+  linked_module_name: string | null;
   owner_user_id: string | null;
   owner_name: string | null;
+  owner_user_ids: string | null;
+  owner_names: string | null;
   name: string;
   status: "todo" | "in_progress" | "done" | "paused";
   progress: number;
   enabled: number;
+  sort: number;
+  remark: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ProjectFeaturePointGroupRow = {
+  id: string;
+  project_id: string;
+  parent_id: string | null;
+  name: string;
+  manual_progress: number | null;
   sort: number;
   remark: string | null;
   created_at: string;
@@ -820,15 +843,181 @@ export class ProjectRepo {
       .run(input.projectId, input.enabled ? 1 : 0, input.createdAt, input.updatedAt);
   }
 
+  listFeaturePointGroups(projectId: string): ProjectFeaturePointGroupEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+        SELECT *
+        FROM project_feature_point_groups
+        WHERE project_id = ?
+        ORDER BY
+          CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END ASC,
+          sort ASC,
+          name ASC,
+          created_at ASC
+        `
+      )
+      .all(projectId) as ProjectFeaturePointGroupRow[];
+    return rows.map((row) => this.mapFeaturePointGroup(row));
+  }
+
+  findFeaturePointGroupById(projectId: string, groupId: string): ProjectFeaturePointGroupEntity | null {
+    const row = this.db
+      .prepare("SELECT * FROM project_feature_point_groups WHERE project_id = ? AND id = ?")
+      .get(projectId, groupId) as ProjectFeaturePointGroupRow | undefined;
+    return row ? this.mapFeaturePointGroup(row) : null;
+  }
+
+  findFeaturePointGroupByName(
+    projectId: string,
+    parentId: string | null,
+    name: string
+  ): ProjectFeaturePointGroupEntity | null {
+    const row = this.db
+      .prepare(
+        `
+        SELECT *
+        FROM project_feature_point_groups
+        WHERE project_id = ?
+          AND ((parent_id IS NULL AND ? IS NULL) OR parent_id = ?)
+          AND name = ?
+        `
+      )
+      .get(projectId, parentId, parentId, name) as ProjectFeaturePointGroupRow | undefined;
+    return row ? this.mapFeaturePointGroup(row) : null;
+  }
+
+  addFeaturePointGroup(
+    projectId: string,
+    input: CreateProjectFeaturePointGroupInput & { id: string; createdAt: string; updatedAt: string }
+  ): void {
+    this.db
+      .prepare(
+        `
+        INSERT INTO project_feature_point_groups (
+          id, project_id, parent_id, name, manual_progress, sort, remark, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        input.id,
+        projectId,
+        input.parentId ?? null,
+        input.name,
+        input.manualProgress ?? null,
+        input.sort ?? 0,
+        input.remark?.trim() || null,
+        input.createdAt,
+        input.updatedAt
+      );
+  }
+
+  updateFeaturePointGroup(
+    projectId: string,
+    groupId: string,
+    patch: UpdateProjectFeaturePointGroupInput & { updatedAt: string }
+  ): boolean {
+    const fields: string[] = [];
+    const params: unknown[] = [];
+
+    if (patch.name !== undefined) {
+      fields.push("name = ?");
+      params.push(patch.name);
+    }
+    if (patch.parentId !== undefined) {
+      fields.push("parent_id = ?");
+      params.push(patch.parentId ?? null);
+    }
+    if (patch.manualProgress !== undefined) {
+      fields.push("manual_progress = ?");
+      params.push(patch.manualProgress ?? null);
+    }
+    if (patch.sort !== undefined) {
+      fields.push("sort = ?");
+      params.push(patch.sort);
+    }
+    if (patch.remark !== undefined) {
+      fields.push("remark = ?");
+      params.push(patch.remark ?? null);
+    }
+
+    fields.push("updated_at = ?");
+    params.push(patch.updatedAt, projectId, groupId);
+
+    const result = this.db
+      .prepare(
+        `
+        UPDATE project_feature_point_groups
+        SET ${fields.join(", ")}
+        WHERE project_id = ? AND id = ?
+        `
+      )
+      .run(...params);
+    return result.changes > 0;
+  }
+
+  removeFeaturePointGroup(projectId: string, groupId: string): boolean {
+    const result = this.db
+      .prepare("DELETE FROM project_feature_point_groups WHERE project_id = ? AND id = ?")
+      .run(projectId, groupId);
+    return result.changes > 0;
+  }
+
+  countFeaturePointGroupChildren(projectId: string, groupId: string): number {
+    const row = this.db
+      .prepare("SELECT COUNT(*) AS total FROM project_feature_point_groups WHERE project_id = ? AND parent_id = ?")
+      .get(projectId, groupId) as { total: number } | undefined;
+    return Number(row?.total ?? 0);
+  }
+
+  countFeaturePointsByGroup(projectId: string, groupId: string): number {
+    const row = this.db
+      .prepare(
+        `
+        SELECT COUNT(*) AS total
+        FROM project_feature_points
+        WHERE project_id = ?
+          AND enabled = 1
+          AND (module_group_id = ? OR submodule_group_id = ?)
+        `
+      )
+      .get(projectId, groupId, groupId) as { total: number } | undefined;
+    return Number(row?.total ?? 0);
+  }
+
   listFeaturePoints(projectId: string): ProjectFeaturePointEntity[] {
     const rows = this.db
       .prepare(
         `
         SELECT
           pfp.*,
-          pm.name AS module_name,
-          COALESCE(owner.display_name, owner.username) AS owner_name
+          module_group.name AS module_group_name,
+          submodule_group.name AS submodule_group_name,
+          pm.name AS linked_module_name,
+          COALESCE(owner.display_name, owner.username) AS owner_name,
+          (
+            SELECT GROUP_CONCAT(user_id, ',')
+            FROM (
+              SELECT pfpo.user_id
+              FROM project_feature_point_owners pfpo
+              WHERE pfpo.feature_point_id = pfp.id
+              ORDER BY pfpo.sort ASC, pfpo.created_at ASC, pfpo.user_id ASC
+            )
+          ) AS owner_user_ids,
+          (
+            SELECT GROUP_CONCAT(owner_label, ',')
+            FROM (
+              SELECT COALESCE(u.display_name, u.username) AS owner_label
+              FROM project_feature_point_owners pfpo
+              LEFT JOIN users u ON u.id = pfpo.user_id
+              WHERE pfpo.feature_point_id = pfp.id
+              ORDER BY pfpo.sort ASC, pfpo.created_at ASC, pfpo.user_id ASC
+            )
+          ) AS owner_names
         FROM project_feature_points pfp
+        LEFT JOIN project_feature_point_groups module_group ON module_group.id = pfp.module_group_id
+        LEFT JOIN project_feature_point_groups submodule_group ON submodule_group.id = pfp.submodule_group_id
         LEFT JOIN project_modules pm ON pm.id = pfp.module_id
         LEFT JOIN users owner ON owner.id = pfp.owner_user_id
         WHERE pfp.project_id = ?
@@ -845,9 +1034,32 @@ export class ProjectRepo {
         `
         SELECT
           pfp.*,
-          pm.name AS module_name,
-          COALESCE(owner.display_name, owner.username) AS owner_name
+          module_group.name AS module_group_name,
+          submodule_group.name AS submodule_group_name,
+          pm.name AS linked_module_name,
+          COALESCE(owner.display_name, owner.username) AS owner_name,
+          (
+            SELECT GROUP_CONCAT(user_id, ',')
+            FROM (
+              SELECT pfpo.user_id
+              FROM project_feature_point_owners pfpo
+              WHERE pfpo.feature_point_id = pfp.id
+              ORDER BY pfpo.sort ASC, pfpo.created_at ASC, pfpo.user_id ASC
+            )
+          ) AS owner_user_ids,
+          (
+            SELECT GROUP_CONCAT(owner_label, ',')
+            FROM (
+              SELECT COALESCE(u.display_name, u.username) AS owner_label
+              FROM project_feature_point_owners pfpo
+              LEFT JOIN users u ON u.id = pfpo.user_id
+              WHERE pfpo.feature_point_id = pfp.id
+              ORDER BY pfpo.sort ASC, pfpo.created_at ASC, pfpo.user_id ASC
+            )
+          ) AS owner_names
         FROM project_feature_points pfp
+        LEFT JOIN project_feature_point_groups module_group ON module_group.id = pfp.module_group_id
+        LEFT JOIN project_feature_point_groups submodule_group ON submodule_group.id = pfp.submodule_group_id
         LEFT JOIN project_modules pm ON pm.id = pfp.module_id
         LEFT JOIN users owner ON owner.id = pfp.owner_user_id
         WHERE pfp.project_id = ? AND pfp.id = ?
@@ -862,15 +1074,19 @@ export class ProjectRepo {
       .prepare(
         `
         INSERT INTO project_feature_points (
-          id, project_id, module_id, owner_user_id, name, status, progress, enabled, sort, remark, created_at, updated_at
+          id, project_id, module_id, module_group_id, submodule_group_id, module_name, submodule_name, owner_user_id, name, status, progress, enabled, sort, remark, created_at, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
       )
       .run(
         input.id,
         projectId,
         input.moduleId ?? null,
+        input.moduleGroupId ?? null,
+        input.submoduleGroupId ?? null,
+        input.moduleName?.trim() || null,
+        input.submoduleName?.trim() || null,
         input.ownerUserId ?? null,
         input.name,
         input.status ?? "todo",
@@ -881,6 +1097,7 @@ export class ProjectRepo {
         input.createdAt,
         input.updatedAt
       );
+    this.replaceFeaturePointOwners(input.id, input.ownerUserIds ?? (input.ownerUserId ? [input.ownerUserId] : []), input.createdAt);
   }
 
   updateFeaturePoint(
@@ -899,7 +1116,26 @@ export class ProjectRepo {
       fields.push("module_id = ?");
       params.push(patch.moduleId ?? null);
     }
-    if (patch.ownerUserId !== undefined) {
+    if (patch.moduleGroupId !== undefined) {
+      fields.push("module_group_id = ?");
+      params.push(patch.moduleGroupId ?? null);
+    }
+    if (patch.submoduleGroupId !== undefined) {
+      fields.push("submodule_group_id = ?");
+      params.push(patch.submoduleGroupId ?? null);
+    }
+    if (patch.moduleName !== undefined) {
+      fields.push("module_name = ?");
+      params.push(patch.moduleName?.trim() || null);
+    }
+    if (patch.submoduleName !== undefined) {
+      fields.push("submodule_name = ?");
+      params.push(patch.submoduleName?.trim() || null);
+    }
+    if (patch.ownerUserIds !== undefined) {
+      fields.push("owner_user_id = ?");
+      params.push(patch.ownerUserIds[0] ?? null);
+    } else if (patch.ownerUserId !== undefined) {
       fields.push("owner_user_id = ?");
       params.push(patch.ownerUserId ?? null);
     }
@@ -936,6 +1172,9 @@ export class ProjectRepo {
         `
       )
       .run(...params);
+    if (result.changes > 0 && patch.ownerUserIds !== undefined) {
+      this.replaceFeaturePointOwners(featurePointId, patch.ownerUserIds, patch.updatedAt);
+    }
     return result.changes > 0;
   }
 
@@ -1228,9 +1467,14 @@ export class ProjectRepo {
       id: row.id,
       projectId: row.project_id,
       moduleId: row.module_id ?? null,
-      moduleName: row.module_name ?? null,
+      moduleGroupId: row.module_group_id ?? null,
+      submoduleGroupId: row.submodule_group_id ?? null,
+      moduleName: row.module_group_name ?? row.module_name ?? row.linked_module_name ?? null,
+      submoduleName: row.submodule_group_name ?? row.submodule_name ?? null,
       ownerUserId: row.owner_user_id ?? null,
       ownerName: row.owner_name ?? null,
+      ownerUserIds: this.splitCsv(row.owner_user_ids, row.owner_user_id),
+      ownerNames: this.splitCsv(row.owner_names, row.owner_name),
       name: row.name,
       status: row.status,
       progress: row.progress,
@@ -1240,6 +1484,42 @@ export class ProjectRepo {
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+  }
+
+  private mapFeaturePointGroup(row: ProjectFeaturePointGroupRow): ProjectFeaturePointGroupEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      parentId: row.parent_id ?? null,
+      name: row.name,
+      manualProgress: row.manual_progress ?? null,
+      sort: row.sort,
+      remark: row.remark ?? null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private replaceFeaturePointOwners(featurePointId: string, ownerUserIds: string[], createdAt: string): void {
+    this.db.prepare("DELETE FROM project_feature_point_owners WHERE feature_point_id = ?").run(featurePointId);
+    const uniqueOwnerUserIds = Array.from(new Set(ownerUserIds.map((id) => id.trim()).filter(Boolean)));
+    const insert = this.db.prepare(
+      `
+      INSERT INTO project_feature_point_owners (feature_point_id, user_id, sort, created_at)
+      VALUES (?, ?, ?, ?)
+      `
+    );
+    uniqueOwnerUserIds.forEach((userId, index) => {
+      insert.run(featurePointId, userId, index, createdAt);
+    });
+  }
+
+  private splitCsv(value: string | null | undefined, fallback: string | null | undefined): string[] {
+    const values = (value ?? fallback ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return Array.from(new Set(values));
   }
 
   private mapFeatureProgressOverride(row: ProjectFeatureProgressOverrideRow): ProjectFeatureProgressOverrideEntity {

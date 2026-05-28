@@ -17,11 +17,13 @@ import type {
   AddProjectModuleMemberInput,
   AddProjectMemberInput,
   CreateProjectFeaturePointInput,
+  CreateProjectFeaturePointGroupInput,
   CreateProjectConfigItemInput,
   CreateProjectInput,
   CreateProjectVersionItemInput,
   ListProjectsQuery,
   ProjectFeaturePointEntity,
+  ProjectFeaturePointGroupEntity,
   ProjectFeatureProgressMetric,
   ProjectFeatureProgressModuleNode,
   ProjectFeatureProgressOverrideEntity,
@@ -41,6 +43,7 @@ import type {
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
   UpdateProjectFeaturePointInput,
+  UpdateProjectFeaturePointGroupInput,
   UpdateProjectFeatureProgressSettingsInput,
   UpdateProjectMemberInput,
   UpdateProjectInput,
@@ -504,7 +507,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     const current = this.repo.getFeatureProgressSettings(projectId);
     const settings: ProjectFeatureProgressSettings = {
       projectId,
-      enabled: input.enabled,
+      enabled: true,
       createdAt: current?.createdAt ?? now,
       updatedAt: now
     };
@@ -514,15 +517,11 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
   async getFeatureProgress(projectId: string, ctx: RequestContext): Promise<ProjectFeatureProgressView> {
     const project = await this.getById(projectId, ctx);
-    const settings = this.resolveFeatureProgressSettings(projectId);
-    if (!settings.enabled) {
-      return this.buildDisabledFeatureProgressView(projectId, settings);
-    }
-
-    const modules = this.repo.listModules(projectId);
+    const settings = { ...this.resolveFeatureProgressSettings(projectId), enabled: true };
+    const groups = this.repo.listFeaturePointGroups(projectId);
     const featurePoints = this.repo.listFeaturePoints(projectId).filter((item) => item.enabled);
     const overrides = this.repo.listFeatureProgressOverrides(projectId);
-    return this.buildFeatureProgressView(project, settings, modules, featurePoints, overrides);
+    return this.buildFeatureProgressView(project, settings, groups, featurePoints, overrides);
   }
 
   async addFeaturePoint(
@@ -532,16 +531,21 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   ): Promise<ProjectFeaturePointEntity> {
     await this.requireProjectMaintainer(projectId, ctx, "add project feature point");
     await this.getById(projectId, ctx);
-    this.assertFeatureModuleBelongsToProject(projectId, input.moduleId);
-    this.resolveFeatureOwnerUserId(projectId, input.ownerUserId);
+    const ownerUserIds = this.resolveFeatureOwnerUserIds(projectId, input.ownerUserIds ?? (input.ownerUserId ? [input.ownerUserId] : []));
+    const groupSelection = this.resolveFeaturePointGroupsForCreate(projectId, input);
 
     const now = nowIso();
     const id = genId("pfp");
     this.repo.addFeaturePoint(projectId, {
       id,
       name: input.name.trim(),
-      moduleId: this.trimToNull(input.moduleId),
-      ownerUserId: this.trimToNull(input.ownerUserId),
+      moduleId: null,
+      moduleGroupId: groupSelection.moduleGroupId,
+      submoduleGroupId: groupSelection.submoduleGroupId,
+      moduleName: groupSelection.moduleName,
+      submoduleName: groupSelection.submoduleName,
+      ownerUserId: ownerUserIds[0] ?? null,
+      ownerUserIds,
       status: input.status,
       progress: input.progress,
       enabled: input.enabled,
@@ -558,6 +562,84 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     return created;
   }
 
+  async addFeaturePointGroup(
+    projectId: string,
+    input: CreateProjectFeaturePointGroupInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeaturePointGroupEntity> {
+    await this.requireProjectMaintainer(projectId, ctx, "add project feature point group");
+    await this.getById(projectId, ctx);
+    const parentId = this.resolveFeaturePointGroupParent(projectId, input.parentId ?? null, null);
+    const name = input.name.trim();
+    const existing = this.repo.findFeaturePointGroupByName(projectId, parentId, name);
+    if (existing) {
+      throw new AppError(ERROR_CODES.PROJECT_CONFLICT, "同级模块/子模块名称已存在", 409);
+    }
+    const groups = this.repo.listFeaturePointGroups(projectId).filter((item) => item.parentId === parentId);
+    const now = nowIso();
+    const id = genId("pfpg");
+    this.repo.addFeaturePointGroup(projectId, {
+      id,
+      name,
+      parentId,
+      manualProgress: input.manualProgress === undefined ? null : input.manualProgress,
+      sort: input.sort ?? this.getNextSort(groups.map((item) => item.sort)),
+      remark: this.trimToNull(input.remark),
+      createdAt: now,
+      updatedAt: now
+    });
+    const created = this.repo.findFeaturePointGroupById(projectId, id);
+    if (!created) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点分组创建失败", 500);
+    }
+    return created;
+  }
+
+  async updateFeaturePointGroup(
+    projectId: string,
+    groupId: string,
+    input: UpdateProjectFeaturePointGroupInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeaturePointGroupEntity> {
+    await this.requireProjectMaintainer(projectId, ctx, "update project feature point group");
+    await this.getById(projectId, ctx);
+    const current = this.findFeaturePointGroup(projectId, groupId);
+    const parentId =
+      input.parentId === undefined ? current.parentId : this.resolveFeaturePointGroupParent(projectId, input.parentId, groupId);
+    if (input.name !== undefined) {
+      const existing = this.repo.findFeaturePointGroupByName(projectId, parentId, input.name.trim());
+      if (existing && existing.id !== groupId) {
+        throw new AppError(ERROR_CODES.PROJECT_CONFLICT, "同级模块/子模块名称已存在", 409);
+      }
+    }
+    const changed = this.repo.updateFeaturePointGroup(projectId, groupId, {
+      name: input.name?.trim(),
+      parentId: input.parentId === undefined ? undefined : parentId,
+      manualProgress: input.manualProgress,
+      sort: input.sort,
+      remark: input.remark === undefined ? undefined : this.trimToNull(input.remark),
+      updatedAt: nowIso()
+    });
+    if (!changed) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点分组不存在", 404);
+    }
+    return this.findFeaturePointGroup(projectId, groupId);
+  }
+
+  async removeFeaturePointGroup(projectId: string, groupId: string, ctx: RequestContext): Promise<void> {
+    await this.requireProjectMaintainer(projectId, ctx, "remove project feature point group");
+    await this.getById(projectId, ctx);
+    this.findFeaturePointGroup(projectId, groupId);
+    const childCount = this.repo.countFeaturePointGroupChildren(projectId, groupId);
+    const featureCount = this.repo.countFeaturePointsByGroup(projectId, groupId);
+    if (childCount > 0 || featureCount > 0) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "当前分组下仍有功能点，暂不支持删除", 400);
+    }
+    if (!this.repo.removeFeaturePointGroup(projectId, groupId)) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点分组不存在", 404);
+    }
+  }
+
   async updateFeaturePoint(
     projectId: string,
     featurePointId: string,
@@ -570,13 +652,23 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     if (!current) {
       throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点不存在", 404);
     }
-    this.assertFeatureModuleBelongsToProject(projectId, input.moduleId);
-    this.resolveFeatureOwnerUserId(projectId, input.ownerUserId);
+    const groupSelection = this.resolveFeaturePointGroupsForUpdate(projectId, input);
+    const ownerUserIds =
+      input.ownerUserIds === undefined
+        ? input.ownerUserId === undefined
+          ? undefined
+          : this.resolveFeatureOwnerUserIds(projectId, input.ownerUserId ? [input.ownerUserId] : [])
+        : this.resolveFeatureOwnerUserIds(projectId, input.ownerUserIds);
 
     const changed = this.repo.updateFeaturePoint(projectId, featurePointId, {
       name: input.name?.trim(),
-      moduleId: input.moduleId === undefined ? undefined : this.trimToNull(input.moduleId),
-      ownerUserId: input.ownerUserId === undefined ? undefined : this.trimToNull(input.ownerUserId),
+      moduleId: Object.keys(groupSelection).length > 0 ? null : input.moduleId === undefined ? undefined : null,
+      moduleGroupId: groupSelection.moduleGroupId,
+      submoduleGroupId: groupSelection.submoduleGroupId,
+      moduleName: groupSelection.moduleName,
+      submoduleName: groupSelection.submoduleName,
+      ownerUserId: ownerUserIds === undefined ? undefined : ownerUserIds[0] ?? null,
+      ownerUserIds,
       status: input.status,
       progress: input.progress,
       enabled: input.enabled,
@@ -840,7 +932,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     const now = nowIso();
     return {
       projectId,
-      enabled: false,
+      enabled: true,
       createdAt: now,
       updatedAt: now
     };
@@ -861,6 +953,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
         inProgressCount: 0,
         notStartedCount: 0,
         computedProgress: 0,
+        manualProgress: null,
         overrideProgress: null,
         displayProgress: 0,
         overrideRemark: null
@@ -870,6 +963,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
         id: "ungrouped",
         name: "未分组",
         computedProgress: 0,
+        manualProgress: null,
         overrideProgress: null,
         displayProgress: 0,
         overrideRemark: null,
@@ -882,62 +976,66 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
   private buildFeatureProgressView(
     project: ProjectEntity,
     settings: ProjectFeatureProgressSettings,
-    modules: ProjectConfigItemEntity[],
+    groups: ProjectFeaturePointGroupEntity[],
     featurePoints: ProjectFeaturePointEntity[],
     overrides: ProjectFeatureProgressOverrideEntity[]
   ): ProjectFeatureProgressView {
     const overrideMap = new Map(overrides.map((item) => [`${item.targetType}:${item.targetId}`, item]));
-    const featuresByModule = new Map<string, ProjectFeaturePointEntity[]>();
-    const knownModuleIds = new Set(modules.map((item) => item.id));
+    const featuresByGroup = new Map<string, ProjectFeaturePointEntity[]>();
+    const knownGroupIds = new Set(groups.map((item) => item.id));
     const ungroupedFeatures: ProjectFeaturePointEntity[] = [];
 
     for (const feature of featurePoints) {
-      if (feature.moduleId && knownModuleIds.has(feature.moduleId)) {
-        featuresByModule.set(feature.moduleId, [...(featuresByModule.get(feature.moduleId) ?? []), feature]);
+      const groupId = feature.submoduleGroupId && knownGroupIds.has(feature.submoduleGroupId)
+        ? feature.submoduleGroupId
+        : feature.moduleGroupId && knownGroupIds.has(feature.moduleGroupId)
+          ? feature.moduleGroupId
+          : null;
+      if (groupId) {
+        featuresByGroup.set(groupId, [...(featuresByGroup.get(groupId) ?? []), feature]);
       } else {
         ungroupedFeatures.push(feature);
       }
     }
 
-    const childModules = new Map<string, ProjectConfigItemEntity[]>();
-    const roots: ProjectConfigItemEntity[] = [];
-    for (const module of [...modules].sort((left, right) => left.sort - right.sort || left.name.localeCompare(right.name))) {
-      if (module.parentId && knownModuleIds.has(module.parentId)) {
-        childModules.set(module.parentId, [...(childModules.get(module.parentId) ?? []), module]);
+    const childGroups = new Map<string, ProjectFeaturePointGroupEntity[]>();
+    const roots: ProjectFeaturePointGroupEntity[] = [];
+    for (const group of [...groups].sort((left, right) => left.sort - right.sort || left.name.localeCompare(right.name))) {
+      if (group.parentId && knownGroupIds.has(group.parentId)) {
+        childGroups.set(group.parentId, [...(childGroups.get(group.parentId) ?? []), group]);
       } else {
-        roots.push(module);
+        roots.push(group);
       }
     }
 
-    const buildNode = (module: ProjectConfigItemEntity): ProjectFeatureProgressModuleNode => {
-      const children = (childModules.get(module.id) ?? []).map(buildNode);
-      const directFeatures = featuresByModule.get(module.id) ?? [];
+    const buildNode = (group: ProjectFeaturePointGroupEntity): ProjectFeatureProgressModuleNode => {
+      const children = (childGroups.get(group.id) ?? [])
+        .map(buildNode)
+        .filter((child) => child.featureCount > 0);
+      const directFeatures = featuresByGroup.get(group.id) ?? [];
       const descendantFeatures = [
         ...directFeatures,
         ...children.flatMap((child) => this.collectFeaturePointsFromNode(child))
       ];
       const computedProgress = this.averageProgress(descendantFeatures);
-      const metric = this.applyFeatureProgressOverride(
-        computedProgress,
-        overrideMap.get(`module:${module.id}`) ?? null
-      );
+      const metric = this.applyFeatureGroupManualProgress(computedProgress, group.manualProgress, group.remark);
       return {
         ...metric,
-        id: module.id,
-        projectId: module.projectId,
-        name: module.name,
-        code: module.code,
-        nodeType: module.nodeType,
-        parentId: module.parentId,
-        parentName: module.parentName,
-        sort: module.sort,
+        id: group.id,
+        projectId: group.projectId,
+        name: group.name,
+        code: null,
+        nodeType: group.parentId ? "module" : "subsystem",
+        parentId: group.parentId,
+        parentName: group.parentId ? groups.find((item) => item.id === group.parentId)?.name ?? null : null,
+        sort: group.sort,
         featureCount: descendantFeatures.length,
         children,
         featurePoints: directFeatures
       };
     };
 
-    const moduleNodes = roots.map(buildNode).filter((node) => node.featureCount > 0 || node.children.length > 0);
+    const moduleNodes = roots.map(buildNode).filter((node) => node.featureCount > 0);
     const computedProgress = this.averageProgress(featurePoints);
     const summaryMetric = this.applyFeatureProgressOverride(
       computedProgress,
@@ -962,6 +1060,7 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
         id: "ungrouped",
         name: "未分组",
         computedProgress: ungroupedProgress,
+        manualProgress: null,
         overrideProgress: null,
         displayProgress: ungroupedProgress,
         overrideRemark: null,
@@ -992,9 +1091,25 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     const overrideProgress = override ? this.normalizeProgress(override.progress) : null;
     return {
       computedProgress,
+      manualProgress: overrideProgress,
       overrideProgress,
       displayProgress: overrideProgress ?? computedProgress,
       overrideRemark: override?.remark ?? null
+    };
+  }
+
+  private applyFeatureGroupManualProgress(
+    computedProgress: number,
+    manualProgress: number | null,
+    remark: string | null
+  ): ProjectFeatureProgressMetric {
+    const normalizedManualProgress = manualProgress === null ? null : this.normalizeProgress(manualProgress);
+    return {
+      computedProgress,
+      manualProgress: normalizedManualProgress,
+      overrideProgress: normalizedManualProgress,
+      displayProgress: normalizedManualProgress ?? computedProgress,
+      overrideRemark: normalizedManualProgress === null ? null : remark
     };
   }
 
@@ -1003,15 +1118,178 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
   }
 
-  private assertFeatureModuleBelongsToProject(projectId: string, moduleId: string | null | undefined): void {
-    const normalizedModuleId = this.trimToNull(moduleId);
-    if (!normalizedModuleId) {
-      return;
+  private findFeaturePointGroup(projectId: string, groupId: string): ProjectFeaturePointGroupEntity {
+    const group = this.repo.findFeaturePointGroupById(projectId, groupId.trim());
+    if (!group) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点分组不存在", 404);
     }
-    const exists = this.repo.listModules(projectId).some((item) => item.id === normalizedModuleId);
-    if (!exists) {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点关联的模块必须属于当前项目", 400);
+    return group;
+  }
+
+  private resolveFeaturePointGroupParent(
+    projectId: string,
+    parentId: string | null | undefined,
+    selfId: string | null
+  ): string | null {
+    const normalizedParentId = this.trimToNull(parentId);
+    if (!normalizedParentId) {
+      return null;
     }
+    if (selfId && normalizedParentId === selfId) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "不能选择自己作为上级分组", 400);
+    }
+    const parent = this.findFeaturePointGroup(projectId, normalizedParentId);
+    if (parent.parentId) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点分组最多支持模块和子模块两级", 400);
+    }
+    return parent.id;
+  }
+
+  private resolveFeaturePointGroupsForCreate(
+    projectId: string,
+    input: CreateProjectFeaturePointInput
+  ): {
+    moduleGroupId: string | null;
+    submoduleGroupId: string | null;
+    moduleName: string | null;
+    submoduleName: string | null;
+  } {
+    return this.resolveFeaturePointGroups(projectId, {
+      moduleGroupId: input.moduleGroupId,
+      submoduleGroupId: input.submoduleGroupId,
+      moduleName: input.moduleName,
+      submoduleName: input.submoduleName
+    });
+  }
+
+  private resolveFeaturePointGroupsForUpdate(
+    projectId: string,
+    input: UpdateProjectFeaturePointInput
+  ): {
+    moduleGroupId?: string | null;
+    submoduleGroupId?: string | null;
+    moduleName?: string | null;
+    submoduleName?: string | null;
+  } {
+    const groupInputTouched =
+      input.moduleGroupId !== undefined ||
+      input.submoduleGroupId !== undefined ||
+      input.moduleName !== undefined ||
+      input.submoduleName !== undefined;
+    if (!groupInputTouched) {
+      return {};
+    }
+    return this.resolveFeaturePointGroups(projectId, {
+      moduleGroupId: input.moduleGroupId,
+      submoduleGroupId: input.submoduleGroupId,
+      moduleName: input.moduleName,
+      submoduleName: input.submoduleName
+    });
+  }
+
+  private resolveFeaturePointGroups(
+    projectId: string,
+    input: {
+      moduleGroupId?: string | null;
+      submoduleGroupId?: string | null;
+      moduleName?: string | null;
+      submoduleName?: string | null;
+    }
+  ): {
+    moduleGroupId: string | null;
+    submoduleGroupId: string | null;
+    moduleName: string | null;
+    submoduleName: string | null;
+  } {
+    const explicitSubmoduleGroupId = this.trimToNull(input.submoduleGroupId);
+    if (explicitSubmoduleGroupId) {
+      const submoduleGroup = this.findFeaturePointGroup(projectId, explicitSubmoduleGroupId);
+      if (!submoduleGroup.parentId) {
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "子模块分组必须选择二级分组", 400);
+      }
+      const moduleGroup = this.findFeaturePointGroup(projectId, submoduleGroup.parentId);
+      const explicitModuleGroupId = this.trimToNull(input.moduleGroupId);
+      if (explicitModuleGroupId && explicitModuleGroupId !== moduleGroup.id) {
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "模块和子模块分组不匹配", 400);
+      }
+      return {
+        moduleGroupId: moduleGroup.id,
+        submoduleGroupId: submoduleGroup.id,
+        moduleName: moduleGroup.name,
+        submoduleName: submoduleGroup.name
+      };
+    }
+
+    const explicitModuleGroupId = this.trimToNull(input.moduleGroupId);
+    if (explicitModuleGroupId) {
+      const moduleGroup = this.findFeaturePointGroup(projectId, explicitModuleGroupId);
+      if (moduleGroup.parentId) {
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "模块分组必须选择一级分组", 400);
+      }
+      return {
+        moduleGroupId: moduleGroup.id,
+        submoduleGroupId: null,
+        moduleName: moduleGroup.name,
+        submoduleName: null
+      };
+    }
+
+    const moduleName = this.trimToNull(input.moduleName);
+    if (!moduleName) {
+      return {
+        moduleGroupId: null,
+        submoduleGroupId: null,
+        moduleName: null,
+        submoduleName: null
+      };
+    }
+
+    const moduleGroup = this.findOrCreateFeaturePointGroup(projectId, null, moduleName);
+    const submoduleName = this.trimToNull(input.submoduleName);
+    if (!submoduleName) {
+      return {
+        moduleGroupId: moduleGroup.id,
+        submoduleGroupId: null,
+        moduleName: moduleGroup.name,
+        submoduleName: null
+      };
+    }
+    const submoduleGroup = this.findOrCreateFeaturePointGroup(projectId, moduleGroup.id, submoduleName);
+    return {
+      moduleGroupId: moduleGroup.id,
+      submoduleGroupId: submoduleGroup.id,
+      moduleName: moduleGroup.name,
+      submoduleName: submoduleGroup.name
+    };
+  }
+
+  private findOrCreateFeaturePointGroup(
+    projectId: string,
+    parentId: string | null,
+    name: string
+  ): ProjectFeaturePointGroupEntity {
+    const existing = this.repo.findFeaturePointGroupByName(projectId, parentId, name);
+    if (existing) {
+      return existing;
+    }
+    const now = nowIso();
+    const groups = this.repo.listFeaturePointGroups(projectId).filter((item) => item.parentId === parentId);
+    const id = genId("pfpg");
+    this.repo.addFeaturePointGroup(projectId, {
+      id,
+      name,
+      parentId,
+      manualProgress: null,
+      sort: this.getNextSort(groups.map((item) => item.sort)),
+      remark: null,
+      createdAt: now,
+      updatedAt: now
+    });
+    const created = this.repo.findFeaturePointGroupById(projectId, id);
+    if (!created) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "功能点分组创建失败", 500);
+    }
+    return created;
   }
 
   private resolveFeatureOwnerUserId(projectId: string, value: string | null | undefined): string | null {
@@ -1026,6 +1304,20 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
     return ownerUserId;
   }
 
+  private resolveFeatureOwnerUserIds(projectId: string, values: string[] | null | undefined): string[] {
+    if (!values?.length) {
+      return [];
+    }
+    const result: string[] = [];
+    for (const value of values) {
+      const ownerUserId = this.resolveFeatureOwnerUserId(projectId, value);
+      if (ownerUserId && !result.includes(ownerUserId)) {
+        result.push(ownerUserId);
+      }
+    }
+    return result;
+  }
+
   private assertValidFeatureOverrideTarget(projectId: string, targetType: "project" | "module", targetId: string): void {
     const normalizedTargetId = targetId.trim();
     if (targetType === "project") {
@@ -1034,9 +1326,9 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
       }
       return;
     }
-    const exists = this.repo.listModules(projectId).some((item) => item.id === normalizedTargetId);
+    const exists = this.repo.listFeaturePointGroups(projectId).some((item) => item.id === normalizedTargetId);
     if (!exists) {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, "模块进度覆盖目标必须属于当前项目", 400);
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "模块进度覆盖目标必须属于当前功能点分组", 400);
     }
   }
 

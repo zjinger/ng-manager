@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>功能进度明细 · Dark Hub</title>
+  <style>
+    :root{--bg:#050b16;--line:rgba(105,202,255,.18);--line2:rgba(105,202,255,.1);--text:#e7f4ff;--muted:#8fa9c4;--cyan:#22d3ee;--blue:#3b82f6;--violet:#8b5cf6;--green:#5ee6a8;--amber:#fb923c;--gray:#7890a8;--danger:#ff7f9c}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--text);font:14px/1.5 Inter,"Microsoft YaHei",system-ui,sans-serif;background:radial-gradient(circle at 12% 4%,rgba(34,211,238,.16),transparent 30%),radial-gradient(circle at 78% 0,rgba(59,130,246,.18),transparent 30%),linear-gradient(135deg,#030814,#07162a 55%,#050b16)}
+    body:before{content:"";position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(148,213,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(148,213,255,.04) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(to bottom,#000,transparent 88%)}
+    button,input,select{font:inherit;color:inherit}.app{position:relative;max-width:1720px;margin:0 auto;padding:22px}.shell{position:relative;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,rgba(8,22,40,.92),rgba(5,13,25,.88));box-shadow:0 28px 90px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.04);overflow:hidden}.menu{position:absolute;left:-30px;top:-8px;width:58px;height:58px;border-radius:10px;background:rgba(7,23,41,.92);border:1px solid var(--line);display:grid;place-items:center;box-shadow:0 0 26px rgba(34,211,238,.16)}.menu i,.menu i:before,.menu i:after{display:block;width:24px;height:3px;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--blue));content:""}.menu i:before{transform:translateY(-8px)}.menu i:after{transform:translateY(5px)}
+    .head{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 28px 18px 58px;border-bottom:1px solid var(--line2)}.title{margin:0;color:#fff;font-size:28px;font-weight:800;letter-spacing:.02em}.subtitle{margin:8px 0 0;color:var(--muted);font-size:16px}.headActions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.rateCard{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid rgba(105,202,255,.12);border-radius:10px;background:rgba(8,20,36,.58)}.rateCard span{display:block;color:#c6d8e8;font-size:12px;font-weight:700}.rateCard b{font-size:28px;color:#fff;line-height:1}.ring{width:56px;height:56px;border-radius:50%;background:conic-gradient(var(--cyan) calc(var(--p)*1%),var(--violet) calc(var(--p)*1% + 18%),rgba(255,255,255,.08) 0);position:relative}.ring:after{content:"";position:absolute;inset:8px;border-radius:50%;background:#071426}.btn{border:1px solid rgba(105,202,255,.28);background:rgba(10,28,50,.72);border-radius:8px;padding:12px 22px;cursor:pointer;transition:.18s}.btn:hover{border-color:rgba(34,211,238,.6);box-shadow:0 0 22px rgba(34,211,238,.13)}.primary{color:#04101d;background:linear-gradient(135deg,var(--cyan),var(--blue));border:0;font-weight:800}.tools{display:none;grid-template-columns:1fr 220px 180px;gap:12px;padding:16px 28px 16px 58px;border-bottom:1px solid var(--line2);background:rgba(5,15,29,.44)}.tools.show{display:grid}.field{border:1px solid rgba(186,230,253,.14);background:rgba(255,255,255,.045);border-radius:10px;padding:11px 13px;outline:none}.field:focus{border-color:rgba(103,232,249,.55)}
+    .tableHead{display:grid;grid-template-columns:minmax(520px,1fr) 260px 220px 74px;padding:18px 28px 18px 58px;color:#b8c9dd;font-weight:800;font-size:15px;border-bottom:1px solid var(--line2);background:rgba(5,14,27,.72)}.tree{padding:0 10px 8px}.moduleBlock{position:relative}.moduleBlock.open:before{content:"";position:absolute;left:56px;top:86px;bottom:18px;width:1px;background:linear-gradient(to bottom,rgba(34,211,238,.45),rgba(139,92,246,.28),transparent);box-shadow:0 0 12px rgba(34,211,238,.18)}.row{display:grid;grid-template-columns:minmax(520px,1fr) 260px 220px 74px;align-items:center;min-height:86px;border:1px solid transparent;border-bottom-color:var(--line2);transition:.18s}.row:hover{background:rgba(34,211,238,.035)}.module{margin:10px 0 0;border-color:rgba(105,202,255,.14);border-radius:10px;background:linear-gradient(90deg,rgba(13,65,92,.58),rgba(10,26,48,.62));box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}.sub{margin-left:64px;background:rgba(255,255,255,.018);position:relative}.sub:before{content:"";position:absolute;left:-36px;top:50%;width:36px;height:1px;background:rgba(34,211,238,.36)}.sub.has-open-functions:after{content:"";position:absolute;left:24px;top:62px;bottom:-10px;width:1px;background:linear-gradient(to bottom,rgba(139,92,246,.44),rgba(139,92,246,.18),transparent)}.function{margin-left:126px;min-height:64px;background:rgba(2,10,20,.12);position:relative}.function:before{content:"";position:absolute;left:-38px;top:32px;width:38px;height:1px;background:rgba(139,92,246,.34)}.module+.sub,.sub+.function{margin-top:12px}.function+.function{margin-top:4px}.sub.has-open-functions{border-bottom-color:rgba(105,202,255,.06)}
+    .cellMain{display:flex;align-items:center;gap:18px;padding-left:24px;min-width:0}.toggle{width:48px;height:48px;border-radius:14px;border:1px solid rgba(105,202,255,.22);background:rgba(5,18,34,.78);color:#62e8ff;font-size:22px;font-weight:900;display:grid;place-items:center;cursor:pointer;transition:.2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}.module .toggle{background:rgba(2,37,56,.82);box-shadow:0 0 22px rgba(34,211,238,.13)}.toggle.closed{transform:rotate(-90deg)}.docIcon{width:40px;height:40px;border-radius:12px;border:1px solid rgba(130,165,255,.22);display:grid;place-items:center;background:rgba(255,255,255,.035);color:#d7ecff;flex:0 0 auto}.nodeText{min-width:0}.nodeTop{display:flex;align-items:center;gap:12px;min-width:0}.badge{height:24px;padding:0 10px;border-radius:7px;display:inline-flex;align-items:center;font-size:12px;font-weight:800;letter-spacing:.04em;white-space:nowrap}.moduleBadge{color:#d7c8ff;background:rgba(139,92,246,.13);border:1px solid rgba(139,92,246,.32)}.subBadge{color:#84f4ff;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.28)}.nodeTitle{font-size:18px;font-weight:850;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.module .nodeTitle{font-size:19px}.meta{margin-top:5px;color:var(--muted);font-size:13px}.path{font-size:12px;color:#7894ae;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.function .cellMain{gap:14px;padding-left:18px}.dotRail{width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--violet));box-shadow:0 0 14px rgba(139,92,246,.55);position:relative;flex:0 0 auto}.function:not(.lastInSub) .dotRail:after{content:"";position:absolute;left:4px;top:12px;width:1px;height:48px;background:rgba(139,92,246,.34)}.function .nodeTitle{font-size:15px}.progressCell{padding-right:34px}.progressText{display:flex;align-items:center;gap:10px;margin-bottom:9px}.progressText b{font-size:16px;color:#fff}.bar{height:10px;width:190px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden}.fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--blue),var(--violet))}.ok .fill{background:linear-gradient(90deg,var(--green),#34d399)}.risk .fill{background:linear-gradient(90deg,#60a5fa,var(--violet))}.todo .fill{background:rgba(120,144,168,.45)}.status{display:flex;align-items:center;gap:10px;color:#cbd8e7;font-size:15px}.status:before{content:"";width:9px;height:9px;border-radius:50%;background:var(--blue);box-shadow:0 0 10px rgba(59,130,246,.6)}.status.ok:before{background:var(--green)}.status.risk:before{background:var(--amber)}.status.todo:before{background:var(--gray)}.more{border:0;background:transparent;color:#9db7cf;cursor:pointer;font-size:22px}.more:hover{color:#fff}.actionWrap{position:relative;display:flex;justify-content:center}.actionMenu{position:absolute;right:26px;top:46px;z-index:20;min-width:154px;padding:8px;border:1px solid rgba(105,202,255,.18);border-radius:12px;background:rgba(7,18,33,.98);box-shadow:0 18px 50px rgba(0,0,0,.38),0 0 24px rgba(34,211,238,.1);backdrop-filter:blur(14px)}.actionMenu button{width:100%;border:0;background:transparent;color:#cfe8ff;text-align:left;border-radius:8px;padding:9px 10px;cursor:pointer}.actionMenu button:hover{background:rgba(34,211,238,.12);color:#fff}.actionMenu .danger{color:#ffb4c4}.actionMenu .danger:hover{background:rgba(255,107,138,.12)}.empty{padding:50px;text-align:center;color:var(--muted)}
+    .dialog{border:0;padding:0;background:transparent}.dialog::backdrop{background:rgba(0,0,0,.62)}.modal{width:min(680px,92vw);padding:22px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(15,29,52,.95),rgba(7,15,29,.92));box-shadow:0 24px 80px rgba(0,0,0,.45)}.modal h3{margin:0 0 16px;color:#fff;font-size:20px}.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.span2{grid-column:span 2}.modalActions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.external-mode .manager-only{display:none!important}.external-mode .tools{display:none!important}.external-mode .head{padding-right:28px}
+    @media(max-width:1080px){.app{padding:12px}.shell{border-radius:12px}.menu{display:none}.head,.tableHead{padding-left:20px}.tools{grid-template-columns:1fr;padding-left:20px}.tableHead,.row{grid-template-columns:minmax(320px,1fr) 190px 150px 50px}.sub{margin-left:28px}.function{margin-left:54px}.bar{width:140px}.head{align-items:flex-start;flex-direction:column}.headActions{width:100%}.moduleBlock.open:before{left:34px}.sub:before{left:-16px;width:16px}.function:before{left:-22px;width:22px}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="shell">
+      <div class="menu"><i></i></div>
+      <header class="head">
+        <div>
+          <h1 class="title">功能进度明细</h1>
+          <p class="subtitle">支持一级模块、二级子模块折叠展示，适合内部管理与对外汇报展示</p>
+        </div>
+        <div class="headActions">
+          <div class="rateCard"><div><span>整体完成率</span><b id="avgProgress">0%</b></div><div id="rateRing" class="ring" style="--p:0"></div></div>
+          <button id="filterBtn" class="btn">筛选</button>
+          <button id="addBtn" class="btn primary manager-only">新增</button>
+          <button id="displayBtn" class="btn manager-only">展示</button>
+        </div>
+      </header>
+      <section id="tools" class="tools manager-only">
+        <input id="searchInput" class="field" placeholder="搜索模块 / 子模块 / 功能点" />
+        <select id="moduleFilter" class="field"><option value="">全部模块</option></select>
+        <select id="statusFilter" class="field"><option value="">全部状态</option><option value="done">已完成</option><option value="doing">进行中</option><option value="todo">未开始</option><option value="risk">风险</option></select>
+      </section>
+      <div class="tableHead"><div>功能结构</div><div>完成进度</div><div>完成情况</div><div></div></div>
+      <main id="tree" class="tree"></main>
+    </section>
+  </div>
+
+  <dialog id="editDialog" class="dialog"><form method="dialog" class="modal"><h3>功能点录入 / 编辑</h3><div class="formGrid"><input name="module" placeholder="模块" class="field" /><input name="submodule" placeholder="子模块" class="field" /><input name="name" placeholder="功能点计数项名称" class="field span2" /><input name="progress" type="number" min="0" max="100" placeholder="完成情况 0-100" class="field" /><input name="remark" placeholder="备注" class="field" /></div><div class="modalActions"><button value="cancel" class="btn">取消</button><button id="saveBtn" value="default" class="btn primary">保存</button></div></form></dialog>
+
+  <script>
+    let rows=[
+      {id:1,module:'国家中心系统',submodule:'海区链路适配',name:'海区信息录入',progress:100,remark:'需收集统一监控管理需求'},
+      {id:2,module:'国家中心系统',submodule:'海区链路适配',name:'海区信息编辑',progress:100,remark:''},
+      {id:3,module:'国家中心系统',submodule:'海区链路适配',name:'海区信息删除',progress:100,remark:''},
+      {id:4,module:'国家中心系统',submodule:'海区链路适配',name:'海区信息查询',progress:100,remark:''},
+      {id:5,module:'国家中心系统',submodule:'海区链路适配',name:'海区链路配置',progress:100,remark:''},
+      {id:6,module:'国家中心系统',submodule:'海区链路适配',name:'海区链路配置版本管理',progress:0,remark:'待排期'},
+      {id:7,module:'国家中心系统',submodule:'统一监控管理',name:'设备状态总览',progress:70,remark:'监控指标确认中'},
+      {id:8,module:'国家中心系统',submodule:'统一监控管理',name:'异常告警推送',progress:45,remark:'告警规则待评审'},
+      {id:9,module:'国家中心系统',submodule:'统一监控管理',name:'链路健康度分析',progress:20,remark:'算法方案设计中'},
+      {id:10,module:'业务支撑系统',submodule:'用户权限管理',name:'用户信息录入',progress:100,remark:''},
+      {id:11,module:'业务支撑系统',submodule:'用户权限管理',name:'角色权限配置',progress:80,remark:'联调中'},
+      {id:12,module:'业务支撑系统',submodule:'用户权限管理',name:'菜单权限控制',progress:60,remark:'前端页面开发中'},
+      {id:13,module:'业务支撑系统',submodule:'数据字典管理',name:'字典分类维护',progress:100,remark:''},
+      {id:14,module:'业务支撑系统',submodule:'数据字典管理',name:'字典项批量维护',progress:50,remark:'批量保存接口待完成'},
+      {id:15,module:'业务支撑系统',submodule:'数据字典管理',name:'字典版本发布',progress:0,remark:'待排期'},
+      {id:16,module:'业务支撑系统',submodule:'日志审计管理',name:'操作日志查询',progress:100,remark:''},
+      {id:17,module:'业务支撑系统',submodule:'日志审计管理',name:'登录日志分析',progress:75,remark:'图表优化中'},
+      {id:18,module:'业务支撑系统',submodule:'日志审计管理',name:'审计报表导出',progress:30,remark:'需确认报表模板'},
+      {id:19,module:'运维保障系统',submodule:'巡检任务管理',name:'巡检计划配置',progress:80,remark:''},
+      {id:20,module:'运维保障系统',submodule:'巡检任务管理',name:'巡检结果登记',progress:45,remark:'移动端适配中'},
+      {id:21,module:'运维保障系统',submodule:'故障工单管理',name:'工单派发处理',progress:0,remark:'待排期'}
+    ];
+    let editingId=null;
+    const collapsedModules=new Set(['业务支撑系统','运维保障系统']);
+    const collapsedSubmodules=new Set(['国家中心系统::海区链路适配']);
+    const $=id=>document.getElementById(id);
+    const normalizeProgress=value=>Math.max(0,Math.min(100,Number(String(value||0).replace('%',''))||0));
+    const statusOf=progress=>progress>=100?'done':progress<=0?'todo':progress<50?'risk':'doing';
+    const statusText=progress=>progress>=100?'已完成':progress<=0?'未开始':progress<50?'风险关注':'进行中';
+    const avgOf=items=>items.length?Math.round(items.reduce((sum,item)=>sum+item.progress,0)/items.length):0;
+    const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+    function filteredRows(){
+      const keyword=($('searchInput')?.value||'').trim().toLowerCase();
+      const moduleValue=$('moduleFilter')?.value||'';
+      const statusValue=$('statusFilter')?.value||'';
+      return rows.filter(row=>[row.module,row.submodule,row.name,row.remark].join(' ').toLowerCase().includes(keyword)&&(!moduleValue||row.module===moduleValue)&&(!statusValue||statusOf(row.progress)===statusValue));
+    }
+
+    function statusClass(progress){return progress>=100?'ok':progress<=0?'todo':progress<50?'risk':'doing'}
+    function progressHtml(progress){const cls=statusClass(progress);return `<div class="progressCell ${cls}"><div class="progressText"><b>${progress}%</b></div><div class="bar"><div class="fill" style="width:${progress}%"></div></div></div>`}
+    function groupRows(list){const map=new Map();list.forEach(row=>{const moduleName=row.module||'未归类模块';const submoduleName=row.submodule||'未归类子模块';if(!map.has(moduleName))map.set(moduleName,new Map());if(!map.get(moduleName).has(submoduleName))map.get(moduleName).set(submoduleName,[]);map.get(moduleName).get(submoduleName).push(row)});return map}
+
+    function render(){
+      const grouped=groupRows(filteredRows());
+      let html='';
+      grouped.forEach((subMap,moduleName)=>{
+        const allItems=[...subMap.values()].flat();
+        const moduleAvg=avgOf(allItems);
+        const doneCount=allItems.filter(item=>item.progress>=100).length;
+        const moduleClosed=collapsedModules.has(moduleName);
+        html+=`<section class="moduleBlock ${moduleClosed?'':'open'}"><div class="row module" data-action="toggle-module" data-key="${esc(moduleName)}"><div class="cellMain"><button class="toggle ${moduleClosed?'closed':''}" type="button">⌄</button><div class="docIcon">▤</div><div class="nodeText"><div class="nodeTop"><span class="badge moduleBadge">一级模块</span><span class="nodeTitle">${esc(moduleName)}</span></div><div class="meta">${subMap.size} 个子模块 · ${allItems.length} 个功能点 · 已完成 ${doneCount} 个</div></div></div>${progressHtml(moduleAvg)}<div class="status ${statusClass(moduleAvg)}">${statusText(moduleAvg)}</div><div class="actionWrap manager-only"><button class="more" type="button" data-action="menu" data-type="module" data-key="${esc(moduleName)}">•••</button></div></div>`;
+        if(!moduleClosed){
+          subMap.forEach((items,submoduleName)=>{
+            const subKey=`${moduleName}::${submoduleName}`;
+            const subClosed=collapsedSubmodules.has(subKey);
+            const subAvg=avgOf(items);
+            const subDone=items.filter(item=>item.progress>=100).length;
+            html+=`<div class="row sub ${subClosed?'':'has-open-functions'}" data-action="toggle-submodule" data-key="${esc(subKey)}"><div class="cellMain"><button class="toggle ${subClosed?'closed':''}" type="button">⌄</button><div class="docIcon">▤</div><div class="nodeText"><div class="nodeTop"><span class="badge subBadge">子模块</span><span class="nodeTitle">${esc(submoduleName)}</span></div><div class="meta">${items.length} 个功能点 · 已完成 ${subDone} 个</div></div></div>${progressHtml(subAvg)}<div class="status ${statusClass(subAvg)}">${statusText(subAvg)}</div><div class="actionWrap manager-only"><button class="more" type="button" data-action="menu" data-type="submodule" data-key="${esc(subKey)}">•••</button></div></div>`;
+            if(!subClosed){
+              items.forEach((row,index)=>{const cls=statusClass(row.progress);html+=`<div class="row function ${index===items.length-1?'lastInSub':''}"><div class="cellMain"><span class="dotRail"></span><div class="nodeText"><div class="nodeTop"><span class="nodeTitle">${esc(row.name)}</span></div><div class="path">${esc(row.module)} / ${esc(row.submodule)}</div></div></div>${progressHtml(row.progress)}<div class="status ${cls}">${statusText(row.progress)}</div><div class="actionWrap manager-only"><button class="more" type="button" data-action="menu" data-type="function" data-id="${row.id}">•••</button></div></div>`})
+            }
+          })
+        }
+        html+='</section>';
+      });
+      $('tree').innerHTML=html||'<div class="empty">暂无匹配数据</div>';
+      const totalAvg=avgOf(rows);
+      $('avgProgress').textContent=totalAvg+'%';
+      $('rateRing').style.setProperty('--p',totalAvg);
+      renderModuleOptions();
+    }
+
+    function renderModuleOptions(){
+      const select=$('moduleFilter');
+      const current=select.value;
+      const modules=[...new Set(rows.map(row=>row.module).filter(Boolean))];
+      select.innerHTML='<option value="">全部模块</option>'+modules.map(moduleName=>`<option ${moduleName===current?'selected':''} value="${esc(moduleName)}">${esc(moduleName)}</option>`).join('');
+    }
+
+    function toggleModule(key){collapsedModules.has(key)?collapsedModules.delete(key):collapsedModules.add(key);render()}
+    function toggleSubmodule(key){collapsedSubmodules.has(key)?collapsedSubmodules.delete(key):collapsedSubmodules.add(key);render()}
+    function openEdit(id){editingId=id||null;const row=rows.find(item=>item.id===id)||{module:'',submodule:'',name:'',progress:0,remark:''};const form=$('editDialog').querySelector('form');form.module.value=row.module;form.submodule.value=row.submodule;form.name.value=row.name;form.progress.value=row.progress;form.remark.value=row.remark;$('editDialog').showModal()}
+    function closeActionMenus(){document.querySelectorAll('.actionMenu').forEach(menu=>menu.remove())}
+
+    function createMenuButton(label,onClick,isDanger=false){
+      const button=document.createElement('button');
+      button.type='button';
+      button.textContent=label;
+      if(isDanger)button.className='danger';
+      button.addEventListener('click',event=>{event.stopPropagation();onClick();closeActionMenus()});
+      return button;
+    }
+
+    function showActionMenu(target,type,key,id){
+      closeActionMenus();
+      const wrap=target.closest('.actionWrap');
+      const menu=document.createElement('div');
+      menu.className='actionMenu';
+      if(type==='function'){
+        const rowId=Number(id);
+        menu.appendChild(createMenuButton('编辑功能点',()=>openEdit(rowId)));
+        menu.appendChild(createMenuButton('设为已完成',()=>quickProgress(rowId,100)));
+        menu.appendChild(createMenuButton('设为未开始',()=>quickProgress(rowId,0)));
+        menu.appendChild(createMenuButton('删除',()=>deleteFunction(rowId),true));
+      }else{
+        menu.appendChild(createMenuButton('全部设为已完成',()=>batchProgress(type,key,100)));
+        menu.appendChild(createMenuButton('全部设为未开始',()=>batchProgress(type,key,0)));
+        menu.appendChild(createMenuButton('折叠 / 展开',()=>type==='module'?toggleModule(key):toggleSubmodule(key)));
+      }
+      wrap.appendChild(menu);
+    }
+
+    function quickProgress(id,progress){rows=rows.map(row=>row.id===id?{...row,progress}:row);render()}
+    function batchProgress(type,key,progress){rows=rows.map(row=>type==='module'&&row.module===key?{...row,progress}:type==='submodule'&&`${row.module}::${row.submodule}`===key?{...row,progress}:row);render()}
+    function deleteFunction(id){if(confirm('确认删除该功能点吗？')){rows=rows.filter(row=>row.id!==id);render()}}
+
+    $('tree').addEventListener('click',event=>{
+      const menuButton=event.target.closest('[data-action="menu"]');
+      if(menuButton){event.stopPropagation();showActionMenu(menuButton,menuButton.dataset.type,menuButton.dataset.key,menuButton.dataset.id);return}
+      const moduleRow=event.target.closest('[data-action="toggle-module"]');
+      if(moduleRow){toggleModule(moduleRow.dataset.key);return}
+      const submoduleRow=event.target.closest('[data-action="toggle-submodule"]');
+      if(submoduleRow){toggleSubmodule(submoduleRow.dataset.key)}
+    });
+
+    document.addEventListener('click',event=>{if(!event.target.closest('.actionWrap'))closeActionMenus()});
+    $('filterBtn').addEventListener('click',()=>{$('tools').classList.toggle('show')});
+    $('addBtn').addEventListener('click',()=>openEdit(null));
+    $('saveBtn').addEventListener('click',event=>{event.preventDefault();const form=$('editDialog').querySelector('form');const data={module:form.module.value.trim(),submodule:form.submodule.value.trim(),name:form.name.value.trim(),progress:normalizeProgress(form.progress.value),remark:form.remark.value.trim()};if(!data.name)return alert('请填写功能点名称');if(editingId){rows=rows.map(row=>row.id===editingId?{...row,...data}:row)}else{rows.push({id:Date.now(),...data})}$('editDialog').close();render()});
+    ['searchInput','moduleFilter','statusFilter'].forEach(id=>$(id).addEventListener('input',render));
+    $('displayBtn').addEventListener('click',()=>{document.body.classList.toggle('external-mode');$('displayBtn').textContent=document.body.classList.contains('external-mode')?'退出展示':'展示'});
+    render();
+  </script>
+</body>
+</html>

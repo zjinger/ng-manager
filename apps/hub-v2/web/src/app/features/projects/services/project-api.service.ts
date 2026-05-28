@@ -9,12 +9,14 @@ import type {
   AddProjectMemberInput,
   CreateProjectApiTokenInput,
   CreateProjectApiTokenResult,
+  CreateProjectFeaturePointGroupInput,
   CreateProjectFeaturePointInput,
   CreateProjectInput,
   CreateProjectMetaItemInput,
   CreateProjectVersionItemInput,
   ProjectApiTokenEntity,
   ProjectFeaturePoint,
+  ProjectFeaturePointGroup,
   ProjectFeatureProgressOverrideEntity,
   ProjectFeatureProgressView,
   ProjectListQuery,
@@ -28,6 +30,7 @@ import type {
   ReplaceModuleRdLinksInput,
   UpdateProjectMemberInput,
   UpdateProjectFeaturePointInput,
+  UpdateProjectFeaturePointGroupInput,
   UpdateProjectFeatureProgressSettingsInput,
   UpdateProjectInput,
   UpdateProjectMetaItemInput,
@@ -127,6 +130,24 @@ export class ProjectApiService {
 
   addFeaturePoint(projectId: string, input: CreateProjectFeaturePointInput) {
     return this.api.post<ProjectFeaturePoint, CreateProjectFeaturePointInput>(`/projects/${projectId}/feature-points`, input);
+  }
+
+  addFeaturePointGroup(projectId: string, input: CreateProjectFeaturePointGroupInput) {
+    return this.api.post<ProjectFeaturePointGroup, CreateProjectFeaturePointGroupInput>(
+      `/projects/${projectId}/feature-point-groups`,
+      input
+    );
+  }
+
+  updateFeaturePointGroup(projectId: string, groupId: string, input: UpdateProjectFeaturePointGroupInput) {
+    return this.api.patch<ProjectFeaturePointGroup, UpdateProjectFeaturePointGroupInput>(
+      `/projects/${projectId}/feature-point-groups/${groupId}`,
+      input
+    );
+  }
+
+  removeFeaturePointGroup(projectId: string, groupId: string) {
+    return this.api.delete<{ id: string }>(`/projects/${projectId}/feature-point-groups/${groupId}`);
   }
 
   updateFeaturePoint(projectId: string, featurePointId: string, input: UpdateProjectFeaturePointInput) {

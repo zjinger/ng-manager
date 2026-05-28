@@ -10,6 +10,7 @@ import apiTokenAdminRoutes from "../modules/api-token/api-token-admin.routes";
 import apiTokenRoutes from "../modules/api-token/api-token.routes";
 import authRoutes from "../modules/auth/auth.routes";
 import dashboardRoutes from "../modules/dashboard/dashboard.routes";
+import deliveryWeeklyReportRoutes from "../modules/delivery-weekly-report/delivery-weekly-report.routes";
 import feedbackPublicRoutes from "../modules/feedback/feedback-public.routes";
 import feedbackRoutes from "../modules/feedback/feedback.routes";
 import documentPublicRoutes from "../modules/document/document-public.routes";
@@ -168,6 +169,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(approvalTemplateRoutes, { prefix: "/api/admin" });
   await app.register(auditLogRoutes, { prefix: "/api/admin" });
   await app.register(dashboardRoutes, { prefix: "/api/admin" });
+  await app.register(deliveryWeeklyReportRoutes, { prefix: "/api/admin" });
   await app.register(feedbackRoutes, { prefix: "/api/admin" });
   await app.register(documentRoutes, { prefix: "/api/admin" });
   await app.register(notificationRoutes, { prefix: "/api/admin" });

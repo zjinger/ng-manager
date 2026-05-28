@@ -333,6 +333,11 @@ export class ProjectListPageComponent {
     void this.router.navigate(['/delivery-overview']);
   }
 
+  openFeatureProgress(project: ProjectSummary): void {
+    this.projectContext.setCurrentProjectId(project.id);
+    void this.router.navigate(['/projects/progress']);
+  }
+
   closeConfigDialog(): void {
     this.configDialogOpen.set(false);
     this.configProject.set(null);

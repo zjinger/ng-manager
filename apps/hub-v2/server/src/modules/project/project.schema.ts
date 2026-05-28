@@ -103,7 +103,12 @@ export const updateProjectFeatureProgressSettingsSchema = z.object({
 export const createProjectFeaturePointSchema = z.object({
   name: z.string().trim().min(1),
   moduleId: z.string().trim().nullable().optional(),
+  moduleGroupId: z.string().trim().nullable().optional(),
+  submoduleGroupId: z.string().trim().nullable().optional(),
+  moduleName: z.string().trim().nullable().optional(),
+  submoduleName: z.string().trim().nullable().optional(),
   ownerUserId: z.string().trim().nullable().optional(),
+  ownerUserIds: z.array(z.string().trim().min(1)).optional(),
   status: featurePointStatusSchema.optional(),
   progress: z.number().int().min(0).max(100).optional(),
   enabled: z.boolean().optional(),
@@ -114,10 +119,31 @@ export const createProjectFeaturePointSchema = z.object({
 export const updateProjectFeaturePointSchema = z.object({
   name: z.string().trim().min(1).optional(),
   moduleId: z.string().trim().nullable().optional(),
+  moduleGroupId: z.string().trim().nullable().optional(),
+  submoduleGroupId: z.string().trim().nullable().optional(),
+  moduleName: z.string().trim().nullable().optional(),
+  submoduleName: z.string().trim().nullable().optional(),
   ownerUserId: z.string().trim().nullable().optional(),
+  ownerUserIds: z.array(z.string().trim().min(1)).optional(),
   status: featurePointStatusSchema.optional(),
   progress: z.number().int().min(0).max(100).optional(),
   enabled: z.boolean().optional(),
+  sort: z.number().int().min(0).optional(),
+  remark: z.string().trim().nullable().optional()
+});
+
+export const createProjectFeaturePointGroupSchema = z.object({
+  name: z.string().trim().min(1),
+  parentId: z.string().trim().nullable().optional(),
+  manualProgress: z.number().int().min(0).max(100).nullable().optional(),
+  sort: z.number().int().min(0).optional(),
+  remark: z.string().trim().nullable().optional()
+});
+
+export const updateProjectFeaturePointGroupSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  parentId: z.string().trim().nullable().optional(),
+  manualProgress: z.number().int().min(0).max(100).nullable().optional(),
   sort: z.number().int().min(0).optional(),
   remark: z.string().trim().nullable().optional()
 });

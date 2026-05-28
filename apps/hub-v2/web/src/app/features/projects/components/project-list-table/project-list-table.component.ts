@@ -47,6 +47,7 @@ export class ProjectListTableComponent {
   readonly edit = output<ProjectSummary>();
   readonly manageConfig = output<ProjectSummary>();
   readonly openDeliveryOverview = output<ProjectSummary>();
+  readonly openFeatureProgress = output<ProjectSummary>();
   readonly archive = output<ProjectSummary>();
   readonly restore = output<ProjectSummary>();
   readonly toggleExpand = output<ProjectSummary>();

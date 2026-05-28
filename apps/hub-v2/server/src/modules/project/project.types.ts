@@ -153,13 +153,30 @@ export interface ProjectFeaturePointEntity {
   id: string;
   projectId: string;
   moduleId: string | null;
+  moduleGroupId: string | null;
+  submoduleGroupId: string | null;
   moduleName?: string | null;
+  submoduleName?: string | null;
   ownerUserId: string | null;
   ownerName?: string | null;
+  ownerUserIds: string[];
+  ownerNames: string[];
   name: string;
   status: ProjectFeaturePointStatus;
   progress: number;
   enabled: boolean;
+  sort: number;
+  remark: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectFeaturePointGroupEntity {
+  id: string;
+  projectId: string;
+  parentId: string | null;
+  name: string;
+  manualProgress: number | null;
   sort: number;
   remark: string | null;
   createdAt: string;
@@ -216,7 +233,12 @@ export interface UpdateProjectFeatureProgressSettingsInput {
 export interface CreateProjectFeaturePointInput {
   name: string;
   moduleId?: string | null;
+  moduleGroupId?: string | null;
+  submoduleGroupId?: string | null;
+  moduleName?: string | null;
+  submoduleName?: string | null;
   ownerUserId?: string | null;
+  ownerUserIds?: string[];
   status?: ProjectFeaturePointStatus;
   progress?: number;
   enabled?: boolean;
@@ -227,10 +249,31 @@ export interface CreateProjectFeaturePointInput {
 export interface UpdateProjectFeaturePointInput {
   name?: string;
   moduleId?: string | null;
+  moduleGroupId?: string | null;
+  submoduleGroupId?: string | null;
+  moduleName?: string | null;
+  submoduleName?: string | null;
   ownerUserId?: string | null;
+  ownerUserIds?: string[];
   status?: ProjectFeaturePointStatus;
   progress?: number;
   enabled?: boolean;
+  sort?: number;
+  remark?: string | null;
+}
+
+export interface CreateProjectFeaturePointGroupInput {
+  name: string;
+  parentId?: string | null;
+  manualProgress?: number | null;
+  sort?: number;
+  remark?: string | null;
+}
+
+export interface UpdateProjectFeaturePointGroupInput {
+  name?: string;
+  parentId?: string | null;
+  manualProgress?: number | null;
   sort?: number;
   remark?: string | null;
 }
@@ -249,6 +292,7 @@ export interface DeleteProjectFeatureProgressOverrideInput {
 
 export interface ProjectFeatureProgressMetric {
   computedProgress: number;
+  manualProgress: number | null;
   overrideProgress: number | null;
   displayProgress: number;
   overrideRemark: string | null;
@@ -286,6 +330,7 @@ export interface ProjectFeatureProgressView {
     id: "ungrouped";
     name: string;
     computedProgress: number;
+    manualProgress: null;
     overrideProgress: null;
     displayProgress: number;
     overrideRemark: null;

@@ -22,6 +22,9 @@ import type { AuthCommandContract, AuthQueryContract } from "../modules/auth/aut
 import { DashboardService } from "../modules/dashboard/dashboard.service";
 import { DashboardRepo } from "../modules/dashboard/dashboard.repo";
 import type { DashboardQueryContract } from "../modules/dashboard/dashboard.contract";
+import type { DeliveryWeeklyReportCommandContract, DeliveryWeeklyReportQueryContract } from "../modules/delivery-weekly-report/delivery-weekly-report.contract";
+import { DeliveryWeeklyReportRepo } from "../modules/delivery-weekly-report/delivery-weekly-report.repo";
+import { DeliveryWeeklyReportService } from "../modules/delivery-weekly-report/delivery-weekly-report.service";
 import type { FeedbackCommandContract, FeedbackQueryContract } from "../modules/feedback/feedback.contract";
 import { FeedbackRepo } from "../modules/feedback/feedback.repo";
 import { FeedbackService } from "../modules/feedback/feedback.service";
@@ -135,6 +138,8 @@ export type AppContainer = {
   auditLogCommand: AuditLogCommandContract;
   auditLogQuery: AuditLogQueryContract;
   dashboardQuery: DashboardQueryContract;
+  deliveryWeeklyReportCommand: DeliveryWeeklyReportCommandContract;
+  deliveryWeeklyReportQuery: DeliveryWeeklyReportQueryContract;
   notificationQuery: NotificationQueryContract;
   notificationCommand: NotificationCommandContract;
   notificationIngest: NotificationIngestContract;
@@ -283,6 +288,11 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     new DashboardRepo(db),
     projectService
   );
+  const deliveryWeeklyReportService = new DeliveryWeeklyReportService(
+    new DeliveryWeeklyReportRepo(db),
+    projectRepo,
+    projectAccess
+  );
   const notificationService = new NotificationService(profileService, new NotificationRepo(db));
   const feedbackRepo = new FeedbackRepo(db);
   const feedbackService = new FeedbackService(feedbackRepo, projectRepo, projectAccess);
@@ -346,6 +356,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     auditLogCommand: auditLogService,
     auditLogQuery: auditLogService,
     dashboardQuery: dashboardService,
+    deliveryWeeklyReportCommand: deliveryWeeklyReportService,
+    deliveryWeeklyReportQuery: deliveryWeeklyReportService,
     notificationQuery: notificationService,
     notificationCommand: notificationService,
     notificationIngest: notificationService,

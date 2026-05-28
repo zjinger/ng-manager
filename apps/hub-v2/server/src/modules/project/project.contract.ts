@@ -3,6 +3,7 @@ import type {
   AddProjectModuleMemberInput,
   AddProjectMemberInput,
   CreateProjectFeaturePointInput,
+  CreateProjectFeaturePointGroupInput,
   CreateProjectConfigItemInput,
   CreateProjectInput,
   ProjectModuleRdLinkEntity,
@@ -12,6 +13,7 @@ import type {
   ProjectEntity,
   ProjectConfigItemEntity,
   ProjectFeaturePointEntity,
+  ProjectFeaturePointGroupEntity,
   ProjectFeatureProgressOverrideEntity,
   ProjectFeatureProgressSettings,
   ProjectFeatureProgressView,
@@ -21,6 +23,7 @@ import type {
   ProjectModuleMemberEntity,
   UpdateProjectMemberInput,
   UpdateProjectFeaturePointInput,
+  UpdateProjectFeaturePointGroupInput,
   UpdateProjectFeatureProgressSettingsInput,
   UpsertProjectFeatureProgressOverrideInput,
   DeleteProjectFeatureProgressOverrideInput,
@@ -54,6 +57,18 @@ export interface ProjectCommandContract {
     input: CreateProjectFeaturePointInput,
     ctx: RequestContext
   ): Promise<ProjectFeaturePointEntity>;
+  addFeaturePointGroup(
+    projectId: string,
+    input: CreateProjectFeaturePointGroupInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeaturePointGroupEntity>;
+  updateFeaturePointGroup(
+    projectId: string,
+    groupId: string,
+    input: UpdateProjectFeaturePointGroupInput,
+    ctx: RequestContext
+  ): Promise<ProjectFeaturePointGroupEntity>;
+  removeFeaturePointGroup(projectId: string, groupId: string, ctx: RequestContext): Promise<void>;
   updateFeaturePoint(
     projectId: string,
     featurePointId: string,

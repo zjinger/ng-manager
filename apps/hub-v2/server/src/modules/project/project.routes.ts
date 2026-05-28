@@ -4,6 +4,7 @@ import { ok } from "../../shared/http/response";
 import {
   addProjectModuleMemberSchema,
   addProjectMemberSchema,
+  createProjectFeaturePointGroupSchema,
   createProjectFeaturePointSchema,
   createProjectConfigItemSchema,
   createProjectSchema,
@@ -12,6 +13,7 @@ import {
   listProjectsQuerySchema,
   replaceModuleRdLinksSchema,
   updateProjectFeaturePointSchema,
+  updateProjectFeaturePointGroupSchema,
   updateProjectFeatureProgressSettingsSchema,
   updateProjectMemberSchema,
   updateProjectConfigItemSchema,
@@ -145,6 +147,31 @@ export default async function projectRoutes(app: FastifyInstance) {
     const body = createProjectFeaturePointSchema.parse(request.body);
     const item = await app.container.projectCommand.addFeaturePoint(params.projectId, body, ctx);
     return reply.status(201).send(ok(item, "project feature point created"));
+  });
+
+  app.post("/projects/:projectId/feature-point-groups", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string };
+    const body = createProjectFeaturePointGroupSchema.parse(request.body);
+    const item = await app.container.projectCommand.addFeaturePointGroup(params.projectId, body, ctx);
+    return reply.status(201).send(ok(item, "project feature point group created"));
+  });
+
+  app.patch("/projects/:projectId/feature-point-groups/:groupId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; groupId: string };
+    const body = updateProjectFeaturePointGroupSchema.parse(request.body);
+    return ok(
+      await app.container.projectCommand.updateFeaturePointGroup(params.projectId, params.groupId, body, ctx),
+      "project feature point group updated"
+    );
+  });
+
+  app.delete("/projects/:projectId/feature-point-groups/:groupId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; groupId: string };
+    await app.container.projectCommand.removeFeaturePointGroup(params.projectId, params.groupId, ctx);
+    return ok({ id: params.groupId }, "project feature point group deleted");
   });
 
   app.patch("/projects/:projectId/feature-points/:featurePointId", async (request) => {
