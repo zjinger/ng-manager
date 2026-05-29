@@ -49,6 +49,12 @@ export interface FeatureProgressTreeBuildResult {
   sections: FeatureProgressTitleGroup[];
   allNodes: FeatureProgressFlatNode[];
   visibleNodes: FeatureProgressFlatNode[];
-  moduleOptions: string[];
+  moduleOptions: FeatureProgressModuleOption[];
   progressStatusByFeatureId: Map<string, ProjectFeaturePointStatus>;
+}
+
+export interface FeatureProgressModuleOption {
+  value: string;
+  label: string;
+  group: string;
 }

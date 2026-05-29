@@ -1,6 +1,10 @@
 import { Injectable } from '@angular/core';
 
 import type {
+  FeatureProgressGroupDisplayPatch,
+  FeatureProgressTitleGroup
+} from '../../../components/project-feature-progress-tree/project-feature-progress-tree.component';
+import type {
   ProjectFeaturePoint,
   ProjectFeaturePointStatus,
   ProjectFeatureProgressModuleNode,
@@ -9,12 +13,11 @@ import type {
   ProjectFeatureProgressView,
 } from '../../../models/project.model';
 import type {
-  FeatureProgressGroupDisplayPatch,
-  FeatureProgressModuleGroup,
-  FeatureProgressSubGroup,
-  FeatureProgressTitleGroup,
-} from '../../../components/project-feature-progress-tree/project-feature-progress-tree.component';
-import type { FeatureProgressBranchGuide, FeatureProgressFlatNode, FeatureProgressTreeBuildResult } from '../models/project-feature-progress-page.model';
+  FeatureProgressBranchGuide,
+  FeatureProgressFlatNode,
+  FeatureProgressModuleOption,
+  FeatureProgressTreeBuildResult,
+} from '../models/project-feature-progress-page.model';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectFeatureProgressTreeBuilderService {
@@ -318,7 +321,7 @@ export class ProjectFeatureProgressTreeBuilderService {
     return result;
   }
 
-  private buildModuleOptions(view: ProjectFeatureProgressView, allFeatures: ProjectFeaturePoint[]): string[] {
+  private buildModuleOptions(view: ProjectFeatureProgressView, allFeatures: ProjectFeaturePoint[]): FeatureProgressModuleOption[] {
     const names = new Set<string>();
     for (const module of view.modules) {
       names.add(module.name);
@@ -326,7 +329,72 @@ export class ProjectFeatureProgressTreeBuilderService {
     for (const feature of allFeatures) {
       if (!feature.moduleGroupId) names.add(this.groupName(feature.moduleName));
     }
-    return Array.from(names).sort((left, right) => left.localeCompare(right, 'zh-Hans-CN'));
+    return Array.from(names)
+      .sort((left, right) => this.compareModuleOptionNames(left, right))
+      .map((name) => ({
+        value: name,
+        label: name,
+        group: this.moduleInitial(name),
+      }));
+  }
+
+  private compareModuleOptionNames(left: string, right: string): number {
+    const leftGroup = this.moduleSortGroup(left);
+    const rightGroup = this.moduleSortGroup(right);
+    if (leftGroup !== rightGroup) return leftGroup - rightGroup;
+    const leftInitial = this.moduleInitial(left);
+    const rightInitial = this.moduleInitial(right);
+    if (leftInitial !== rightInitial) return leftInitial.localeCompare(rightInitial);
+    return left.localeCompare(right, 'zh-Hans-CN');
+  }
+
+  private moduleSortGroup(name: string): number {
+    const first = name.trim().charAt(0);
+    if (/^[a-z]$/i.test(first)) return 0;
+    if (/^\d$/.test(first)) return 1;
+    return 2;
+  }
+
+  private moduleInitial(name: string): string {
+    const first = name.trim().charAt(0);
+    if (!first) return '#';
+    if (/^[a-z]$/i.test(first)) return first.toUpperCase();
+    if (/^\d$/.test(first)) return '#';
+
+    const boundaries = [
+      ['A', '阿'],
+      ['B', '八'],
+      ['C', '嚓'],
+      ['D', '咑'],
+      ['E', '妸'],
+      ['F', '发'],
+      ['G', '旮'],
+      ['H', '哈'],
+      ['J', '讥'],
+      ['K', '咔'],
+      ['L', '垃'],
+      ['M', '妈'],
+      ['N', '拏'],
+      ['O', '噢'],
+      ['P', '妑'],
+      ['Q', '七'],
+      ['R', '呥'],
+      ['S', '仨'],
+      ['T', '他'],
+      ['W', '哇'],
+      ['X', '夕'],
+      ['Y', '丫'],
+      ['Z', '匝'],
+    ] as const;
+    let initial = '#';
+    for (const [letter, boundary] of boundaries) {
+      if (first.localeCompare(boundary, 'zh-Hans-CN') >= 0) {
+        initial = letter;
+      } else {
+        break;
+      }
+    }
+    return initial;
   }
 
   private collectModuleFeatures(nodes: ProjectFeatureProgressModuleNode[]): ProjectFeaturePoint[] {

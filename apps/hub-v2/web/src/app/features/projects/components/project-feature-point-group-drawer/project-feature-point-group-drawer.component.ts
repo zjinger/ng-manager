@@ -99,7 +99,7 @@ export interface FeaturePointGroupDrawerSaveInput {
 
                 <div nz-col [nzSpan]="12">
                   <nz-form-item>
-                    <nz-form-label nzFor="manualProgress">真实进度</nz-form-label>
+                    <nz-form-label nzFor="manualProgress">进度百分比</nz-form-label>
                     <nz-form-control>
                       <nz-input-number
                         name="manualProgress"
@@ -107,7 +107,7 @@ export interface FeaturePointGroupDrawerSaveInput {
                         (ngModelChange)="setManualProgress($event)"
                         [nzMin]="0"
                         [nzMax]="100"
-                        nzPlaceHolder="请输入真实进度"
+                        nzPlaceHolder="请输入进度百分比"
                       ></nz-input-number>
                     </nz-form-control>
                   </nz-form-item>

@@ -16,6 +16,7 @@ import type { FeaturePointGroupDrawerSaveInput, FeaturePointGroupDrawerTarget } 
 import { ProjectFeatureProgressOverallDrawerComponent } from '../../components/project-feature-progress-overall-drawer/project-feature-progress-overall-drawer.component';
 import type { FeatureProgressSettingsSaveInput } from '../../components/project-feature-progress-overall-drawer/project-feature-progress-overall-drawer.component';
 import { ProjectFeatureProgressStatsComponent } from '../../components/project-feature-progress-stats/project-feature-progress-stats.component';
+import type { ProjectFeatureProgressStatsFeatureCounts } from '../../components/project-feature-progress-stats/project-feature-progress-stats.component';
 import { ProjectFeatureProgressToolbarComponent } from '../../components/project-feature-progress-toolbar/project-feature-progress-toolbar.component';
 import { ProjectFeatureProgressTreeComponent } from '../../components/project-feature-progress-tree/project-feature-progress-tree.component';
 import { DEFAULT_PROJECT_FEATURE_PROGRESS_STATUS_OPTIONS } from '../../models/project.model';
@@ -101,6 +102,7 @@ interface FeatureProgressTitleEditor {
         } @else if (vm(); as data) {
           <app-project-feature-progress-stats
             [summary]="effectiveSummary() ?? data.summary"
+            [featureCounts]="submoduleFeatureCounts()"
             [canManage]="canManage()"
             (editOverall)="startEditOverall()"
           />
@@ -381,6 +383,22 @@ export class ProjectFeatureProgressPageComponent {
   readonly hasActiveFilter = computed(() =>
     !!this.keyword().trim() || !!this.moduleFilter() || !!this.statusFilter()
   );
+  readonly submoduleFeatureCounts = computed<ProjectFeatureProgressStatsFeatureCounts>(() => {
+    const submodules = this.collectSubmoduleNodes(this.vm()?.modules ?? []);
+    return submodules.reduce(
+      (counts, node) => {
+        if (node.displayProgress >= 100) {
+          counts.completed += node.featureCount;
+        } else if (node.displayProgress > 0) {
+          counts.inProgress += node.featureCount;
+        } else {
+          counts.notStarted += node.featureCount;
+        }
+        return counts;
+      },
+      { completed: 0, inProgress: 0, notStarted: 0 }
+    );
+  });
   readonly canManage = computed(() => {
     const user = this.authStore.currentUser();
     const userId = user?.userId?.trim();

@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { FilterBarComponent, PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
+import type { FeatureProgressModuleOption } from '../../pages/project-feature-progress-page/models/project-feature-progress-page.model';
 import type { ProjectFeaturePointStatus } from '../../models/project.model';
 
 @Component({
@@ -51,8 +52,12 @@ import type { ProjectFeaturePointStatus } from '../../models/project.model';
           nzPlaceHolder="模块"
         >
           <nz-option nzValue="" nzLabel="全部模块"></nz-option>
-          @for (module of moduleOptions(); track module) {
-            <nz-option [nzValue]="module" [nzLabel]="module"></nz-option>
+          @for (group of groupedModuleOptions(); track group.group) {
+            <nz-option-group [nzLabel]="group.group">
+              @for (module of group.options; track module.value) {
+                <nz-option [nzValue]="module.value" [nzLabel]="module.label"></nz-option>
+              }
+            </nz-option-group>
           }
         </nz-select>
 
@@ -121,9 +126,16 @@ export class ProjectFeatureProgressToolbarComponent {
   readonly keyword = input('');
   readonly moduleFilter = input('');
   readonly statusFilter = input<ProjectFeaturePointStatus | ''>('');
-  readonly moduleOptions = input<string[]>([]);
+  readonly moduleOptions = input<FeatureProgressModuleOption[]>([]);
   readonly statusOptions = input<Array<{ value: ProjectFeaturePointStatus; label: string }>>([]);
   readonly canManage = input(false);
+  readonly groupedModuleOptions = computed(() => {
+    const groups = new Map<string, FeatureProgressModuleOption[]>();
+    for (const option of this.moduleOptions()) {
+      groups.set(option.group, [...(groups.get(option.group) ?? []), option]);
+    }
+    return Array.from(groups.entries()).map(([group, options]) => ({ group, options }));
+  });
 
   readonly keywordChange = output<string>();
   readonly moduleFilterChange = output<string>();

@@ -4,6 +4,12 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { StatCardComponent } from '@shared/ui';
 import type { ProjectFeatureProgressSummary } from '../../models/project.model';
 
+export interface ProjectFeatureProgressStatsFeatureCounts {
+  completed: number;
+  inProgress: number;
+  notStarted: number;
+}
+
 @Component({
   selector: 'app-project-feature-progress-stats',
   standalone: true,
@@ -34,21 +40,21 @@ import type { ProjectFeatureProgressSummary } from '../../models/project.model';
       <app-stat-card
         label="已完成"
         [value]="summary().completedCount"
-        hint="进度为 100%"
+        [hint]="completedHint()"
         icon="check-circle"
         tone="green"
       />
       <app-stat-card
         label="进行中"
         [value]="summary().inProgressCount"
-        hint="进度 1%-99%"
+        [hint]="inProgressHint()"
         icon="sync"
         tone="orange"
       />
       <app-stat-card
         label="未开始"
         [value]="summary().notStartedCount"
-        hint="进度为 0%"
+        [hint]="notStartedHint()"
         icon="clock-circle"
         tone="cyan"
       />
@@ -97,6 +103,11 @@ import type { ProjectFeatureProgressSummary } from '../../models/project.model';
 export class ProjectFeatureProgressStatsComponent {
   readonly summary = input.required<ProjectFeatureProgressSummary>();
   readonly canManage = input(false);
+  readonly featureCounts = input<ProjectFeatureProgressStatsFeatureCounts>({
+    completed: 0,
+    inProgress: 0,
+    notStarted: 0,
+  });
 
   readonly editOverall = output<void>();
 
@@ -105,6 +116,18 @@ export class ProjectFeatureProgressStatsComponent {
   }
 
   progressHint(): string {
-    return '按子模块真实进度自动计算';
+    return '按子模块进度自动计算';
+  }
+
+  completedHint(): string {
+    return `进度为 100% · 功能点 ${this.featureCounts().completed} 个`;
+  }
+
+  inProgressHint(): string {
+    return `进度 1%-99% · 功能点 ${this.featureCounts().inProgress} 个`;
+  }
+
+  notStartedHint(): string {
+    return `进度为 0% · 功能点 ${this.featureCounts().notStarted} 个`;
   }
 }
