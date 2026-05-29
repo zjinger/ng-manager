@@ -3,11 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
 import { RD_STATUS_FILTER_OPTIONS } from '@shared/constants';
 import { ISSUE_PRIORITY_OPTIONS } from '@shared/constants';
 import { ViewToggleComponent, SearchBoxComponent, FilterBarComponent, PageToolbarComponent } from '@shared/ui';
-import { RD_TYPE_OPTIONS, type RdListQuery, type RdStageEntity } from '../../models/rd.model';
+import { RD_TYPE_OPTIONS, type RdItemStatus, type RdListQuery, type RdStageEntity } from '../../models/rd.model';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import type { ProjectMemberEntity } from '@features/projects/models/project.model';
 
@@ -16,7 +17,7 @@ export type RdViewMode = 'board' | 'list';
 @Component({
   selector: 'app-rd-filter-bar',
   standalone: true,
-  imports: [FormsModule, NzIconModule, NzButtonModule, NzDrawerModule, NzSelectModule, FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent],
+  imports: [FormsModule, NzIconModule, NzButtonModule, NzDrawerModule, NzSelectModule, NzSwitchModule, FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggleComponent],
   template: `
     <app-page-toolbar>
       @if(canCreate()){
@@ -55,7 +56,11 @@ export type RdViewMode = 'board' | 'list';
         >
           @for (item of statusOptions; track item.value) {
             @if (item.value !== '') {
-              <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
+              <nz-option
+                [nzLabel]="item.label"
+                [nzValue]="item.value"
+                [nzDisabled]="item.value === 'closed' && !draft().includeClosed"
+              ></nz-option>
             }
           }
         </nz-select>
@@ -136,6 +141,19 @@ export type RdViewMode = 'board' | 'list';
             </nz-select>
           </div>
           <div class="advanced-field">
+            <label>已关闭数据</label>
+            <div class="advanced-switch">
+              <div>
+                <strong>包含已关闭</strong>
+                <p>关闭后列表不展示已关闭研发项</p>
+              </div>
+              <nz-switch
+                [ngModel]="draft().includeClosed ?? false"
+                (ngModelChange)="updateField('includeClosed', $event)"
+              ></nz-switch>
+            </div>
+          </div>
+          <div class="advanced-field">
             <label>排序字段</label>
             <nz-select [ngModel]="draft().sortBy" (ngModelChange)="updateField('sortBy', $event)">
               <nz-option nzLabel="创建时间" nzValue="createdAt"></nz-option>
@@ -181,6 +199,26 @@ export type RdViewMode = 'board' | 'list';
       .advanced-field label {
         font-size: 13px;
         color: var(--text-secondary);
+      }
+      .advanced-switch {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--surface-subtle);
+      }
+      .advanced-switch strong {
+        display: block;
+        color: var(--text-primary);
+        font-size: 14px;
+      }
+      .advanced-switch p {
+        margin: 4px 0 0;
+        color: var(--text-secondary);
+        font-size: 12px;
       }
       .advanced-actions {
         display: flex;
@@ -239,18 +277,32 @@ export class RdFilterBarComponent {
     type: [],
     priority: [],
     assigneeIds: [],
+    includeClosed: false,
     sortBy: 'createdAt',
     sortOrder: 'desc',
   });
 
   constructor() {
     effect(() => {
-      this.draft.set({ ...this.query() });
+      const query = { ...this.query() };
+      if (query.includeClosed !== true) {
+        query.status = this.withoutClosed(query.status);
+      }
+      this.draft.set(query);
     });
   }
 
   updateField<K extends keyof RdListQuery>(key: K, value: RdListQuery[K]): void {
-    this.draft.update((draft) => ({ ...draft, [key]: value }));
+    this.draft.update((draft) => {
+      const next = { ...draft, [key]: value };
+      if (key === 'includeClosed' && value !== true) {
+        next.status = this.withoutClosed(next.status);
+      }
+      if (key === 'status' && next.includeClosed !== true) {
+        next.status = this.withoutClosed(value as RdItemStatus[]);
+      }
+      return next;
+    });
   }
 
   applyAdvanced(): void {
@@ -261,9 +313,21 @@ export class RdFilterBarComponent {
   clearAdvanced(): void {
     this.draft.update((draft) => ({
       ...draft,
+      page: 1,
+      keyword: '',
+      stageId: '',
+      stageIds: [],
+      status: [],
       type: [],
+      priority: [],
+      assigneeIds: [],
+      includeClosed: false,
       sortBy: 'createdAt',
       sortOrder: 'desc',
     }));
+  }
+
+  private withoutClosed(status: RdItemStatus[] | undefined): RdItemStatus[] {
+    return (status ?? []).filter((item) => item !== 'closed');
   }
 }

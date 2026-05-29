@@ -30,6 +30,7 @@ import { RdStore } from '../../store/rd.store';
 import { map } from 'rxjs';
 
 const LINKED_ISSUES_PAGE_SIZE = 10;
+type RdFilterTagKind = 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeIds' | 'sortBy' | 'sortOrder' | 'keyword' | 'includeClosed';
 
 @Component({
   selector: 'app-rd-board-page',
@@ -351,7 +352,7 @@ export class RdBoardPageComponent {
       }
       return first ? `${prefix}: ${valueLabel}` : valueLabel;
     };
-    const tags: Array<{ kind: 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeIds' | 'sortBy' | 'sortOrder' | 'keyword'; value: string; label: string }> = [];
+    const tags: Array<{ kind: RdFilterTagKind; value: string; label: string }> = [];
     const stageIds = query.stageIds ?? [];
     if (stageIds.length > 0) {
       for (const stageId of stageIds) {
@@ -363,7 +364,7 @@ export class RdBoardPageComponent {
         });
       }
     }
-    const statuses = query.status ?? [];
+    const statuses = query.includeClosed === true ? (query.status ?? []) : (query.status ?? []).filter((item) => item !== 'closed');
     if (statuses.length > 0) {
       for (const status of statuses) {
         tags.push({
@@ -409,6 +410,13 @@ export class RdBoardPageComponent {
         kind: 'keyword',
         value: query.keyword.trim(),
         label: withPrefix('keyword', '关键词', query.keyword.trim()),
+      });
+    }
+    if (query.includeClosed === true) {
+      tags.push({
+        kind: 'includeClosed',
+        value: 'true',
+        label: '包含已关闭',
       });
     }
     if (query.sortBy !== 'createdAt') {
@@ -562,12 +570,13 @@ export class RdBoardPageComponent {
       type: [],
       priority: [],
       assigneeIds: [],
+      includeClosed: false,
       sortBy: 'createdAt',
       sortOrder: 'desc',
     });
   }
 
-  removeFilterTag(kind: 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeIds' | 'sortBy' | 'sortOrder' | 'keyword', value: string): void {
+  removeFilterTag(kind: RdFilterTagKind, value: string): void {
     const current = this.store.query();
     if (kind === 'stageIds') {
       this.store.updateQuery({ page: 1, stageIds: (current.stageIds ?? []).filter((item) => item !== value) });
@@ -609,11 +618,19 @@ export class RdBoardPageComponent {
       this.store.updateQuery({ page: 1, sortOrder: 'desc' });
       return;
     }
+    if (kind === 'includeClosed') {
+      this.store.updateQuery({
+        page: 1,
+        includeClosed: false,
+        status: (current.status ?? []).filter((item) => item !== 'closed'),
+      });
+      return;
+    }
     this.store.updateQuery({ page: 1, keyword: '' });
   }
 
   onActiveFilterRemove(event: { kind: string; value: string }): void {
-    this.removeFilterTag(event.kind as 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeIds' | 'sortBy' | 'sortOrder' | 'keyword', event.value);
+    this.removeFilterTag(event.kind as RdFilterTagKind, event.value);
   }
 
   onPageIndexChange(page: number): void {
@@ -874,12 +891,13 @@ export class RdBoardPageComponent {
     });
   }
 
-  filterTagClass(kind: 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeIds' | 'sortBy' | 'sortOrder' | 'keyword'): string {
+  filterTagClass(kind: RdFilterTagKind): string {
     if (kind === 'status') return 'filter-tag filter-tag--status';
     if (kind === 'type') return 'filter-tag filter-tag--type';
     if (kind === 'priority') return 'filter-tag filter-tag--priority';
     if (kind === 'assigneeIds') return 'filter-tag filter-tag--people';
     if (kind === 'stageIds') return 'filter-tag filter-tag--scope';
+    if (kind === 'includeClosed') return 'filter-tag filter-tag--status';
     if (kind === 'sortBy' || kind === 'sortOrder') return 'filter-tag filter-tag--sort';
     return 'filter-tag filter-tag--keyword';
   }

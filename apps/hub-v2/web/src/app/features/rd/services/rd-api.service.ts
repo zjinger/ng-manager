@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
 
 import { ApiClientService } from '@core/http';
+import { RD_VISIBLE_STATUSES } from '../models/rd.model';
 import type {
   BlockRdItemInput,
   CloseRdItemInput,
@@ -42,9 +43,19 @@ export class RdApiService {
   }
 
   listItems(query: Partial<RdListQuery>) {
+    const { includeClosed, ...requestQuery } = query;
+    const requestedStatus = query.status ?? [];
+    const effectiveStatus = includeClosed === true
+      ? requestedStatus
+      : requestedStatus.filter((status) => status !== 'closed');
+    const status = effectiveStatus.length > 0
+      ? effectiveStatus.join(',')
+      : includeClosed === true
+        ? undefined
+        : RD_VISIBLE_STATUSES.join(',');
     const normalizedQuery: Record<string, string | number | boolean | null | undefined> = {
-      ...query,
-      status: query.status && query.status.length > 0 ? query.status.join(',') : undefined,
+      ...requestQuery,
+      status,
       type: query.type && query.type.length > 0 ? query.type.join(',') : undefined,
       priority: query.priority && query.priority.length > 0 ? query.priority.join(',') : undefined,
       assigneeIds: query.assigneeIds && query.assigneeIds.length > 0 ? query.assigneeIds.join(',') : undefined,

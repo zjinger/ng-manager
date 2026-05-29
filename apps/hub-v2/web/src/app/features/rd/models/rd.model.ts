@@ -13,6 +13,7 @@ export type RdItemType =
   | 'project_closure';
 export type RdItemPriority = 'low' | 'medium' | 'high' | 'critical';
 export type RdItemStatus = 'todo' | 'doing' | 'blocked' | 'done' | 'accepted' | 'closed';
+export const RD_VISIBLE_STATUSES: RdItemStatus[] = ['todo', 'doing', 'blocked', 'done', 'accepted'];
 export type RdAction =
   | 'create'
   | 'update'
@@ -159,6 +160,7 @@ export interface RdListQuery {
   assigneeIds?: string[];
   assigneeId?: string;
   keyword?: string;
+  includeClosed?: boolean;
   sortBy?: 'updatedAt' | 'createdAt';
   sortOrder?: 'desc' | 'asc';
 }

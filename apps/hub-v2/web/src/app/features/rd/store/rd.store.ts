@@ -27,6 +27,7 @@ const DEFAULT_QUERY: RdListQuery = {
   priority: [],
   assigneeIds: [],
   keyword: '',
+  includeClosed: false,
   sortBy: 'createdAt',
   sortOrder: 'desc',
 };
@@ -212,6 +213,10 @@ export class RdStore {
     }
 
     const query = this.queryState();
+    if (updated.status === 'closed' && query.includeClosed !== true) {
+      this.load();
+      return;
+    }
     const hasComplexFilter =
       !!query.stageId?.trim() ||
       (query.stageIds?.length ?? 0) > 0 ||
@@ -220,6 +225,7 @@ export class RdStore {
       (query.priority?.length ?? 0) > 0 ||
       (query.assigneeIds?.length ?? 0) > 0 ||
       !!query.keyword?.trim() ||
+      query.includeClosed === true ||
       query.sortBy !== 'createdAt' ||
       query.sortOrder !== 'desc';
 
