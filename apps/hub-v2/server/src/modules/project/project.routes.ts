@@ -9,6 +9,7 @@ import {
   createProjectConfigItemSchema,
   createProjectSchema,
   createProjectVersionItemSchema,
+  createRdStageTaskTemplateSchema,
   deleteProjectFeatureProgressOverrideQuerySchema,
   listProjectsQuerySchema,
   replaceModuleRdLinksSchema,
@@ -17,6 +18,7 @@ import {
   updateProjectFeatureProgressSettingsSchema,
   updateProjectMemberSchema,
   updateProjectConfigItemSchema,
+  updateRdStageTaskTemplateSchema,
   upsertProjectFeatureProgressOverrideSchema,
   updateProjectSchema,
   updateProjectVersionItemSchema
@@ -265,6 +267,39 @@ export default async function projectRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     const params = request.params as { projectId: string };
     return ok({ items: await app.container.projectQuery.listEnvironments(params.projectId, ctx) });
+  });
+
+  app.get("/projects/:projectId/rd-stage-task-templates", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string };
+    return ok({ items: await app.container.projectQuery.listRdStageTaskTemplates(params.projectId, ctx) });
+  });
+
+  app.post("/projects/:projectId/rd-stage-task-templates", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string };
+    const body = createRdStageTaskTemplateSchema.parse(request.body);
+    const template = await app.container.projectCommand.createRdStageTaskTemplate(params.projectId, body, ctx);
+    return reply.status(201).send(ok(template, "rd stage task template created"));
+  });
+
+  app.patch("/projects/:projectId/rd-stage-task-templates/:templateId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; templateId: string };
+    const body = updateRdStageTaskTemplateSchema.parse(request.body);
+    return ok(
+      await app.container.projectCommand.updateRdStageTaskTemplate(params.projectId, params.templateId, body, ctx),
+      "rd stage task template updated"
+    );
+  });
+
+  app.delete("/projects/:projectId/rd-stage-task-templates/:templateId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string; templateId: string };
+    return ok(
+      await app.container.projectCommand.removeRdStageTaskTemplate(params.projectId, params.templateId, ctx),
+      "rd stage task template disabled"
+    );
   });
 
   app.post("/projects/:projectId/environments", async (request, reply) => {

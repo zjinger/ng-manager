@@ -10,7 +10,14 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { ListStateComponent, PageHeaderComponent } from '@shared/ui';
-import type { CreateRdStageInput, RdStageEntity, UpdateRdStageInput } from '../../../rd/models/rd.model';
+import type {
+  CreateRdStageInput,
+  CreateRdStageTaskTemplateInput,
+  RdStageEntity,
+  RdStageTaskTemplateEntity,
+  UpdateRdStageInput,
+  UpdateRdStageTaskTemplateInput,
+} from '../../../rd/models/rd.model';
 import { RdApiService } from '../../../rd/services/rd-api.service';
 import { ProjectCardGridComponent } from '../../components/project-card-grid/project-card-grid.component';
 import { ProjectFilterBarComponent } from '../../components/project-filter-bar/project-filter-bar.component';
@@ -102,6 +109,7 @@ export class ProjectListPageComponent {
   readonly environments = signal<ProjectMetaItem[]>([]);
   readonly versions = signal<ProjectVersionItem[]>([]);
   readonly stages = signal<RdStageEntity[]>([]);
+  readonly stageTaskTemplates = signal<RdStageTaskTemplateEntity[]>([]);
   readonly apiTokens = signal<ProjectApiTokenEntity[]>([]);
   readonly latestCreatedToken = signal<string | null>(null);
   readonly expandedProjectIds = signal<string[]>([]);
@@ -123,11 +131,13 @@ export class ProjectListPageComponent {
   readonly pendingEnvironmentMap = signal<Record<string, true>>({});
   readonly pendingVersionMap = signal<Record<string, true>>({});
   readonly pendingStageMap = signal<Record<string, true>>({});
+  readonly pendingStageTaskTemplateMap = signal<Record<string, true>>({});
   readonly pendingTokenMap = signal<Record<string, true>>({});
   readonly pendingModuleIds = computed(() => Object.keys(this.pendingModuleMap()));
   readonly pendingEnvironmentIds = computed(() => Object.keys(this.pendingEnvironmentMap()));
   readonly pendingVersionIds = computed(() => Object.keys(this.pendingVersionMap()));
   readonly pendingStageIds = computed(() => Object.keys(this.pendingStageMap()));
+  readonly pendingStageTaskTemplateIds = computed(() => Object.keys(this.pendingStageTaskTemplateMap()));
   readonly pendingTokenIds = computed(() => Object.keys(this.pendingTokenMap()));
   readonly previewLoadingIds = computed(() => Object.keys(this.previewLoadingMap()));
   readonly memberPreviewLoadingIds = computed(() => Object.keys(this.memberPreviewLoadingMap()));
@@ -344,11 +354,13 @@ export class ProjectListPageComponent {
     this.environments.set([]);
     this.versions.set([]);
     this.stages.set([]);
+    this.stageTaskTemplates.set([]);
     this.apiTokens.set([]);
     this.latestCreatedToken.set(null);
     this.pendingEnvironmentMap.set({});
     this.pendingVersionMap.set({});
     this.pendingStageMap.set({});
+    this.pendingStageTaskTemplateMap.set({});
     this.pendingTokenMap.set({});
   }
 
@@ -771,6 +783,58 @@ export class ProjectListPageComponent {
     });
   }
 
+  createStageTaskTemplate(input: CreateRdStageTaskTemplateInput): void {
+    this.withConfigProject((projectId) => {
+      this.configBusy.set(true);
+      this.projectApi.createRdStageTaskTemplate(projectId, input).subscribe({
+        next: () => {
+          this.message.success('阶段任务模板已新增');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.configBusy.set(false);
+          this.message.error('新增阶段任务模板失败');
+        }
+      });
+    });
+  }
+
+  updateStageTaskTemplate(event: { id: string; patch: UpdateRdStageTaskTemplateInput }): void {
+    this.withConfigProject((projectId) => {
+      this.setPending(this.pendingStageTaskTemplateMap, event.id, true);
+      this.applyStageTaskTemplatePatchLocal(this.stageTaskTemplates, event.id, event.patch);
+      this.projectApi.updateRdStageTaskTemplate(projectId, event.id, event.patch).subscribe({
+        next: () => {
+          this.setPending(this.pendingStageTaskTemplateMap, event.id, false);
+          this.message.success('阶段任务模板已更新');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.setPending(this.pendingStageTaskTemplateMap, event.id, false);
+          this.message.error('更新阶段任务模板失败');
+          this.reloadMeta(projectId);
+        }
+      });
+    });
+  }
+
+  removeStageTaskTemplate(templateId: string): void {
+    this.withConfigProject((projectId) => {
+      this.setPending(this.pendingStageTaskTemplateMap, templateId, true);
+      this.projectApi.removeRdStageTaskTemplate(projectId, templateId).subscribe({
+        next: () => {
+          this.setPending(this.pendingStageTaskTemplateMap, templateId, false);
+          this.message.success('阶段任务模板已停用');
+          this.reloadMeta(projectId);
+        },
+        error: () => {
+          this.setPending(this.pendingStageTaskTemplateMap, templateId, false);
+          this.message.error('停用阶段任务模板失败');
+        }
+      });
+    });
+  }
+
   createApiToken(input: CreateProjectApiTokenInput): void {
     const project = this.configProject();
     if (!project) {
@@ -951,11 +1015,22 @@ export class ProjectListPageComponent {
             this.rdApi.listStages(projectId).subscribe({
               next: (stages) => {
                 this.stages.set(stages);
-                const currentProject = this.configProject();
-                this.loadProjectApiTokens(currentProject?.projectKey ?? '', () => this.configLoading.set(false));
+                this.projectApi.listRdStageTaskTemplates(projectId).subscribe({
+                  next: (templates) => {
+                    this.stageTaskTemplates.set(templates);
+                    const currentProject = this.configProject();
+                    this.loadProjectApiTokens(currentProject?.projectKey ?? '', () => this.configLoading.set(false));
+                  },
+                  error: () => {
+                    this.stageTaskTemplates.set([]);
+                    const currentProject = this.configProject();
+                    this.loadProjectApiTokens(currentProject?.projectKey ?? '', () => this.configLoading.set(false));
+                  }
+                });
               },
               error: () => {
                 this.stages.set([]);
+                this.stageTaskTemplates.set([]);
                 const currentProject = this.configProject();
                 this.loadProjectApiTokens(currentProject?.projectKey ?? '', () => this.configLoading.set(false));
               }
@@ -964,6 +1039,7 @@ export class ProjectListPageComponent {
           error: () => {
             this.versions.set([]);
             this.stages.set([]);
+            this.stageTaskTemplates.set([]);
             this.apiTokens.set([]);
             this.configLoading.set(false);
           }
@@ -973,6 +1049,7 @@ export class ProjectListPageComponent {
         this.environments.set([]);
         this.versions.set([]);
         this.stages.set([]);
+        this.stageTaskTemplates.set([]);
         this.apiTokens.set([]);
         this.configLoading.set(false);
       }
@@ -1129,6 +1206,10 @@ export class ProjectListPageComponent {
     return [...items].sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name));
   }
 
+  private sortStageTaskTemplates(items: RdStageTaskTemplateEntity[]): RdStageTaskTemplateEntity[] {
+    return [...items].sort((a, b) => a.stageId.localeCompare(b.stageId) || a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
+  }
+
   private applyStagePatchLocal(
     source: { update: (fn: (value: RdStageEntity[]) => RdStageEntity[]) => void },
     id: string,
@@ -1142,6 +1223,28 @@ export class ProjectListPageComponent {
               ...item,
               name: patch.name ?? item.name,
               sort: patch.sort ?? item.sort,
+              enabled: patch.enabled ?? item.enabled
+            }
+            : item
+        )
+      )
+    );
+  }
+
+  private applyStageTaskTemplatePatchLocal(
+    source: { update: (fn: (value: RdStageTaskTemplateEntity[]) => RdStageTaskTemplateEntity[]) => void },
+    id: string,
+    patch: UpdateRdStageTaskTemplateInput
+  ): void {
+    source.update((items) =>
+      this.sortStageTaskTemplates(
+        items.map((item) =>
+          item.id === id
+            ? {
+              ...item,
+              title: patch.title ?? item.title,
+              description: patch.description === undefined ? item.description : patch.description,
+              sortOrder: patch.sortOrder ?? item.sortOrder,
               enabled: patch.enabled ?? item.enabled
             }
             : item

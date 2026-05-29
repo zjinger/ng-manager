@@ -12,7 +12,14 @@ import { NzTabsModule } from 'ng-zorro-antd/tabs';
 
 import { DialogShellComponent } from '@shared/ui';
 import { NzTooltipModule } from "ng-zorro-antd/tooltip";
-import type { CreateRdStageInput, RdStageEntity, UpdateRdStageInput } from '../../../rd/models/rd.model';
+import type {
+  CreateRdStageInput,
+  CreateRdStageTaskTemplateInput,
+  RdStageEntity,
+  RdStageTaskTemplateEntity,
+  UpdateRdStageInput,
+  UpdateRdStageTaskTemplateInput
+} from '../../../rd/models/rd.model';
 import type {
   CreateProjectApiTokenInput,
   CreateProjectMetaItemInput,
@@ -54,11 +61,13 @@ export class ProjectConfigDialogComponent {
   readonly environments = input<ProjectMetaItem[]>([]);
   readonly versions = input<ProjectVersionItem[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
+  readonly stageTaskTemplates = input<RdStageTaskTemplateEntity[]>([]);
   readonly apiTokens = input<ProjectApiTokenEntity[]>([]);
   readonly latestCreatedToken = input<string | null>(null);
   readonly pendingEnvironmentIds = input<string[]>([]);
   readonly pendingVersionIds = input<string[]>([]);
   readonly pendingStageIds = input<string[]>([]);
+  readonly pendingStageTaskTemplateIds = input<string[]>([]);
   readonly pendingTokenIds = input<string[]>([]);
   readonly canManageConfig = input(false);
 
@@ -72,6 +81,9 @@ export class ProjectConfigDialogComponent {
   readonly createStage = output<CreateRdStageInput>();
   readonly updateStage = output<{ id: string; patch: UpdateRdStageInput }>();
   readonly removeStage = output<string>();
+  readonly createStageTaskTemplate = output<CreateRdStageTaskTemplateInput>();
+  readonly updateStageTaskTemplate = output<{ id: string; patch: UpdateRdStageTaskTemplateInput }>();
+  readonly removeStageTaskTemplate = output<string>();
   readonly createApiToken = output<CreateProjectApiTokenInput>();
   readonly revokeApiToken = output<string>();
   readonly copyLatestToken = output<string>();
@@ -80,6 +92,7 @@ export class ProjectConfigDialogComponent {
   readonly environmentDraft = signal('');
   readonly versionDraft = signal('');
   readonly stageDraft = signal('');
+  readonly stageTaskTemplateDraftByStage = signal<Record<string, string>>({});
   readonly tokenNameDraft = signal('');
   readonly tokenScopesDraft = signal<ProjectApiTokenScope[]>(['issues:read', 'rd:read']); //'feedbacks:read'
   readonly tokenExpiresAt = signal<Date | null>(null);
@@ -94,6 +107,10 @@ export class ProjectConfigDialogComponent {
 
   isStagePending(id: string): boolean {
     return this.pendingStageIds().includes(id);
+  }
+
+  isStageTaskTemplatePending(id: string): boolean {
+    return this.pendingStageTaskTemplateIds().includes(id);
   }
 
   isTokenPending(id: string): boolean {
@@ -133,6 +150,32 @@ export class ProjectConfigDialogComponent {
     this.stageDraft.set('');
   }
 
+  stageTaskTemplatesByStage(stageId: string): RdStageTaskTemplateEntity[] {
+    return this.stageTaskTemplates()
+      .filter((item) => item.stageId === stageId)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
+  }
+
+  stageTaskTemplateDraft(stageId: string): string {
+    return this.stageTaskTemplateDraftByStage()[stageId] ?? '';
+  }
+
+  setStageTaskTemplateDraft(stageId: string, value: string): void {
+    this.stageTaskTemplateDraftByStage.update((current) => ({
+      ...current,
+      [stageId]: value,
+    }));
+  }
+
+  submitStageTaskTemplateCreate(stageId: string): void {
+    const title = this.stageTaskTemplateDraft(stageId).trim();
+    if (!title) {
+      return;
+    }
+    this.createStageTaskTemplate.emit({ stageId, title });
+    this.setStageTaskTemplateDraft(stageId, '');
+  }
+
   saveEnvironment(item: ProjectMetaItem, name: string, description: string, sort: number): void {
     const patch: UpdateProjectMetaItemInput = {};
     if (name.trim() !== item.name) patch.name = name.trim();
@@ -159,6 +202,16 @@ export class ProjectConfigDialogComponent {
     if (sort !== item.sort) patch.sort = sort;
     if (Object.keys(patch).length > 0) {
       this.updateStage.emit({ id: item.id, patch });
+    }
+  }
+
+  saveStageTaskTemplate(item: RdStageTaskTemplateEntity, title: string, description: string, sortOrder: number): void {
+    const patch: UpdateRdStageTaskTemplateInput = {};
+    if (title.trim() !== item.title) patch.title = title.trim();
+    if ((description.trim() || null) !== item.description) patch.description = description.trim() || null;
+    if (sortOrder !== item.sortOrder) patch.sortOrder = sortOrder;
+    if (Object.keys(patch).length > 0) {
+      this.updateStageTaskTemplate.emit({ id: item.id, patch });
     }
   }
 

@@ -148,7 +148,7 @@
         </section>
       </nz-tab>
 
-      <nz-tab nzTitle="研发阶段">
+      <nz-tab nzTitle="阶段与任务模板">
         <section class="section">
           <div class="creator">
             <input
@@ -170,39 +170,107 @@
           </div>
           <div class="list">
             @for (item of stages(); track item.id) {
-              <div class="row row--stage">
-                <input #nameRef nz-input [ngModel]="item.name" />
-                <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
-                @if (canManageConfig()) {
-                  <nz-switch
-                    [ngModel]="item.enabled"
-                    [nzDisabled]="busy() || isStagePending(item.id)"
-                    (ngModelChange)="
-                      updateStage.emit({ id: item.id, patch: { enabled: !!$event } })
-                    "
-                  ></nz-switch>
-                  <button
-                    nz-button
-                    nzType="default"
-                    [disabled]="busy() || isStagePending(item.id)"
-                    [nzLoading]="isStagePending(item.id)"
-                    (click)="saveStage(item, nameRef.value, asNumber(sortRef.value))"
-                  >
-                    保存
-                  </button>
-                  <button
-                    nz-button
-                    nzType="default"
-                    nzDanger
-                    [disabled]="busy() || isStagePending(item.id)"
-                    [nzLoading]="isStagePending(item.id)"
-                    nz-popconfirm
-                    nzPopconfirmTitle="确认停用该阶段？"
-                    (nzOnConfirm)="removeStage.emit(item.id)"
-                  >
-                    停用
-                  </button>
-                }
+              <div class="stage-template-group">
+                <div class="row row--stage">
+                  <input #nameRef nz-input [ngModel]="item.name" />
+                  <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
+                  @if (canManageConfig()) {
+                    <nz-switch
+                      [ngModel]="item.enabled"
+                      [nzDisabled]="busy() || isStagePending(item.id)"
+                      (ngModelChange)="
+                        updateStage.emit({ id: item.id, patch: { enabled: !!$event } })
+                      "
+                    ></nz-switch>
+                    <button
+                      nz-button
+                      nzType="default"
+                      [disabled]="busy() || isStagePending(item.id)"
+                      [nzLoading]="isStagePending(item.id)"
+                      (click)="saveStage(item, nameRef.value, asNumber(sortRef.value))"
+                    >
+                      保存
+                    </button>
+                    <button
+                      nz-button
+                      nzType="default"
+                      nzDanger
+                      [disabled]="busy() || isStagePending(item.id)"
+                      [nzLoading]="isStagePending(item.id)"
+                      nz-popconfirm
+                      nzPopconfirmTitle="确认停用该阶段？"
+                      (nzOnConfirm)="removeStage.emit(item.id)"
+                    >
+                      停用
+                    </button>
+                  }
+                </div>
+
+                <div class="template-manager">
+                  <div class="template-manager__head">
+                    <span>任务模板</span>
+                    <span>{{ stageTaskTemplatesByStage(item.id).length }} 项</span>
+                  </div>
+                  @if (canManageConfig()) {
+                    <div class="template-creator">
+                      <input
+                        nz-input
+                        placeholder="新增模板任务标题"
+                        [ngModel]="stageTaskTemplateDraft(item.id)"
+                        (ngModelChange)="setStageTaskTemplateDraft(item.id, $event)"
+                      />
+                      <button
+                        nz-button
+                        nzType="default"
+                        [disabled]="busy() || !stageTaskTemplateDraft(item.id).trim()"
+                        (click)="submitStageTaskTemplateCreate(item.id)"
+                      >
+                        <nz-icon nzType="plus" nzTheme="outline" />新增任务
+                      </button>
+                    </div>
+                  }
+                  <div class="template-list">
+                    @for (template of stageTaskTemplatesByStage(item.id); track template.id) {
+                      <div class="template-row">
+                        <input #titleRef nz-input [ngModel]="template.title" />
+                        <input #templateDescRef nz-input [ngModel]="template.description || ''" placeholder="描述" />
+                        <input #templateSortRef nz-input type="number" [ngModel]="template.sortOrder" min="0" />
+                        @if (canManageConfig()) {
+                          <nz-switch
+                            [ngModel]="template.enabled"
+                            [nzDisabled]="busy() || isStageTaskTemplatePending(template.id)"
+                            (ngModelChange)="
+                              updateStageTaskTemplate.emit({ id: template.id, patch: { enabled: !!$event } })
+                            "
+                          ></nz-switch>
+                          <button
+                            nz-button
+                            nzType="default"
+                            [disabled]="busy() || isStageTaskTemplatePending(template.id)"
+                            [nzLoading]="isStageTaskTemplatePending(template.id)"
+                            (click)="saveStageTaskTemplate(template, titleRef.value, templateDescRef.value, asNumber(templateSortRef.value))"
+                          >
+                            保存
+                          </button>
+                          <button
+                            nz-button
+                            nzType="default"
+                            nzDanger
+                            [disabled]="busy() || isStageTaskTemplatePending(template.id) || !template.enabled"
+                            [nzLoading]="isStageTaskTemplatePending(template.id)"
+                            nz-popconfirm
+                            nzPopconfirmTitle="确认停用该模板任务？"
+                            (nzOnConfirm)="removeStageTaskTemplate.emit(template.id)"
+                          >
+                            停用
+                          </button>
+                        }
+                      </div>
+                    } @empty {
+                      <div class="empty empty--compact">该阶段暂无任务模板</div>
+                    }
+                  </div>
+                </div>
               </div>
             } @empty {
               <div class="empty">暂无研发阶段配置</div>

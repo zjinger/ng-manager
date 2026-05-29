@@ -6,6 +6,12 @@ import { genId } from "../../../shared/utils/id";
 import { nowIso } from "../../../shared/utils/time";
 import { UserRepo } from "../../user/user.repo";
 import { RdRepo } from "../../rd/rd.repo";
+import { resolveRdStageKey } from "../../rd/rd-stage-task-templates";
+import type {
+  CreateRdStageTaskTemplateInput,
+  RdStageTaskTemplateEntity,
+  UpdateRdStageTaskTemplateInput
+} from "../../rd/rd.types";
 import { ProjectRepo } from "../project.repo";
 import { ProjectAccessService } from "../project-access.service";
 import type {
@@ -220,6 +226,72 @@ export class ProjectMetaService {
     return this.repo.listEnvironments(projectId);
   }
 
+  async listRdStageTaskTemplates(projectId: string, ctx: RequestContext): Promise<RdStageTaskTemplateEntity[]> {
+    await this.baseService.getById(projectId, ctx);
+    return this.rdRepo.listStageTaskTemplatesByProjectId(projectId);
+  }
+
+  async createRdStageTaskTemplate(
+    projectId: string,
+    input: CreateRdStageTaskTemplateInput,
+    ctx: RequestContext
+  ): Promise<RdStageTaskTemplateEntity> {
+    await this.access.requireProjectMaintainer(projectId, ctx, "create rd stage task template");
+    await this.baseService.getById(projectId, ctx);
+    const stage = this.rdRepo.findStageById(input.stageId.trim());
+    if (!stage || stage.projectId !== projectId) {
+      throw new AppError(ERROR_CODES.RD_STAGE_NOT_FOUND, "rd stage not found", 404);
+    }
+    const now = nowIso();
+    const entity: RdStageTaskTemplateEntity = {
+      id: genId("rdstpl"),
+      projectId,
+      stageId: stage.id,
+      stageKey: resolveRdStageKey(stage),
+      title: input.title.trim(),
+      description: input.description?.trim() || null,
+      sortOrder: input.sortOrder ?? this.rdRepo.getNextStageTaskTemplateSortOrder(projectId, stage.id),
+      enabled: input.enabled !== false,
+      createdAt: now,
+      updatedAt: now
+    };
+    try {
+      this.rdRepo.createStageTaskTemplate(entity);
+    } catch (error) {
+      handleProjectSqliteError(error);
+    }
+    const created = this.rdRepo.findStageTaskTemplateById(entity.id);
+    if (!created) {
+      throw new AppError(ERROR_CODES.RD_ACTION_FAILED, "failed to create rd stage task template", 500);
+    }
+    return created;
+  }
+
+  async updateRdStageTaskTemplate(
+    projectId: string,
+    templateId: string,
+    input: UpdateRdStageTaskTemplateInput,
+    ctx: RequestContext
+  ): Promise<RdStageTaskTemplateEntity> {
+    await this.access.requireProjectMaintainer(projectId, ctx, "update rd stage task template");
+    const current = this.requireRdStageTaskTemplate(projectId, templateId);
+    const changed = this.rdRepo.updateStageTaskTemplate(current.id, {
+      title: input.title?.trim() || current.title,
+      description: input.description === undefined ? current.description : input.description?.trim() || null,
+      sort_order: input.sortOrder ?? current.sortOrder,
+      enabled: input.enabled === undefined ? (current.enabled ? 1 : 0) : input.enabled ? 1 : 0,
+      updated_at: nowIso()
+    });
+    if (!changed) {
+      throw new AppError(ERROR_CODES.RD_ACTION_FAILED, "failed to update rd stage task template", 500);
+    }
+    return this.requireRdStageTaskTemplate(projectId, templateId);
+  }
+
+  async removeRdStageTaskTemplate(projectId: string, templateId: string, ctx: RequestContext): Promise<RdStageTaskTemplateEntity> {
+    return this.updateRdStageTaskTemplate(projectId, templateId, { enabled: false }, ctx);
+  }
+
   async addEnvironment(
     projectId: string,
     input: CreateProjectConfigItemInput,
@@ -284,6 +356,14 @@ export class ProjectMetaService {
       throw new AppError(ERROR_CODES.PROJECT_MEMBER_NOT_FOUND, "模块负责人必须是项目成员", 400);
     }
     return ownerUserId;
+  }
+
+  private requireRdStageTaskTemplate(projectId: string, templateId: string): RdStageTaskTemplateEntity {
+    const template = this.rdRepo.findStageTaskTemplateById(templateId);
+    if (!template || template.projectId !== projectId) {
+      throw new AppError(ERROR_CODES.RD_ITEM_NOT_FOUND, "rd stage task template not found", 404);
+    }
+    return template;
   }
 
   private assertValidModuleParent(

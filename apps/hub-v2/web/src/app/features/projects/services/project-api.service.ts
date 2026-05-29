@@ -5,6 +5,11 @@ import { ApiClientService } from '@core/http';
 import type { PageResult } from '@core/types';
 import { buildUploadFormData, UPLOAD_TARGETS } from '@shared/constants';
 import type {
+  CreateRdStageTaskTemplateInput,
+  RdStageTaskTemplateEntity,
+  UpdateRdStageTaskTemplateInput,
+} from '../../rd/models/rd.model';
+import type {
   AddProjectModuleMemberInput,
   AddProjectMemberInput,
   CreateProjectApiTokenInput,
@@ -250,6 +255,30 @@ export class ProjectApiService {
 
   removeVersion(projectId: string, versionId: string) {
     return this.api.delete<{ id: string }>(`/projects/${projectId}/versions/${versionId}`);
+  }
+
+  listRdStageTaskTemplates(projectId: string) {
+    return this.api
+      .get<{ items: RdStageTaskTemplateEntity[] }>(`/projects/${projectId}/rd-stage-task-templates`)
+      .pipe(map((response) => response.items));
+  }
+
+  createRdStageTaskTemplate(projectId: string, input: CreateRdStageTaskTemplateInput) {
+    return this.api.post<RdStageTaskTemplateEntity, CreateRdStageTaskTemplateInput>(
+      `/projects/${projectId}/rd-stage-task-templates`,
+      input
+    );
+  }
+
+  updateRdStageTaskTemplate(projectId: string, templateId: string, input: UpdateRdStageTaskTemplateInput) {
+    return this.api.patch<RdStageTaskTemplateEntity, UpdateRdStageTaskTemplateInput>(
+      `/projects/${projectId}/rd-stage-task-templates/${templateId}`,
+      input
+    );
+  }
+
+  removeRdStageTaskTemplate(projectId: string, templateId: string) {
+    return this.api.delete<RdStageTaskTemplateEntity>(`/projects/${projectId}/rd-stage-task-templates/${templateId}`);
   }
 
   listApiTokens(projectKey: string) {

@@ -1,5 +1,10 @@
 import type { RequestContext } from "../../shared/context/request-context";
 import type {
+  CreateRdStageTaskTemplateInput,
+  RdStageTaskTemplateEntity,
+  UpdateRdStageTaskTemplateInput
+} from "../rd/rd.types";
+import type {
   AddProjectModuleMemberInput,
   AddProjectMemberInput,
   CreateProjectFeaturePointInput,
@@ -124,6 +129,18 @@ export interface ProjectCommandContract {
     ctx: RequestContext
   ): Promise<ProjectVersionItemEntity>;
   removeVersion(projectId: string, versionId: string, ctx: RequestContext): Promise<void>;
+  createRdStageTaskTemplate(
+    projectId: string,
+    input: CreateRdStageTaskTemplateInput,
+    ctx: RequestContext
+  ): Promise<RdStageTaskTemplateEntity>;
+  updateRdStageTaskTemplate(
+    projectId: string,
+    templateId: string,
+    input: UpdateRdStageTaskTemplateInput,
+    ctx: RequestContext
+  ): Promise<RdStageTaskTemplateEntity>;
+  removeRdStageTaskTemplate(projectId: string, templateId: string, ctx: RequestContext): Promise<RdStageTaskTemplateEntity>;
 }
 
 export interface ProjectQueryContract {
@@ -141,4 +158,5 @@ export interface ProjectQueryContract {
   listProjectModuleRdLinks(projectId: string, ctx: RequestContext): Promise<ProjectModuleRdLinkEntity[]>;
   listEnvironments(projectId: string, ctx: RequestContext): Promise<ProjectConfigItemEntity[]>;
   listVersions(projectId: string, ctx: RequestContext): Promise<ProjectVersionItemEntity[]>;
+  listRdStageTaskTemplates(projectId: string, ctx: RequestContext): Promise<RdStageTaskTemplateEntity[]>;
 }

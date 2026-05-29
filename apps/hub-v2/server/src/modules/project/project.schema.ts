@@ -101,6 +101,21 @@ export const updateProjectConfigItemSchema = z.object({
   description: z.string().trim().nullable().optional()
 });
 
+export const createRdStageTaskTemplateSchema = z.object({
+  stageId: z.string().trim().min(1),
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(2000).nullable().optional(),
+  sortOrder: z.coerce.number().int().min(0).optional(),
+  enabled: z.boolean().optional()
+}).strict();
+
+export const updateRdStageTaskTemplateSchema = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  description: z.string().trim().max(2000).nullable().optional(),
+  sortOrder: z.coerce.number().int().min(0).optional(),
+  enabled: z.boolean().optional()
+}).strict();
+
 export const updateProjectFeatureProgressSettingsSchema = z.object({
   enabled: z.boolean().optional(),
   statusOptions: z.array(featureProgressStatusOptionSchema).min(1).max(8).optional()

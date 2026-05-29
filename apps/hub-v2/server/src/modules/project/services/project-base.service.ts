@@ -8,7 +8,8 @@ import { genId } from "../../../shared/utils/id";
 import { nowIso } from "../../../shared/utils/time";
 import { UserRepo } from "../../user/user.repo";
 import { RdRepo } from "../../rd/rd.repo";
-import type { RdStageEntity } from "../../rd/rd.types";
+import { getRdStageTaskTemplate, resolveRdStageKey } from "../../rd/rd-stage-task-templates";
+import type { RdStageEntity, RdStageTaskTemplateEntity } from "../../rd/rd.types";
 import { ProjectRepo } from "../project.repo";
 import { ProjectAccessService } from "../project-access.service";
 import { ProjectAuthorizationService } from "../project-authorization.service";
@@ -95,8 +96,12 @@ export class ProjectBaseService {
       this.db.transaction(() => {
         this.repo.create(entity);
         this.repo.createMember(creatorMember);
-        for (const stage of this.buildDefaultRdStages(entity.id, now)) {
+        const stages = this.buildDefaultRdStages(entity.id, now);
+        for (const stage of stages) {
           this.rdRepo.createStage(stage);
+        }
+        for (const template of this.buildDefaultRdStageTaskTemplates(stages, now)) {
+          this.rdRepo.createStageTaskTemplate(template);
         }
       })();
     } catch (error) {
@@ -423,5 +428,23 @@ export class ProjectBaseService {
       createdAt: timestamp,
       updatedAt: timestamp
     }));
+  }
+
+  private buildDefaultRdStageTaskTemplates(stages: RdStageEntity[], timestamp: string): RdStageTaskTemplateEntity[] {
+    return stages.flatMap((stage) => {
+      const stageKey = resolveRdStageKey(stage);
+      return getRdStageTaskTemplate(stageKey).map((title, index) => ({
+        id: genId("rdstpl"),
+        projectId: stage.projectId,
+        stageId: stage.id,
+        stageKey,
+        title,
+        description: null,
+        sortOrder: (index + 1) * 10,
+        enabled: true,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      }));
+    });
   }
 }

@@ -6,6 +6,11 @@ import { ProjectAuthorizationService } from "./project-authorization.service";
 import { ProjectAccessService } from "./project-access.service";
 import { UserRepo } from "../user/user.repo";
 import { RdRepo } from "../rd/rd.repo";
+import type {
+  CreateRdStageTaskTemplateInput,
+  RdStageTaskTemplateEntity,
+  UpdateRdStageTaskTemplateInput
+} from "../rd/rd.types";
 import { ProjectRepo } from "./project.repo";
 import type {
   AddProjectModuleMemberInput,
@@ -323,5 +328,30 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
   removeVersion(projectId: string, versionId: string, ctx: RequestContext): Promise<void> {
     return this.versionService.removeVersion(projectId, versionId, ctx);
+  }
+
+  listRdStageTaskTemplates(projectId: string, ctx: RequestContext): Promise<RdStageTaskTemplateEntity[]> {
+    return this.metaService.listRdStageTaskTemplates(projectId, ctx);
+  }
+
+  createRdStageTaskTemplate(
+    projectId: string,
+    input: CreateRdStageTaskTemplateInput,
+    ctx: RequestContext
+  ): Promise<RdStageTaskTemplateEntity> {
+    return this.metaService.createRdStageTaskTemplate(projectId, input, ctx);
+  }
+
+  updateRdStageTaskTemplate(
+    projectId: string,
+    templateId: string,
+    input: UpdateRdStageTaskTemplateInput,
+    ctx: RequestContext
+  ): Promise<RdStageTaskTemplateEntity> {
+    return this.metaService.updateRdStageTaskTemplate(projectId, templateId, input, ctx);
+  }
+
+  removeRdStageTaskTemplate(projectId: string, templateId: string, ctx: RequestContext): Promise<RdStageTaskTemplateEntity> {
+    return this.metaService.removeRdStageTaskTemplate(projectId, templateId, ctx);
   }
 }
