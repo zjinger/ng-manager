@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, from, map, Observable, of, switchMap, tap } from 'rxjs';
+import { catchError, from, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
 
 import { ApiClientService } from '../http/api-client.service';
 import { AuthStore } from './auth.store';
@@ -38,12 +38,17 @@ export class AuthService {
   }
 
   logout(): Observable<{ ok: true }> {
+    this.clearLocalSession();
+
     return this.api.post<{ ok: true }>('/auth/logout').pipe(
-      tap(() => {
-        this.authStore.reset();
-        this.projectContext.reset();
-        void this.router.navigateByUrl('/login');
-      })
+      switchMap((response) =>
+        this.navigateToLogin().pipe(map(() => response))
+      ),
+      catchError((error) =>
+        this.navigateToLogin().pipe(
+          switchMap(() => throwError(() => error))
+        )
+      )
     );
   }
 
@@ -65,5 +70,14 @@ export class AuthService {
       }),
       tap(() => this.authStore.markInitialized())
     );
+  }
+
+  private clearLocalSession(): void {
+    this.authStore.clearAuthenticatedSession();
+    this.projectContext.reset();
+  }
+
+  private navigateToLogin(): Observable<boolean> {
+    return from(this.router.navigateByUrl('/login', { replaceUrl: true }));
   }
 }

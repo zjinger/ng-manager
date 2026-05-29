@@ -94,9 +94,9 @@
       </li>
     }
     <li nz-menu-divider></li>
-    <li nz-menu-item (click)="logout()" class="user-menu__item">
+    <li nz-menu-item [nzDisabled]="logoutPending()" (click)="logout()" class="user-menu__item">
       <span nz-icon nzType="logout"></span>
-      <span>退出</span>
+      <span>{{ logoutPending() ? '退出中…' : '退出' }}</span>
     </li>
   </ul>
 </nz-dropdown-menu>

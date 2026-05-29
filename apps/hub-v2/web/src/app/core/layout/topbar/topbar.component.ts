@@ -41,6 +41,7 @@ export class TopbarComponent {
   readonly sidebarCollapsed = this.uiStore.sidebarCollapsed;
   readonly isDark = this.uiStore.isDark;
   readonly avatarLoadFailed = signal(false);
+  readonly logoutPending = signal(false);
   readonly userInitial = computed(() =>
     (this.currentUser()?.nickname || this.currentUser()?.username || 'U').slice(0, 1)
   );
@@ -96,7 +97,16 @@ export class TopbarComponent {
   }
 
   logout(): void {
-    this.authService.logout().subscribe();
+    if (this.logoutPending()) {
+      return;
+    }
+
+    this.logoutPending.set(true);
+    this.authService.logout().subscribe({
+      error: () => {
+        this.logoutPending.set(false);
+      },
+    });
   }
 
   toggleSidebar(): void {

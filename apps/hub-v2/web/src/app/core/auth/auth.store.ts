@@ -24,6 +24,11 @@ export class AuthStore {
     this.initializedState.set(false);
   }
 
+  clearAuthenticatedSession(): void {
+    this.currentUserState.set(null);
+    this.initializedState.set(true);
+  }
+
   readonly userInitial = computed(() =>
     (this.currentUser()?.nickname || this.currentUser()?.username || 'U').slice(0, 1)
   );
