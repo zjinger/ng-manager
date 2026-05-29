@@ -106,3 +106,22 @@ export interface BrowseEntriesDto {
 export interface BrowseFilesDto extends BrowseEntriesDto {
     dir?: string;
 }
+
+/** 远端切图条目 */
+export interface QuickImageItemDto {
+    name: string;
+    relPath: string;
+    projectImgPath: string;
+    dir: string;
+    w: number;
+    h: number;
+    size: number;
+    sizeStr?: string;
+    mtime: number;
+}
+
+/** 远端切图列表响应 */
+export interface QuickImagesResponseDto {
+    projectId: string;
+    list: QuickImageItemDto[];
+}

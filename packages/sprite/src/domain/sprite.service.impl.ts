@@ -1,5 +1,6 @@
 import { generateGroupBatch } from "../batch";
 import { GenerateSpriteResult, SpriteMetaFile, SvgMetaFile } from "../types";
+import { buildLessForSprite } from "../css";
 import type { GenerateGroupBatchItem } from "../types";
 import fs from "node:fs";
 import path from "node:path";
@@ -240,6 +241,12 @@ export class SpriteServiceImpl implements SpriteService {
                             console.warn(`Failed to read less file for group ${group}: ${lessPath}`);
                         }
                     }
+                    // const prefix = String(cfg.prefix ?? "sl").trim() || "sl";
+                    // const cssOpts = {
+                    //     prefix,
+                    //     spriteUrlResolver: ({ spriteUrl }: { spriteUrl: string }) => spriteUrl,
+                    // };
+                    // lessText = buildLessForSprite({ group, spriteUrl: spriteUrl ?? "", classes: (meta as SpriteMetaFile).classes ?? [] }, cssOpts);
                 }
                 return {
                     group,

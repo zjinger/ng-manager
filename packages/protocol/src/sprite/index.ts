@@ -19,6 +19,8 @@ export type {
     SpriteEntryDto,
     BrowseEntriesDto,
     BrowseFilesDto,
+    QuickImageItemDto,
+    QuickImagesResponseDto,
 } from "./sprite-response.dto";
 
 export type {

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { Readable } from "node:stream";
 import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
 import type { FastifyInstance } from "fastify";
 import type {
@@ -16,10 +17,14 @@ import type {
 import type { GenerateSpriteOptions, SpriteConfig, SpriteGroupItem, SpriteSnapshot } from "@yinuo-ngm/sprite";
 import type { ProjectAssets } from "@yinuo-ngm/project";
 import {
+    BASE_URL,
+    copyRawResponseHeaders,
     quickFetch,
     mapQuickGroupsToSnapshot,
     fetchRemoteProject,
     resolveEnabledRemoteProjectId,
+    buildRemoteMiscUrl,
+    MISC_PROXY_PREFIX,
 } from "./sprite-quick.utils";
 
 function toSpriteConfigDto(cfg: SpriteConfig): SpriteConfigDto {
@@ -97,8 +102,9 @@ export async function spriteRoutes(fastify: FastifyInstance) {
             const nextCfg = body.config as Omit<SpriteConfig, "updatedAt" | "projectId">;
             const nextAssets = (body.assets || {}) as Partial<ProjectAssets>;
             const hasLocalImageRoot = !!String(nextCfg.localImageRoot ?? "").trim();
+            const enableQuickSprite = nextCfg.quickSpriteProjectId && nextCfg.quickSpriteEnabled;
 
-            if (!nextAssets.iconsSvn && !hasLocalImageRoot) {
+            if (!enableQuickSprite && !nextAssets.iconsSvn && !hasLocalImageRoot) {
                 throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "iconsSvn asset or localImageRoot is required");
             }
 
@@ -218,5 +224,87 @@ export async function spriteRoutes(fastify: FastifyInstance) {
             `/api/groups?projectId=${encodeURIComponent(projectId)}`,
         );
         return groups;
+    });
+
+    // ========== 远端雪碧图 PNG 代理路由（不落盘，实时转发） ==========
+    // 路径: /api/sprite/proxy/:projectId/:group.png
+    // 映射链路：本地 projectId → SpriteConfig.quickSpriteProjectId → 远端 static/icons/{quickProjectId}/{group}.png
+    fastify.get<{
+        Params: { projectId: string; group: string };
+    }>("/proxy/:projectId/:group.png", async (req, reply) => {
+        const { projectId, group } = req.params;
+        const cfg = await fastify.core.sprite.getConfig(projectId);
+        const quickProjectId = cfg?.quickSpriteProjectId;
+        if (!quickProjectId) {
+            throw new GlobalError(
+                GlobalErrorCodes.NOT_FOUND,
+                `项目「${projectId}」未配置快捷雪碧图远端映射`,
+            );
+        }
+
+        const remoteUrl = `${BASE_URL}/sprites/${encodeURIComponent(quickProjectId)}/${encodeURIComponent(group)}.png`;
+        fastify.log.info(`[sprite-proxy] → GET ${remoteUrl}`);
+
+        let response: Response;
+        try {
+            response = await fetch(remoteUrl);
+        } catch (err: any) {
+            fastify.log.error(`[sprite-proxy] ✗ ${remoteUrl}: ${err?.message || err}`);
+            throw new GlobalError(
+                GlobalErrorCodes.INTERNAL_ERROR,
+                `无法连接远端雪碧图服务: ${err?.message || err}`,
+            );
+        }
+
+        if (!response.ok) {
+            throw new GlobalError(
+                GlobalErrorCodes.NOT_FOUND,
+                `远端雪碧图不存在: ${response.status}`,
+            );
+        }
+
+        copyRawResponseHeaders(response, reply);
+        const body = response.body;
+        if (!body) {
+            return reply.status(response.status).send();
+        }
+        return reply.status(response.status).send(Readable.fromWeb(body as any));
+    });
+
+    // ========== 远端切图图片代理路由（不落盘，实时转发） ==========
+    // 路径: /api/sprite/misc-proxy/:quickProjectId/*
+    fastify.get<{
+        Params: { quickProjectId: string; "*": string };
+    }>("/misc-proxy/:quickProjectId/*", async (req, reply) => {
+        const { quickProjectId } = req.params;
+        const filename = req.params["*"];
+
+        const remoteUrl = buildRemoteMiscUrl(quickProjectId, filename);
+        fastify.log.info(`[sprite-misc-proxy] → GET ${remoteUrl}`);
+
+        let response: Response;
+        try {
+            response = await fetch(remoteUrl);
+        } catch (err: any) {
+            fastify.log.error(`[sprite-misc-proxy] ✗ ${remoteUrl}: ${err?.message || err}`);
+            throw new GlobalError(
+                GlobalErrorCodes.INTERNAL_ERROR,
+                `无法连接远端切图服务: ${err?.message || err}`,
+            );
+        }
+
+        if (!response.ok) {
+            throw new GlobalError(
+                GlobalErrorCodes.NOT_FOUND,
+                `远端切图不存在: ${response.status}`,
+            );
+        }
+
+        copyRawResponseHeaders(response, reply);
+        const body = response.body;
+        if (!body) {
+            return reply.status(response.status).send();
+        }
+        return reply.status(response.status).send(Readable.fromWeb(body as any));
     });
 }

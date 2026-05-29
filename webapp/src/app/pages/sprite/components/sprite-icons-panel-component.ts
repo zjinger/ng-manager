@@ -291,7 +291,7 @@ export class SpriteIconsPanelComponent implements OnChanges {
     const meta = it?.meta as SpriteMetaFile
     const classes = (meta?.classes ?? []);
     return classes
-      .filter((x) => !!x.className);
+      .filter((x: { className: any; }) => !!x.className);
   });
 
   icons = signal<SpriteBrowseEntry[]>([]);
@@ -321,7 +321,7 @@ export class SpriteIconsPanelComponent implements OnChanges {
     const meta = item?.meta as SvgMetaFile;
     if (!meta) return;
     const size = meta?.size
-    const svgMeta = meta.icons.find(i => i.file === c.name);
+    const svgMeta = meta.icons.find((i: { file: any; }) => i.file === c.name);
     if (!svgMeta) return;
     const html = tpl.replaceAll("{name}", svgMeta.name).replaceAll("{size}", size).replaceAll("{base}", svgMeta.className).replaceAll("{group}", meta.group);
     this.clipboard.copy(html);

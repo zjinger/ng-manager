@@ -20,6 +20,8 @@ function normalizeSpriteConfig(projectId: string, cfg: Omit<SpriteConfig, "proje
         persistLess: cfg.persistLess ?? true,
         localImageRoot: cfg.localImageRoot?.trim() || undefined,
         localCacheDir: cfg.localCacheDir?.trim() || undefined,
+        quickSpriteProjectId: cfg.quickSpriteProjectId?.trim() || undefined,
+        quickSpriteEnabled: cfg.quickSpriteEnabled ?? false,
     };
 }
 

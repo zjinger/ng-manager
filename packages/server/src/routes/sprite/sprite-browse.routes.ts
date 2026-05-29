@@ -2,7 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import { GlobalError, GlobalErrorCodes } from "@yinuo-ngm/errors";
-import type { BrowseEntriesDto, BrowseFilesDto } from "@yinuo-ngm/protocol";
+import type { BrowseEntriesDto, BrowseFilesDto, QuickImageItemDto } from "@yinuo-ngm/protocol";
+import {
+  resolveEnabledRemoteProjectId,
+  fetchAndCacheRemoteMiscImages,
+  buildBrowseFromCache,
+} from "./sprite-quick.utils";
 
 const SKIP = new Set([
     ".svn",
@@ -106,6 +111,14 @@ export default async function spriteBrowseRoutes(fastify: FastifyInstance) {
         "/images/list/:projectId",
         async (req) => {
             const { projectId } = req.params;
+            // Quick 模式：如果配置了远端项目，从远端获取切图列表
+            const quickProjectId = await resolveEnabledRemoteProjectId(fastify, projectId);
+            if (quickProjectId) {
+                const dir = String(req.query?.dir ?? "").trim();
+                const cache = await fetchAndCacheRemoteMiscImages(fastify, quickProjectId);
+                return buildBrowseFromCache(quickProjectId, cache, dir || undefined);
+            }
+            // 本地模式：原有逻辑不变
             const project = await fastify.core.project.get(projectId);
             const root = project?.assets?.cutImageSvn?.localDir;
             if (!root) {

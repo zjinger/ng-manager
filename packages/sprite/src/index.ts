@@ -1,4 +1,5 @@
 export * from "./types";
+export { buildLessForSprite } from "./css";
 export * from "./detect";
 export * from "./css";
 export { generatePngGroup } from "./png";

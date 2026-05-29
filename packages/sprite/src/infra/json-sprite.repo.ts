@@ -36,6 +36,8 @@ export class JsonSpriteRepo implements SpriteRepo {
             persistLess: cfg.persistLess ?? true,
             localImageRoot: cfg.localImageRoot?.trim() || undefined,
             quickSpriteProjectId: cfg.quickSpriteProjectId?.trim() || undefined,
+            quickSpriteEnabled: cfg.quickSpriteEnabled ?? false,
+            localCacheDir: cfg.localCacheDir?.trim() || undefined,
         };
         const file = this.filePath(projectId);
         fs.mkdirSync(path.dirname(file), { recursive: true });

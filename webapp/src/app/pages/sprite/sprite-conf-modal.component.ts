@@ -156,6 +156,8 @@ export class SpriteConfModalComponent implements OnInit {
         d.spriteExportDir = cfg?.spriteExportDir || '';
         d.lessExportDir = cfg?.lessExportDir || '';
         d.localImageRoot = cfg?.localImageRoot || '';
+        d.quickSpriteProjectId = cfg?.quickSpriteProjectId || '';
+        d.quickSpriteEnabled = cfg?.quickSpriteEnabled || false;
         return d;
       });
     }
