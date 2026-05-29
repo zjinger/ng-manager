@@ -17,10 +17,13 @@ export interface PendingUpdate {
   readonly key: string;
   readonly source: UpdateSource;
 }
-
+// 定期检查更新的时间间隔，单位为毫秒。这里设置为 5 分钟，既能及时发现更新，又不会过于频繁地请求服务器。
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
+// 启动后延迟一段时间再主动检查更新，避免与页面加载时的网络请求产生竞争，提升加载性能。
 const STARTUP_DELAY_MS = 15 * 1000;
+// 用户频繁切换标签页或窗口时，限制主动检查更新的频率，避免过于频繁地请求服务器。
 const ACTIVE_CHECK_THROTTLE_MS = 60 * 1000;
+// 用户选择 "稍后" 后的更新延期时长，避免用户长期停留在旧版本。
 const DEFER_UPDATE_MS = 30 * 60 * 1000;
 const UPDATE_CHECK_PARAM = '_appUpdateCheck';
 
@@ -281,6 +284,13 @@ export class AppUpdateService {
     return null;
   }
 
+  /**
+   * 当用户频繁切换标签页或窗口时，限制主动检查更新的频率，避免过于频繁地请求服务器。
+   * 只有当距离上次主动检查的时间超过 ACTIVE_CHECK_THROTTLE_MS 时才允许再次检查。
+    * 这样可以在用户频繁切换时减少不必要的网络请求，同时在用户回到页面时仍能及时检查更新。
+    * 注意，这个限制只针对主动检查（如标签页可见或窗口获得焦点时触发的检查），
+    * 定期检查（CHECK_INTERVAL_MS）不受这个限制影响，确保即使用户不频繁切换也能定期发现更新。
+   */
   private shouldRunActiveCheck(): boolean {
     const now = Date.now();
     if (now - this.lastActiveCheckAt < ACTIVE_CHECK_THROTTLE_MS) {
