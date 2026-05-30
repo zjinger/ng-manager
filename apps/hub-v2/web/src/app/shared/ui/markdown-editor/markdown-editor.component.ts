@@ -51,7 +51,7 @@ export class MarkdownEditorComponent
 
     @Input() placeholder = '请输入 Markdown 内容';
 
-    @Input() minHeight = '320px';
+    @Input() minHeight = '240px';
 
     @Input() maxHeight = '';
 

@@ -76,6 +76,9 @@ import { ProfileService } from "../modules/profile/profile.service";
 import type { PersonalTokenCommandContract, PersonalTokenQueryContract } from "../modules/personal-token/personal-token.contract";
 import { PersonalTokenRepo } from "../modules/personal-token/personal-token.repo";
 import { PersonalTokenService } from "../modules/personal-token/personal-token.service";
+import type { PersonalTodoCommandContract, PersonalTodoQueryContract } from "../modules/personal-todo/personal-todo.contract";
+import { PersonalTodoRepo } from "../modules/personal-todo/personal-todo.repo";
+import { PersonalTodoService } from "../modules/personal-todo/personal-todo.service";
 import type { RdCommandContract, RdQueryContract } from "../modules/rd/rd.contract";
 import { RdRepo } from "../modules/rd/rd.repo";
 import { RdService } from "../modules/rd/rd.service";
@@ -129,6 +132,8 @@ export type AppContainer = {
   projectAccess: ProjectAccessContract;
   profileCommand: ProfileCommandContract;
   profileQuery: ProfileQueryContract;
+  personalTodoCommand: PersonalTodoCommandContract;
+  personalTodoQuery: PersonalTodoQueryContract;
   personalTokenCommand: PersonalTokenCommandContract;
   personalTokenQuery: PersonalTokenQueryContract;
   announcementCommand: AnnouncementCommandContract;
@@ -233,6 +238,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   );
   const profileRepo = new ProfileRepo(db);
   const profileService = new ProfileService(profileRepo);
+  const personalTodoService = new PersonalTodoService(new PersonalTodoRepo(db));
   const personalTokenRepo = new PersonalTokenRepo(db);
   const personalTokenService = new PersonalTokenService(personalTokenRepo, projectRepo, userRepo);
   const contentLogRepo = new ContentLogRepo(db);
@@ -347,6 +353,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     projectAccess,
     profileCommand: profileService,
     profileQuery: profileService,
+    personalTodoCommand: personalTodoService,
+    personalTodoQuery: personalTodoService,
     personalTokenCommand: personalTokenService,
     personalTokenQuery: personalTokenService,
     announcementCommand: announcementService,

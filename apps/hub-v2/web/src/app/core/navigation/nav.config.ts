@@ -9,6 +9,14 @@ export const NAV_ITEMS: NavSection[] = [
     items: [
       { key: 'dashboard', label: '工作台', icon: 'dashboard', route: '/dashboard', exact: true },
       {
+        key: 'personal-todos',
+        label: '个人待办',
+        icon: 'check-circle',
+        route: '/personal-todos',
+        exact: true,
+        tone: 'danger',
+      },
+      {
         key: 'dashboard-board',
         label: '数据看板',
         icon: 'line-chart',

@@ -1,16 +1,19 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 
 import { DashboardApiService } from '../../features/dashboard/services/dashboard-api.service';
+import { TodoStore } from '../../features/personal-todos/stores/todo.store';
 
 @Injectable({ providedIn: 'root' })
 export class NavigationBadgeStore {
   private readonly dashboardApi = inject(DashboardApiService);
+  private readonly todoStore = inject(TodoStore);
 
   private readonly issueCountState = signal(0);
   private readonly rdCountState = signal(0);
 
   readonly issueCount = computed(() => this.issueCountState());
   readonly rdCount = computed(() => this.rdCountState());
+  readonly personalTodoCount = computed(() => this.todoStore.unfinishedCount());
 
   load(options?: { force?: boolean }): void {
     void options;

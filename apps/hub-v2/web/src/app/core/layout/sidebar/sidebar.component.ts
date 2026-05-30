@@ -91,6 +91,11 @@ export class SidebarComponent {
       return count > 0 ? String(count) : null;
     }
 
+    if (key === 'personal-todos') {
+      const count = this.badgeStore.personalTodoCount();
+      return count > 0 ? String(count) : null;
+    }
+
     return null;
   }
 

@@ -77,6 +77,11 @@ export const routes: Routes = [
         path: 'dashboard',
         loadChildren: () => import('./features/dashboard/routes').then((m) => m.DASHBOARD_ROUTES),
       },
+      {
+        path: 'personal-todos',
+        loadChildren: () =>
+          import('./features/personal-todos/routes').then((m) => m.PERSONAL_TODO_ROUTES),
+      },
       // 积木报表路由
       // {
       //   path: 'reports',

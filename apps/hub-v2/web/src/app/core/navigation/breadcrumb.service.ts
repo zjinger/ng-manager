@@ -57,6 +57,10 @@ export class BreadcrumbService {
       return [{ label: '数据看板' }];
     }
 
+    if (path.startsWith('/personal-todos')) {
+      return [{ label: '个人待办' }];
+    }
+
     if (path.startsWith('/issues/')) {
       return [
         { label: '测试跟踪', route: '/issues' },
