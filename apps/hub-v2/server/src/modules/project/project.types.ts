@@ -44,6 +44,7 @@ export interface ProjectEntity {
   productLine: string | null;
   slaLevel: string | null;
   memberCount?: number;
+  favoriteAt?: string | null;
   status: ProjectStatus;
   visibility: ProjectVisibility;
   createdAt: string;
@@ -93,6 +94,10 @@ export interface UpdateProjectInput {
   slaLevel?: string | null;
   status?: ProjectStatus;
   visibility?: ProjectVisibility;
+}
+
+export interface UpdateProjectFavoriteInput {
+  favorite: boolean;
 }
 
 export interface ListProjectsQuery {

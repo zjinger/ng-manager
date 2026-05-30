@@ -245,6 +245,18 @@ export class ProjectListPageComponent {
     this.updateProjectStatus(project.id, 'active');
   }
 
+  toggleFavoriteProject(event: { project: ProjectSummary; favorite: boolean }): void {
+    this.projectApi.updateFavorite(event.project.id, { favorite: event.favorite }).subscribe({
+      next: (updated) => {
+        this.message.success(event.favorite ? '已重点关注该项目' : '已取消重点关注');
+        this.store.patchAndSort(updated);
+      },
+      error: () => {
+        this.message.error(event.favorite ? '重点关注失败' : '取消重点关注失败');
+      }
+    });
+  }
+
   openModuleDialog(project: ProjectSummary): void {
     this.moduleProject.set(project);
     this.moduleDialogOpen.set(true);

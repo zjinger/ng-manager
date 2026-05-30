@@ -87,14 +87,18 @@ export class RdProgressService {
       : null;
     const progressNote = nextNote;
     const isStartProcessing = oldProgress <= 0 && input.progress > 0;
+    const taskTitle = stageTask?.title.trim() || "";
+    const actionText = isStartProcessing
+      ? (taskTitle ? `开始处理任务「${taskTitle}」` : "开始处理")
+      : (taskTitle ? `更新任务「${taskTitle}」进度` : "更新个人进度");
     const progressLogContent = progressChanged
       ? (isStartProcessing
           ? (progressNote
-              ? `开始处理；进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
-              : `开始处理；进度: ${oldProgress}% -> ${input.progress}%`)
+              ? `${actionText}；进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
+              : `${actionText}；进度: ${oldProgress}% -> ${input.progress}%`)
           : (progressNote
-              ? `更新个人进度: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
-              : `更新个人进度: ${oldProgress}% -> ${input.progress}%`))
+              ? `${actionText}: ${oldProgress}% -> ${input.progress}%；说明：${progressNote}`
+              : `${actionText}: ${oldProgress}% -> ${input.progress}%`))
       : "";
     const updatedItem = this.context.repo.transaction(() => {
       if (stageTask && (progressChanged || blockReason || resolveBlockId)) {

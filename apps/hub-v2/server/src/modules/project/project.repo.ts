@@ -46,6 +46,7 @@ type ProjectRow = {
   status: "active" | "inactive";
   visibility: "internal" | "private";
   member_count?: number | null;
+  favorite_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -305,10 +306,15 @@ export class ProjectRepo {
     return result.changes > 0;
   }
 
-  list(query: ListProjectsQuery): ProjectListResult {
+  list(query: ListProjectsQuery, favoriteUserId?: string | null): ProjectListResult {
     const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
     const conditions: string[] = [];
     const params: unknown[] = [];
+    const favoriteJoin = favoriteUserId
+      ? "LEFT JOIN project_favorites pf ON pf.project_id = p.id AND pf.user_id = ?"
+      : "";
+    const selectFavorite = favoriteUserId ? "pf.favorite_at AS favorite_at," : "";
+    const favoriteParams = favoriteUserId ? [favoriteUserId] : [];
 
     if (query.status) {
       conditions.push("status = ?");
@@ -331,19 +337,24 @@ export class ProjectRepo {
         `
           SELECT
             p.*,
+            ${selectFavorite}
             COALESCE(mc.member_count, 0) AS member_count
           FROM projects p
+          ${favoriteJoin}
           LEFT JOIN (
             SELECT project_id, COUNT(*) AS member_count
             FROM project_members
             GROUP BY project_id
           ) mc ON mc.project_id = p.id
           ${whereClause}
-          ORDER BY p.created_at DESC, p.updated_at DESC
+          ORDER BY
+            ${favoriteUserId ? "CASE WHEN pf.favorite_at IS NULL THEN 1 ELSE 0 END, pf.favorite_at DESC," : ""}
+            p.created_at DESC,
+            p.updated_at DESC
           LIMIT ? OFFSET ?
         `
       )
-      .all(...params, pageSize, offset) as ProjectRow[];
+      .all(...favoriteParams, ...params, pageSize, offset) as ProjectRow[];
 
     return {
       items: rows.map((row) => this.mapProject(row)),
@@ -402,22 +413,28 @@ export class ProjectRepo {
             p.sla_level,
             p.status,
             p.visibility,
+            pf.favorite_at AS favorite_at,
             COALESCE(mc.member_count, 0) AS member_count,
             p.created_at,
             p.updated_at
           FROM projects p
           LEFT JOIN project_members pm ON pm.project_id = p.id
+          LEFT JOIN project_favorites pf ON pf.project_id = p.id AND pf.user_id = ?
           LEFT JOIN (
             SELECT project_id, COUNT(*) AS member_count
             FROM project_members
             GROUP BY project_id
           ) mc ON mc.project_id = p.id
           ${whereClause}
-          ORDER BY p.created_at DESC, p.updated_at DESC
+          ORDER BY
+            CASE WHEN pf.favorite_at IS NULL THEN 1 ELSE 0 END,
+            pf.favorite_at DESC,
+            p.created_at DESC,
+            p.updated_at DESC
           LIMIT ? OFFSET ?
         `
       )
-      .all(...params, pageSize, offset) as ProjectRow[];
+      .all(userId, ...params, pageSize, offset) as ProjectRow[];
 
     return {
       items: rows.map((row) => this.mapProject(row)),
@@ -444,6 +461,47 @@ export class ProjectRepo {
   listAllProjectIds(): string[] {
     const rows = this.db.prepare("SELECT id FROM projects").all() as Array<{ id: string }>;
     return rows.map((row) => row.id);
+  }
+
+  findByIdWithFavorite(id: string, userId: string): ProjectEntity | null {
+    const row = this.db
+      .prepare(
+        `
+          SELECT
+            p.*,
+            pf.favorite_at AS favorite_at,
+            COALESCE(mc.member_count, 0) AS member_count
+          FROM projects p
+          LEFT JOIN project_favorites pf ON pf.project_id = p.id AND pf.user_id = ?
+          LEFT JOIN (
+            SELECT project_id, COUNT(*) AS member_count
+            FROM project_members
+            GROUP BY project_id
+          ) mc ON mc.project_id = p.id
+          WHERE p.id = ?
+          LIMIT 1
+        `
+      )
+      .get(userId, id) as ProjectRow | undefined;
+
+    return row ? this.mapProject(row) : null;
+  }
+
+  setFavorite(projectId: string, userId: string, favoriteAt: string): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO project_favorites (user_id, project_id, favorite_at)
+          VALUES (?, ?, ?)
+          ON CONFLICT(user_id, project_id) DO UPDATE SET
+            favorite_at = excluded.favorite_at
+        `
+      )
+      .run(userId, projectId, favoriteAt);
+  }
+
+  unsetFavorite(projectId: string, userId: string): void {
+    this.db.prepare("DELETE FROM project_favorites WHERE user_id = ? AND project_id = ?").run(userId, projectId);
   }
 
   listMembers(projectId: string): ProjectMemberEntity[] {
@@ -1577,7 +1635,7 @@ export class ProjectRepo {
   }
 
   private mapProject(row: ProjectRow): ProjectEntity {
-    return {
+    const entity: ProjectEntity = {
       id: row.id,
       projectKey: row.project_key,
       projectNo: row.project_no,
@@ -1598,6 +1656,10 @@ export class ProjectRepo {
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+    if (Object.prototype.hasOwnProperty.call(row, "favorite_at")) {
+      entity.favoriteAt = row.favorite_at ?? null;
+    }
+    return entity;
   }
 
   private findSingleProject(whereClause: string, value: string): ProjectEntity | null {

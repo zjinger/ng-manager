@@ -51,6 +51,7 @@ export class ProjectListTableComponent {
   readonly archive = output<ProjectSummary>();
   readonly restore = output<ProjectSummary>();
   readonly toggleExpand = output<ProjectSummary>();
+  readonly toggleFavorite = output<{ project: ProjectSummary; favorite: boolean }>();
   private readonly brokenAvatarMap = new Map<string, true>();
 
   avatarText(name: string): string {
@@ -65,13 +66,22 @@ export class ProjectListTableComponent {
     this.brokenAvatarMap.set(projectId, true);
   }
 
-  copyProjectKey(projectKey: string): void {
+  copyProjectKey(projectKey: string, event?: Event): void {
+    event?.stopPropagation();
     const ok = this.clipboard.copy(projectKey);
     if (ok) {
       this.message.success('projectKey 已复制');
     } else {
       this.message.error('复制 projectKey 失败');
     }
+  }
+
+  isFavorite(item: ProjectSummary): boolean {
+    return !!item.favoriteAt;
+  }
+
+  favoriteConfirmText(item: ProjectSummary): string {
+    return this.isFavorite(item) ? '确认取消重点关注该项目？，取消后将不再优先展示在列表顶部' : '确认重点关注该项目？,关注后会优先展示在列表顶部';
   }
 
   isExpanded(projectId: string): boolean {

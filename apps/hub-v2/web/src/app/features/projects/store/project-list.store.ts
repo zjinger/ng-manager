@@ -94,10 +94,41 @@ export class ProjectListStore {
       ...current,
       ...updated,
       memberCount: updated.memberCount ?? current.memberCount,
+      favoriteAt: Object.prototype.hasOwnProperty.call(updated, 'favoriteAt') ? updated.favoriteAt : current.favoriteAt,
     };
     this.resultState.set({
       ...result,
       items,
+    });
+  }
+
+  patchAndSort(updated: ProjectSummary): void {
+    const result = this.resultState();
+    if (!result) {
+      this.load();
+      return;
+    }
+
+    const index = result.items.findIndex((item) => item.id === updated.id);
+    if (index < 0) {
+      this.load();
+      return;
+    }
+
+    const items = result.items.map((item) =>
+      item.id === updated.id
+        ? {
+            ...item,
+            ...updated,
+            memberCount: updated.memberCount ?? item.memberCount,
+            favoriteAt: Object.prototype.hasOwnProperty.call(updated, 'favoriteAt') ? updated.favoriteAt : item.favoriteAt,
+          }
+        : item
+    );
+
+    this.resultState.set({
+      ...result,
+      items: this.sortProjects(items),
     });
   }
 
@@ -121,5 +152,33 @@ export class ProjectListStore {
       items,
       total: result.total + 1,
     });
+  }
+
+  private sortProjects(items: ProjectSummary[]): ProjectSummary[] {
+    return items
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => {
+        const aFavorite = a.item.favoriteAt;
+        const bFavorite = b.item.favoriteAt;
+        if (aFavorite && bFavorite && aFavorite !== bFavorite) {
+          return bFavorite.localeCompare(aFavorite);
+        }
+        if (aFavorite && !bFavorite) {
+          return -1;
+        }
+        if (!aFavorite && bFavorite) {
+          return 1;
+        }
+        return this.compareDefaultProjectOrder(a.item, b.item) || a.index - b.index;
+      })
+      .map(({ item }) => item);
+  }
+
+  private compareDefaultProjectOrder(a: ProjectSummary, b: ProjectSummary): number {
+    const created = b.createdAt.localeCompare(a.createdAt);
+    if (created !== 0) {
+      return created;
+    }
+    return b.updatedAt.localeCompare(a.updatedAt);
   }
 }

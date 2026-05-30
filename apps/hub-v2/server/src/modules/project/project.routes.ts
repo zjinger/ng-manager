@@ -16,6 +16,7 @@ import {
   updateProjectFeaturePointSchema,
   updateProjectFeaturePointGroupSchema,
   updateProjectFeatureProgressSettingsSchema,
+  updateProjectFavoriteSchema,
   updateProjectMemberSchema,
   updateProjectConfigItemSchema,
   updateRdStageTaskTemplateSchema,
@@ -49,6 +50,13 @@ export default async function projectRoutes(app: FastifyInstance) {
     const params = request.params as { projectId: string };
     const body = updateProjectSchema.parse(request.body);
     return ok(await app.container.projectCommand.update(params.projectId, body, ctx), "project updated");
+  });
+
+  app.patch("/projects/:projectId/favorite", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { projectId: string };
+    const body = updateProjectFavoriteSchema.parse(request.body);
+    return ok(await app.container.projectCommand.updateFavorite(params.projectId, body, ctx), "project favorite updated");
   });
 
   app.get("/projects/:projectId/members", async (request) => {

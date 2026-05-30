@@ -76,6 +76,7 @@ export class ProjectBaseService {
       status: "active",
       visibility: input.visibility ?? "internal",
       memberCount: 1,
+      favoriteAt: null,
       createdAt: now,
       updatedAt: now
     };
@@ -174,7 +175,7 @@ export class ProjectBaseService {
     if (!this.authorization.canReadAllProjects(ctx)) {
       throw new AppError(ERROR_CODES.PROJECT_ACCESS_DENIED, "list projects forbidden", 403);
     }
-    return this.repo.list(query);
+    return this.repo.list(query, ctx.userId ?? null);
   }
 
   async listAccessible(query: ListProjectsQuery, ctx: RequestContext): Promise<ProjectListResult> {
@@ -190,10 +191,35 @@ export class ProjectBaseService {
     }
 
     if (this.authorization.canReadAllProjects(ctx) && query.scope !== "member_only") {
-      return this.repo.list(query);
+      return this.repo.list(query, userId);
     }
 
     return this.repo.listAccessibleByUserId(userId, query);
+  }
+
+  async updateFavorite(projectId: string, favorite: boolean, ctx: RequestContext): Promise<ProjectEntity> {
+    const userId = ctx.userId?.trim();
+    if (!userId) {
+      throw new AppError(ERROR_CODES.AUTH_UNAUTHORIZED, "unauthorized", 401);
+    }
+
+    const project = this.repo.findById(projectId);
+    if (!project) {
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
+    }
+
+    await this.access.requireProjectAccess(projectId, ctx, "favorite project");
+    if (favorite) {
+      this.repo.setFavorite(projectId, userId, nowIso());
+    } else {
+      this.repo.unsetFavorite(projectId, userId);
+    }
+
+    const updated = this.repo.findByIdWithFavorite(projectId, userId);
+    if (!updated) {
+      throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
+    }
+    return updated;
   }
 
   async getById(projectId: string, ctx: RequestContext): Promise<ProjectEntity> {

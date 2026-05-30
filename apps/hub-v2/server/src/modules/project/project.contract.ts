@@ -40,12 +40,14 @@ import type {
   ProjectVersionItemEntity,
   UpdateProjectConfigItemInput,
   UpdateProjectInput,
+  UpdateProjectFavoriteInput,
   UpdateProjectVersionItemInput
 } from "./project.types";
 
 export interface ProjectCommandContract {
   create(input: CreateProjectInput, ctx: RequestContext): Promise<ProjectEntity>;
   update(projectId: string, input: UpdateProjectInput, ctx: RequestContext): Promise<ProjectEntity>;
+  updateFavorite(projectId: string, input: UpdateProjectFavoriteInput, ctx: RequestContext): Promise<ProjectEntity>;
   addMember(projectId: string, input: AddProjectMemberInput, ctx: RequestContext): Promise<ProjectMemberEntity>;
   updateMember(projectId: string, memberId: string, input: UpdateProjectMemberInput, ctx: RequestContext): Promise<ProjectMemberEntity>;
   removeMember(projectId: string, memberId: string, ctx: RequestContext): Promise<void>;

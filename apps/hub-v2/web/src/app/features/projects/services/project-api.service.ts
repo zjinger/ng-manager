@@ -44,6 +44,7 @@ import type {
   UpdateProjectFeaturePointGroupInput,
   UpdateProjectFeatureProgressSettingsInput,
   UpdateProjectInput,
+  UpdateProjectFavoriteInput,
   UpdateProjectMetaItemInput,
   UpsertProjectFeatureProgressOverrideInput,
   UpdateProjectVersionItemInput
@@ -82,6 +83,10 @@ export class ProjectApiService {
 
   update(projectId: string, input: UpdateProjectInput) {
     return this.api.patch<ProjectSummary, UpdateProjectInput>(`/projects/${projectId}`, input);
+  }
+
+  updateFavorite(projectId: string, input: UpdateProjectFavoriteInput) {
+    return this.api.patch<ProjectSummary, UpdateProjectFavoriteInput>(`/projects/${projectId}/favorite`, input);
   }
 
   listMembers(projectId: string) {

@@ -50,6 +50,10 @@ export const updateProjectSchema = z.object({
   visibility: z.enum(["internal", "private"]).optional()
 });
 
+export const updateProjectFavoriteSchema = z.object({
+  favorite: z.boolean()
+});
+
 export const listProjectsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().optional(),

@@ -94,6 +94,20 @@
     color: var(--text-heading);
 }
 
+.project-favorite-btn {
+    color: var(--text-muted);
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.project-favorite-btn:hover,
+.project-favorite-btn--active {
+    color: #f59e0b;
+}
+
+.project-favorite-btn--active {
+    transform: translateY(-1px);
+}
+
 .project-meta,
 .project-cell--muted {
     font-size: 12px;

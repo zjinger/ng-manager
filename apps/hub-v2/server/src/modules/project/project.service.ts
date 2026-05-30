@@ -45,6 +45,7 @@ import type {
   UpdateProjectFeaturePointInput,
   UpdateProjectFeatureProgressSettingsInput,
   UpdateProjectInput,
+  UpdateProjectFavoriteInput,
   UpdateProjectMemberInput,
   UpdateProjectVersionItemInput,
   UpsertProjectFeatureProgressOverrideInput
@@ -108,6 +109,10 @@ export class ProjectService implements ProjectCommandContract, ProjectQueryContr
 
   update(projectId: string, input: UpdateProjectInput, ctx: RequestContext): Promise<ProjectEntity> {
     return this.baseService.update(projectId, input, ctx);
+  }
+
+  updateFavorite(projectId: string, input: UpdateProjectFavoriteInput, ctx: RequestContext): Promise<ProjectEntity> {
+    return this.baseService.updateFavorite(projectId, input.favorite, ctx);
   }
 
   list(query: ListProjectsQuery, ctx: RequestContext): Promise<ProjectListResult> {
