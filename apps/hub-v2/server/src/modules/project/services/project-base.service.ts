@@ -77,6 +77,7 @@ export class ProjectBaseService {
       visibility: input.visibility ?? "internal",
       memberCount: 1,
       favoriteAt: null,
+      isMember: true,
       createdAt: now,
       updatedAt: now
     };
@@ -208,7 +209,7 @@ export class ProjectBaseService {
       throw new AppError(ERROR_CODES.PROJECT_NOT_FOUND, `project not found: ${projectId}`, 404);
     }
 
-    await this.access.requireProjectAccess(projectId, ctx, "favorite project");
+    await this.access.requireProjectMember(projectId, userId, "favorite project");
     if (favorite) {
       this.repo.setFavorite(projectId, userId, nowIso());
     } else {

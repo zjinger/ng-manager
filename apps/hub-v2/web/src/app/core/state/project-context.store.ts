@@ -34,7 +34,7 @@ export class ProjectContextStore {
   );
   private readonly notificationPrefsState = signal<ProfileNotificationPrefs | null>(null);
 
-  readonly projects = computed(() => this.projectsState());
+  readonly projects = computed(() => this.sortProjects(this.projectsState()));
   readonly currentProjectId = computed(() => this.currentProjectIdState());
   readonly projectScopeMode = computed(() => this.projectScopeModeState());
   readonly includeArchivedProjects = computed(() => this.includeArchivedProjectsState());
@@ -89,6 +89,24 @@ export class ProjectContextStore {
       return [project, ...withoutCurrent];
     });
     this.setCurrentProjectId(project.id, { persist: false });
+  }
+
+  patchProject(project: ProjectSummary): void {
+    this.projectsState.update((items) => {
+      const index = items.findIndex((item) => item.id === project.id);
+      if (index < 0) {
+        return items;
+      }
+      return items.map((item) =>
+        item.id === project.id
+          ? {
+              ...item,
+              ...project,
+              favoriteAt: Object.prototype.hasOwnProperty.call(project, 'favoriteAt') ? project.favoriteAt : item.favoriteAt,
+            }
+          : item
+      );
+    });
   }
 
   clearTransientCurrentProject(): void {
@@ -174,5 +192,33 @@ export class ProjectContextStore {
   private hasGlobalProjectAccess(): boolean {
     const permissions = this.authStore.currentUser()?.permissionCodes ?? [];
     return permissions.includes('project.read.all') || permissions.includes('project.manage.all');
+  }
+
+  private sortProjects(items: ProjectSummary[]): ProjectSummary[] {
+    return items
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => {
+        const aFavorite = a.item.favoriteAt;
+        const bFavorite = b.item.favoriteAt;
+        if (aFavorite && bFavorite && aFavorite !== bFavorite) {
+          return bFavorite.localeCompare(aFavorite);
+        }
+        if (aFavorite && !bFavorite) {
+          return -1;
+        }
+        if (!aFavorite && bFavorite) {
+          return 1;
+        }
+        return this.compareDefaultProjectOrder(a.item, b.item) || a.index - b.index;
+      })
+      .map(({ item }) => item);
+  }
+
+  private compareDefaultProjectOrder(a: ProjectSummary, b: ProjectSummary): number {
+    const created = b.createdAt.localeCompare(a.createdAt);
+    if (created !== 0) {
+      return created;
+    }
+    return b.updatedAt.localeCompare(a.updatedAt);
   }
 }

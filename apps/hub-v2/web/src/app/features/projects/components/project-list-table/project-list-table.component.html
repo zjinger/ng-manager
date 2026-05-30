@@ -41,20 +41,22 @@
                 nzType="copy"
                 nzTheme="outline"
               ></a>
-              <a
-                nz-icon
-                [nz-tooltip]="isFavorite(item) ? '取消重点关注' : '重点关注'"
-                nz-popconfirm
-                [nzPopconfirmTitle]="favoriteConfirmText(item)"
-                nzPopconfirmOkText="确定"
-                nzPopconfirmCancelText="取消"
-                (click)="$event.stopPropagation()"
-                (nzOnConfirm)="toggleFavorite.emit({ project: item, favorite: !isFavorite(item) })"
-                nzType="star"
-                [nzTheme]="isFavorite(item) ? 'fill' : 'outline'"
-                class="project-favorite-btn"
-                [class.project-favorite-btn--active]="isFavorite(item)"
-              ></a>
+              @if (canToggleFavorite(item)) {
+                <a
+                  nz-icon
+                  [nz-tooltip]="isFavorite(item) ? '取消重点关注' : '重点关注'"
+                  nz-popconfirm
+                  [nzPopconfirmTitle]="favoriteConfirmText(item)"
+                  nzPopconfirmOkText="确定"
+                  nzPopconfirmCancelText="取消"
+                  (click)="$event.stopPropagation()"
+                  (nzOnConfirm)="toggleFavorite.emit({ project: item, favorite: !isFavorite(item) })"
+                  nzType="star"
+                  [nzTheme]="isFavorite(item) ? 'fill' : 'outline'"
+                  class="project-favorite-btn"
+                  [class.project-favorite-btn--active]="isFavorite(item)"
+                ></a>
+              }
             </div>
             <div class="project-meta">{{ item.description || '暂无项目描述' }}</div>
           </div>

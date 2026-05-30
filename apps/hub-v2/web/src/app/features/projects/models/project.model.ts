@@ -52,6 +52,7 @@ export interface ProjectSummary {
   slaLevel: string | null;
   memberCount?: number;
   favoriteAt?: string | null;
+  isMember?: boolean;
   status: string;
   visibility: string;
   createdAt: string;

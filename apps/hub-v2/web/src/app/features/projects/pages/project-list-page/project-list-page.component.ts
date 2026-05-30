@@ -250,6 +250,7 @@ export class ProjectListPageComponent {
       next: (updated) => {
         this.message.success(event.favorite ? '已重点关注该项目' : '已取消重点关注');
         this.store.patchAndSort(updated);
+        this.projectContext.patchProject(updated);
       },
       error: () => {
         this.message.error(event.favorite ? '重点关注失败' : '取消重点关注失败');

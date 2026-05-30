@@ -80,6 +80,10 @@ export class ProjectListTableComponent {
     return !!item.favoriteAt;
   }
 
+  canToggleFavorite(item: ProjectSummary): boolean {
+    return item.isMember === true;
+  }
+
   favoriteConfirmText(item: ProjectSummary): string {
     return this.isFavorite(item) ? '确认取消重点关注该项目？，取消后将不再优先展示在列表顶部' : '确认重点关注该项目？,关注后会优先展示在列表顶部';
   }

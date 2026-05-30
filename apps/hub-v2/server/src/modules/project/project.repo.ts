@@ -47,6 +47,7 @@ type ProjectRow = {
   visibility: "internal" | "private";
   member_count?: number | null;
   favorite_at?: string | null;
+  is_member?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -313,8 +314,14 @@ export class ProjectRepo {
     const favoriteJoin = favoriteUserId
       ? "LEFT JOIN project_favorites pf ON pf.project_id = p.id AND pf.user_id = ?"
       : "";
-    const selectFavorite = favoriteUserId ? "pf.favorite_at AS favorite_at," : "";
-    const favoriteParams = favoriteUserId ? [favoriteUserId] : [];
+    const memberJoin = favoriteUserId
+      ? "LEFT JOIN project_members current_pm ON current_pm.project_id = p.id AND current_pm.user_id = ?"
+      : "";
+    const selectFavorite = favoriteUserId
+      ? "CASE WHEN current_pm.id IS NULL THEN NULL ELSE pf.favorite_at END AS favorite_at,"
+      : "";
+    const selectIsMember = favoriteUserId ? "CASE WHEN current_pm.id IS NULL THEN 0 ELSE 1 END AS is_member," : "";
+    const userScopedParams = favoriteUserId ? [favoriteUserId, favoriteUserId] : [];
 
     if (query.status) {
       conditions.push("status = ?");
@@ -338,9 +345,11 @@ export class ProjectRepo {
           SELECT
             p.*,
             ${selectFavorite}
+            ${selectIsMember}
             COALESCE(mc.member_count, 0) AS member_count
           FROM projects p
           ${favoriteJoin}
+          ${memberJoin}
           LEFT JOIN (
             SELECT project_id, COUNT(*) AS member_count
             FROM project_members
@@ -348,13 +357,13 @@ export class ProjectRepo {
           ) mc ON mc.project_id = p.id
           ${whereClause}
           ORDER BY
-            ${favoriteUserId ? "CASE WHEN pf.favorite_at IS NULL THEN 1 ELSE 0 END, pf.favorite_at DESC," : ""}
+            ${favoriteUserId ? "CASE WHEN current_pm.id IS NULL OR pf.favorite_at IS NULL THEN 1 ELSE 0 END, pf.favorite_at DESC," : ""}
             p.created_at DESC,
             p.updated_at DESC
           LIMIT ? OFFSET ?
         `
       )
-      .all(...favoriteParams, ...params, pageSize, offset) as ProjectRow[];
+      .all(...userScopedParams, ...params, pageSize, offset) as ProjectRow[];
 
     return {
       items: rows.map((row) => this.mapProject(row)),
@@ -413,13 +422,15 @@ export class ProjectRepo {
             p.sla_level,
             p.status,
             p.visibility,
-            pf.favorite_at AS favorite_at,
+            CASE WHEN current_pm.id IS NULL THEN NULL ELSE pf.favorite_at END AS favorite_at,
             COALESCE(mc.member_count, 0) AS member_count,
+            CASE WHEN current_pm.id IS NULL THEN 0 ELSE 1 END AS is_member,
             p.created_at,
             p.updated_at
           FROM projects p
           LEFT JOIN project_members pm ON pm.project_id = p.id
           LEFT JOIN project_favorites pf ON pf.project_id = p.id AND pf.user_id = ?
+          LEFT JOIN project_members current_pm ON current_pm.project_id = p.id AND current_pm.user_id = ?
           LEFT JOIN (
             SELECT project_id, COUNT(*) AS member_count
             FROM project_members
@@ -427,14 +438,14 @@ export class ProjectRepo {
           ) mc ON mc.project_id = p.id
           ${whereClause}
           ORDER BY
-            CASE WHEN pf.favorite_at IS NULL THEN 1 ELSE 0 END,
+            CASE WHEN current_pm.id IS NULL OR pf.favorite_at IS NULL THEN 1 ELSE 0 END,
             pf.favorite_at DESC,
             p.created_at DESC,
             p.updated_at DESC
           LIMIT ? OFFSET ?
         `
       )
-      .all(userId, ...params, pageSize, offset) as ProjectRow[];
+      .all(userId, userId, ...params, pageSize, offset) as ProjectRow[];
 
     return {
       items: rows.map((row) => this.mapProject(row)),
@@ -470,9 +481,11 @@ export class ProjectRepo {
           SELECT
             p.*,
             pf.favorite_at AS favorite_at,
+            CASE WHEN current_pm.id IS NULL THEN 0 ELSE 1 END AS is_member,
             COALESCE(mc.member_count, 0) AS member_count
           FROM projects p
           LEFT JOIN project_favorites pf ON pf.project_id = p.id AND pf.user_id = ?
+          LEFT JOIN project_members current_pm ON current_pm.project_id = p.id AND current_pm.user_id = ?
           LEFT JOIN (
             SELECT project_id, COUNT(*) AS member_count
             FROM project_members
@@ -482,7 +495,7 @@ export class ProjectRepo {
           LIMIT 1
         `
       )
-      .get(userId, id) as ProjectRow | undefined;
+      .get(userId, userId, id) as ProjectRow | undefined;
 
     return row ? this.mapProject(row) : null;
   }
@@ -1658,6 +1671,9 @@ export class ProjectRepo {
     };
     if (Object.prototype.hasOwnProperty.call(row, "favorite_at")) {
       entity.favoriteAt = row.favorite_at ?? null;
+    }
+    if (Object.prototype.hasOwnProperty.call(row, "is_member")) {
+      entity.isMember = row.is_member === 1;
     }
     return entity;
   }

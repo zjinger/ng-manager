@@ -45,6 +45,7 @@ export interface ProjectEntity {
   slaLevel: string | null;
   memberCount?: number;
   favoriteAt?: string | null;
+  isMember?: boolean;
   status: ProjectStatus;
   visibility: ProjectVisibility;
   createdAt: string;
