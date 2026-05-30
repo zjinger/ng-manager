@@ -116,10 +116,10 @@ async function generateProdPackageJson(src, dest) {
   // "db:migrate:from-v1": "node db/migrate-from-v1.js" 已经过时，第一次迁移后就不再需要，且依赖了 src 目录，改为 "db:migrate": "node db/migrate-cli.js"
   // "db:verify:from-v1": "node db/migrate-from-v1.verify.js" 同样已经过时，且依赖了 src 目录，暂时不提供独立的验证命令，验证逻辑可以集成到 db:migrate 中，或者提供一个新的 db:migrate:verify 命令
   //"rbac:cleanup-legacy-member-bindings": "node scripts/cleanup-legacy-rbac-member-bindings.cjs", 清理默认的 RBAC 绑定关系的命令，虽然不依赖 src 目录，但考虑到这是一个一次性的迁移命令，且执行后就不再需要了，为了避免误操作导致生产环境权限问题，不建议将这个命令包含在生产包中，保留在开发环境中供迁移使用即可，如果需要在生产环境执行，可以直接使用 node 执行 build/scripts/cleanup-legacy-rbac-member-bindings.cjs，或者提供一个单独的脚本来执行这个命令，并在文档中说明如何使用，例如：
+  // "db:reset:project-feature-progress-0058": "node db/reset-project-feature-progress-0058-cli.js" 清空功能点进度管理
   prodPkg.scripts = {
     "db:migrate": "node db/migrate-cli.js",
     "db:reset:rd-task-sheets-0055": "node db/reset-rd-task-sheets-0055-cli.js",
-    "db:reset:project-feature-progress-0058": "node db/reset-project-feature-progress-0058-cli.js"
   };
 
   await fs.promises.writeFile(dest, JSON.stringify(prodPkg, null, 2));
