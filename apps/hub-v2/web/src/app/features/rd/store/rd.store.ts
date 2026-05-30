@@ -240,10 +240,36 @@ export class RdStore {
     }
 
     const items = [...result.items];
-    items[index] = updated;
+    items[index] = this.withPreservedStageTrail(items[index], updated);
     this.resultState.set({
       ...result,
       items,
     });
+  }
+
+  private withPreservedStageTrail(previous: RdItemEntity, updated: RdItemEntity): RdItemEntity {
+    const updatedTrail = Array.isArray(updated.stageTrail) ? updated.stageTrail.map((name) => name?.trim()).filter(Boolean) : [];
+    if (updatedTrail.length > 0) {
+      return updated;
+    }
+
+    const previousTrail = Array.isArray(previous.stageTrail) ? previous.stageTrail.map((name) => name?.trim()).filter(Boolean) : [];
+    const nextTrail = [...previousTrail];
+    const previousStageName = this.stageName(previous.stageId);
+    if (previousStageName && previous.stageId !== updated.stageId && nextTrail[nextTrail.length - 1] !== previousStageName) {
+      nextTrail.push(previousStageName);
+    }
+
+    return {
+      ...updated,
+      stageTrail: nextTrail,
+    };
+  }
+
+  private stageName(stageId: string | null): string {
+    if (!stageId) {
+      return '';
+    }
+    return this.stagesState().find((stage) => stage.id === stageId)?.name ?? '';
   }
 }

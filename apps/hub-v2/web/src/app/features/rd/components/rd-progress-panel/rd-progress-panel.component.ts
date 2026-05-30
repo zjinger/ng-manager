@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 import { PanelCardComponent } from '@shared/ui';
-import type { RdItemEntity, RdItemProgress, RdMemberBlockEntity, RdStageTaskEntity } from '../../models/rd.model';
+import { resolveRdStageKey, type RdItemEntity, type RdItemProgress, type RdMemberBlockEntity, type RdStageEntity, type RdStageTaskEntity } from '../../models/rd.model';
 
 export interface MemberProgressItem extends RdItemProgress {
   memberName: string;
@@ -88,17 +88,50 @@ export interface MemberProgressItem extends RdItemProgress {
                     }
                   } @else if (item.isActiveMember && item.isCurrentUser && !isProgressLocked()) {
                     @if (item.progress <= 0) {
-                      <button
-                        nz-button
-                        nzType="default"
-                        nzSize="small"
-                        nz-popconfirm
-                        nzPopconfirmTitle="确认开始处理该研发项吗？"
-                        nzPopconfirmPlacement="topRight"
-                        (nzOnConfirm)="onStartProgress(item)"
-                      >
-                        开始
-                      </button>
+                      @if (startableStageTasksFor(item).length > 1) {
+                        <ng-template #startTaskChoiceTpl>
+                          <div class="start-task-choice">
+                            <div class="start-task-choice__title">选择要开始的阶段任务</div>
+                            <div class="start-task-choice__list">
+                              @for (task of startableStageTasksFor(item); track task.id) {
+                                <button
+                                  nz-button
+                                  nzType="text"
+                                  class="start-task-choice__item"
+                                  (click)="onStartProgress(item, task.id)"
+                                >
+                                  {{ task.title }}
+                                </button>
+                              }
+                            </div>
+                          </div>
+                        </ng-template>
+                        <button
+                          nz-button
+                          nzType="default"
+                          nzSize="small"
+                          nz-popconfirm
+                          [nzPopconfirmTitle]="startTaskChoiceTpl"
+                          nzPopconfirmOverlayClassName="rd-start-task-popconfirm"
+                          nzPopconfirmPlacement="topRight"
+                          [nzPopconfirmVisible]="startTaskChoiceUserId() === item.userId"
+                          (nzPopconfirmVisibleChange)="onStartTaskChoiceVisibleChange(item.userId, $event)"
+                        >
+                          开始
+                        </button>
+                      } @else {
+                        <button
+                          nz-button
+                          nzType="default"
+                          nzSize="small"
+                          nz-popconfirm
+                          [nzPopconfirmTitle]="startTaskConfirmPrompt(item)"
+                          nzPopconfirmPlacement="topRight"
+                          (nzOnConfirm)="onStartProgress(item)"
+                        >
+                          开始
+                        </button>
+                      }
                     } @else {
                       <button nz-button nzType="default" nzSize="small" (click)="onUpdateProgress(item)">更新</button>
                     }
@@ -114,7 +147,7 @@ export interface MemberProgressItem extends RdItemProgress {
             }
             @if (stageTaskHintsFor(item).length > 0) {
               <div class="member-item__task-row">
-                <span class="member-item__task-label">阶段任务：</span>
+                <span class="member-item__task-label">当前任务：</span>
                 <div class="member-item__task-list">
                   @for (task of stageTaskHintsFor(item); track task.id) {
                     <span class="member-item__task-chip">
@@ -380,6 +413,31 @@ export interface MemberProgressItem extends RdItemProgress {
       :host-context(html[data-theme='dark']) .member-item__block-label {
         color: rgb(253, 230, 138);
       }
+      .start-task-choice {
+        width: 220px;
+      }
+      .start-task-choice__title {
+        margin-bottom: 8px;
+        color: var(--text-heading);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .start-task-choice__list {
+        display: grid;
+        gap: 4px;
+      }
+      .start-task-choice__item {
+        width: 100%;
+        min-width: 0;
+        justify-content: flex-start;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      ::ng-deep .rd-start-task-popconfirm .ant-popover-buttons {
+        display: none;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -389,11 +447,13 @@ export class RdProgressPanelComponent {
   readonly memberProgressList = input<MemberProgressItem[]>([]);
   readonly memberBlocks = input<RdMemberBlockEntity[]>([]);
   readonly stageTasks = input<RdStageTaskEntity[]>([]);
+  readonly stages = input<RdStageEntity[]>([]);
   readonly canResolveMemberBlocks = input(false);
   readonly currentUserId = input<string>('');
 
-  readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number; quickStart?: boolean }>();
+  readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number; quickStart?: boolean; stageTaskId?: string }>();
   readonly resolveMemberBlockClick = output<{ blockId: string }>();
+  readonly startTaskChoiceUserId = signal<string | null>(null);
 
   activeBlocks(): RdMemberBlockEntity[] {
     return this.memberBlocks().filter((block) => block.status === 'active');
@@ -411,6 +471,7 @@ export class RdProgressPanelComponent {
     }
     return this.stageTasks()
       .filter((task) => task.status !== 'cancelled')
+      .filter((task) => this.isCurrentStageTask(task))
       .filter((task) => {
         const ownerIds = task.ownerIds ?? [];
         const ownerNames = task.ownerNames ?? [];
@@ -452,10 +513,39 @@ export class RdProgressPanelComponent {
     return start || end || '';
   }
 
+  private isCurrentStageTask(task: RdStageTaskEntity): boolean {
+    const item = this.item();
+    if (!item?.stageId) {
+      return true;
+    }
+    const currentStage = this.stages().find((stage) => stage.id === item.stageId);
+    const currentStageKey = currentStage ? resolveRdStageKey(currentStage) : '';
+    return !currentStageKey || task.stageKey === currentStageKey;
+  }
+
   stageTaskProgressFor(member: MemberProgressItem, task: RdStageTaskEntity): number {
     const id = member.userId.trim();
     const ownerProgress = task.ownerProgresses?.find((owner) => owner.userId === id);
     return Math.max(0, Math.min(100, ownerProgress?.progress ?? task.progress ?? 0));
+  }
+
+  startableStageTasksFor(member: MemberProgressItem): RdStageTaskEntity[] {
+    return this.stageTaskHintsFor(member).filter((task) => this.stageTaskProgressFor(member, task) <= 0);
+  }
+
+  startTaskConfirmPrompt(member: MemberProgressItem): string {
+    const task = this.startableStageTasksFor(member)[0];
+    return task ? `确认开始处理阶段任务「${task.title}」吗？` : '确认开始处理该研发项吗？';
+  }
+
+  onStartTaskChoiceVisibleChange(userId: string, visible: boolean): void {
+    if (visible) {
+      this.startTaskChoiceUserId.set(userId);
+      return;
+    }
+    if (this.startTaskChoiceUserId() === userId) {
+      this.startTaskChoiceUserId.set(null);
+    }
   }
 
   private formatDateOnly(value: string | null): string {
@@ -490,15 +580,18 @@ export class RdProgressPanelComponent {
     this.resolveMemberBlockClick.emit({ blockId });
   }
 
-  onStartProgress(item: MemberProgressItem): void {
+  onStartProgress(item: MemberProgressItem, stageTaskId?: string): void {
     if (this.isProgressLocked() || !item.isActiveMember || !item.isCurrentUser) {
       return;
     }
+    const taskId = stageTaskId || this.startableStageTasksFor(item)[0]?.id;
+    this.startTaskChoiceUserId.set(null);
     this.updateProgressClick.emit({
       userId: item.userId,
       memberName: item.memberName,
       currentProgress: 1,
       quickStart: true,
+      stageTaskId: taskId,
     });
   }
 }

@@ -189,8 +189,14 @@ export class RdStageFlowService {
           ctx,
           `推进阶段: ${fromStageName} -> ${targetStage.name}` +
             (nextMembersRef.memberNames.length > 0 ? `；成员: ${nextMembersRef.memberNames.join("、")}` : "；成员: 未指定") +
-            ((nextPlanStartAt || nextPlanEndAt) ? `；计划: ${nextPlanStartAt || "-"} ~ ${nextPlanEndAt || "-"}` : "") +
-            (description ? `；说明: ${description}` : "")
+            ((nextPlanStartAt || nextPlanEndAt) ? `；计划: ${nextPlanStartAt || "-"} ~ ${nextPlanEndAt || "-"}` : ""),
+          {
+            description: description || null,
+            stageName: targetStage.name,
+            memberNames: nextMembersRef.memberNames,
+            planStartAt: nextPlanStartAt,
+            planEndAt: nextPlanEndAt
+          }
         )
       );
       return advanced;

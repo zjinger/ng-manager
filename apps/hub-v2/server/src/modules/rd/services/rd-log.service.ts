@@ -27,7 +27,7 @@ export class RdLogService {
     return item;
   }
 
-  createLog(item: RdItemEntity, action: RdAction, ctx: RequestContext, content: string): RdLogEntity {
+  createLog(item: RdItemEntity, action: RdAction, ctx: RequestContext, content: string, meta?: Record<string, unknown> | null): RdLogEntity {
     return {
       id: genId("rdlog"),
       projectId: item.projectId,
@@ -36,7 +36,7 @@ export class RdLogService {
       content,
       operatorId: ctx.userId?.trim() || ctx.accountId,
       operatorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
-      metaJson: null,
+      metaJson: meta ? JSON.stringify(meta) : null,
       createdAt: nowIso()
     };
   }

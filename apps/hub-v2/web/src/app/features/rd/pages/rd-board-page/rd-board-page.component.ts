@@ -871,7 +871,7 @@ export class RdBoardPageComponent {
     this.editOpen.set(true);
   }
 
-  openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number; quickStart?: boolean }): void {
+  openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number; quickStart?: boolean; stageTaskId?: string }): void {
     if (this.selectedItem()?.status === 'closed' || this.progressUpdating()) {
       return;
     }
@@ -879,7 +879,7 @@ export class RdBoardPageComponent {
       this.confirmUpdateProgress({
         progress: Math.max(1, data.currentProgress),
         note: '',
-        stageTaskId: this.pickDefaultProgressStageTaskId(data.userId),
+        stageTaskId: data.stageTaskId || this.pickDefaultProgressStageTaskId(data.userId),
       });
       return;
     }

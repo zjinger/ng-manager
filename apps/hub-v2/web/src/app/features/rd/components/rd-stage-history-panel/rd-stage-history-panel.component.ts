@@ -64,7 +64,10 @@ import type { RdItemStatus, RdStageHistoryEntry, RdStageHistorySnapshot } from '
         display: flex;
         flex-direction: column;
         gap: 12px;
+        max-height: min(620px, 68vh);
+        overflow-y: auto;
         padding: 12px 16px 16px;
+        overscroll-behavior: contain;
       }
       .history-item {
         border: 1px solid var(--border-color);

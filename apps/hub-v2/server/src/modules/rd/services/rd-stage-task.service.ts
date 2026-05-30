@@ -59,13 +59,14 @@ export class RdStageTaskService {
     const entity = this.context.repo.transaction(() => {
       this.ensureCurrentStageBaselineTasksBeforeFirstExplicitTask(item, stageKey, now);
       const status = input.status ?? "pending";
+      const description = input.description?.trim() || null;
       const createdEntity: RdStageTaskEntity = {
         id: genId("rdst"),
         projectId: item.projectId,
         itemId: item.id,
         stageKey,
         title,
-        description: input.description?.trim() || null,
+        description,
         status,
         ownerId: owner.ownerId,
         ownerName: owner.ownerName,
@@ -88,7 +89,10 @@ export class RdStageTaskService {
       return createdEntity;
     });
     const latestItem = this.requireItem(item.id);
-    this.context.repo.createLog(this.log.createLog(latestItem, "update", ctx, `新增阶段任务：${entity.title}`));
+    if (entity.description?.trim()) {
+      await this.promoteStageTaskMarkdownUploads(latestItem.id, entity.description, ctx);
+    }
+    this.context.repo.createLog(this.log.createLog(latestItem, "update", ctx, this.createStageTaskLogContent(entity)));
     await this.event.emitRdEvent("rd.updated", "stage_task_created", latestItem, ctx);
     return entity;
   }
@@ -350,6 +354,22 @@ export class RdStageTaskService {
       return 100;
     }
     return Math.min(99, Math.max(1, progress));
+  }
+
+  private createStageTaskLogContent(task: RdStageTaskEntity): string {
+    const ownerText = task.ownerNames.map((name) => name.trim()).filter(Boolean).join("、");
+    return ownerText ? `新增阶段任务：${task.title}；执行人：${ownerText}` : `新增阶段任务：${task.title}`;
+  }
+
+  private async promoteStageTaskMarkdownUploads(itemId: string, description: string | null, ctx: RequestContext): Promise<void> {
+    await this.context.uploadCommand.promoteMarkdownUploads(
+      {
+        content: description,
+        bucket: "rd",
+        entityId: itemId
+      },
+      ctx
+    );
   }
 
   private listCurrentStageActiveTasks(item: RdItemEntity): RdStageTaskEntity[] {

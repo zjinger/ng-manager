@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -243,8 +243,8 @@ export class RdProgressUpdateDialogComponent {
       this.description.set(activeBlock?.reason ?? '');
       this.blockEnabled.set(!!activeBlock);
       const tasks = this.stageTasks();
-      const currentSelectedId = this.selectedStageTaskId();
-      const nextSelectedId = tasks.some((task) => task.id === currentSelectedId) ? currentSelectedId : tasks[0]?.id ?? null;
+      const currentSelectedId = untracked(() => this.selectedStageTaskId());
+      const nextSelectedId = this.pickDefaultStageTaskId(tasks, currentSelectedId);
       this.selectedStageTaskId.set(nextSelectedId);
       this.progressValue.set(this.resolveProgressForTask(nextSelectedId) ?? this.currentProgress());
     });
@@ -303,6 +303,19 @@ export class RdProgressUpdateDialogComponent {
       return null;
     }
     return task.ownerProgresses?.find((owner) => owner.userId === this.memberId())?.progress ?? task.progress ?? null;
+  }
+
+  private pickDefaultStageTaskId(tasks: RdStageTaskEntity[], currentSelectedId: string | null): string | null {
+    const currentTask = tasks.find((task) => task.id === currentSelectedId);
+    if (currentTask && this.resolveTaskProgress(currentTask) < 100) {
+      return currentTask.id;
+    }
+    const unfinishedTask = tasks.find((task) => this.resolveTaskProgress(task) < 100);
+    return unfinishedTask?.id ?? tasks[0]?.id ?? null;
+  }
+
+  private resolveTaskProgress(task: RdStageTaskEntity): number {
+    return task.ownerProgresses?.find((owner) => owner.userId === this.memberId())?.progress ?? task.progress ?? 0;
   }
 
   onSubmit(): void {

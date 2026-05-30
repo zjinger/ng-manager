@@ -5,9 +5,9 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 
 import { MarkdownViewerComponent, PanelCardComponent } from '@shared/ui';
 import type { IssueEntity } from '../../../issues/models/issue.model';
-import { IssueDetailNoteComponent } from '../../../issues/components/issue-detail-note/issue-detail-note.component';
-import type { RdItemEntity, RdLogEntity, RdStageEntity, RdStageHistoryEntry } from '../../models/rd.model';
+import { resolveRdStageName, type RdItemEntity, type RdLogEntity, type RdStageEntity, type RdStageHistoryEntry, type RdStageTaskEntity } from '../../models/rd.model';
 import { RdActivityTimelineComponent } from '../rd-activity-timeline/rd-activity-timeline.component';
+import { RdDetailNoteComponent } from '../rd-detail-note/rd-detail-note.component';
 import { RdFlowCardComponent } from '../rd-flow-card/rd-flow-card.component';
 import { RdPropsPanelComponent } from '../rd-props-panel/rd-props-panel.component';
 import type { MemberProgressItem } from '../rd-progress-panel/rd-progress-panel.component';
@@ -25,7 +25,7 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
     RdFlowCardComponent,
     RdStageHistoryPanelComponent,
     MarkdownViewerComponent,
-    IssueDetailNoteComponent,
+    RdDetailNoteComponent,
   ],
   template: `
     @if (item(); as current) {
@@ -49,23 +49,25 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
         }
         @if (showSummary()) {
           <app-panel-card title="研发项描述">
-          <div class="summary-card">
-            @if (current.description) {
-              <div class="summary-card__viewer">
-                <app-markdown-viewer
-                  [content]="current.description"
-                  [showToc]="true"
-                  [tocVariant]="'floating'"
-                  [tocCollapsedByDefault]="true"
-                ></app-markdown-viewer>
+            <div class="summary-card">
+              <div class="summary-card__scroll">
+                @if (current.description) {
+                  <div class="summary-card__viewer">
+                    <app-markdown-viewer
+                      [content]="current.description"
+                      [showToc]="true"
+                      [tocVariant]="'floating'"
+                      [tocCollapsedByDefault]="true"
+                    ></app-markdown-viewer>
+                  </div>
+                } @else {
+                  <p class="empty-hint">暂无描述</p>
+                }
+                @for (note of detailNotes(); track note.id) {
+                  <app-rd-detail-note [label]="note.label" [content]="note.content" />
+                }
               </div>
-            } @else {
-              <p class="empty-hint">暂无描述</p>
-            }
-            @for (note of detailNotes(); track note.id) {
-              <app-issue-detail-note [label]="note.label" [content]="note.content" />
-            }
-          </div>
+            </div>
           </app-panel-card>
         }
         @if (showProps()) {
@@ -121,7 +123,13 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
         gap: 14px;
       }
       .summary-card {
+        padding: 0;
+      }
+      .summary-card__scroll {
+        max-height: min(560px, 62vh);
+        overflow-y: auto;
         padding: 20px;
+        overscroll-behavior: contain;
       }
       .summary-card p {
         margin: 0;
@@ -202,6 +210,7 @@ export class RdDetailContentComponent {
   readonly item = input<RdItemEntity | null>(null);
   readonly logs = input<RdLogEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
+  readonly stageTasks = input<RdStageTaskEntity[]>([]);
   readonly memberProgressList = input<MemberProgressItem[]>([]);
   readonly canEditBasic = input(false);
   readonly canAdvance = input(false);
@@ -235,27 +244,27 @@ export class RdDetailContentComponent {
     return Array.from(unique);
   });
   readonly detailNotes = computed(() => {
-    const logs = [...this.logs()].reverse();
-    const notes: Array<{ id: string; label: string; content: string }> = [];
+    const notes: Array<{ id: string; label: string; content: string; createdAt: string }> = [];
 
-    for (const log of logs) {
+    for (const log of this.logs()) {
       const content = log.content?.trim() || '';
       if (!content) {
         continue;
       }
 
       if (log.actionType === 'advance_stage') {
+        const meta = this.parseLogMeta(log.metaJson);
+        const descFromMeta = typeof meta?.['description'] === 'string' ? meta['description'].trim() : '';
         const descMatch = content.match(/(?:^|；)\s*说明[:：]\s*(.+)$/);
-        const desc = descMatch?.[1]?.trim();
-        if (!desc) {
-          continue;
-        }
-        const stageMatch = content.match(/推进阶段[:：]\s*.+?\s*->\s*([^；]+)/);
-        const stageName = stageMatch?.[1]?.trim() || '该';
+        const desc = descFromMeta || descMatch?.[1]?.trim() || '暂无阶段说明。';
+        const stageName = this.readMetaString(meta, 'stageName') || this.parseAdvanceStageName(content);
+        const planText = this.formatPlanRange(this.readMetaString(meta, 'planStartAt'), this.readMetaString(meta, 'planEndAt')) || this.parseAdvancePlanText(content);
+        const ownerText = this.readMetaStringArray(meta, 'memberNames').join('、') || this.parseAdvanceMemberText(content);
         notes.push({
           id: `advance-${log.id}`,
-          label: `${stageName}阶段描述`,
+          label: this.buildNoteLabel([stageName || '阶段描述', planText, ownerText]),
           content: desc,
+          createdAt: log.createdAt,
         });
         continue;
       }
@@ -270,6 +279,7 @@ export class RdDetailContentComponent {
           id: `close-${log.id}`,
           label: '关闭原因',
           content: reason,
+          createdAt: log.createdAt,
         });
         continue;
       }
@@ -284,11 +294,30 @@ export class RdDetailContentComponent {
           id: `complete-${log.id}`,
           label: '完成判定依据',
           content: reason,
+          createdAt: log.createdAt,
         });
       }
     }
 
-    return notes;
+    for (const task of this.stageTasks()) {
+      const description = task.description?.trim();
+      if (!description || task.status === 'cancelled') {
+        continue;
+      }
+      const stageName = this.stageNameByTask(task);
+      const ownerText = task.ownerNames.map((name) => name.trim()).filter(Boolean).join('、');
+      const planText = this.formatStageTaskPlanRange(task);
+      notes.push({
+        id: `stage-task-${task.id}`,
+        label: this.buildNoteLabel([stageName, planText, ownerText]),
+        content: [`**${task.title}**`, description].join('\n'),
+        createdAt: task.createdAt,
+      });
+    }
+
+    return notes
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map(({ createdAt, ...note }) => note);
   });
   readonly actionClick = output<'advance' | 'complete' | 'accept' | 'close' | 'reopen'>();
   readonly editRequest = output<void>();
@@ -312,5 +341,68 @@ export class RdDetailContentComponent {
     if (distanceToBottom <= 48) {
       this.loadMoreLinkedIssues.emit();
     }
+  }
+
+  private stageNameByTask(task: RdStageTaskEntity): string {
+    const matchedStage = this.stages().find((stage) => resolveRdStageName(task.stageKey) === stage.name || stage.id === task.stageKey);
+    return matchedStage?.name || resolveRdStageName(task.stageKey);
+  }
+
+  private formatStageTaskPlanRange(task: RdStageTaskEntity): string {
+    return this.formatPlanRange(task.plannedStartAt, task.plannedEndAt);
+  }
+
+  private formatPlanRange(start: string | null | undefined, end: string | null | undefined): string {
+    const planStart = start?.trim();
+    const planEnd = end?.trim();
+    if (planStart && planEnd) {
+      return `${planStart} ~ ${planEnd}`;
+    }
+    return planStart || planEnd || '';
+  }
+
+  private buildNoteLabel(parts: Array<string | null | undefined>): string {
+    return parts.map((part) => part?.trim()).filter((part): part is string => !!part).join(' · ');
+  }
+
+  private parseLogMeta(metaJson: string | null): Record<string, unknown> | null {
+    if (!metaJson) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(metaJson) as unknown;
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private readMetaString(meta: Record<string, unknown> | null, key: string): string {
+    const value = meta?.[key];
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private readMetaStringArray(meta: Record<string, unknown> | null, key: string): string[] {
+    const value = meta?.[key];
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.map((item) => typeof item === 'string' ? item.trim() : '').filter(Boolean);
+  }
+
+  private parseAdvanceStageName(content: string): string {
+    const stageMatch = content.match(/推进阶段[:：]\s*.+?\s*->\s*([^；]+)/);
+    return stageMatch?.[1]?.trim() || '';
+  }
+
+  private parseAdvanceMemberText(content: string): string {
+    const memberMatch = content.match(/(?:^|；)\s*成员[:：]\s*([^；]+)/);
+    const members = memberMatch?.[1]?.trim();
+    return members && members !== '未指定' ? members : '';
+  }
+
+  private parseAdvancePlanText(content: string): string {
+    const planMatch = content.match(/(?:^|；)\s*计划[:：]\s*([^；]+)/);
+    return planMatch?.[1]?.trim() || '';
   }
 }

@@ -232,11 +232,11 @@ const DEFAULT_DRAFT: Draft = {
             <p class="template-preview__warning">计划开始不能晚于计划结束。</p>
           }
 
+          <nz-form-label class="template-preview-label" nzRequired>阶段任务</nz-form-label>
           <div class="template-preview">
             <div class="template-preview__header">
               <div>
-                <strong>阶段任务</strong>
-                <span>按执行人选择当前阶段模板任务，也可手动输入；留空则不创建。</span>
+                <span>按执行人选择当前阶段模板任务，也可手动输入；每位执行人必须指定任务。</span>
               </div>
               <span>将创建 {{ selectedInitialStageTaskCount() }} 个任务</span>
             </div>
@@ -253,7 +253,7 @@ const DEFAULT_DRAFT: Draft = {
                         [ngModel]="memberTaskTitle(member.userId)"
                         [ngModelOptions]="{ standalone: true }"
                         (ngModelChange)="setMemberTaskTitle(member.userId, $event)"
-                        placeholder="选择模板或手动输入任务"
+                        placeholder="必填：选择模板或手动输入任务"
                       />
                       <nz-autocomplete #taskTitleAuto [nzDefaultActiveFirstOption]="false">
                         @for (task of selectedStageTemplateTasks(); track task.id) {
@@ -292,6 +292,9 @@ const DEFAULT_DRAFT: Draft = {
                   </div>
                 }
               </div>
+              @if (hasMissingStageTaskTitle()) {
+                <p class="template-preview__warning">请为每位执行人选择或填写阶段任务标题。</p>
+              }
               @if (hasInvalidStageTaskPlanRange()) {
                 <p class="template-preview__warning">阶段任务计划时间必须在研发项计划开始和计划结束之间，且开始不能晚于结束。</p>
               }
@@ -319,11 +322,15 @@ const DEFAULT_DRAFT: Draft = {
   styles: [
     `
       .template-preview {
-        margin: 2px 0 16px;
+        margin: 0 0 16px;
         border: 1px solid var(--border-color-soft);
         border-radius: 8px;
         background: var(--bg-subtle);
         padding: 12px;
+      }
+      .template-preview-label {
+        height: auto;
+        padding: 0 0 8px;
       }
       .template-preview__header {
         display: flex;
@@ -337,10 +344,6 @@ const DEFAULT_DRAFT: Draft = {
         display: flex;
         flex-direction: column;
         gap: 2px;
-      }
-      .template-preview__header strong {
-        color: var(--text-heading);
-        font-size: 13px;
       }
       .template-preview__header span,
       .template-preview__empty,
@@ -528,6 +531,7 @@ export class RdCreateDialogComponent {
       && this.draft().priority !== null
       && this.draft().type !== null
       && (this.draft().memberIds?.length ?? 0) > 0
+      && !this.hasMissingStageTaskTitle()
       && !this.hasInvalidPlanRange()
       && !this.hasInvalidStageTaskPlanRange();
   }
@@ -641,6 +645,11 @@ export class RdCreateDialogComponent {
     return false;
   }
 
+  hasMissingStageTaskTitle(): boolean {
+    const titles = this.memberTaskTitles();
+    return this.assignedExecutorMembers().some((member) => !titles[member.userId]?.trim());
+  }
+
   private formatDate(value: unknown): string {
     if (!value) {
       return '';
@@ -674,7 +683,7 @@ export class RdCreateDialogComponent {
   }
 
   submitForm(): void {
-    if (!this.draft().title.trim()) {
+    if (!this.isFormValid()) {
       return;
     }
     this.create.emit({
@@ -698,8 +707,7 @@ export class RdCreateDialogComponent {
         ownerId: member.userId,
         plannedStartAt: this.formatDate(plannedStartDates[member.userId]) || null,
         plannedEndAt: this.formatDate(plannedEndDates[member.userId]) || null,
-      }))
-      .filter((task) => task.title);
+      }));
   }
 
   private pickAssignedTaskMap<T extends string>(current: Record<string, T>, assignedIds: Set<string>): Record<string, T> {

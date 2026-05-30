@@ -85,6 +85,7 @@ const LINKED_ISSUES_PAGE_SIZE = 10;
                   [memberProgressList]="memberProgressList()"
                   [memberBlocks]="memberBlocks()"
                   [stageTasks]="stageTasks()"
+                  [stages]="stages()"
                   [canResolveMemberBlocks]="canResolveMemberBlocks()"
                   [currentUserId]="currentUserId() || ''"
                   (updateProgressClick)="openProgressUpdate($event)"
@@ -112,6 +113,7 @@ const LINKED_ISSUES_PAGE_SIZE = 10;
                   [item]="current"
                   [logs]="logs()"
                   [stages]="stages()"
+                  [stageTasks]="stageTasks()"
                   [stageHistory]="stageHistory()"
                   [memberProgressList]="memberProgressList()"
                   [canEditBasic]="canEditBasic()"
@@ -523,7 +525,7 @@ export class RdDetailPageComponent {
     this.advanceStageOpen.set(false);
   }
 
-  openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number; quickStart?: boolean }): void {
+  openProgressUpdate(data: { userId: string; memberName: string; currentProgress: number; quickStart?: boolean; stageTaskId?: string }): void {
     if (this.item()?.status === 'closed' || this.busy()) {
       return;
     }
@@ -531,7 +533,7 @@ export class RdDetailPageComponent {
       this.confirmUpdateProgress({
         progress: Math.max(1, data.currentProgress),
         note: '',
-        stageTaskId: this.pickDefaultProgressStageTaskId(data.userId),
+        stageTaskId: data.stageTaskId || this.pickDefaultProgressStageTaskId(data.userId),
       });
       return;
     }

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import { RD_STATUS_LABELS } from '@shared/constants';
 import { PanelCardComponent, PriorityBadgeComponent, StatusBadgeComponent } from '@shared/ui';
-import type { RdItemEntity, RdStageEntity, RdStageHistoryEntry, RdStageHistorySnapshot } from '../../models/rd.model';
+import type { RdItemEntity, RdStageEntity, RdStageHistoryEntry } from '../../models/rd.model';
 
 @Component({
   selector: 'app-rd-props-panel',
@@ -228,22 +228,11 @@ export class RdPropsPanelComponent {
   }
 
   getActualDuration(): string {
-    const current = this.item();
-    const historyDays = this.stageHistory()
-      .map((entry) => this.parseSnapshot(entry.snapshotJson))
-      .reduce((total, snapshot) => {
-        if (!snapshot?.actualStartAt || !snapshot.actualEndAt) {
-          return total;
-        }
-        return total + this.diffDurationDays(snapshot.actualStartAt, snapshot.actualEndAt);
-      }, 0);
-
-    const currentStageDays = this.getCurrentStageDurationDays(current);
-    const totalDays = historyDays + currentStageDays;
-    if (totalDays <= 0) {
+    const days = this.getCurrentStageDurationDays(this.item());
+    if (days <= 0) {
       return '-';
     }
-    return this.formatDuration(totalDays);
+    return this.formatDuration(days);
   }
 
   getCurrentStageDuration(): string {
@@ -278,17 +267,6 @@ export class RdPropsPanelComponent {
       return '完成后自动计算“提前 / 按时 / 延期”。';
     }
     return '时间统计已按计划与实际结束时间自动计算。';
-  }
-
-  private parseSnapshot(snapshotJson: string): RdStageHistorySnapshot | null {
-    if (!snapshotJson) {
-      return null;
-    }
-    try {
-      return JSON.parse(snapshotJson) as RdStageHistorySnapshot;
-    } catch {
-      return null;
-    }
   }
 
   private getCurrentStageDurationDays(item: RdItemEntity): number {

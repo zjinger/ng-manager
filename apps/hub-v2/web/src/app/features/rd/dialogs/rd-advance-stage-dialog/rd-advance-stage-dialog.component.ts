@@ -97,7 +97,7 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
                       [ngModel]="description()"
                       name="advanceDescription"
                       [ngModelOptions]="{ standalone: true }"
-                      [placeholder]="'可选：填写本次推进说明（会记录到研发动态）'"
+                      [placeholder]="'可选：填写本次推进说明（会显示在研发项描述区域）'"
                       minHeight="160px"
                       (contentChange)="description.set(normalizeDescription($event))"
                     />
@@ -141,11 +141,11 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
               </div>
             </div>
 
+            <nz-form-label class="template-preview-label" nzRequired>阶段任务</nz-form-label>
             <div class="template-preview">
               <div class="template-preview__header">
                 <div>
-                  <strong>{{ selectedStageName() }}阶段任务</strong>
-                  <span>按执行人选择当前阶段模板任务，也可手动输入；留空则不创建。</span>
+                  <span>按执行人选择当前阶段模板任务，也可手动输入；每位执行人必须指定任务。</span>
                 </div>
                 <span>将创建 {{ selectedStageTaskCount() }} 个任务</span>
               </div>
@@ -162,7 +162,7 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
                           [ngModel]="memberTaskTitle(member.userId)"
                           [ngModelOptions]="{ standalone: true }"
                           (ngModelChange)="setMemberTaskTitle(member.userId, $event)"
-                          placeholder="选择模板或手动输入任务"
+                          placeholder="必填：选择模板或手动输入任务"
                         />
                         <nz-autocomplete #taskTitleAuto [nzDefaultActiveFirstOption]="false">
                           @for (task of selectedTemplateTasks(); track task.id) {
@@ -201,6 +201,9 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
                     </div>
                   }
                 </div>
+                @if (hasMissingStageTaskTitle()) {
+                  <p class="template-preview__warning">请为每位执行人选择或填写阶段任务标题。</p>
+                }
                 @if (invalidStageTaskPlanRange()) {
                   <p class="template-preview__warning">阶段任务计划时间必须在下一阶段计划开始和计划结束之间，且开始不能晚于结束。</p>
                 }
@@ -232,7 +235,7 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
             nz-button
             nzType="primary"
             [nzLoading]="busy()"
-            [disabled]="busy() || !selectedStageId() || selectedMemberIds().length === 0 || invalidDateRange() || invalidStageTaskPlanRange()"
+            [disabled]="busy() || !selectedStageId() || selectedMemberIds().length === 0 || hasMissingStageTaskTitle() || invalidDateRange() || invalidStageTaskPlanRange()"
             type="submit"
             form="rd-advance-stage-form"
           >
@@ -260,11 +263,14 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
         font-size: 12px;
       }
       .template-preview {
-        margin-top: 12px;
         border: 1px solid var(--border-color-soft);
         border-radius: 8px;
         background: var(--bg-subtle);
         padding: 12px;
+      }
+      .template-preview-label {
+        margin-top: 8px;
+        margin-bottom: 6px;
       }
       .template-preview__header {
         display: flex;
@@ -453,6 +459,10 @@ export class RdAdvanceStageDialogComponent {
     }
     return false;
   });
+  readonly hasMissingStageTaskTitle = computed(() => {
+    const titles = this.memberTaskTitles();
+    return this.selectedExecutorMembers().some((member) => !titles[member.userId]?.trim());
+  });
   readonly candidateStages = computed(() => {
     const current = this.item();
     const all = [...this.stages()]
@@ -528,7 +538,7 @@ export class RdAdvanceStageDialogComponent {
 
   confirmSelection(): void {
     const stageId = this.selectedStageId().trim();
-    if (!stageId || this.invalidDateRange() || this.invalidStageTaskPlanRange()) {
+    if (!stageId || this.hasMissingStageTaskTitle() || this.invalidDateRange() || this.invalidStageTaskPlanRange()) {
       return;
     }
     const description = this.description().trim();

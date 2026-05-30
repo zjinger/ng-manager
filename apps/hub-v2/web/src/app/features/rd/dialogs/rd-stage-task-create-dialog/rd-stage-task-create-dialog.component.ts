@@ -88,7 +88,7 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
                 name="taskDescription"
                 [config]="editorConfig"
                 [imageUploadHandler]="uploadMarkdownImage"
-                [placeholder]="'补充任务说明、验收口径或交付要求。'"
+                [placeholder]="'补充任务说明、验收口径或交付要求。（会显示在研发项描述区域）'"
                 minHeight="180px"
                 (contentChange)="setTaskDescription($event)"
                 (imageUploadFailed)="onMarkdownImageUploadFailed($event)"

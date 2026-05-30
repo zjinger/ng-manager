@@ -76,6 +76,7 @@ import { RdStageTasksPanelComponent } from '../rd-stage-tasks-panel/rd-stage-tas
                 [memberProgressList]="memberProgressList()"
                 [memberBlocks]="memberBlocks()"
                 [stageTasks]="stageTasks()"
+                [stages]="stages()"
                 [canResolveMemberBlocks]="canResolveMemberBlocks()"
                 [currentUserId]="currentUserId() || ''"
                 (updateProgressClick)="updateProgressClick.emit($event)"
@@ -104,6 +105,7 @@ import { RdStageTasksPanelComponent } from '../rd-stage-tasks-panel/rd-stage-tas
               [item]="item()"
               [logs]="logs()"
               [stages]="stages()"
+              [stageTasks]="stageTasks()"
               [stageHistory]="stageHistory()"
               [memberProgressList]="memberProgressList()"
               [canEditBasic]="canEditBasic()"
@@ -243,7 +245,7 @@ export class RdDetailDrawerComponent {
   readonly currentUserId = input<string>('');
   readonly actionClick = output<'advance' | 'complete' | 'accept' | 'close' | 'reopen'>();
   readonly editRequest = output<void>();
-  readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number; quickStart?: boolean }>();
+  readonly updateProgressClick = output<{ userId: string; memberName: string; currentProgress: number; quickStart?: boolean; stageTaskId?: string }>();
   readonly resolveMemberBlockClick = output<{ blockId: string }>();
   readonly createStageTasks = output<{
     tasks: Array<{
