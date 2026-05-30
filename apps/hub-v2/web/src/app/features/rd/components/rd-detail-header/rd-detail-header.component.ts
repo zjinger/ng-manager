@@ -80,6 +80,11 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
             @if (canEditBasic() && current.status !== 'closed') {
               <button nz-button nzType="default" class="detail-header__action-btn" [disabled]="busy()" (click)="editClick.emit()">编辑</button>
             }
+            @if (canCreateStageTask() && current.status !== 'closed') {
+              <button nz-button nzType="default" class="detail-header__action-btn" [disabled]="busy()" (click)="createStageTaskClick.emit()">
+                新增阶段任务
+              </button>
+            }
             @if (canClose()) {
               @if (current.status === 'closed') {
                 <button
@@ -308,9 +313,11 @@ export class RdDetailHeaderComponent {
   readonly canComplete = input(false);
   readonly canAccept = input(false);
   readonly canClose = input(false);
+  readonly canCreateStageTask = input(false);
 
   readonly actionClick = output<'advance' | 'complete' | 'accept' | 'close' | 'reopen'>();
   readonly editClick = output<void>();
+  readonly createStageTaskClick = output<void>();
 
   readonly statusFlow = computed<Array<{ id: string; label: string; state: 'done' | 'active' | 'pending' }>>(() => {
     const item = this.item();

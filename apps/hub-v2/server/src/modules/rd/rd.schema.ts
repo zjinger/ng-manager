@@ -13,6 +13,19 @@ const rdTypeSchema = z.enum([
   "project_closure",
 ]);
 const rdPrioritySchema = z.enum(["low", "medium", "high", "critical"]);
+const rdStageTaskStatusSchema = z.enum(["pending", "in_progress", "done", "blocked", "cancelled"]);
+const rdStageTaskTemplateSelectionSchema = z.object({
+  templateId: z.string().trim().min(1),
+  ownerId: z.string().trim().nullable().optional()
+}).strict();
+const rdInitialStageTaskSchema = z.object({
+  templateId: z.string().trim().min(1).nullable().optional(),
+  title: z.string().trim().min(1),
+  description: z.string().trim().nullable().optional(),
+  ownerId: z.string().trim().nullable().optional(),
+  plannedStartAt: z.string().trim().nullable().optional(),
+  plannedEndAt: z.string().trim().nullable().optional()
+}).strict();
 
 function csvEnumArray<T extends [string, ...string[]]>(values: T) {
   const itemSchema = z.enum(values);
@@ -77,7 +90,9 @@ export const createRdItemSchema = z.object({
   memberIds: z.array(z.string().trim().min(1)).min(1),
   verifierId: z.string().trim().nullable().optional(),
   planStartAt: z.string().trim().optional(),
-  planEndAt: z.string().trim().optional()
+  planEndAt: z.string().trim().optional(),
+  stageTaskTemplates: z.array(rdStageTaskTemplateSelectionSchema).optional(),
+  stageTasks: z.array(rdInitialStageTaskSchema).optional()
 });
 
 export const updateRdItemSchema = z.object({
@@ -116,10 +131,46 @@ export const completeRdItemSchema = z.object({
 export const advanceRdStageSchema = z.object({
   stageId: z.string().trim().min(1),
   memberIds: z.array(z.string().trim().min(1)).min(1).optional(),
-  description: z.string().trim().max(100).optional(),
+  description: z.string().trim().max(2000).optional(),
   planStartAt: z.string().trim().optional(),
-  planEndAt: z.string().trim().optional()
+  planEndAt: z.string().trim().optional(),
+  stageTasks: z.array(rdInitialStageTaskSchema).optional(),
+  stageTaskTemplates: z.array(rdStageTaskTemplateSelectionSchema).optional()
 });
+
+export const createRdStageTaskSchema = z.object({
+  stageKey: z.string().trim().min(1),
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(2000).nullable().optional(),
+  status: rdStageTaskStatusSchema.optional(),
+  ownerId: z.string().trim().nullable().optional(),
+  ownerName: z.string().trim().max(100).nullable().optional(),
+  ownerIds: z.array(z.string().trim().min(1)).optional(),
+  progress: z.coerce.number().int().min(0).max(100).optional(),
+  plannedStartAt: z.string().trim().nullable().optional(),
+  plannedEndAt: z.string().trim().nullable().optional(),
+  startedAt: z.string().trim().nullable().optional(),
+  completedAt: z.string().trim().nullable().optional(),
+  sortOrder: z.coerce.number().int().optional(),
+  remark: z.string().trim().max(1000).nullable().optional()
+}).strict();
+
+export const updateRdStageTaskSchema = z.object({
+  stageKey: z.string().trim().min(1).optional(),
+  title: z.string().trim().min(1).max(200).optional(),
+  description: z.string().trim().max(2000).nullable().optional(),
+  status: rdStageTaskStatusSchema.optional(),
+  ownerId: z.string().trim().nullable().optional(),
+  ownerName: z.string().trim().max(100).nullable().optional(),
+  ownerIds: z.array(z.string().trim().min(1)).optional(),
+  progress: z.coerce.number().int().min(0).max(100).optional(),
+  plannedStartAt: z.string().trim().nullable().optional(),
+  plannedEndAt: z.string().trim().nullable().optional(),
+  startedAt: z.string().trim().nullable().optional(),
+  completedAt: z.string().trim().nullable().optional(),
+  sortOrder: z.coerce.number().int().optional(),
+  remark: z.string().trim().max(1000).nullable().optional()
+}).strict();
 
 export const listRdItemsQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
@@ -153,4 +204,5 @@ export const updateRdItemProgressSchema = z.object({
   note: z.string().trim().optional(),
   blockReason: z.string().trim().min(1).max(500).optional(),
   resolveBlockId: z.string().trim().min(1).optional(),
+  stageTaskId: z.string().trim().min(1).optional(),
 });

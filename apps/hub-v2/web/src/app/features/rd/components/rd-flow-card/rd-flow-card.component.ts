@@ -68,6 +68,11 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
                 @if (canEditBasic() && current.status !== 'closed') {
                   <button nz-button nzType="default" class="flow-card__action-btn" [disabled]="busy()" (click)="editClick.emit()">编辑</button>
                 }
+                @if (canCreateStageTask() && current.status !== 'closed') {
+                  <button nz-button nzType="default" class="flow-card__action-btn" [disabled]="busy()" (click)="createStageTaskClick.emit()">
+                    新增阶段任务
+                  </button>
+                }
                 @if (canClose()) {
                   @if (current.status === 'closed') {
                     <button
@@ -159,6 +164,11 @@ type FlowStepId = 'todo' | 'doing' | 'verify' | 'done' | 'closed';
               }
               @if (canEditBasic() && current.status !== 'closed') {
                 <button nz-button nzType="default" class="flow-card__action-btn" [disabled]="busy()" (click)="editClick.emit()">编辑</button>
+              }
+              @if (canCreateStageTask() && current.status !== 'closed') {
+                <button nz-button nzType="default" class="flow-card__action-btn" [disabled]="busy()" (click)="createStageTaskClick.emit()">
+                  新增阶段任务
+                </button>
               }
               @if (canClose()) {
                 @if (current.status === 'closed') {
@@ -349,15 +359,17 @@ export class RdFlowCardComponent {
   readonly canComplete = input(false);
   readonly canAccept = input(false);
   readonly canClose = input(false);
+  readonly canCreateStageTask = input(false);
 
   readonly actionClick = output<'advance' | 'complete' | 'accept' | 'close' | 'reopen'>();
   readonly editClick = output<void>();
+  readonly createStageTaskClick = output<void>();
   readonly hasActionButtons = computed(() => {
     const current = this.item();
     if (!current) {
       return false;
     }
-    if (this.canAdvance() || this.canComplete() || this.canAccept() || this.canClose()) {
+    if (this.canAdvance() || this.canComplete() || this.canAccept() || this.canClose() || this.canCreateStageTask()) {
       return true;
     }
     return this.canEditBasic() && current.status !== 'closed';

@@ -10,6 +10,7 @@ import type {
   AdvanceRdStageInput,
   CreateRdMemberBlockInput,
   CreateRdItemInput,
+  CreateRdStageTaskInput,
   CreateRdStageInput,
   RdItemEntity,
   RdMemberBlockEntity,
@@ -19,10 +20,12 @@ import type {
   RdListResult,
   RdProgressHistory,
   RdStageHistoryEntry,
+  RdStageTaskEntity,
   RdStageEntity,
   ResolveRdMemberBlockInput,
   UpdateRdItemInput,
   UpdateRdItemProgressInput,
+  UpdateRdStageTaskInput,
   UpdateRdStageInput,
 } from '../models/rd.model';
 
@@ -76,6 +79,10 @@ export class RdApiService {
     return this.api.get<{ items: RdStageHistoryEntry[] }>(`/rd/items/${itemId}/stage-history`).pipe(map((response) => response.items));
   }
 
+  listStageTasks(itemId: string) {
+    return this.api.get<{ items: RdStageTaskEntity[] }>(`/rd/items/${itemId}/stage-tasks`).pipe(map((response) => response.items));
+  }
+
   listMemberBlocks(itemId: string) {
     return this.api.get<{ items: RdMemberBlockEntity[] }>(`/rd/items/${itemId}/member-blocks`).pipe(map((response) => response.items));
   }
@@ -126,6 +133,18 @@ export class RdApiService {
 
   updateProgress(itemId: string, input: UpdateRdItemProgressInput) {
     return this.api.post<RdItemEntity, UpdateRdItemProgressInput>(`/rd/items/${itemId}/progress`, input);
+  }
+
+  createStageTask(itemId: string, input: CreateRdStageTaskInput) {
+    return this.api.post<RdStageTaskEntity, CreateRdStageTaskInput>(`/rd/items/${itemId}/stage-tasks`, input);
+  }
+
+  updateStageTask(taskId: string, input: UpdateRdStageTaskInput) {
+    return this.api.patch<RdStageTaskEntity, UpdateRdStageTaskInput>(`/rd/stage-tasks/${taskId}`, input);
+  }
+
+  cancelStageTask(taskId: string) {
+    return this.api.delete<RdStageTaskEntity>(`/rd/stage-tasks/${taskId}`);
   }
 
   createMemberBlock(itemId: string, input: CreateRdMemberBlockInput) {

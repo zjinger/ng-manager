@@ -8,6 +8,9 @@ import type {
   RdItemListResult,
   RdMemberBlockEntity,
   RdLogEntity,
+  RdStageTaskEntity,
+  RdStageTaskOwnerEntity,
+  RdStageTaskTemplateEntity,
   RdStageHistoryEntry,
   RdStageEntity
 } from "./rd.types";
@@ -56,6 +59,55 @@ type RdItemRow = {
   actual_start_at: string | null;
   actual_end_at: string | null;
   blocker_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type RdStageTaskRow = {
+  id: string;
+  project_id: string;
+  item_id: string;
+  stage_key: string;
+  title: string;
+  description: string | null;
+  status: "pending" | "in_progress" | "done" | "blocked" | "cancelled";
+  owner_id: string | null;
+  owner_name: string | null;
+  progress: number;
+  planned_start_at: string | null;
+  planned_end_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  sort_order: number;
+  remark: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type RdStageTaskOwnerRow = {
+  id: string;
+  task_id: string;
+  project_id: string;
+  item_id: string;
+  user_id: string;
+  user_name: string | null;
+  status: "pending" | "in_progress" | "done" | "blocked" | "cancelled";
+  progress: number;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type RdStageTaskTemplateRow = {
+  id: string;
+  project_id: string;
+  stage_id: string;
+  stage_key: string;
+  title: string;
+  description: string | null;
+  sort_order: number;
+  enabled: number;
   created_at: string;
   updated_at: string;
 };
@@ -152,6 +204,31 @@ verifier_id: string | null;
   actual_start_at: string | null;
   actual_end_at: string | null;
   blocker_reason: string | null;
+  updated_at: string;
+}>;
+
+type UpdateRdStageTaskRowInput = Partial<{
+  stage_key: string;
+  title: string;
+  description: string | null;
+  status: "pending" | "in_progress" | "done" | "blocked" | "cancelled";
+  owner_id: string | null;
+  owner_name: string | null;
+  progress: number;
+  planned_start_at: string | null;
+  planned_end_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  sort_order: number;
+  remark: string | null;
+  updated_at: string;
+}>;
+
+type UpdateRdStageTaskTemplateRowInput = Partial<{
+  title: string;
+  description: string | null;
+  sort_order: number;
+  enabled: number;
   updated_at: string;
 }>;
 
@@ -378,6 +455,209 @@ INSERT INTO rd_items (
 
   deleteItem(id: string): boolean {
     const result = this.db.prepare("DELETE FROM rd_items WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
+  createStageTask(entity: RdStageTaskEntity): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO rd_stage_tasks (
+            id, project_id, item_id, stage_key, title, description, status, owner_id, owner_name,
+            progress, planned_start_at, planned_end_at, started_at, completed_at, sort_order,
+            remark, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        entity.id,
+        entity.projectId,
+        entity.itemId,
+        entity.stageKey,
+        entity.title,
+        entity.description,
+        entity.status,
+        entity.ownerId,
+        entity.ownerName,
+        entity.progress,
+        entity.plannedStartAt,
+        entity.plannedEndAt,
+        entity.startedAt,
+        entity.completedAt,
+        entity.sortOrder,
+        entity.remark,
+        entity.createdAt,
+        entity.updatedAt
+      );
+  }
+
+  findStageTaskById(id: string): RdStageTaskEntity | null {
+    const row = this.db.prepare("SELECT * FROM rd_stage_tasks WHERE id = ?").get(id) as RdStageTaskRow | undefined;
+    return row ? this.attachStageTaskOwners([this.mapStageTask(row)])[0] : null;
+  }
+
+  listStageTasksByItemId(itemId: string): RdStageTaskEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM rd_stage_tasks
+          WHERE item_id = ?
+          ORDER BY stage_key ASC, sort_order ASC, created_at ASC
+        `
+      )
+      .all(itemId) as RdStageTaskRow[];
+    return this.attachStageTaskOwners(rows.map((row) => this.mapStageTask(row)));
+  }
+
+  replaceStageTaskOwners(task: Pick<RdStageTaskEntity, "id" | "projectId" | "itemId">, owners: RdStageTaskOwnerEntity[]): void {
+    this.db.prepare("DELETE FROM rd_stage_task_owners WHERE task_id = ?").run(task.id);
+    const stmt = this.db.prepare(
+      `
+        INSERT INTO rd_stage_task_owners (
+          id, task_id, project_id, item_id, user_id, user_name, status, progress,
+          started_at, completed_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+    );
+    for (const owner of owners) {
+      stmt.run(
+        owner.id,
+        task.id,
+        task.projectId,
+        task.itemId,
+        owner.userId,
+        owner.userName,
+        owner.status,
+        owner.progress,
+        owner.startedAt,
+        owner.completedAt,
+        owner.createdAt,
+        owner.updatedAt
+      );
+    }
+  }
+
+  updateStageTaskOwnerProgress(
+    taskId: string,
+    userId: string,
+    input: {
+      status: RdStageTaskOwnerEntity["status"];
+      progress: number;
+      started_at: string | null;
+      completed_at: string | null;
+      updated_at: string;
+    }
+  ): boolean {
+    const result = this.db
+      .prepare(
+        `
+          UPDATE rd_stage_task_owners
+          SET status = ?, progress = ?, started_at = ?, completed_at = ?, updated_at = ?
+          WHERE task_id = ? AND user_id = ?
+        `
+      )
+      .run(input.status, input.progress, input.started_at, input.completed_at, input.updated_at, taskId, userId);
+    return result.changes > 0;
+  }
+
+  getNextStageTaskSortOrder(itemId: string, stageKey: string): number {
+    const row = this.db
+      .prepare("SELECT COALESCE(MAX(sort_order), 0) + 10 AS next_sort FROM rd_stage_tasks WHERE item_id = ? AND stage_key = ?")
+      .get(itemId, stageKey) as { next_sort: number } | undefined;
+    return row?.next_sort ?? 10;
+  }
+
+  updateStageTask(id: string, input: UpdateRdStageTaskRowInput): boolean {
+    const entries = Object.entries(input);
+    if (entries.length === 0) {
+      return false;
+    }
+    const assignments = entries.map(([key]) => `${key} = ?`).join(", ");
+    const params = entries.map(([, value]) => value);
+    const result = this.db.prepare(`UPDATE rd_stage_tasks SET ${assignments} WHERE id = ?`).run(...params, id);
+    return result.changes > 0;
+  }
+
+  createStageTaskTemplate(entity: RdStageTaskTemplateEntity): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO rd_stage_task_templates (
+            id, project_id, stage_id, stage_key, title, description, sort_order, enabled, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        entity.id,
+        entity.projectId,
+        entity.stageId,
+        entity.stageKey,
+        entity.title,
+        entity.description,
+        entity.sortOrder,
+        entity.enabled ? 1 : 0,
+        entity.createdAt,
+        entity.updatedAt
+      );
+  }
+
+  findStageTaskTemplateById(id: string): RdStageTaskTemplateEntity | null {
+    const row = this.db
+      .prepare("SELECT * FROM rd_stage_task_templates WHERE id = ?")
+      .get(id) as RdStageTaskTemplateRow | undefined;
+    return row ? this.mapStageTaskTemplate(row) : null;
+  }
+
+  listStageTaskTemplatesByProjectId(projectId: string, options: { enabledOnly?: boolean } = {}): RdStageTaskTemplateEntity[] {
+    const enabledClause = options.enabledOnly ? "AND enabled = 1" : "";
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM rd_stage_task_templates
+          WHERE project_id = ?
+          ${enabledClause}
+          ORDER BY stage_id ASC, sort_order ASC, created_at ASC
+        `
+      )
+      .all(projectId) as RdStageTaskTemplateRow[];
+    return rows.map((row) => this.mapStageTaskTemplate(row));
+  }
+
+  listStageTaskTemplatesByIds(ids: string[]): RdStageTaskTemplateEntity[] {
+    const dedupIds = Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
+    if (dedupIds.length === 0) {
+      return [];
+    }
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM rd_stage_task_templates
+          WHERE id IN (${dedupIds.map(() => "?").join(", ")})
+          ORDER BY sort_order ASC, created_at ASC
+        `
+      )
+      .all(...dedupIds) as RdStageTaskTemplateRow[];
+    const byId = new Map(rows.map((row) => [row.id, this.mapStageTaskTemplate(row)]));
+    return dedupIds.map((id) => byId.get(id)).filter((item): item is RdStageTaskTemplateEntity => !!item);
+  }
+
+  getNextStageTaskTemplateSortOrder(projectId: string, stageId: string): number {
+    const row = this.db
+      .prepare(
+        "SELECT COALESCE(MAX(sort_order), 0) + 10 AS next_sort FROM rd_stage_task_templates WHERE project_id = ? AND stage_id = ?"
+      )
+      .get(projectId, stageId) as { next_sort: number } | undefined;
+    return row?.next_sort ?? 10;
+  }
+
+  updateStageTaskTemplate(id: string, input: UpdateRdStageTaskTemplateRowInput): boolean {
+    const entries = Object.entries(input);
+    if (entries.length === 0) {
+      return false;
+    }
+    const assignments = entries.map(([key]) => `${key} = ?`).join(", ");
+    const params = entries.map(([, value]) => value);
+    const result = this.db.prepare(`UPDATE rd_stage_task_templates SET ${assignments} WHERE id = ?`).run(...params, id);
     return result.changes > 0;
   }
 
@@ -683,6 +963,97 @@ INSERT INTO rd_items (
       actualEndAt: row.actual_end_at,
       blockerReason: row.blocker_reason,
       stageTrail,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private mapStageTask(row: RdStageTaskRow): RdStageTaskEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      itemId: row.item_id,
+      stageKey: row.stage_key,
+      title: row.title,
+      description: row.description,
+      status: row.status,
+      ownerId: row.owner_id,
+      ownerName: row.owner_name,
+      ownerIds: row.owner_id ? [row.owner_id] : [],
+      ownerNames: row.owner_name ? [row.owner_name] : row.owner_id ? [row.owner_id] : [],
+      ownerProgresses: [],
+      progress: row.progress,
+      plannedStartAt: row.planned_start_at,
+      plannedEndAt: row.planned_end_at,
+      startedAt: row.started_at,
+      completedAt: row.completed_at,
+      sortOrder: row.sort_order,
+      remark: row.remark,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  private attachStageTaskOwners(tasks: RdStageTaskEntity[]): RdStageTaskEntity[] {
+    if (tasks.length === 0) {
+      return tasks;
+    }
+    const taskIds = tasks.map((task) => task.id);
+    const placeholders = taskIds.map(() => "?").join(",");
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM rd_stage_task_owners
+          WHERE task_id IN (${placeholders})
+          ORDER BY created_at ASC, id ASC
+        `
+      )
+      .all(...taskIds) as RdStageTaskOwnerRow[];
+    const ownersByTaskId = new Map<string, RdStageTaskOwnerRow[]>();
+    for (const row of rows) {
+      const list = ownersByTaskId.get(row.task_id) ?? [];
+      list.push(row);
+      ownersByTaskId.set(row.task_id, list);
+    }
+    return tasks.map((task) => {
+      const owners = ownersByTaskId.get(task.id) ?? [];
+      if (owners.length === 0) {
+        return task;
+      }
+      return {
+        ...task,
+        ownerId: owners[0]?.user_id ?? task.ownerId,
+        ownerName: owners[0]?.user_name ?? task.ownerName,
+        ownerIds: owners.map((owner) => owner.user_id),
+        ownerNames: owners.map((owner) => owner.user_name || owner.user_id),
+        ownerProgresses: owners.map((owner) => ({
+          id: owner.id,
+          taskId: owner.task_id,
+          projectId: owner.project_id,
+          itemId: owner.item_id,
+          userId: owner.user_id,
+          userName: owner.user_name,
+          status: owner.status,
+          progress: owner.progress,
+          startedAt: owner.started_at,
+          completedAt: owner.completed_at,
+          createdAt: owner.created_at,
+          updatedAt: owner.updated_at
+        }))
+      };
+    });
+  }
+
+  private mapStageTaskTemplate(row: RdStageTaskTemplateRow): RdStageTaskTemplateEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      stageId: row.stage_id,
+      stageKey: row.stage_key,
+      title: row.title,
+      description: row.description,
+      sortOrder: row.sort_order,
+      enabled: row.enabled === 1,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

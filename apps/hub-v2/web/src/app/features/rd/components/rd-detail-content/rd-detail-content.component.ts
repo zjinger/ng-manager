@@ -41,8 +41,10 @@ import { RdStageHistoryPanelComponent } from '../rd-stage-history-panel/rd-stage
             [canComplete]="canComplete()"
             [canAccept]="canAccept()"
             [canClose]="canClose()"
+            [canCreateStageTask]="canCreateStageTask()"
             (actionClick)="actionClick.emit($event)"
             (editClick)="editRequest.emit()"
+            (createStageTaskClick)="createStageTaskClick.emit()"
           />
         }
         @if (showSummary()) {
@@ -206,6 +208,7 @@ export class RdDetailContentComponent {
   readonly canComplete = input(false);
   readonly canAccept = input(false);
   readonly canClose = input(false);
+  readonly canCreateStageTask = input(false);
   readonly showSummary = input(true);
   readonly showAction = input(true);
   readonly flowActionPlacement = input<'top-right' | 'below-flow'>('top-right');
@@ -289,6 +292,7 @@ export class RdDetailContentComponent {
   });
   readonly actionClick = output<'advance' | 'complete' | 'accept' | 'close' | 'reopen'>();
   readonly editRequest = output<void>();
+  readonly createStageTaskClick = output<void>();
   readonly loadMoreLinkedIssues = output<void>();
   constructor() {}
 

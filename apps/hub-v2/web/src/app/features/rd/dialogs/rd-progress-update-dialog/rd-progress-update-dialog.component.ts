@@ -2,23 +2,25 @@ import { ChangeDetectionStrategy, Component, effect, input, output, signal } fro
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSliderModule } from 'ng-zorro-antd/slider';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
 import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
-import type { RdMemberBlockEntity } from '../../models/rd.model';
+import type { RdMemberBlockEntity, RdStageTaskEntity } from '../../models/rd.model';
 
 export interface RdProgressUpdateDialogSaveInput {
   progress: number;
   note: string;
   blockReason?: string;
   resolveBlockId?: string;
+  stageTaskId?: string;
 }
 
 @Component({
   selector: 'app-rd-progress-update-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzInputModule, NzSliderModule, NzSwitchModule, DialogShellComponent, FormActionsComponent],
+  imports: [FormsModule, NzButtonModule, NzInputModule, NzSelectModule, NzSliderModule, NzSwitchModule, DialogShellComponent, FormActionsComponent],
   template: `
     <app-dialog-shell
       [open]="open()"
@@ -33,6 +35,22 @@ export interface RdProgressUpdateDialogSaveInput {
           <label>成员</label>
           <div class="progress-field__member">{{ memberName() }}</div>
         </div>
+
+        @if (stageTasks().length > 0) {
+          <div class="progress-field">
+            <label>对应阶段任务</label>
+            <nz-select
+              class="progress-field__select"
+              nzPlaceHolder="选择本次更新对应的阶段任务"
+              [ngModel]="selectedStageTaskId()"
+              (ngModelChange)="onStageTaskChange($event)"
+            >
+              @for (task of stageTasks(); track task.id) {
+                <nz-option [nzValue]="task.id" [nzLabel]="formatTaskOption(task)"></nz-option>
+              }
+            </nz-select>
+          </div>
+        }
 
         <div class="progress-field">
           <label>进度值</label>
@@ -102,7 +120,9 @@ export interface RdProgressUpdateDialogSaveInput {
       <ng-container dialog-footer>
         <app-form-actions>
           <button nz-button type="button" (click)="onCancel()">取消</button>
-          <button nz-button nzType="primary" [disabled]="!canSubmit()" [nzLoading]="busy()" (click)="onSubmit()">保存进度</button>
+          <button nz-button nzType="primary" [disabled]="!canSubmit()" [nzLoading]="busy()" (click)="onSubmit()">
+            {{ submitButtonText() }}
+          </button>
         </app-form-actions>
       </ng-container>
     </app-dialog-shell>
@@ -126,6 +146,9 @@ export interface RdProgressUpdateDialogSaveInput {
         font-weight: 700;
         color: var(--text-heading);
         padding: 8px 0;
+      }
+      .progress-field__select {
+        width: 100%;
       }
       .progress-field__slider {
         padding: 0 8px;
@@ -197,8 +220,10 @@ export class RdProgressUpdateDialogComponent {
   readonly open = input(false);
   readonly busy = input(false);
   readonly memberName = input('');
+  readonly memberId = input('');
   readonly currentProgress = input(0);
   readonly activeBlock = input<RdMemberBlockEntity | null>(null);
+  readonly stageTasks = input<RdStageTaskEntity[]>([]);
 
   readonly save = output<RdProgressUpdateDialogSaveInput>();
   readonly cancel = output<void>();
@@ -206,6 +231,7 @@ export class RdProgressUpdateDialogComponent {
   readonly progressValue = signal(0);
   readonly description = signal('');
   readonly blockEnabled = signal(false);
+  readonly selectedStageTaskId = signal<string | null>(null);
 
   constructor() {
     effect(() => {
@@ -216,11 +242,21 @@ export class RdProgressUpdateDialogComponent {
       const activeBlock = this.activeBlock();
       this.description.set(activeBlock?.reason ?? '');
       this.blockEnabled.set(!!activeBlock);
+      const tasks = this.stageTasks();
+      const currentSelectedId = this.selectedStageTaskId();
+      const nextSelectedId = tasks.some((task) => task.id === currentSelectedId) ? currentSelectedId : tasks[0]?.id ?? null;
+      this.selectedStageTaskId.set(nextSelectedId);
+      this.progressValue.set(this.resolveProgressForTask(nextSelectedId) ?? this.currentProgress());
     });
   }
 
   onSliderChange(value: number): void {
     this.progressValue.set(value);
+  }
+
+  onStageTaskChange(taskId: string | null): void {
+    this.selectedStageTaskId.set(taskId);
+    this.progressValue.set(this.resolveProgressForTask(taskId) ?? this.currentProgress());
   }
 
   onCancel(): void {
@@ -238,6 +274,37 @@ export class RdProgressUpdateDialogComponent {
     return !this.blockEnabled() || !!this.description().trim();
   }
 
+  formatTaskOption(task: RdStageTaskEntity): string {
+    const statusMap: Record<RdStageTaskEntity['status'], string> = {
+      pending: '待开始',
+      in_progress: '进行中',
+      done: '已完成',
+      blocked: '阻塞',
+      cancelled: '已取消',
+    };
+    const ownerProgress = task.ownerProgresses?.find((owner) => owner.userId === this.memberId());
+    if ((ownerProgress?.progress ?? task.progress ?? 0) <= 0) {
+      return `${task.title}（待开始）`;
+    }
+    const status = ownerProgress?.status ?? task.status;
+    return `${task.title}（${statusMap[status] ?? status}）`;
+  }
+
+  submitButtonText(): string {
+    return this.isStartSubmit() ? '开始处理' : '保存进度';
+  }
+
+  private resolveProgressForTask(taskId: string | null): number | null {
+    if (!taskId) {
+      return null;
+    }
+    const task = this.stageTasks().find((item) => item.id === taskId);
+    if (!task) {
+      return null;
+    }
+    return task.ownerProgresses?.find((owner) => owner.userId === this.memberId())?.progress ?? task.progress ?? null;
+  }
+
   onSubmit(): void {
     if (!this.canSubmit()) {
       return;
@@ -245,10 +312,16 @@ export class RdProgressUpdateDialogComponent {
     const activeBlock = this.activeBlock();
     const description = this.description().trim();
     this.save.emit({
-      progress: this.progressValue(),
+      progress: this.isStartSubmit() ? 1 : this.progressValue(),
       note: this.blockEnabled() ? '' : description,
       blockReason: this.blockEnabled() && !activeBlock ? description : undefined,
       resolveBlockId: !this.blockEnabled() && activeBlock ? activeBlock.id : undefined,
+      stageTaskId: this.selectedStageTaskId() ?? undefined,
     });
+  }
+
+  private isStartSubmit(): boolean {
+    const selectedProgress = this.resolveProgressForTask(this.selectedStageTaskId());
+    return !this.blockEnabled() && (selectedProgress ?? this.progressValue()) <= 0 && this.progressValue() <= 0;
   }
 }

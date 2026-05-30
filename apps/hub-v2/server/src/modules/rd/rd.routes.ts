@@ -8,12 +8,14 @@ import {
   completeRdItemSchema,
   createRdMemberBlockSchema,
   createRdItemSchema,
+  createRdStageTaskSchema,
   createRdStageSchema,
   listRdItemsQuerySchema,
   listRdStagesQuerySchema,
   resolveRdMemberBlockSchema,
   updateRdItemProgressSchema,
   updateRdItemSchema,
+  updateRdStageTaskSchema,
   updateRdStageSchema
 } from "./rd.schema";
 import type { ListRdItemsQuery } from "./rd.types";
@@ -109,6 +111,19 @@ export default async function rdRoutes(app: FastifyInstance) {
     return ok(await app.container.rdCommand.complete(params.itemId, ctx, body), "rd item completed");
   });
 
+  app.get("/rd/items/:itemId/stage-tasks", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    return ok({ items: await app.container.rdQuery.listStageTasks(params.itemId, ctx) });
+  });
+
+  app.post("/rd/items/:itemId/stage-tasks", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    const body = createRdStageTaskSchema.parse(request.body);
+    return reply.status(201).send(ok(await app.container.rdCommand.createStageTask(params.itemId, body, ctx), "rd stage task created"));
+  });
+
   app.post("/rd/items/:itemId/accept", async (request) => {
     const ctx = requireAuth(request);
     const params = request.params as { itemId: string };
@@ -127,6 +142,19 @@ export default async function rdRoutes(app: FastifyInstance) {
     const params = request.params as { itemId: string };
     const body = advanceRdStageSchema.parse(request.body);
     return ok(await app.container.rdCommand.advanceStage(params.itemId, body, ctx), "rd item advanced stage");
+  });
+
+  app.patch("/rd/stage-tasks/:taskId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { taskId: string };
+    const body = updateRdStageTaskSchema.parse(request.body);
+    return ok(await app.container.rdCommand.updateStageTask(params.taskId, body, ctx), "rd stage task updated");
+  });
+
+  app.delete("/rd/stage-tasks/:taskId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { taskId: string };
+    return ok(await app.container.rdCommand.cancelStageTask(params.taskId, ctx), "rd stage task cancelled");
   });
 
   app.get("/rd/items/:itemId/progress", async (request) => {

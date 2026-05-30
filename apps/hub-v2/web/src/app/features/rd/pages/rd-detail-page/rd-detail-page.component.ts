@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, map } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -16,15 +16,15 @@ import { IssueApiService } from '../../../issues/services/issue-api.service';
 import { RdDetailContentComponent } from '../../components/rd-detail-content/rd-detail-content.component';
 import { RdDetailHeaderComponent } from '../../components/rd-detail-header/rd-detail-header.component';
 import { RdProgressPanelComponent, type MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
+import { RdStageTasksPanelComponent } from '../../components/rd-stage-tasks-panel/rd-stage-tasks-panel.component';
 import { RdAdvanceStageDialogComponent } from '../../dialogs/rd-advance-stage-dialog/rd-advance-stage-dialog.component';
 import { RdCloseDialogComponent } from '../../dialogs/rd-close-dialog/rd-close-dialog.component';
 import { RdCompleteDialogComponent } from '../../dialogs/rd-complete-dialog/rd-complete-dialog.component';
 import { RdEditDialogComponent, type RdEditDialogSaveInput } from '../../dialogs/rd-edit-dialog/rd-edit-dialog.component';
 import { RdProgressUpdateDialogComponent, type RdProgressUpdateDialogSaveInput } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
-import { getRdMemberIds, type RdItemEntity, type RdItemProgress, type RdLogEntity, type RdMemberBlockEntity, type RdStageEntity, type RdStageHistoryEntry } from '../../models/rd.model';
+import { getRdMemberIds, resolveRdStageKey, type RdInitialStageTaskInput, type RdItemEntity, type RdItemProgress, type RdLogEntity, type RdMemberBlockEntity, type RdStageEntity, type RdStageHistoryEntry, type RdStageTaskEntity, type RdStageTaskStatus, type RdStageTaskTemplateEntity } from '../../models/rd.model';
 import { RdApiService } from '../../services/rd-api.service';
 import { RdPermissionService } from '../../services/rd-permission.service';
-import { map } from 'rxjs';
 
 const LINKED_ISSUES_PAGE_SIZE = 10;
 
@@ -44,6 +44,7 @@ const LINKED_ISSUES_PAGE_SIZE = 10;
     RdEditDialogComponent,
     RdAdvanceStageDialogComponent,
     RdProgressPanelComponent,
+    RdStageTasksPanelComponent,
     RdProgressUpdateDialogComponent,
   ],
   template: `
@@ -74,17 +75,37 @@ const LINKED_ISSUES_PAGE_SIZE = 10;
                   [canComplete]="canComplete()"
                   [canAccept]="canAccept()"
                   [canClose]="canClose()"
+                  [canCreateStageTask]="canEditBasic()"
                   (actionClick)="handleAction($event)"
                   (editClick)="openEditDialog()"
+                  (createStageTaskClick)="requestCreateStageTask()"
                 />
                 <app-rd-progress-panel
                   [item]="current"
                   [memberProgressList]="memberProgressList()"
                   [memberBlocks]="memberBlocks()"
+                  [stageTasks]="stageTasks()"
                   [canResolveMemberBlocks]="canResolveMemberBlocks()"
                   [currentUserId]="currentUserId() || ''"
                   (updateProgressClick)="openProgressUpdate($event)"
                   (resolveMemberBlockClick)="resolveMemberBlock($event.blockId)"
+                />
+                <app-rd-stage-tasks-panel
+                  [showList]="false"
+                  [showCreateButton]="false"
+                  [createDialogOpenRequest]="createStageTaskOpenRequest()"
+                  [stages]="stages()"
+                  [tasks]="stageTasks()"
+                  [members]="members()"
+                  [memberIds]="current.memberIds"
+                  [currentStageId]="current.stageId"
+                  [planStartAt]="current.planStartAt"
+                  [planEndAt]="current.planEndAt"
+                  [stageTaskTemplates]="stageTaskTemplates()"
+                  [canEdit]="canEditBasic()"
+                  (createTasks)="createStageTasks($event.tasks)"
+                  (updateTask)="updateStageTask($event.taskId, $event.status)"
+                  (cancelTask)="cancelStageTask($event.taskId)"
                 />
                 <app-rd-detail-content
                   [busy]="busy()"
@@ -162,8 +183,10 @@ const LINKED_ISSUES_PAGE_SIZE = 10;
       [open]="progressUpdateOpen()"
       [busy]="busy()"
       [memberName]="progressUpdateMemberName()"
+      [memberId]="progressUpdateUserId()"
       [currentProgress]="progressUpdateCurrentProgress()"
       [activeBlock]="progressUpdateActiveBlock()"
+      [stageTasks]="progressUpdateStageTasks()"
       (save)="confirmUpdateProgress($event)"
       (cancel)="closeProgressUpdate()"
     />
@@ -201,6 +224,7 @@ const LINKED_ISSUES_PAGE_SIZE = 10;
       [stages]="stages()"
       [members]="members()"
       [currentMemberIds]="getCurrentMemberIds()"
+      [stageTaskTemplates]="stageTaskTemplates()"
       (cancel)="advanceStageOpen.set(false)"
       (confirm)="confirmAdvanceStage($event)"
     />
@@ -265,7 +289,9 @@ export class RdDetailPageComponent {
   readonly item = signal<RdItemEntity | null>(null);
   readonly logs = signal<RdLogEntity[]>([]);
   readonly stageHistory = signal<RdStageHistoryEntry[]>([]);
+  readonly stageTasks = signal<RdStageTaskEntity[]>([]);
   readonly stages = signal<RdStageEntity[]>([]);
+  readonly stageTaskTemplates = signal<RdStageTaskTemplateEntity[]>([]);
   readonly members = signal<ProjectMemberEntity[]>([]);
   readonly progressList = signal<RdItemProgress[]>([]);
   readonly memberBlocks = signal<RdMemberBlockEntity[]>([]);
@@ -279,6 +305,7 @@ export class RdDetailPageComponent {
   readonly completeOpen = signal(false);
   readonly editOpen = signal(false);
   readonly advanceStageOpen = signal(false);
+  readonly createStageTaskOpenRequest = signal(0);
   readonly progressUpdateOpen = signal(false);
   readonly progressUpdateMemberName = signal('');
   readonly progressUpdateCurrentProgress = signal(0);
@@ -322,6 +349,7 @@ export class RdDetailPageComponent {
     }
     return this.memberBlocks().find((block) => block.userId === userId && block.status === 'active') ?? null;
   });
+  readonly progressUpdateStageTasks = computed(() => this.stageTasksForProgressUser(this.progressUpdateUserId()));
 
   readonly memberProgressList = computed<MemberProgressItem[]>(() => {
     const item = this.item();
@@ -377,7 +405,10 @@ export class RdDetailPageComponent {
       if (!id) {
         this.item.set(null);
         this.logs.set([]);
+        this.stageHistory.set([]);
+        this.stageTasks.set([]);
         this.stages.set([]);
+        this.stageTaskTemplates.set([]);
         this.members.set([]);
         this.progressList.set([]);
         this.memberBlocks.set([]);
@@ -474,7 +505,7 @@ export class RdDetailPageComponent {
     return this.projectNameById()[projectId] || '未知项目';
   }
 
-  confirmAdvanceStage(input: { stageId: string; memberIds: string[]; description?: string; planStartAt?: string; planEndAt?: string }): void {
+  confirmAdvanceStage(input: { stageId: string; memberIds: string[]; description?: string; planStartAt?: string; planEndAt?: string; stageTasks: RdInitialStageTaskInput[] }): void {
     const current = this.item();
     if (!current || !input.stageId.trim()) {
       return;
@@ -486,6 +517,7 @@ export class RdDetailPageComponent {
         description: input.description?.trim() || undefined,
         planStartAt: input.planStartAt?.trim() || undefined,
         planEndAt: input.planEndAt?.trim() || undefined,
+        stageTasks: input.stageTasks,
       })
     );
     this.advanceStageOpen.set(false);
@@ -496,7 +528,11 @@ export class RdDetailPageComponent {
       return;
     }
     if (data.quickStart) {
-      this.confirmUpdateProgress({ progress: Math.max(1, data.currentProgress), note: '' });
+      this.confirmUpdateProgress({
+        progress: Math.max(1, data.currentProgress),
+        note: '',
+        stageTaskId: this.pickDefaultProgressStageTaskId(data.userId),
+      });
       return;
     }
     this.progressUpdateUserId.set(data.userId);
@@ -510,6 +546,13 @@ export class RdDetailPageComponent {
       return;
     }
     this.editOpen.set(true);
+  }
+
+  requestCreateStageTask(): void {
+    if (!this.canEditBasic() || this.item()?.status === 'closed') {
+      return;
+    }
+    this.createStageTaskOpenRequest.update((value) => value + 1);
   }
 
   closeProgressUpdate(): void {
@@ -526,17 +569,78 @@ export class RdDetailPageComponent {
     this.rdApi.updateProgress(current.id, input).subscribe({
       next: (item) => {
         this.item.set(item);
-        this.loadProgress(item.id);
-        this.rdApi.listLogs(item.id).subscribe({
-          next: (logs) => this.logs.set(logs),
-        });
+        this.refreshStageTaskState(item.id);
         this.loadMemberBlocks(item.id);
-        this.busy.set(false);
         this.closeProgressUpdate();
       },
       error: () => {
         this.busy.set(false);
       },
+    });
+  }
+
+  private stageTasksForProgressUser(userId: string): RdStageTaskEntity[] {
+    const item = this.item();
+    const currentStage = item?.stageId ? this.stages().find((stage) => stage.id === item.stageId) : null;
+    const currentStageKey = currentStage ? resolveRdStageKey(currentStage) : '';
+    return this.stageTasks()
+      .filter((task) => task.status !== 'cancelled')
+      .filter((task) => !currentStageKey || task.stageKey === currentStageKey)
+      .filter((task) => (task.ownerIds ?? []).includes(userId) || task.ownerId === userId)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
+  }
+
+  private pickDefaultProgressStageTaskId(userId: string): string | undefined {
+    const tasks = this.stageTasksForProgressUser(userId);
+    return (tasks.find((task) => {
+      const ownerProgress = task.ownerProgresses?.find((owner) => owner.userId === userId);
+      return ownerProgress ? ownerProgress.progress < 100 : task.status !== 'done';
+    }) ?? tasks[0])?.id;
+  }
+
+  createStageTasks(
+    tasks: Array<{
+      stageKey: string;
+      title: string;
+      description?: string | null;
+      ownerIds: string[];
+      plannedStartAt?: string | null;
+      plannedEndAt?: string | null;
+    }>
+  ): void {
+    const current = this.item();
+    const inputs = tasks.filter((task) => task.stageKey.trim() && task.title.trim() && task.ownerIds.length > 0);
+    if (!current || this.busy() || inputs.length === 0) {
+      return;
+    }
+    this.busy.set(true);
+    forkJoin(inputs.map((input) => this.rdApi.createStageTask(current.id, input))).subscribe({
+      next: () => this.refreshStageTaskState(current.id),
+      error: () => this.busy.set(false),
+    });
+  }
+
+  updateStageTask(taskId: string, status: RdStageTaskStatus): void {
+    const current = this.item();
+    if (!current || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.rdApi.updateStageTask(taskId, { status }).subscribe({
+      next: () => this.refreshStageTaskState(current.id),
+      error: () => this.busy.set(false),
+    });
+  }
+
+  cancelStageTask(taskId: string): void {
+    const current = this.item();
+    if (!current || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.rdApi.cancelStageTask(taskId).subscribe({
+      next: () => this.refreshStageTaskState(current.id),
+      error: () => this.busy.set(false),
     });
   }
 
@@ -580,6 +684,33 @@ export class RdDetailPageComponent {
     });
   }
 
+  private loadStageTasks(itemId: string): void {
+    this.rdApi.listStageTasks(itemId).subscribe({
+      next: (items) => this.stageTasks.set(items),
+      error: () => this.stageTasks.set([]),
+    });
+  }
+
+  private refreshStageTaskState(itemId: string): void {
+    forkJoin({
+      item: this.rdApi.getById(itemId),
+      tasks: this.rdApi.listStageTasks(itemId),
+      progress: this.rdApi.listProgress(itemId),
+      logs: this.rdApi.listLogs(itemId),
+    }).subscribe({
+      next: ({ item, tasks, progress, logs }) => {
+        this.item.set(item);
+        this.stageTasks.set(tasks);
+        this.progressList.set(progress);
+        this.logs.set(logs);
+        this.busy.set(false);
+      },
+      error: () => {
+        this.busy.set(false);
+      },
+    });
+  }
+
   private load(id: string): void {
     this.loading.set(true);
     this.linkedIssues.set([]);
@@ -592,16 +723,20 @@ export class RdDetailPageComponent {
         forkJoin({
           logs: this.rdApi.listLogs(item.id),
           stageHistory: this.rdApi.listStageHistory(item.id),
+          stageTasks: this.rdApi.listStageTasks(item.id),
           stages: this.rdApi.listStages(item.projectId),
+          stageTaskTemplates: this.projectApi.listRdStageTaskTemplates(item.projectId),
           members: this.projectApi.listMembers(item.projectId),
           progress: this.rdApi.listProgress(item.id),
           memberBlocks: this.rdApi.listMemberBlocks(item.id),
           linkedIssues: this.issueApi.list({ projectId: item.projectId, rdItemId: item.id, page: 1, pageSize: LINKED_ISSUES_PAGE_SIZE }),
         }).subscribe({
-          next: ({ logs, stageHistory, stages, members, progress, memberBlocks, linkedIssues }) => {
+          next: ({ logs, stageHistory, stageTasks, stages, stageTaskTemplates, members, progress, memberBlocks, linkedIssues }) => {
             this.logs.set(logs);
             this.stageHistory.set(stageHistory);
+            this.stageTasks.set(stageTasks);
             this.stages.set(stages);
+            this.stageTaskTemplates.set(stageTaskTemplates);
             this.members.set(members);
             this.progressList.set(progress);
             this.memberBlocks.set(memberBlocks);
@@ -613,7 +748,9 @@ export class RdDetailPageComponent {
           error: () => {
             this.logs.set([]);
             this.stageHistory.set([]);
+            this.stageTasks.set([]);
             this.stages.set([]);
+            this.stageTaskTemplates.set([]);
             this.members.set([]);
             this.progressList.set([]);
             this.memberBlocks.set([]);
@@ -629,7 +766,9 @@ export class RdDetailPageComponent {
         this.item.set(null);
         this.logs.set([]);
         this.stageHistory.set([]);
+        this.stageTasks.set([]);
         this.stages.set([]);
+        this.stageTaskTemplates.set([]);
         this.members.set([]);
         this.progressList.set([]);
         this.memberBlocks.set([]);
@@ -654,6 +793,7 @@ export class RdDetailPageComponent {
           next: (items) => this.stageHistory.set(items),
           error: () => this.stageHistory.set([]),
         });
+        this.loadStageTasks(item.id);
         this.loadProgress(item.id);
         this.loadMemberBlocks(item.id);
         this.busy.set(false);

@@ -22,12 +22,12 @@ import { RdCompleteDialogComponent } from '../../dialogs/rd-complete-dialog/rd-c
 import { RdCreateDialogComponent } from '../../dialogs/rd-create-dialog/rd-create-dialog.component';
 import { RdEditDialogComponent, type RdEditDialogSaveInput } from '../../dialogs/rd-edit-dialog/rd-edit-dialog.component';
 import { RdProgressUpdateDialogComponent, type RdProgressUpdateDialogSaveInput } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
-import { getRdMemberIds, RD_TYPE_LABELS, type CreateRdItemInput, type RdItemEntity, type RdItemProgress, type RdListQuery, type RdLogEntity, type RdMemberBlockEntity, type RdStageHistoryEntry } from '../../models/rd.model';
+import { getRdMemberIds, RD_TYPE_LABELS, resolveRdStageKey, type CreateRdItemInput, type RdInitialStageTaskInput, type RdItemEntity, type RdItemProgress, type RdListQuery, type RdLogEntity, type RdMemberBlockEntity, type RdStageHistoryEntry, type RdStageTaskEntity, type RdStageTaskStatus, type RdStageTaskTemplateEntity } from '../../models/rd.model';
 import type { MemberProgressItem } from '../../components/rd-progress-panel/rd-progress-panel.component';
 import { RdApiService } from '../../services/rd-api.service';
 import { RdPermissionService } from '../../services/rd-permission.service';
 import { RdStore } from '../../store/rd.store';
-import { map } from 'rxjs';
+import { forkJoin, map } from 'rxjs';
 
 const LINKED_ISSUES_PAGE_SIZE = 10;
 type RdFilterTagKind = 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeIds' | 'sortBy' | 'sortOrder' | 'keyword' | 'includeClosed';
@@ -123,6 +123,9 @@ type RdFilterTagKind = 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeId
       [logs]="selectedLogs()"
       [stages]="store.stages()"
       [stageHistory]="selectedStageHistory()"
+      [stageTasks]="selectedStageTasks()"
+      [stageTaskTemplates]="stageTaskTemplates()"
+      [members]="members()"
       [linkedIssues]="selectedLinkedIssues()"
       [linkedIssuesTotal]="selectedLinkedIssuesTotal()"
       [linkedIssuesLoading]="selectedLinkedIssuesLoading()"
@@ -140,6 +143,9 @@ type RdFilterTagKind = 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeId
       (close)="closeDetail()"
       (updateProgressClick)="openProgressUpdate($event)"
       (resolveMemberBlockClick)="resolveMemberBlock($event.blockId)"
+      (createStageTasks)="createStageTasks($event.tasks)"
+      (updateStageTask)="updateStageTask($event.taskId, $event.status)"
+      (cancelStageTask)="cancelStageTask($event.taskId)"
       (loadMoreLinkedIssues)="loadMoreSelectedLinkedIssues()"
     />
 
@@ -147,8 +153,10 @@ type RdFilterTagKind = 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeId
       [open]="progressUpdateOpen()"
       [busy]="store.busy() || progressUpdating()"
       [memberName]="progressUpdateData()?.memberName || ''"
+      [memberId]="progressUpdateData()?.userId || ''"
       [currentProgress]="progressUpdateData()?.currentProgress || 0"
       [activeBlock]="progressUpdateActiveBlock()"
+      [stageTasks]="progressUpdateStageTasks()"
       (save)="confirmUpdateProgress($event)"
       (cancel)="closeProgressUpdate()"
     />
@@ -158,6 +166,7 @@ type RdFilterTagKind = 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeId
       [busy]="store.busy()"
       [stages]="store.stages()"
       [members]="members()"
+      [stageTaskTemplates]="stageTaskTemplates()"
       [projectName]="projectContext.currentProject()?.name || ''"
       (cancel)="createOpen.set(false)"
       (create)="createRd($event)"
@@ -196,6 +205,7 @@ type RdFilterTagKind = 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeId
       [stages]="store.stages()"
       [members]="members()"
       [currentMemberIds]="selectedMemberIdsForAdvance()"
+      [stageTaskTemplates]="stageTaskTemplates()"
       (cancel)="advanceStageOpen.set(false)"
       (confirm)="confirmAdvanceStage($event)"
     />
@@ -243,8 +253,10 @@ export class RdBoardPageComponent {
     () => this.store.items().find((item) => item.id === this.selectedItemId()) ?? null
   );
   readonly members = signal<ProjectMemberEntity[]>([]);
+  readonly stageTaskTemplates = signal<RdStageTaskTemplateEntity[]>([]);
   readonly selectedLogs = signal<RdLogEntity[]>([]);
   readonly selectedStageHistory = signal<RdStageHistoryEntry[]>([]);
+  readonly selectedStageTasks = signal<RdStageTaskEntity[]>([]);
   readonly selectedProgressList = signal<RdItemProgress[]>([]);
   readonly selectedMemberBlocks = signal<RdMemberBlockEntity[]>([]);
   readonly selectedLinkedIssues = signal<IssueEntity[]>([]);
@@ -336,6 +348,7 @@ export class RdBoardPageComponent {
     }
     return this.selectedMemberBlocks().find((block) => block.userId === userId && block.status === 'active') ?? null;
   });
+  readonly progressUpdateStageTasks = computed(() => this.stageTasksForProgressUser(this.progressUpdateData()?.userId || ''));
   readonly subtitle = computed(() => {
     const project = this.projectContext.currentProject();
     const projectName = project?.name ?? '当前项目';
@@ -461,14 +474,22 @@ export class RdBoardPageComponent {
       }
       if (!projectId) {
         this.members.set([]);
+        this.stageTaskTemplates.set([]);
         return;
       }
 
-      const subscription = this.projectApi.listMembers(projectId).subscribe({
+      const membersSub = this.projectApi.listMembers(projectId).subscribe({
         next: (items) => this.members.set(items),
         error: () => this.members.set([]),
       });
-      onCleanup(() => subscription.unsubscribe());
+      const templatesSub = this.projectApi.listRdStageTaskTemplates(projectId).subscribe({
+        next: (items) => this.stageTaskTemplates.set(items),
+        error: () => this.stageTaskTemplates.set([]),
+      });
+      onCleanup(() => {
+        membersSub.unsubscribe();
+        templatesSub.unsubscribe();
+      });
     });
 
     effect(() => {
@@ -501,6 +522,7 @@ export class RdBoardPageComponent {
       if (!selectedId) {
         this.selectedLogs.set([]);
         this.selectedStageHistory.set([]);
+        this.selectedStageTasks.set([]);
         this.selectedProgressList.set([]);
         this.selectedMemberBlocks.set([]);
         this.selectedLinkedIssues.set([]);
@@ -530,6 +552,10 @@ export class RdBoardPageComponent {
         next: (items) => this.selectedStageHistory.set(items),
         error: () => this.selectedStageHistory.set([]),
       });
+      const stageTasksSub = this.rdApi.listStageTasks(selectedId).subscribe({
+        next: (items) => this.selectedStageTasks.set(items),
+        error: () => this.selectedStageTasks.set([]),
+      });
       const linkedIssuesSub = this.issueApi
         .list({ projectId: this.projectContext.currentProjectId() || undefined, rdItemId: selectedId, page: 1, pageSize: LINKED_ISSUES_PAGE_SIZE })
         .subscribe({
@@ -551,6 +577,7 @@ export class RdBoardPageComponent {
         progressSub.unsubscribe();
         memberBlocksSub.unsubscribe();
         stageHistorySub.unsubscribe();
+        stageTasksSub.unsubscribe();
         linkedIssuesSub.unsubscribe();
       });
     });
@@ -665,6 +692,7 @@ export class RdBoardPageComponent {
     });
     this.selectedLogs.set([]);
     this.selectedStageHistory.set([]);
+    this.selectedStageTasks.set([]);
     this.selectedProgressList.set([]);
     this.selectedMemberBlocks.set([]);
     this.selectedLinkedIssues.set([]);
@@ -756,18 +784,66 @@ export class RdBoardPageComponent {
     });
   }
 
-  confirmAdvanceStage(input: { stageId: string; memberIds: string[]; description?: string; planStartAt?: string; planEndAt?: string }): void {
+  createStageTasks(
+    tasks: Array<{
+      stageKey: string;
+      title: string;
+      description?: string | null;
+      ownerIds: string[];
+      plannedStartAt?: string | null;
+      plannedEndAt?: string | null;
+    }>
+  ): void {
+    const current = this.selectedItem();
+    const inputs = tasks.filter((task) => task.stageKey.trim() && task.title.trim() && task.ownerIds.length > 0);
+    if (!current || this.store.busy() || inputs.length === 0) {
+      return;
+    }
+    forkJoin(inputs.map((input) => this.rdApi.createStageTask(current.id, input))).subscribe({
+      next: () => this.refreshSelectedStageTaskState(current.id),
+    });
+  }
+
+  updateStageTask(taskId: string, status: RdStageTaskStatus): void {
+    const current = this.selectedItem();
+    if (!current || this.store.busy()) {
+      return;
+    }
+    this.rdApi.updateStageTask(taskId, { status }).subscribe({
+      next: () => this.refreshSelectedStageTaskState(current.id),
+    });
+  }
+
+  cancelStageTask(taskId: string): void {
+    const current = this.selectedItem();
+    if (!current || this.store.busy()) {
+      return;
+    }
+    this.rdApi.cancelStageTask(taskId).subscribe({
+      next: () => this.refreshSelectedStageTaskState(current.id),
+    });
+  }
+
+  confirmAdvanceStage(input: { stageId: string; memberIds: string[]; description?: string; planStartAt?: string; planEndAt?: string; stageTasks: RdInitialStageTaskInput[] }): void {
     const current = this.selectedItem();
     if (!current || !input.stageId.trim()) {
       return;
     }
-    this.store.advanceStage(current.id, {
-      stageId: input.stageId.trim(),
-      memberIds: input.memberIds,
-      description: input.description?.trim() || undefined,
-      planStartAt: input.planStartAt?.trim() || undefined,
-      planEndAt: input.planEndAt?.trim() || undefined,
-    });
+    this.store.advanceStage(
+      current.id,
+      {
+        stageId: input.stageId.trim(),
+        memberIds: input.memberIds,
+        description: input.description?.trim() || undefined,
+        planStartAt: input.planStartAt?.trim() || undefined,
+        planEndAt: input.planEndAt?.trim() || undefined,
+        stageTasks: input.stageTasks,
+      },
+      () => {
+        this.loadSelectedStageTasks(current.id);
+        this.loadSelectedLogs(current.id);
+      }
+    );
     this.advanceStageOpen.set(false);
   }
 
@@ -800,7 +876,11 @@ export class RdBoardPageComponent {
       return;
     }
     if (data.quickStart) {
-      this.confirmUpdateProgress({ progress: Math.max(1, data.currentProgress), note: '' });
+      this.confirmUpdateProgress({
+        progress: Math.max(1, data.currentProgress),
+        note: '',
+        stageTaskId: this.pickDefaultProgressStageTaskId(data.userId),
+      });
       return;
     }
     this.progressUpdateData.set(data);
@@ -822,6 +902,7 @@ export class RdBoardPageComponent {
       next: (item) => {
         this.store.updateItemInList(item);
         this.loadSelectedProgress(item.id);
+        this.refreshSelectedStageTaskState(item.id);
         this.loadSelectedLogs(item.id);
         this.loadSelectedMemberBlocks(item.id);
         this.progressUpdating.set(false);
@@ -831,6 +912,25 @@ export class RdBoardPageComponent {
         this.progressUpdating.set(false);
       },
     });
+  }
+
+  private stageTasksForProgressUser(userId: string): RdStageTaskEntity[] {
+    const item = this.selectedItem();
+    const currentStage = item?.stageId ? this.store.stages().find((stage) => stage.id === item.stageId) : null;
+    const currentStageKey = currentStage ? resolveRdStageKey(currentStage) : '';
+    return this.selectedStageTasks()
+      .filter((task) => task.status !== 'cancelled')
+      .filter((task) => !currentStageKey || task.stageKey === currentStageKey)
+      .filter((task) => (task.ownerIds ?? []).includes(userId) || task.ownerId === userId)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
+  }
+
+  private pickDefaultProgressStageTaskId(userId: string): string | undefined {
+    const tasks = this.stageTasksForProgressUser(userId);
+    return (tasks.find((task) => {
+      const ownerProgress = task.ownerProgresses?.find((owner) => owner.userId === userId);
+      return ownerProgress ? ownerProgress.progress < 100 : task.status !== 'done';
+    }) ?? tasks[0])?.id;
   }
 
   loadMoreSelectedLinkedIssues(): void {
@@ -889,6 +989,22 @@ export class RdBoardPageComponent {
       next: (items) => this.selectedMemberBlocks.set(items),
       error: () => this.selectedMemberBlocks.set([]),
     });
+  }
+
+  private loadSelectedStageTasks(itemId: string): void {
+    this.rdApi.listStageTasks(itemId).subscribe({
+      next: (items) => this.selectedStageTasks.set(items),
+      error: () => this.selectedStageTasks.set([]),
+    });
+  }
+
+  private refreshSelectedStageTaskState(itemId: string): void {
+    this.rdApi.getById(itemId).subscribe({
+      next: (item) => this.store.updateItemInList(item),
+    });
+    this.loadSelectedProgress(itemId);
+    this.loadSelectedStageTasks(itemId);
+    this.loadSelectedLogs(itemId);
   }
 
   filterTagClass(kind: RdFilterTagKind): string {

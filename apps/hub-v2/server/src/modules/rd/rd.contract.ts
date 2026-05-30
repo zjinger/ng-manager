@@ -5,6 +5,7 @@ import type {
   CompleteRdItemInput,
   AdvanceRdStageInput,
   CreateRdMemberBlockInput,
+  CreateRdStageTaskInput,
   CreateRdItemInput,
   CreateRdStageInput,
   ListRdItemsQuery,
@@ -17,11 +18,13 @@ import type {
   RdMemberBlockEntity,
   RdProgressHistory,
   RdStageHistoryEntry,
+  RdStageTaskEntity,
   RdLogEntity,
   RdStageEntity,
   UpdateRdItemInput,
   UpdateRdItemProgressInput,
   ResolveRdMemberBlockInput,
+  UpdateRdStageTaskInput,
   UpdateRdStageInput
 } from "./rd.types";
 
@@ -39,6 +42,9 @@ export interface RdCommandContract {
   accept(id: string, ctx: RequestContext): Promise<RdItemEntity>;
   close(id: string, input: CloseRdItemInput, ctx: RequestContext): Promise<RdItemEntity>;
   updateProgress(id: string, input: UpdateRdItemProgressInput, ctx: RequestContext): Promise<RdItemEntity>;
+  createStageTask(id: string, input: CreateRdStageTaskInput, ctx: RequestContext): Promise<RdStageTaskEntity>;
+  updateStageTask(taskId: string, input: UpdateRdStageTaskInput, ctx: RequestContext): Promise<RdStageTaskEntity>;
+  cancelStageTask(taskId: string, ctx: RequestContext): Promise<RdStageTaskEntity>;
   createMemberBlock(id: string, input: CreateRdMemberBlockInput, ctx: RequestContext): Promise<RdMemberBlockEntity>;
   resolveMemberBlock(id: string, blockId: string, input: ResolveRdMemberBlockInput, ctx: RequestContext): Promise<RdMemberBlockEntity>;
 }
@@ -62,4 +68,5 @@ export interface RdQueryContract {
   listProgressHistory(id: string, ctx: RequestContext): Promise<RdProgressHistory[]>;
   listMemberBlocks(id: string, ctx: RequestContext): Promise<RdMemberBlockEntity[]>;
   listStageHistory(id: string, ctx: RequestContext): Promise<RdStageHistoryEntry[]>;
+  listStageTasks(id: string, ctx: RequestContext): Promise<RdStageTaskEntity[]>;
 }

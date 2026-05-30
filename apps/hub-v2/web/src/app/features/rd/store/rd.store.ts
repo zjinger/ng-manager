@@ -179,8 +179,8 @@ export class RdStore {
     this.patchOrRefresh(item);
   }
 
-  advanceStage(itemId: string, input: AdvanceRdStageInput): void {
-    this.runAction(() => this.rdApi.advanceStage(itemId, input));
+  advanceStage(itemId: string, input: AdvanceRdStageInput, done?: () => void): void {
+    this.runAction(() => this.rdApi.advanceStage(itemId, input), done);
   }
 
   accept(itemId: string): void {

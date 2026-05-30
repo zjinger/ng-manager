@@ -46,18 +46,18 @@ WHERE s.name = '需求确认'
 INSERT INTO rd_stage_task_templates (
   id, project_id, stage_id, stage_key, title, description, sort_order, enabled, created_at, updated_at
 )
-SELECT 'rdstpl_' || s.id || '_01', s.project_id, s.id, 'solution_design', 'UI 原型设计', NULL, 10, 1, datetime('now'), datetime('now')
+SELECT 'rdstpl_' || s.id || '_01', s.project_id, s.id, 'solution_design', '原型设计', NULL, 10, 1, datetime('now'), datetime('now')
 FROM rd_stages s
 WHERE s.name = '方案设计'
-  AND NOT EXISTS (SELECT 1 FROM rd_stage_task_templates t WHERE t.stage_id = s.id AND t.title = 'UI 原型设计');
+  AND NOT EXISTS (SELECT 1 FROM rd_stage_task_templates t WHERE t.stage_id = s.id AND t.title = '原型设计');
 
 INSERT INTO rd_stage_task_templates (
   id, project_id, stage_id, stage_key, title, description, sort_order, enabled, created_at, updated_at
 )
-SELECT 'rdstpl_' || s.id || '_02', s.project_id, s.id, 'solution_design', '交互设计确认', NULL, 20, 1, datetime('now'), datetime('now')
+SELECT 'rdstpl_' || s.id || '_02', s.project_id, s.id, 'solution_design', 'UI 设计', NULL, 20, 1, datetime('now'), datetime('now')
 FROM rd_stages s
 WHERE s.name = '方案设计'
-  AND NOT EXISTS (SELECT 1 FROM rd_stage_task_templates t WHERE t.stage_id = s.id AND t.title = '交互设计确认');
+  AND NOT EXISTS (SELECT 1 FROM rd_stage_task_templates t WHERE t.stage_id = s.id AND t.title = 'UI 设计');
 
 INSERT INTO rd_stage_task_templates (
   id, project_id, stage_id, stage_key, title, description, sort_order, enabled, created_at, updated_at
@@ -102,10 +102,10 @@ WHERE s.name = '功能开发'
 INSERT INTO rd_stage_task_templates (
   id, project_id, stage_id, stage_key, title, description, sort_order, enabled, created_at, updated_at
 )
-SELECT 'rdstpl_' || s.id || '_03', s.project_id, s.id, 'feature_dev', '权限控制开发', NULL, 30, 1, datetime('now'), datetime('now')
+SELECT 'rdstpl_' || s.id || '_03', s.project_id, s.id, 'feature_dev', '移动端开发', NULL, 30, 1, datetime('now'), datetime('now')
 FROM rd_stages s
 WHERE s.name = '功能开发'
-  AND NOT EXISTS (SELECT 1 FROM rd_stage_task_templates t WHERE t.stage_id = s.id AND t.title = '权限控制开发');
+  AND NOT EXISTS (SELECT 1 FROM rd_stage_task_templates t WHERE t.stage_id = s.id AND t.title = '移动端开发');
 
 INSERT INTO rd_stage_task_templates (
   id, project_id, stage_id, stage_key, title, description, sort_order, enabled, created_at, updated_at

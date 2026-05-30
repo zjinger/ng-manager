@@ -13,6 +13,7 @@ export type RdItemType =
   | "project_closure";
 export type RdItemPriority = "low" | "medium" | "high" | "critical";
 export type RdItemStatus = "todo" | "doing" | "blocked" | "done" | "accepted" | "closed";
+export type RdStageTaskStatus = "pending" | "in_progress" | "done" | "blocked" | "cancelled";
 export type RdAction =
   | "create"
   | "update"
@@ -34,6 +35,72 @@ export interface RdStageEntity {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RdStageTaskEntity {
+  id: string;
+  projectId: string;
+  itemId: string;
+  stageKey: string;
+  title: string;
+  description: string | null;
+  status: RdStageTaskStatus;
+  ownerId: string | null;
+  ownerName: string | null;
+  ownerIds: string[];
+  ownerNames: string[];
+  progress: number;
+  plannedStartAt: string | null;
+  plannedEndAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  sortOrder: number;
+  remark: string | null;
+  createdAt: string;
+  updatedAt: string;
+  ownerProgresses: RdStageTaskOwnerEntity[];
+}
+
+export interface RdStageTaskOwnerEntity {
+  id: string;
+  taskId: string;
+  projectId: string;
+  itemId: string;
+  userId: string;
+  userName: string | null;
+  status: RdStageTaskStatus;
+  progress: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RdStageTaskTemplateEntity {
+  id: string;
+  projectId: string;
+  stageId: string;
+  stageKey: string;
+  title: string;
+  description: string | null;
+  sortOrder: number;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RdStageTaskTemplateSelectionInput {
+  templateId: string;
+  ownerId?: string | null;
+}
+
+export interface RdInitialStageTaskInput {
+  templateId?: string | null;
+  title: string;
+  description?: string | null;
+  ownerId?: string | null;
+  plannedStartAt?: string | null;
+  plannedEndAt?: string | null;
 }
 
 export interface RdItemEntity {
@@ -164,6 +231,8 @@ export interface CreateRdItemInput {
   verifierId?: string | null;
   planStartAt?: string;
   planEndAt?: string;
+  stageTaskTemplates?: RdStageTaskTemplateSelectionInput[];
+  stageTasks?: RdInitialStageTaskInput[];
 }
 
 export interface UpdateRdItemInput {
@@ -205,6 +274,57 @@ export interface AdvanceRdStageInput {
   description?: string;
   planStartAt?: string;
   planEndAt?: string;
+  stageTasks?: RdInitialStageTaskInput[];
+  stageTaskTemplates?: RdStageTaskTemplateSelectionInput[];
+}
+
+export interface CreateRdStageTaskTemplateInput {
+  stageId: string;
+  title: string;
+  description?: string | null;
+  sortOrder?: number;
+  enabled?: boolean;
+}
+
+export interface UpdateRdStageTaskTemplateInput {
+  title?: string;
+  description?: string | null;
+  sortOrder?: number;
+  enabled?: boolean;
+}
+
+export interface CreateRdStageTaskInput {
+  stageKey: string;
+  title: string;
+  description?: string | null;
+  status?: RdStageTaskStatus;
+  ownerId?: string | null;
+  ownerName?: string | null;
+  ownerIds?: string[];
+  progress?: number;
+  plannedStartAt?: string | null;
+  plannedEndAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  sortOrder?: number;
+  remark?: string | null;
+}
+
+export interface UpdateRdStageTaskInput {
+  stageKey?: string;
+  title?: string;
+  description?: string | null;
+  status?: RdStageTaskStatus;
+  ownerId?: string | null;
+  ownerName?: string | null;
+  ownerIds?: string[];
+  progress?: number;
+  plannedStartAt?: string | null;
+  plannedEndAt?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  sortOrder?: number;
+  remark?: string | null;
 }
 
 export interface ListRdItemsQuery {
@@ -230,6 +350,7 @@ export interface UpdateRdItemProgressInput {
   note?: string;
   blockReason?: string;
   resolveBlockId?: string;
+  stageTaskId?: string;
 }
 
 export interface ListRdProgressQuery {

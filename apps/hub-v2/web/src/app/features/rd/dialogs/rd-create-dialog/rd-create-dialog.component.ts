@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NzAutocompleteModule } from 'ng-zorro-antd/auto-complete';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -13,7 +14,13 @@ import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } f
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { ImageUploadService } from '../../../../shared/services/image-upload.service';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
-import { RD_TYPE_OPTIONS, type CreateRdItemInput, type RdItemType, type RdStageEntity } from '../../models/rd.model';
+import {
+  RD_TYPE_OPTIONS,
+  type CreateRdItemInput,
+  type RdItemType,
+  type RdStageEntity,
+  type RdStageTaskTemplateEntity,
+} from '../../models/rd.model';
 
 type Draft = Omit<CreateRdItemInput, 'projectId'>;
 
@@ -38,6 +45,7 @@ const DEFAULT_DRAFT: Draft = {
     NzGridModule,
     NzDatePickerModule,
     NzButtonModule,
+    NzAutocompleteModule,
     NzInputModule,
     NzSelectModule,
     NzIconModule,
@@ -220,6 +228,80 @@ const DEFAULT_DRAFT: Draft = {
               </nz-form-item>
             </div>
           </div>
+          @if (hasInvalidPlanRange()) {
+            <p class="template-preview__warning">计划开始不能晚于计划结束。</p>
+          }
+
+          <div class="template-preview">
+            <div class="template-preview__header">
+              <div>
+                <strong>阶段任务</strong>
+                <span>按执行人选择当前阶段模板任务，也可手动输入；留空则不创建。</span>
+              </div>
+              <span>将创建 {{ selectedInitialStageTaskCount() }} 个任务</span>
+            </div>
+            @if (assignedExecutorMembers().length > 0) {
+              <div class="template-preview__list">
+                @for (member of assignedExecutorMembers(); track member.userId) {
+                  <div class="template-preview__item">
+                    <span class="template-preview__owner">{{ member.displayName }}</span>
+                    <div class="template-preview__task-input">
+                      <input
+                        nz-input
+                        maxlength="200"
+                        [nzAutocomplete]="taskTitleAuto"
+                        [ngModel]="memberTaskTitle(member.userId)"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="setMemberTaskTitle(member.userId, $event)"
+                        placeholder="选择模板或手动输入任务"
+                      />
+                      <nz-autocomplete #taskTitleAuto [nzDefaultActiveFirstOption]="false">
+                        @for (task of selectedStageTemplateTasks(); track task.id) {
+                          <nz-auto-option [nzValue]="task.title" [nzLabel]="task.title">
+                            <div class="template-preview__option">
+                              <strong>{{ task.title }}</strong>
+                              @if (task.description) {
+                                <span>{{ task.description }}</span>
+                              }
+                            </div>
+                          </nz-auto-option>
+                        }
+                      </nz-autocomplete>
+                      @if (memberTaskDescription(member.userId); as description) {
+                        <small>{{ description }}</small>
+                      }
+                    </div>
+                    <div class="template-preview__date-range">
+                      <nz-date-picker
+                        nzFormat="yyyy-MM-dd"
+                        nzPlaceHolder="计划开始"
+                        nzPopupClassName="hub-datepicker-overlay"
+                        [ngModel]="memberTaskPlanStartDate(member.userId)"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="setMemberTaskPlanDate(member.userId, 'start', $event)"
+                      ></nz-date-picker>
+                      <nz-date-picker
+                        nzFormat="yyyy-MM-dd"
+                        nzPlaceHolder="计划结束"
+                        nzPopupClassName="hub-datepicker-overlay"
+                        [ngModel]="memberTaskPlanEndDate(member.userId)"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="setMemberTaskPlanDate(member.userId, 'end', $event)"
+                      ></nz-date-picker>
+                    </div>
+                  </div>
+                }
+              </div>
+              @if (hasInvalidStageTaskPlanRange()) {
+                <p class="template-preview__warning">阶段任务计划时间必须在研发项计划开始和计划结束之间，且开始不能晚于结束。</p>
+              }
+              @if (selectedStageTemplateTasks().length === 0) {
+                <p class="template-preview__hint">当前阶段未配置任务模板，可直接手动输入阶段任务。</p>
+              }
+            } @else {
+              <p class="template-preview__empty">选择分配执行人后，可按执行人新增当前阶段任务。</p>
+            }
+          </div>
         </form>
       </div>
 
@@ -234,7 +316,119 @@ const DEFAULT_DRAFT: Draft = {
       </ng-container>
     </app-dialog-shell>
   `,
-  styles: [],
+  styles: [
+    `
+      .template-preview {
+        margin: 2px 0 16px;
+        border: 1px solid var(--border-color-soft);
+        border-radius: 8px;
+        background: var(--bg-subtle);
+        padding: 12px;
+      }
+      .template-preview__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .template-preview__header div {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .template-preview__header strong {
+        color: var(--text-heading);
+        font-size: 13px;
+      }
+      .template-preview__header span,
+      .template-preview__empty,
+      .template-preview__hint {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .template-preview__list {
+        display: grid;
+        gap: 8px;
+      }
+      .template-preview__item {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr) 280px;
+        gap: 12px;
+        align-items: center;
+        min-width: 0;
+        padding: 8px 10px;
+        border: 1px solid var(--border-color-soft);
+        border-radius: 6px;
+        background: var(--bg-container);
+      }
+      .template-preview__owner {
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .template-preview__task-input,
+      .template-preview__option {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .template-preview__date-range {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 8px;
+      }
+      .template-preview__date-range nz-date-picker {
+        width: 100%;
+      }
+      .template-preview__option strong,
+      .template-preview__option span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .template-preview__option span,
+      .template-preview__task-input small {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .template-preview__task-input small {
+        display: -webkit-box;
+        overflow: hidden;
+        line-height: 1.45;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+      .template-preview__empty,
+      .template-preview__hint {
+        margin: 0;
+      }
+      .template-preview__warning {
+        margin: 0 0 10px;
+        color: var(--danger);
+        font-size: 12px;
+      }
+      .template-preview__hint {
+        margin-top: 8px;
+      }
+      @media (max-width: 768px) {
+        .template-preview__header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .template-preview__item {
+          grid-template-columns: 1fr;
+        }
+        .template-preview__date-range {
+          grid-template-columns: 1fr;
+        }
+      }
+    `,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RdCreateDialogComponent {
@@ -245,6 +439,7 @@ export class RdCreateDialogComponent {
   readonly busy = input(false);
   readonly stages = input<RdStageEntity[]>([]);
   readonly members = input<ProjectMemberEntity[]>([]);
+  readonly stageTaskTemplates = input<RdStageTaskTemplateEntity[]>([]);
   readonly create = output<Draft>();
   readonly cancel = output<void>();
   readonly projectName = input<string>('');
@@ -254,6 +449,31 @@ export class RdCreateDialogComponent {
   readonly draft = signal<Draft>({ ...DEFAULT_DRAFT });
   readonly planStartDate = signal<Date | null>(null);
   readonly planEndDate = signal<Date | null>(null);
+  readonly memberTaskTitles = signal<Record<string, string>>({});
+  readonly memberTaskTemplateIds = signal<Record<string, string>>({});
+  readonly memberTaskDescriptions = signal<Record<string, string | null>>({});
+  readonly memberTaskPlanStartDates = signal<Record<string, Date | null>>({});
+  readonly memberTaskPlanEndDates = signal<Record<string, Date | null>>({});
+  readonly selectedStageTemplateTasks = computed(() => {
+    const stageId = this.draft().stageId?.trim();
+    if (!stageId) {
+      return [];
+    }
+    return this.stageTaskTemplates()
+      .filter((item) => item.stageId === stageId && item.enabled)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
+  });
+  readonly assignedExecutorMembers = computed(() => {
+    const assignedIds = new Set((this.draft().memberIds ?? []).map((item) => item.trim()).filter(Boolean));
+    if (assignedIds.size === 0) {
+      return [];
+    }
+    return this.members().filter((member) => assignedIds.has(member.userId));
+  });
+  readonly selectedInitialStageTaskCount = computed(() => {
+    const titles = this.memberTaskTitles();
+    return this.assignedExecutorMembers().filter((member) => titles[member.userId]?.trim()).length;
+  });
   readonly editorConfig = {
     autosave: true,
     autosaveUniqueId: 'article-editor',
@@ -269,7 +489,32 @@ export class RdCreateDialogComponent {
         this.draft.set({ ...DEFAULT_DRAFT });
         this.planStartDate.set(null);
         this.planEndDate.set(null);
+        this.memberTaskTitles.set({});
+        this.memberTaskTemplateIds.set({});
+        this.memberTaskDescriptions.set({});
+        this.memberTaskPlanStartDates.set({});
+        this.memberTaskPlanEndDates.set({});
       }
+    });
+
+    effect(() => {
+      if (!this.open()) {
+        return;
+      }
+      const assignedIds = new Set((this.draft().memberIds ?? []).map((item) => item.trim()).filter(Boolean));
+      this.memberTaskTitles.update((current) => this.pickAssignedTaskMap(current, assignedIds));
+      this.memberTaskTemplateIds.update((current) => this.pickAssignedTaskMap(current, assignedIds));
+      this.memberTaskDescriptions.update((current) => {
+        const next: Record<string, string | null> = {};
+        for (const [userId, description] of Object.entries(current)) {
+          if (assignedIds.has(userId)) {
+            next[userId] = description;
+          }
+        }
+        return next;
+      });
+      this.memberTaskPlanStartDates.update((current) => this.pickAssignedDateMap(current, assignedIds));
+      this.memberTaskPlanEndDates.update((current) => this.pickAssignedDateMap(current, assignedIds));
     });
   }
 
@@ -278,7 +523,13 @@ export class RdCreateDialogComponent {
   }
 
   isFormValid(): boolean {
-    return this.draft().title.trim().length > 0 && this.draft().stageId !== null && this.draft().priority !== null && this.draft().type !== null && (this.draft().memberIds?.length ?? 0) > 0;
+    return this.draft().title.trim().length > 0
+      && this.draft().stageId !== null
+      && this.draft().priority !== null
+      && this.draft().type !== null
+      && (this.draft().memberIds?.length ?? 0) > 0
+      && !this.hasInvalidPlanRange()
+      && !this.hasInvalidStageTaskPlanRange();
   }
 
   updateField<K extends keyof Draft>(key: K, value: Draft[K]): void {
@@ -289,6 +540,52 @@ export class RdCreateDialogComponent {
     this.updateField('type', value);
   }
 
+  memberTaskTitle(userId: string): string {
+    return this.memberTaskTitles()[userId] ?? '';
+  }
+
+  memberTaskDescription(userId: string): string | null {
+    return this.memberTaskDescriptions()[userId] ?? null;
+  }
+
+  memberTaskPlanStartDate(userId: string): Date | null {
+    return this.memberTaskPlanStartDates()[userId] ?? null;
+  }
+
+  memberTaskPlanEndDate(userId: string): Date | null {
+    return this.memberTaskPlanEndDates()[userId] ?? null;
+  }
+
+  setMemberTaskTitle(userId: string, value: unknown): void {
+    const id = userId.trim();
+    if (!id) {
+      return;
+    }
+    const title = String(value ?? '').slice(0, 200);
+    const template = this.selectedStageTemplateTasks().find((item) => item.title === title.trim()) ?? null;
+    this.memberTaskTitles.update((current) => ({ ...current, [id]: title }));
+    this.memberTaskTemplateIds.update((current) => {
+      const next = { ...current };
+      if (template) {
+        next[id] = template.id;
+      } else {
+        delete next[id];
+      }
+      return next;
+    });
+    this.memberTaskDescriptions.update((current) => {
+      const next = { ...current };
+      if (template) {
+        next[id] = template.description;
+      } else if (!title.trim()) {
+        delete next[id];
+      } else {
+        next[id] = null;
+      }
+      return next;
+    });
+  }
+
   updateDateField(key: 'planStartAt' | 'planEndAt', value: unknown): void {
     const date = this.normalizeDate(value);
     if (key === 'planStartAt') {
@@ -297,6 +594,51 @@ export class RdCreateDialogComponent {
       this.planEndDate.set(date);
     }
     this.updateField(key, this.formatDate(date));
+  }
+
+  setMemberTaskPlanDate(userId: string, key: 'start' | 'end', value: unknown): void {
+    const id = userId.trim();
+    if (!id) {
+      return;
+    }
+    const date = this.normalizeDate(value);
+    const target = key === 'start' ? this.memberTaskPlanStartDates : this.memberTaskPlanEndDates;
+    target.update((current) => ({ ...current, [id]: date }));
+  }
+
+  hasInvalidPlanRange(): boolean {
+    const start = this.planStartDate();
+    const end = this.planEndDate();
+    return !!start && !!end && start.getTime() > end.getTime();
+  }
+
+  hasInvalidStageTaskPlanRange(): boolean {
+    const itemStart = this.planStartDate();
+    const itemEnd = this.planEndDate();
+    const titles = this.memberTaskTitles();
+    for (const member of this.assignedExecutorMembers()) {
+      if (!titles[member.userId]?.trim()) {
+        continue;
+      }
+      const start = this.memberTaskPlanStartDate(member.userId);
+      const end = this.memberTaskPlanEndDate(member.userId);
+      if (!start && !end) {
+        continue;
+      }
+      if (!itemStart || !itemEnd) {
+        return true;
+      }
+      if (start && end && start.getTime() > end.getTime()) {
+        return true;
+      }
+      if (start && (start.getTime() < itemStart.getTime() || start.getTime() > itemEnd.getTime())) {
+        return true;
+      }
+      if (end && (end.getTime() < itemStart.getTime() || end.getTime() > itemEnd.getTime())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private formatDate(value: unknown): string {
@@ -338,6 +680,45 @@ export class RdCreateDialogComponent {
     this.create.emit({
       ...this.draft(),
       title: this.draft().title.trim(),
+      stageTasks: this.buildInitialStageTasks(),
     });
+  }
+
+  private buildInitialStageTasks(): NonNullable<Draft['stageTasks']> {
+    const titles = this.memberTaskTitles();
+    const templateIds = this.memberTaskTemplateIds();
+    const descriptions = this.memberTaskDescriptions();
+    const plannedStartDates = this.memberTaskPlanStartDates();
+    const plannedEndDates = this.memberTaskPlanEndDates();
+    return this.assignedExecutorMembers()
+      .map((member) => ({
+        templateId: templateIds[member.userId] || null,
+        title: titles[member.userId]?.trim() || '',
+        description: descriptions[member.userId] ?? null,
+        ownerId: member.userId,
+        plannedStartAt: this.formatDate(plannedStartDates[member.userId]) || null,
+        plannedEndAt: this.formatDate(plannedEndDates[member.userId]) || null,
+      }))
+      .filter((task) => task.title);
+  }
+
+  private pickAssignedTaskMap<T extends string>(current: Record<string, T>, assignedIds: Set<string>): Record<string, T> {
+    const next: Record<string, T> = {};
+    for (const [userId, value] of Object.entries(current)) {
+      if (assignedIds.has(userId)) {
+        next[userId] = value as T;
+      }
+    }
+    return next;
+  }
+
+  private pickAssignedDateMap(current: Record<string, Date | null>, assignedIds: Set<string>): Record<string, Date | null> {
+    const next: Record<string, Date | null> = {};
+    for (const [userId, value] of Object.entries(current)) {
+      if (assignedIds.has(userId)) {
+        next[userId] = value;
+      }
+    }
+    return next;
   }
 }

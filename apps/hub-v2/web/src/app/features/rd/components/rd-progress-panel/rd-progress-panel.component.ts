@@ -4,7 +4,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 import { PanelCardComponent } from '@shared/ui';
-import type { RdItemEntity, RdItemProgress, RdMemberBlockEntity } from '../../models/rd.model';
+import type { RdItemEntity, RdItemProgress, RdMemberBlockEntity, RdStageTaskEntity } from '../../models/rd.model';
 
 export interface MemberProgressItem extends RdItemProgress {
   memberName: string;
@@ -22,7 +22,7 @@ export interface MemberProgressItem extends RdItemProgress {
       <div class="progress-hero">
         <div class="progress-hero__info">
           <span class="progress-hero__label">整体进度</span>
-          <span class="progress-hero__hint">自动取成员平均值</span>
+          <span class="progress-hero__hint">有阶段任务时按人-任务进度平均汇总</span>
         </div>
         <div class="progress-hero__value">{{ mainProgress() }}%</div>
       </div>
@@ -110,6 +110,24 @@ export interface MemberProgressItem extends RdItemProgress {
               <div class="member-item__note-row">
                 <span class="member-item__note-label">进度说明：</span>
                 <span class="member-item__note">{{ item.note }}</span>
+              </div>
+            }
+            @if (stageTaskHintsFor(item).length > 0) {
+              <div class="member-item__task-row">
+                <span class="member-item__task-label">阶段任务：</span>
+                <div class="member-item__task-list">
+                  @for (task of stageTaskHintsFor(item); track task.id) {
+                    <span class="member-item__task-chip">
+                      <span class="member-item__task-title">{{ task.title }}</span>
+                      @if (formatStageTaskPlanRange(task); as range) {
+                        <span class="member-item__task-plan">{{ range }}</span>
+                      }
+                      @if (stageTaskHintsFor(item).length > 1) {
+                        <span class="member-item__task-progress">{{ stageTaskProgressFor(item, task) }}%</span>
+                      }
+                    </span>
+                  }
+                </div>
               </div>
             }
             @if (activeBlockFor(item.userId); as block) {
@@ -280,10 +298,10 @@ export interface MemberProgressItem extends RdItemProgress {
         min-width: 36px;
         text-align: right;
       }
-      .member-item__note-row {
+      .member-item__note-row,
+      .member-item__task-row {
         width: 100%;
         border-top: 1px dashed var(--border-color-soft);
-        padding-top: 8px;
         display: flex;
         gap: 4px;
       }
@@ -298,6 +316,46 @@ export interface MemberProgressItem extends RdItemProgress {
         flex: 0 0 auto;
         font-size: 12px;
         color: var(--text-muted);
+      }
+      .member-item__task-label {
+        flex: 0 0 auto;
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 24px;
+      }
+      .member-item__task-list {
+        min-width: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .member-item__task-chip {
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        max-width: 100%;
+        padding: 3px 8px;
+        border: 1px solid var(--border-color-soft);
+        border-radius: 999px;
+        background: var(--bg-container);
+        color: var(--text-secondary);
+        font-size: 12px;
+        line-height: 16px;
+      }
+      .member-item__task-title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .member-item__task-plan {
+        color: var(--text-muted);
+        flex: 0 0 auto;
+      }
+      .member-item__task-progress {
+        color: var(--primary);
+        font-weight: 700;
+        flex: 0 0 auto;
       }
       .member-item__block-label {
         flex: 0 0 auto;
@@ -330,6 +388,7 @@ export class RdProgressPanelComponent {
   readonly item = input<RdItemEntity | null>(null);
   readonly memberProgressList = input<MemberProgressItem[]>([]);
   readonly memberBlocks = input<RdMemberBlockEntity[]>([]);
+  readonly stageTasks = input<RdStageTaskEntity[]>([]);
   readonly canResolveMemberBlocks = input(false);
   readonly currentUserId = input<string>('');
 
@@ -342,6 +401,22 @@ export class RdProgressPanelComponent {
 
   activeBlockFor(userId: string): RdMemberBlockEntity | null {
     return this.activeBlocks().find((block) => block.userId === userId) ?? null;
+  }
+
+  stageTaskHintsFor(member: MemberProgressItem): RdStageTaskEntity[] {
+    const id = member.userId.trim();
+    const name = member.memberName.trim();
+    if (!id && !name) {
+      return [];
+    }
+    return this.stageTasks()
+      .filter((task) => task.status !== 'cancelled')
+      .filter((task) => {
+        const ownerIds = task.ownerIds ?? [];
+        const ownerNames = task.ownerNames ?? [];
+        return (!!id && (ownerIds.includes(id) || task.ownerId === id)) || (!!name && (ownerNames.includes(name) || task.ownerName === name));
+      })
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
   }
 
   mainProgress(): number {
@@ -365,6 +440,35 @@ export class RdProgressPanelComponent {
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
+    });
+  }
+
+  formatStageTaskPlanRange(task: RdStageTaskEntity): string {
+    const start = this.formatDateOnly(task.plannedStartAt);
+    const end = this.formatDateOnly(task.plannedEndAt);
+    if (start && end) {
+      return `${start}~${end}`;
+    }
+    return start || end || '';
+  }
+
+  stageTaskProgressFor(member: MemberProgressItem, task: RdStageTaskEntity): number {
+    const id = member.userId.trim();
+    const ownerProgress = task.ownerProgresses?.find((owner) => owner.userId === id);
+    return Math.max(0, Math.min(100, ownerProgress?.progress ?? task.progress ?? 0));
+  }
+
+  private formatDateOnly(value: string | null): string {
+    if (!value) {
+      return '';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    return date.toLocaleDateString('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
     });
   }
 
