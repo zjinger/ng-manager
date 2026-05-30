@@ -34,7 +34,7 @@ import { TodoStore } from '../stores/todo.store';
     TodoTagManagerComponent,
   ],
   template: `
-    <app-page-header title="个人待办" subtitle="管理日常任务、截止日期和个人事项。" />
+    <app-page-header title="个人待办" subtitle="管理日常待办、截止日期和个人事项。" />
 
     @if (store.loadError()) {
       <div class="todo-warning" [class.todo-warning--cache]="store.cacheFallback()">
@@ -167,10 +167,10 @@ export class PersonalTodoPageComponent {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: () => {
-            this.message.success('任务已更新');
+            this.message.success('待办已更新');
             this.closeDialog();
           },
-          error: () => this.message.error('任务更新失败'),
+          error: () => this.message.error('待办更新失败'),
         });
     } else {
       this.store
@@ -178,10 +178,10 @@ export class PersonalTodoPageComponent {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: () => {
-            this.message.success('任务创建成功');
+            this.message.success('待办创建成功');
             this.closeDialog();
           },
-          error: () => this.message.error('任务创建失败'),
+          error: () => this.message.error('待办创建失败'),
         });
     }
   }
@@ -191,8 +191,8 @@ export class PersonalTodoPageComponent {
       .toggleDone(todo)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (changed) => this.message.success(changed.status === 'done' ? '任务已完成' : '任务已恢复'),
-        error: () => this.message.error('任务状态更新失败'),
+        next: (changed) => this.message.success(changed.status === 'done' ? '待办已完成' : '待办已恢复'),
+        error: () => this.message.error('待办状态更新失败'),
       });
   }
 
@@ -201,14 +201,14 @@ export class PersonalTodoPageComponent {
       .updateStatus(id, status)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.message.success(`任务已移至「${TODO_STATUS_LABELS[status]}」`),
-        error: () => this.message.error('任务状态更新失败'),
+        next: () => this.message.success(`待办已移至「${TODO_STATUS_LABELS[status]}」`),
+        error: () => this.message.error('待办状态更新失败'),
       });
   }
 
   confirmDelete(todo: Todo): void {
     this.modal.confirm({
-      nzTitle: '删除任务',
+      nzTitle: '删除待办',
       nzContent: `确定删除「${todo.title}」吗？此操作不可恢复。`,
       nzOkText: '删除',
       nzOkDanger: true,
@@ -218,8 +218,8 @@ export class PersonalTodoPageComponent {
           .delete(todo.id)
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
-            next: () => this.message.info('任务已删除'),
-            error: () => this.message.error('任务删除失败'),
+            next: () => this.message.info('待办已删除'),
+            error: () => this.message.error('待办删除失败'),
           });
       },
     });
@@ -231,8 +231,8 @@ export class PersonalTodoPageComponent {
     }
 
     this.modal.confirm({
-      nzTitle: '清除已完成任务',
-      nzContent: `确定清除 ${this.store.completedCount()} 条已完成任务吗？`,
+      nzTitle: '清除已完成待办',
+      nzContent: `确定清除 ${this.store.completedCount()} 条已完成待办吗？`,
       nzOkText: '清除',
       nzOkDanger: true,
       nzCancelText: '取消',
@@ -241,8 +241,8 @@ export class PersonalTodoPageComponent {
           .clearCompleted()
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
-            next: () => this.message.info('已清除已完成任务'),
-            error: () => this.message.error('清除已完成任务失败'),
+            next: () => this.message.info('已清除已完成待办'),
+            error: () => this.message.error('清除已完成待办失败'),
           });
       },
     });
@@ -277,7 +277,7 @@ export class PersonalTodoPageComponent {
   confirmDeleteTag(tag: TodoTagEntity): void {
     this.modal.confirm({
       nzTitle: '删除标签',
-      nzContent: `确定删除「${tag.name}」吗？已关联任务会自动移除此标签。`,
+      nzContent: `确定删除「${tag.name}」吗？已关联待办会自动移除此标签。`,
       nzOkText: '删除',
       nzOkDanger: true,
       nzCancelText: '取消',

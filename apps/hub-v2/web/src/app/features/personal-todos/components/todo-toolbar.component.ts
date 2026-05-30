@@ -32,7 +32,7 @@ import { FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggl
       <div toolbar-primary class="todo-toolbar__primary">
         <button nz-button nzType="primary" class="toolbar-create-btn" (click)="create.emit()">
           <span nz-icon nzType="plus"></span>
-          新建任务
+          新建待办
         </button>
         <button nz-button nzType="default" (click)="manageTags.emit()">
           <span nz-icon nzType="tags"></span>

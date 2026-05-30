@@ -16,7 +16,7 @@ import { PanelCardComponent } from '@shared/ui';
   selector: 'app-todo-list',
   imports: [NzButtonModule, NzIconModule, PanelCardComponent],
   template: `
-    <app-panel-card title="任务列表" [count]="todos().length">
+    <app-panel-card title="待办列表" [count]="todos().length">
       <button
         panel-actions
         nz-button
@@ -32,7 +32,7 @@ import { PanelCardComponent } from '@shared/ui';
       @if (todos().length === 0) {
         <section class="todo-empty">
           <span class="todo-empty__icon" nz-icon nzType="check-circle"></span>
-          <strong>暂无任务</strong>
+          <strong>暂无待办</strong>
         </section>
       } @else {
         <div class="todo-list">
@@ -42,7 +42,7 @@ import { PanelCardComponent } from '@shared/ui';
                 type="button"
                 class="todo-row__check"
                 [class.is-done]="todo.status === 'done'"
-                [attr.aria-label]="todo.status === 'done' ? '恢复任务' : '完成任务'"
+                [attr.aria-label]="todo.status === 'done' ? '恢复待办' : '完成待办'"
                 (click)="toggleDone.emit(todo)"
               >
                 @if (todo.status === 'done') {

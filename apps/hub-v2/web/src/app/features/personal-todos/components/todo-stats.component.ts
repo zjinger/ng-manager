@@ -148,7 +148,7 @@ export class TodoStatsComponent {
     return [
       {
         key: 'total',
-        label: '全部任务',
+        label: '全部待办',
         icon: 'schedule',
         tone: 'blue',
         value: stats.total,

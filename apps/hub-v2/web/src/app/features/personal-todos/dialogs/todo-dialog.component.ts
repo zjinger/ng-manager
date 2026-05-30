@@ -40,7 +40,7 @@ import {
       [open]="visible()"
       [center]="true"
       [width]="720"
-      [title]="todo() ? '编辑任务' : '新建任务'"
+      [title]="todo() ? '编辑待办' : '新建待办'"
       [subtitle]="'记录个人事项、截止日期和执行状态。'"
       [icon]="todo() ? 'edit' : 'plus-circle'"
       [modalClass]="'personal-todo-modal'"
@@ -51,14 +51,14 @@ import {
           <div class="row" nz-row nzGutter="16">
             <div class="col" nz-col nzSpan="24">
               <nz-form-item>
-                <nz-form-label nzRequired nzFor="todo-title">任务标题</nz-form-label>
-                <nz-form-control nzErrorTip="请输入 100 字以内的任务标题">
+                <nz-form-label nzRequired nzFor="todo-title">待办标题</nz-form-label>
+                <nz-form-control nzErrorTip="请输入 100 字以内的待办标题">
                   <input
                     id="todo-title"
                     nz-input
                     formControlName="title"
                     maxlength="100"
-                    placeholder="输入任务标题"
+                    placeholder="输入待办标题"
                     (keydown.enter)="$event.preventDefault(); submit()"
                   />
                 </nz-form-control>
@@ -69,14 +69,14 @@ import {
           <div class="row" nz-row nzGutter="16">
             <div class="col" nz-col nzSpan="24">
               <nz-form-item>
-                <nz-form-label nzFor="todo-desc">任务描述</nz-form-label>
+                <nz-form-label nzFor="todo-desc">待办描述</nz-form-label>
                 <nz-form-control>
                   <app-markdown-editor
                     formControlName="desc"
                     [config]="editorConfig"
                     [minHeight]="'200px'"
                     [maxHeight]="'360px'"
-                    [placeholder]="'补充任务背景、目标、检查清单或备注'"
+                    [placeholder]="'补充待办背景、目标、检查清单或备注'"
                   />
                 </nz-form-control>
               </nz-form-item>
@@ -306,7 +306,7 @@ export class TodoDialogComponent {
     if (!title) {
       this.form.controls.title.markAsDirty();
       this.form.controls.title.updateValueAndValidity();
-      this.message.error('请输入任务标题');
+      this.message.error('请输入待办标题');
       return;
     }
 

@@ -63,7 +63,7 @@ import {
                 </footer>
               </article>
             } @empty {
-              <div class="todo-board__empty">拖拽任务到这里</div>
+              <div class="todo-board__empty">拖拽待办到这里</div>
             }
           </div>
         </div>
