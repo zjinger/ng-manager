@@ -238,13 +238,13 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   );
   const profileRepo = new ProfileRepo(db);
   const profileService = new ProfileService(profileRepo);
-  const personalTodoService = new PersonalTodoService(new PersonalTodoRepo(db));
+  const uploadRepo = new UploadRepo(db);
+  const uploadService = new UploadService(uploadRepo, config.uploadDir);
+  const personalTodoService = new PersonalTodoService(new PersonalTodoRepo(db), uploadService);
   const personalTokenRepo = new PersonalTokenRepo(db);
   const personalTokenService = new PersonalTokenService(personalTokenRepo, projectRepo, userRepo);
   const contentLogRepo = new ContentLogRepo(db);
   const contentLogService = new ContentLogService(contentLogRepo);
-  const uploadRepo = new UploadRepo(db);
-  const uploadService = new UploadService(uploadRepo, config.uploadDir);
   const announcementRepo = new AnnouncementRepo(db);
   const announcementService = new AnnouncementService(announcementRepo, projectAccess, eventBus, contentLogService);
   const approvalTemplateService = new ApprovalTemplateService(new ApprovalTemplateRepo(db));

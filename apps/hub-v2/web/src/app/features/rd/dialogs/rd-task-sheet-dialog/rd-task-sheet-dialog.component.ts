@@ -495,7 +495,7 @@ export class RdTaskSheetDialogComponent {
     status: ['lines', 'words'],
   };
   readonly uploadMarkdownImage = async (file: File): Promise<string> =>
-    this.imageUpload.uploadImage(file);
+    this.imageUpload.uploadImage(file, UPLOAD_TARGETS.markdownImage);
 
   constructor() {
     effect(() => {

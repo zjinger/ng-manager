@@ -9,7 +9,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
-import { ISSUE_PRIORITY_OPTIONS } from '@shared/constants';
+import { ISSUE_PRIORITY_OPTIONS, UPLOAD_TARGETS } from '@shared/constants';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { ImageUploadService } from '../../../../shared/services/image-upload.service';
@@ -479,7 +479,7 @@ export class RdCreateDialogComponent {
     status: ['lines', 'words']
   };
   readonly uploadMarkdownImage = async (file: File): Promise<string> => {
-    return this.imageUpload.uploadImage(file);
+    return this.imageUpload.uploadImage(file, UPLOAD_TARGETS.markdownImage);
   };
 
   constructor() {

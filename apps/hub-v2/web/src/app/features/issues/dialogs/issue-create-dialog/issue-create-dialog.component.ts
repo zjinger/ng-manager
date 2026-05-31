@@ -420,7 +420,7 @@ export class IssueCreateDialogComponent {
     status: ['lines', 'words']
   };
   readonly uploadMarkdownImage = async (file: File): Promise<string> => {
-    return this.imageUpload.uploadImage(file);
+    return this.imageUpload.uploadImage(file, UPLOAD_TARGETS.markdownImage);
   };
   readonly modulePath = signal<string[] | null>(null);
   readonly moduleTriggerWidth = signal(0);

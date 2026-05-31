@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { API_BASE_URL, ApiClientService } from '@core/http';
-import { buildUploadFormData, type UploadTargetPolicy, UPLOAD_TARGETS, validateUploadFile } from '@shared/constants';
+import { buildUploadFormData, type UploadTargetPolicy, validateUploadFile } from '@shared/constants';
 
 interface UploadResult {
   id: string;
@@ -17,11 +17,10 @@ interface ImageUploadOptions {
 export class ImageUploadService {
   private readonly api = inject(ApiClientService);
   private readonly apiBaseUrl = inject(API_BASE_URL);
-  private readonly defaultPolicy = UPLOAD_TARGETS.markdownImage;
 
   async uploadImage(
     file: File,
-    policy: UploadTargetPolicy = this.defaultPolicy,
+    policy: UploadTargetPolicy,
     options?: ImageUploadOptions
   ): Promise<string> {
     this.ensureImageFile(file, policy);

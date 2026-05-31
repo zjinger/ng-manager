@@ -9,6 +9,8 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
+import { UPLOAD_TARGETS } from '@shared/constants';
+import { ImageUploadService } from '@shared/services/image-upload.service';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import {
   TODO_PRIORITY_OPTIONS,
@@ -75,8 +77,10 @@ import {
                   <app-markdown-editor
                     formControlName="desc"
                     [config]="editorConfig"
+                    [imageUploadHandler]="uploadMarkdownImage"
                     [minHeight]="'200px'"
                     [maxHeight]="'360px'"
+                    (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
                     [placeholder]="'补充待办背景、目标、检查清单或备注'"
                   />
                 </nz-form-control>
@@ -276,6 +280,7 @@ import {
 export class TodoDialogComponent {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly message = inject(NzMessageService);
+  private readonly imageUpload = inject(ImageUploadService);
 
   readonly visible = input(false);
   readonly todo = input<Todo | null>(null);
@@ -292,6 +297,8 @@ export class TodoDialogComponent {
     autosaveUniqueId: 'personal-todo-editor',
     status: ['lines', 'words'],
   };
+  readonly uploadMarkdownImage = async (file: File): Promise<string> =>
+    this.imageUpload.uploadImage(file, UPLOAD_TARGETS.markdownImage);
   readonly form = this.fb.group({
     title: ['', [Validators.required, Validators.maxLength(100)]],
     desc: ['', [Validators.maxLength(500)]],
@@ -354,6 +361,10 @@ export class TodoDialogComponent {
 
   isTagSelected(tagId: string): boolean {
     return this.selectedTagIds().includes(tagId);
+  }
+
+  onMarkdownImageUploadFailed(message: string): void {
+    this.message.error(message || '图片上传失败');
   }
 
   private parseIsoDate(value: string): Date | null {

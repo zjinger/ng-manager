@@ -8,6 +8,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
+import { UPLOAD_TARGETS } from '@shared/constants';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import { ImageUploadService } from '../../../../shared/services/image-upload.service';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
@@ -240,7 +241,8 @@ export class RdStageTaskEditDialogComponent {
     autosave: false,
     status: ['lines', 'words'],
   };
-  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.imageUpload.uploadImage(file);
+  readonly uploadMarkdownImage = async (file: File): Promise<string> =>
+    this.imageUpload.uploadImage(file, UPLOAD_TARGETS.markdownImage);
 
   readonly ownerOptions = computed(() => {
     const allowedIds = new Set(this.memberIds().map((id) => id.trim()).filter(Boolean));

@@ -10,7 +10,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import type { ProjectMetaItem, ProjectModuleRdLinkEntity, ProjectVersionItem } from '@features/projects/models/project.model';
-import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS } from '@shared/constants';
+import { ISSUE_PRIORITY_OPTIONS, ISSUE_TYPE_OPTIONS, UPLOAD_TARGETS } from '@shared/constants';
 import { ImageUploadService } from '@shared/services/image-upload.service';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import type { IssueEntity, IssuePriority, IssueType, UpdateIssueInput } from '../../models/issue.model';
@@ -278,7 +278,8 @@ export class IssueEditDialogComponent {
       currentRdItemId: this.draft().rdItemId
     })
   );
-  readonly uploadMarkdownImage = async (file: File): Promise<string> => this.imageUpload.uploadImage(file);
+  readonly uploadMarkdownImage = async (file: File): Promise<string> =>
+    this.imageUpload.uploadImage(file, UPLOAD_TARGETS.markdownImage);
   @ViewChild('moduleCascaderRef', { read: ElementRef }) moduleCascaderRef?: ElementRef<HTMLElement>;
 
   constructor() {

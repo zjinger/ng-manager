@@ -1,4 +1,4 @@
-﻿import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
+﻿import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzAutocompleteModule } from 'ng-zorro-antd/auto-complete';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -7,8 +7,11 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 
+import { UPLOAD_TARGETS } from '@shared/constants';
+import { ImageUploadService } from '@shared/services/image-upload.service';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskTemplateEntity } from '../../models/rd.model';
@@ -100,9 +103,11 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
                       [ngModel]="description()"
                       name="advanceDescription"
                       [ngModelOptions]="{ standalone: true }"
+                      [imageUploadHandler]="uploadMarkdownImage"
                       [placeholder]="'可选：填写本次推进说明（会显示在研发项描述区域）'"
                       minHeight="160px"
                       (contentChange)="description.set(normalizeDescription($event))"
+                      (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
                     />
                   </nz-form-control>
                 </nz-form-item>
@@ -377,6 +382,9 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RdAdvanceStageDialogComponent {
+  private readonly imageUpload = inject(ImageUploadService);
+  private readonly message = inject(NzMessageService);
+
   readonly open = input(false);
   readonly busy = input(false);
   readonly item = input<RdItemEntity | null>(null);
@@ -489,6 +497,8 @@ export class RdAdvanceStageDialogComponent {
     }
     return all.slice(currentIndex + 1);
   });
+  readonly uploadMarkdownImage = async (file: File): Promise<string> =>
+    this.imageUpload.uploadImage(file, UPLOAD_TARGETS.markdownImage);
 
   hasStageTaskError(): boolean {
     return this.hasMissingStageTaskTitle() || this.invalidStageTaskPlanRange();
@@ -594,6 +604,10 @@ export class RdAdvanceStageDialogComponent {
 
   normalizeDescription(value: unknown): string {
     return String(value ?? '').slice(0, 2000);
+  }
+
+  onMarkdownImageUploadFailed(message: string): void {
+    this.message.error(message || '图片上传失败');
   }
 
   memberTaskTitle(userId: string): string {
