@@ -33,6 +33,17 @@ import type {
   UpdateProjectVersionItemInput
 } from '../../models/project.model';
 
+interface StageEditDraft {
+  name: string;
+  sort: number;
+}
+
+interface StageTaskTemplateEditDraft {
+  title: string;
+  description: string;
+  sortOrder: number;
+}
+
 @Component({
   selector: 'app-project-config-dialog',
   standalone: true,
@@ -93,6 +104,13 @@ export class ProjectConfigDialogComponent {
   readonly versionDraft = signal('');
   readonly stageDraft = signal('');
   readonly stageTaskTemplateDraftByStage = signal<Record<string, string>>({});
+  readonly expandedStageIds = signal<Record<string, boolean>>({});
+  readonly addingStage = signal(false);
+  readonly addingTaskStageId = signal<string | null>(null);
+  readonly editingStageId = signal<string | null>(null);
+  readonly stageEditDrafts = signal<Record<string, StageEditDraft>>({});
+  readonly editingStageTaskTemplateId = signal<string | null>(null);
+  readonly stageTaskTemplateEditDrafts = signal<Record<string, StageTaskTemplateEditDraft>>({});
   readonly tokenNameDraft = signal('');
   readonly tokenScopesDraft = signal<ProjectApiTokenScope[]>(['issues:read', 'rd:read']); //'feedbacks:read'
   readonly tokenExpiresAt = signal<Date | null>(null);
@@ -148,6 +166,80 @@ export class ProjectConfigDialogComponent {
     }
     this.createStage.emit({ projectId, name });
     this.stageDraft.set('');
+    this.addingStage.set(false);
+  }
+
+  sortedStages(): RdStageEntity[] {
+    return [...this.stages()].sort((a, b) => a.sort - b.sort || a.createdAt.localeCompare(b.createdAt));
+  }
+
+  defaultExpandedStageId(): string | null {
+    const stages = this.sortedStages();
+    return stages.find((item) => item.enabled)?.id ?? stages[0]?.id ?? null;
+  }
+
+  isStageExpanded(item: RdStageEntity): boolean {
+    const explicit = this.expandedStageIds()[item.id];
+    if (typeof explicit === 'boolean') {
+      return explicit;
+    }
+    if (!item.enabled) {
+      return false;
+    }
+    return item.id === this.defaultExpandedStageId();
+  }
+
+  toggleStage(item: RdStageEntity): void {
+    const expanded = this.isStageExpanded(item);
+    this.expandedStageIds.update((current) => ({
+      ...current,
+      [item.id]: !expanded,
+    }));
+  }
+
+  openStageCreator(): void {
+    this.addingStage.set(true);
+  }
+
+  closeStageCreator(): void {
+    this.stageDraft.set('');
+    this.addingStage.set(false);
+  }
+
+  startStageEdit(item: RdStageEntity): void {
+    this.editingStageId.set(item.id);
+    this.stageEditDrafts.update((current) => ({
+      ...current,
+      [item.id]: { name: item.name, sort: item.sort },
+    }));
+  }
+
+  cancelStageEdit(): void {
+    this.editingStageId.set(null);
+  }
+
+  stageEditDraft(id: string): StageEditDraft {
+    return this.stageEditDrafts()[id] ?? { name: '', sort: 0 };
+  }
+
+  setStageEditName(id: string, name: string): void {
+    this.stageEditDrafts.update((current) => ({
+      ...current,
+      [id]: { ...this.stageEditDraft(id), name },
+    }));
+  }
+
+  setStageEditSort(id: string, sort: unknown): void {
+    this.stageEditDrafts.update((current) => ({
+      ...current,
+      [id]: { ...this.stageEditDraft(id), sort: this.asNumber(sort) },
+    }));
+  }
+
+  saveStageEdit(item: RdStageEntity): void {
+    const draft = this.stageEditDraft(item.id);
+    this.saveStage(item, draft.name, draft.sort);
+    this.editingStageId.set(null);
   }
 
   stageTaskTemplatesByStage(stageId: string): RdStageTaskTemplateEntity[] {
@@ -174,6 +266,72 @@ export class ProjectConfigDialogComponent {
     }
     this.createStageTaskTemplate.emit({ stageId, title });
     this.setStageTaskTemplateDraft(stageId, '');
+    this.addingTaskStageId.set(null);
+  }
+
+  openStageTaskTemplateCreator(stageId: string): void {
+    this.addingTaskStageId.set(stageId);
+    this.expandedStageIds.update((current) => ({
+      ...current,
+      [stageId]: true,
+    }));
+  }
+
+  closeStageTaskTemplateCreator(stageId: string): void {
+    this.setStageTaskTemplateDraft(stageId, '');
+    this.addingTaskStageId.set(null);
+  }
+
+  startStageTaskTemplateEdit(item: RdStageTaskTemplateEntity): void {
+    this.editingStageTaskTemplateId.set(item.id);
+    this.stageTaskTemplateEditDrafts.update((current) => ({
+      ...current,
+      [item.id]: {
+        title: item.title,
+        description: item.description ?? '',
+        sortOrder: item.sortOrder,
+      },
+    }));
+  }
+
+  cancelStageTaskTemplateEdit(): void {
+    this.editingStageTaskTemplateId.set(null);
+  }
+
+  stageTaskTemplateEditDraft(id: string): StageTaskTemplateEditDraft {
+    return this.stageTaskTemplateEditDrafts()[id] ?? { title: '', description: '', sortOrder: 0 };
+  }
+
+  setStageTaskTemplateEditTitle(id: string, title: string): void {
+    this.stageTaskTemplateEditDrafts.update((current) => ({
+      ...current,
+      [id]: { ...this.stageTaskTemplateEditDraft(id), title },
+    }));
+  }
+
+  setStageTaskTemplateEditDescription(id: string, description: string): void {
+    this.stageTaskTemplateEditDrafts.update((current) => ({
+      ...current,
+      [id]: { ...this.stageTaskTemplateEditDraft(id), description },
+    }));
+  }
+
+  setStageTaskTemplateEditSort(id: string, sortOrder: unknown): void {
+    this.stageTaskTemplateEditDrafts.update((current) => ({
+      ...current,
+      [id]: { ...this.stageTaskTemplateEditDraft(id), sortOrder: this.asNumber(sortOrder) },
+    }));
+  }
+
+  saveStageTaskTemplateEdit(item: RdStageTaskTemplateEntity): void {
+    const draft = this.stageTaskTemplateEditDraft(item.id);
+    this.saveStageTaskTemplate(item, draft.title, draft.description, draft.sortOrder);
+    this.editingStageTaskTemplateId.set(null);
+  }
+
+  templateDescriptionSummary(description: string | null): string {
+    const value = (description ?? '').trim();
+    return value || '无描述';
   }
 
   saveEnvironment(item: ProjectMetaItem, name: string, description: string, sort: number): void {

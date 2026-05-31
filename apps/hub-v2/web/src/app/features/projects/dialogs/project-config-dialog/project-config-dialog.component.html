@@ -149,107 +149,260 @@
       </nz-tab>
 
       <nz-tab nzTitle="阶段与任务模板">
-        <section class="section">
-          <div class="creator">
-            <input
-              nz-input
-              placeholder="新增阶段名称，如开发阶段"
-              [ngModel]="stageDraft()"
-              (ngModelChange)="stageDraft.set($event)"
-            />
-            @if (canManageConfig()) {
-              <button
-                nz-button
-                nzType="primary"
-                [disabled]="!stageDraft().trim() || busy()"
-                (click)="submitStageCreate()"
-              >
-                <nz-icon nzType="plus" nzTheme="outline" />新增
-              </button>
-            }
+        <section class="section phase-config">
+          <div class="phase-config__header">
+            <div>
+              <div class="phase-config__title">阶段任务模板</div>
+              <div class="phase-config__hint">按阶段维护推进和新建研发项时可选择的任务模板。</div>
+            </div>
+            <span class="phase-config__count">{{ sortedStages().length }} 个阶段</span>
           </div>
-          <div class="list">
-            @for (item of stages(); track item.id) {
-              <div class="stage-template-group">
-                <div class="row row--stage">
-                  <input #nameRef nz-input [ngModel]="item.name" />
-                  <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
-                  @if (canManageConfig()) {
-                    <nz-switch
-                      [ngModel]="item.enabled"
-                      [nzDisabled]="busy() || isStagePending(item.id)"
-                      (ngModelChange)="
-                        updateStage.emit({ id: item.id, patch: { enabled: !!$event } })
-                      "
-                    ></nz-switch>
-                    <button
-                      nz-button
-                      nzType="default"
-                      [disabled]="busy() || isStagePending(item.id)"
-                      [nzLoading]="isStagePending(item.id)"
-                      (click)="saveStage(item, nameRef.value, asNumber(sortRef.value))"
-                    >
-                      保存
-                    </button>
-                  }
+
+          <div class="phase-timeline">
+            @for (item of sortedStages(); track item.id) {
+              <div class="phase-timeline__item" [class.phase-timeline__item--last]="$last">
+                <div class="phase-timeline__line">
+                  <span class="phase-timeline__dot" [class.phase-timeline__dot--disabled]="!item.enabled"></span>
+                  <span class="phase-timeline__connector"></span>
                 </div>
 
-                <div class="template-manager">
-                  <div class="template-manager__head">
-                    <span>任务模板</span>
-                    <span>{{ stageTaskTemplatesByStage(item.id).length }} 项</span>
-                  </div>
-                  @if (canManageConfig()) {
-                    <div class="template-creator">
-                      <input
-                        nz-input
-                        placeholder="新增模板任务标题"
-                        [ngModel]="stageTaskTemplateDraft(item.id)"
-                        (ngModelChange)="setStageTaskTemplateDraft(item.id, $event)"
-                      />
-                      <button
-                        nz-button
-                        nzType="default"
-                        [disabled]="busy() || !stageTaskTemplateDraft(item.id).trim()"
-                        (click)="submitStageTaskTemplateCreate(item.id)"
-                      >
-                        <nz-icon nzType="plus" nzTheme="outline" />新增任务
-                      </button>
-                    </div>
-                  }
-                  <div class="template-list">
-                    @for (template of stageTaskTemplatesByStage(item.id); track template.id) {
-                      <div class="template-row">
-                        <input #titleRef nz-input [ngModel]="template.title" />
-                        <input #templateDescRef nz-input [ngModel]="template.description || ''" placeholder="描述" />
-                        <input #templateSortRef nz-input type="number" [ngModel]="template.sortOrder" min="0" />
-                        @if (canManageConfig()) {
-                          <nz-switch
-                            [ngModel]="template.enabled"
-                            [nzDisabled]="busy() || isStageTaskTemplatePending(template.id)"
-                            (ngModelChange)="
-                              updateStageTaskTemplate.emit({ id: template.id, patch: { enabled: !!$event } })
-                            "
-                          ></nz-switch>
+                <div
+                  class="phase-card"
+                  [class.phase-card--expanded]="isStageExpanded(item)"
+                  [class.phase-card--disabled]="!item.enabled"
+                >
+                  <div class="phase-card__header" role="button" tabindex="0" (click)="toggleStage(item)">
+                    <nz-icon class="phase-card__expand" [nzType]="isStageExpanded(item) ? 'down' : 'right'" nzTheme="outline" />
+
+                    @if (editingStageId() === item.id) {
+                      <div class="phase-card__editor" (click)="$event.stopPropagation()">
+                        <input
+                          nz-input
+                          placeholder="阶段名称"
+                          [ngModel]="stageEditDraft(item.id).name"
+                          (ngModelChange)="setStageEditName(item.id, $event)"
+                        />
+                        <input
+                          nz-input
+                          type="number"
+                          min="0"
+                          placeholder="排序"
+                          [ngModel]="stageEditDraft(item.id).sort"
+                          (ngModelChange)="setStageEditSort(item.id, $event)"
+                        />
+                        <button
+                          type="button"
+                          class="phase-action-btn phase-action-btn--primary"
+                          nz-tooltip
+                          nzTooltipTitle="保存阶段"
+                          [disabled]="busy() || isStagePending(item.id) || !stageEditDraft(item.id).name.trim()"
+                          (click)="saveStageEdit(item)"
+                        >
+                          <nz-icon nzType="check" nzTheme="outline" />
+                        </button>
+                        <button
+                          type="button"
+                          class="phase-action-btn"
+                          nz-tooltip
+                          nzTooltipTitle="取消"
+                          (click)="cancelStageEdit()"
+                        >
+                          <nz-icon nzType="close" nzTheme="outline" />
+                        </button>
+                      </div>
+                    } @else {
+                      <div class="phase-card__name">{{ item.name }}</div>
+                      <span class="phase-card__meta">排序 {{ item.sort }}</span>
+                      <span class="phase-card__count">{{ stageTaskTemplatesByStage(item.id).length }} 项任务</span>
+                    }
+
+                    @if (canManageConfig()) {
+                      <div class="phase-card__actions" (click)="$event.stopPropagation()">
+                        <nz-switch
+                          [ngModel]="item.enabled"
+                          [nzDisabled]="busy() || isStagePending(item.id)"
+                          (ngModelChange)="updateStage.emit({ id: item.id, patch: { enabled: !!$event } })"
+                        ></nz-switch>
+                        @if (editingStageId() !== item.id) {
                           <button
-                            nz-button
-                            nzType="default"
-                            [disabled]="busy() || isStageTaskTemplatePending(template.id)"
-                            [nzLoading]="isStageTaskTemplatePending(template.id)"
-                            (click)="saveStageTaskTemplate(template, titleRef.value, templateDescRef.value, asNumber(templateSortRef.value))"
+                            type="button"
+                            class="phase-action-btn"
+                            nz-tooltip
+                            nzTooltipTitle="编辑阶段"
+                            [disabled]="busy() || isStagePending(item.id)"
+                            (click)="startStageEdit(item)"
                           >
-                            保存
+                            <nz-icon nzType="edit" nzTheme="outline" />
                           </button>
                         }
                       </div>
-                    } @empty {
-                      <div class="empty empty--compact">该阶段暂无任务模板</div>
                     }
                   </div>
+
+                  @if (isStageExpanded(item)) {
+                    <div class="phase-task-list">
+                      @for (template of stageTaskTemplatesByStage(item.id); track template.id) {
+                        <div class="phase-task-row" [class.phase-task-row--disabled]="!template.enabled">
+                          <span class="phase-task-row__dot"></span>
+                          @if (editingStageTaskTemplateId() === template.id) {
+                            <div class="phase-task-row__editor">
+                              <input
+                                nz-input
+                                placeholder="任务标题"
+                                [ngModel]="stageTaskTemplateEditDraft(template.id).title"
+                                (ngModelChange)="setStageTaskTemplateEditTitle(template.id, $event)"
+                              />
+                              <input
+                                nz-input
+                                placeholder="描述"
+                                [ngModel]="stageTaskTemplateEditDraft(template.id).description"
+                                (ngModelChange)="setStageTaskTemplateEditDescription(template.id, $event)"
+                              />
+                              <input
+                                nz-input
+                                type="number"
+                                min="0"
+                                placeholder="排序"
+                                [ngModel]="stageTaskTemplateEditDraft(template.id).sortOrder"
+                                (ngModelChange)="setStageTaskTemplateEditSort(template.id, $event)"
+                              />
+                            </div>
+                            <div class="phase-task-row__actions">
+                              <button
+                                type="button"
+                                class="phase-action-btn phase-action-btn--primary"
+                                nz-tooltip
+                                nzTooltipTitle="保存任务"
+                                [disabled]="busy() || isStageTaskTemplatePending(template.id) || !stageTaskTemplateEditDraft(template.id).title.trim()"
+                                (click)="saveStageTaskTemplateEdit(template)"
+                              >
+                                <nz-icon nzType="check" nzTheme="outline" />
+                              </button>
+                              <button
+                                type="button"
+                                class="phase-action-btn"
+                                nz-tooltip
+                                nzTooltipTitle="取消"
+                                (click)="cancelStageTaskTemplateEdit()"
+                              >
+                                <nz-icon nzType="close" nzTheme="outline" />
+                              </button>
+                            </div>
+                          } @else {
+                            <div class="phase-task-row__main">
+                              <div class="phase-task-row__title">{{ template.title }}</div>
+                              <div class="phase-task-row__description">{{ templateDescriptionSummary(template.description) }}</div>
+                            </div>
+                            <span class="phase-task-row__sort">排序 {{ template.sortOrder }}</span>
+                            @if (canManageConfig()) {
+                              <div class="phase-task-row__actions">
+                                <nz-switch
+                                  [ngModel]="template.enabled"
+                                  [nzDisabled]="busy() || isStageTaskTemplatePending(template.id)"
+                                  (ngModelChange)="updateStageTaskTemplate.emit({ id: template.id, patch: { enabled: !!$event } })"
+                                ></nz-switch>
+                                <button
+                                  type="button"
+                                  class="phase-action-btn"
+                                  nz-tooltip
+                                  nzTooltipTitle="编辑任务"
+                                  [disabled]="busy() || isStageTaskTemplatePending(template.id)"
+                                  (click)="startStageTaskTemplateEdit(template)"
+                                >
+                                  <nz-icon nzType="edit" nzTheme="outline" />
+                                </button>
+                              </div>
+                            }
+                          }
+                        </div>
+                      } @empty {
+                        <div class="phase-task-empty">该阶段暂无任务模板</div>
+                      }
+
+                      @if (canManageConfig()) {
+                        @if (addingTaskStageId() === item.id) {
+                          <div class="phase-task-create">
+                            <input
+                              nz-input
+                              placeholder="新增模板任务标题"
+                              [ngModel]="stageTaskTemplateDraft(item.id)"
+                              (ngModelChange)="setStageTaskTemplateDraft(item.id, $event)"
+                            />
+                            <button
+                              type="button"
+                              class="phase-action-btn phase-action-btn--primary"
+                              nz-tooltip
+                              nzTooltipTitle="新增任务"
+                              [disabled]="busy() || !stageTaskTemplateDraft(item.id).trim()"
+                              (click)="submitStageTaskTemplateCreate(item.id)"
+                            >
+                              <nz-icon nzType="check" nzTheme="outline" />
+                            </button>
+                            <button
+                              type="button"
+                              class="phase-action-btn"
+                              nz-tooltip
+                              nzTooltipTitle="取消"
+                              (click)="closeStageTaskTemplateCreator(item.id)"
+                            >
+                              <nz-icon nzType="close" nzTheme="outline" />
+                            </button>
+                          </div>
+                        } @else {
+                          <button
+                            type="button"
+                            class="phase-task-add"
+                            [disabled]="busy()"
+                            (click)="openStageTaskTemplateCreator(item.id)"
+                          >
+                            <nz-icon nzType="plus" nzTheme="outline" />
+                            添加任务
+                          </button>
+                        }
+                      }
+                    </div>
+                  }
                 </div>
               </div>
             } @empty {
               <div class="empty">暂无研发阶段配置</div>
+            }
+
+            @if (canManageConfig()) {
+              @if (addingStage()) {
+                <div class="phase-create">
+                  <input
+                    nz-input
+                    placeholder="新增阶段名称，如开发阶段"
+                    [ngModel]="stageDraft()"
+                    (ngModelChange)="stageDraft.set($event)"
+                  />
+                  <button
+                    type="button"
+                    class="phase-action-btn phase-action-btn--primary"
+                    nz-tooltip
+                    nzTooltipTitle="新增阶段"
+                    [disabled]="!stageDraft().trim() || busy()"
+                    (click)="submitStageCreate()"
+                  >
+                    <nz-icon nzType="check" nzTheme="outline" />
+                  </button>
+                  <button
+                    type="button"
+                    class="phase-action-btn"
+                    nz-tooltip
+                    nzTooltipTitle="取消"
+                    (click)="closeStageCreator()"
+                  >
+                    <nz-icon nzType="close" nzTheme="outline" />
+                  </button>
+                </div>
+              } @else {
+                <button type="button" class="phase-add" [disabled]="busy()" (click)="openStageCreator()">
+                  <nz-icon nzType="plus" nzTheme="outline" />
+                  添加新阶段
+                </button>
+              }
             }
           </div>
         </section>
