@@ -156,18 +156,27 @@
 }
 
 .phase-card:hover .phase-card__actions,
-.phase-card--expanded .phase-card__actions,
 .phase-card__editor + .phase-card__actions {
     opacity: 1;
 }
 
 .phase-card__editor {
     display: grid;
-    grid-template-columns: minmax(160px, 1fr) 82px 28px 28px;
+    grid-template-columns: minmax(160px, 1fr) 82px 104px 28px 28px;
     gap: 8px;
     align-items: center;
     flex: 1;
     min-width: 0;
+}
+
+.phase-switch-field {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+    white-space: nowrap;
 }
 
 .phase-action-btn {
@@ -220,6 +229,16 @@
     background: var(--bg-subtle);
 }
 
+.phase-task-row__actions {
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.phase-task-row:hover .phase-task-row__actions,
+.phase-task-row--editing .phase-task-row__actions {
+    opacity: 1;
+}
+
 .phase-task-row--disabled {
     opacity: 0.56;
 }
@@ -259,7 +278,7 @@
 .phase-task-row__editor {
     display: grid;
     grid-column: span 2;
-    grid-template-columns: minmax(130px, 1fr) minmax(160px, 1.2fr) 74px;
+    grid-template-columns: minmax(130px, 1fr) minmax(160px, 1.2fr) 74px 104px;
     gap: 8px;
     min-width: 0;
 }

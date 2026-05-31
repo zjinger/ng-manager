@@ -1,62 +1,144 @@
-<section class="section">
-  <div class="creator">
-    <input
-      nz-input
-      placeholder="新增环境名称，如19号机测试环境"
-      [ngModel]="environmentDraft()"
-      (ngModelChange)="environmentDraft.set($event)"
-    />
-    <button
-      nz-button
-      nzType="primary"
-      [disabled]="!environmentDraft().trim() || busy()"
-      (click)="submitEnvironmentCreate()"
-    >
-      <nz-icon nzType="plus" nzTheme="outline" />新增
-    </button>
+<section class="section config-list-tab">
+  <div class="config-list-tab__header">
+    <div>
+      <div class="config-list-tab__title">环境配置</div>
+      <div class="config-list-tab__hint">维护测试、预发、生产等项目环境。</div>
+    </div>
+    <span class="config-list-tab__count">{{ environments().length }} 个环境</span>
   </div>
-  <div class="list">
+
+  <div class="config-card-list">
     @for (item of environments(); track item.id) {
-      <div class="row">
-        <input #nameRef nz-input [ngModel]="item.name" />
-        <input
-          #descRef
-          nz-input
-          [ngModel]="item.description || ''"
-          placeholder="描述"
-        />
-        <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
-        @if (canManageConfig()) {
-          <nz-switch
-            [ngModel]="item.enabled"
-            [nzDisabled]="busy() || isEnvironmentPending(item.id)"
-            (ngModelChange)="updateEnvironment.emit({ id: item.id, patch: { enabled: !!$event } })"
-          ></nz-switch>
-          <button
-            nz-button
-            nzType="default"
-            [disabled]="busy() || isEnvironmentPending(item.id)"
-            [nzLoading]="isEnvironmentPending(item.id)"
-            (click)="saveEnvironment(item, nameRef.value, descRef.value, asNumber(sortRef.value))"
-          >
-            保存
-          </button>
-          <button
-            nz-button
-            nzType="default"
-            nzDanger
-            [disabled]="busy() || isEnvironmentPending(item.id)"
-            [nzLoading]="isEnvironmentPending(item.id)"
-            nz-popconfirm
-            nzPopconfirmTitle="确认删除该环境？"
-            (nzOnConfirm)="removeEnvironment.emit(item.id)"
-          >
-            删除
-          </button>
+      <div
+        class="config-card-row"
+        [class.config-card-row--disabled]="!item.enabled"
+        [class.config-card-row--editing]="editingEnvironmentId() === item.id"
+      >
+        @if (editingEnvironmentId() === item.id) {
+          <div class="config-card-row__editor">
+            <input
+              nz-input
+              placeholder="环境名称"
+              [ngModel]="environmentEditDraft(item.id).name"
+              (ngModelChange)="setEnvironmentEditName(item.id, $event)"
+            />
+            <input
+              nz-input
+              placeholder="描述"
+              [ngModel]="environmentEditDraft(item.id).description"
+              (ngModelChange)="setEnvironmentEditDescription(item.id, $event)"
+            />
+            <input
+              nz-input
+              type="number"
+              min="0"
+              placeholder="排序"
+              [ngModel]="environmentEditDraft(item.id).sort"
+              (ngModelChange)="setEnvironmentEditSort(item.id, $event)"
+            />
+            <label class="config-switch-field">
+              <span>{{ environmentEditDraft(item.id).enabled ? '启用' : '停用' }}</span>
+              <nz-switch
+                [ngModel]="environmentEditDraft(item.id).enabled"
+                [nzDisabled]="busy() || isEnvironmentPending(item.id)"
+                (ngModelChange)="setEnvironmentEditEnabled(item.id, !!$event)"
+              ></nz-switch>
+            </label>
+          </div>
+          <div class="config-card-row__actions">
+            <button
+              type="button"
+              class="config-action-btn config-action-btn--primary"
+              nz-tooltip
+              nzTooltipTitle="保存"
+              [disabled]="busy() || isEnvironmentPending(item.id) || !environmentEditDraft(item.id).name.trim()"
+              (click)="saveEnvironmentEdit(item)"
+            >
+              <nz-icon nzType="check" nzTheme="outline" />
+            </button>
+            <button
+              type="button"
+              class="config-action-btn"
+              nz-tooltip
+              nzTooltipTitle="取消"
+              (click)="cancelEnvironmentEdit()"
+            >
+              <nz-icon nzType="close" nzTheme="outline" />
+            </button>
+            <button
+              type="button"
+              class="config-action-btn config-action-btn--danger"
+              nz-tooltip
+              nzTooltipTitle="删除"
+              [disabled]="busy() || isEnvironmentPending(item.id)"
+              nz-popconfirm
+              nzPopconfirmTitle="确认删除该环境？"
+              (nzOnConfirm)="removeEnvironment.emit(item.id)"
+            >
+              <nz-icon nzType="delete" nzTheme="outline" />
+            </button>
+          </div>
+        } @else {
+          <div class="config-card-row__main">
+            <div class="config-card-row__title">{{ item.name }}</div>
+            <div class="config-card-row__description">{{ descriptionSummary(item.description) }}</div>
+          </div>
+          <span class="config-card-row__sort">排序 {{ item.sort }}</span>
+          @if (canManageConfig()) {
+            <div class="config-card-row__actions">
+              <button
+                type="button"
+                class="config-action-btn"
+                nz-tooltip
+                nzTooltipTitle="编辑环境"
+                [disabled]="busy() || isEnvironmentPending(item.id)"
+                (click)="startEnvironmentEdit(item)"
+              >
+                <nz-icon nzType="edit" nzTheme="outline" />
+              </button>
+            </div>
+          }
         }
       </div>
     } @empty {
       <div class="empty">暂无环境配置</div>
+    }
+
+    @if (canManageConfig()) {
+      @if (addingEnvironment()) {
+        <div class="config-create">
+          <input
+            nz-input
+            placeholder="新增环境名称，如19号机测试环境"
+            [ngModel]="environmentDraft()"
+            (ngModelChange)="environmentDraft.set($event)"
+          />
+          <button
+            type="button"
+            class="config-action-btn config-action-btn--primary"
+            nz-tooltip
+            nzTooltipTitle="新增环境"
+            [disabled]="!environmentDraft().trim() || busy()"
+            (click)="submitEnvironmentCreate()"
+          >
+            <nz-icon nzType="check" nzTheme="outline" />
+          </button>
+          <button
+            type="button"
+            class="config-action-btn"
+            nz-tooltip
+            nzTooltipTitle="取消"
+            (click)="closeEnvironmentCreator()"
+          >
+            <nz-icon nzType="close" nzTheme="outline" />
+          </button>
+        </div>
+      } @else {
+        <button type="button" class="config-add" [disabled]="busy()" (click)="openEnvironmentCreator()">
+          <nz-icon nzType="plus" nzTheme="outline" />
+          添加新环境
+        </button>
+      }
     }
   </div>
 </section>

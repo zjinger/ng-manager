@@ -18,12 +18,14 @@ import type { ProjectSummary } from '../../../models/project.model';
 interface StageEditDraft {
   name: string;
   sort: number;
+  enabled: boolean;
 }
 
 interface StageTaskTemplateEditDraft {
   title: string;
   description: string;
   sortOrder: number;
+  enabled: boolean;
 }
 
 @Component({
@@ -129,7 +131,7 @@ export class ProjectConfigRdStagesTabComponent {
     this.editingStageId.set(item.id);
     this.stageEditDrafts.update((current) => ({
       ...current,
-      [item.id]: { name: item.name, sort: item.sort },
+      [item.id]: { name: item.name, sort: item.sort, enabled: item.enabled },
     }));
   }
 
@@ -138,7 +140,7 @@ export class ProjectConfigRdStagesTabComponent {
   }
 
   stageEditDraft(id: string): StageEditDraft {
-    return this.stageEditDrafts()[id] ?? { name: '', sort: 0 };
+    return this.stageEditDrafts()[id] ?? { name: '', sort: 0, enabled: true };
   }
 
   setStageEditName(id: string, name: string): void {
@@ -155,9 +157,16 @@ export class ProjectConfigRdStagesTabComponent {
     }));
   }
 
+  setStageEditEnabled(id: string, enabled: boolean): void {
+    this.stageEditDrafts.update((current) => ({
+      ...current,
+      [id]: { ...this.stageEditDraft(id), enabled },
+    }));
+  }
+
   saveStageEdit(item: RdStageEntity): void {
     const draft = this.stageEditDraft(item.id);
-    this.saveStage(item, draft.name, draft.sort);
+    this.saveStage(item, draft.name, draft.sort, draft.enabled);
     this.editingStageId.set(null);
   }
 
@@ -209,6 +218,7 @@ export class ProjectConfigRdStagesTabComponent {
         title: item.title,
         description: item.description ?? '',
         sortOrder: item.sortOrder,
+        enabled: item.enabled,
       },
     }));
   }
@@ -218,7 +228,7 @@ export class ProjectConfigRdStagesTabComponent {
   }
 
   stageTaskTemplateEditDraft(id: string): StageTaskTemplateEditDraft {
-    return this.stageTaskTemplateEditDrafts()[id] ?? { title: '', description: '', sortOrder: 0 };
+    return this.stageTaskTemplateEditDrafts()[id] ?? { title: '', description: '', sortOrder: 0, enabled: true };
   }
 
   setStageTaskTemplateEditTitle(id: string, title: string): void {
@@ -242,9 +252,16 @@ export class ProjectConfigRdStagesTabComponent {
     }));
   }
 
+  setStageTaskTemplateEditEnabled(id: string, enabled: boolean): void {
+    this.stageTaskTemplateEditDrafts.update((current) => ({
+      ...current,
+      [id]: { ...this.stageTaskTemplateEditDraft(id), enabled },
+    }));
+  }
+
   saveStageTaskTemplateEdit(item: RdStageTaskTemplateEntity): void {
     const draft = this.stageTaskTemplateEditDraft(item.id);
-    this.saveStageTaskTemplate(item, draft.title, draft.description, draft.sortOrder);
+    this.saveStageTaskTemplate(item, draft.title, draft.description, draft.sortOrder, draft.enabled);
     this.editingStageTaskTemplateId.set(null);
   }
 
@@ -253,20 +270,28 @@ export class ProjectConfigRdStagesTabComponent {
     return value || '无描述';
   }
 
-  saveStage(item: RdStageEntity, name: string, sort: number): void {
+  saveStage(item: RdStageEntity, name: string, sort: number, enabled: boolean): void {
     const patch: UpdateRdStageInput = {};
     if (name.trim() !== item.name) patch.name = name.trim();
     if (sort !== item.sort) patch.sort = sort;
+    if (enabled !== item.enabled) patch.enabled = enabled;
     if (Object.keys(patch).length > 0) {
       this.updateStage.emit({ id: item.id, patch });
     }
   }
 
-  saveStageTaskTemplate(item: RdStageTaskTemplateEntity, title: string, description: string, sortOrder: number): void {
+  saveStageTaskTemplate(
+    item: RdStageTaskTemplateEntity,
+    title: string,
+    description: string,
+    sortOrder: number,
+    enabled: boolean,
+  ): void {
     const patch: UpdateRdStageTaskTemplateInput = {};
     if (title.trim() !== item.title) patch.title = title.trim();
     if ((description.trim() || null) !== item.description) patch.description = description.trim() || null;
     if (sortOrder !== item.sortOrder) patch.sortOrder = sortOrder;
+    if (enabled !== item.enabled) patch.enabled = enabled;
     if (Object.keys(patch).length > 0) {
       this.updateStageTaskTemplate.emit({ id: item.id, patch });
     }

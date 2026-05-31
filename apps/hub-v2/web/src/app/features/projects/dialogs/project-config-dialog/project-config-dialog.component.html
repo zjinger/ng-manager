@@ -7,7 +7,7 @@
   (cancel)="cancel.emit()"
 >
   <div dialog-body class="config-dialog">
-    <nz-tabs nzSize="small" [nzDestroyInactiveTabPane]="false">
+    <nz-tabs nzSize="small" [nzDestroyInactiveTabPane]="true">
       <nz-tab nzTitle="环境">
         <app-project-config-environments-tab
           [busy]="busy()"

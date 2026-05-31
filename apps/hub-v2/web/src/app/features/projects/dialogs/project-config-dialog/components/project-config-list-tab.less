@@ -3,26 +3,204 @@
     gap: 14px;
 }
 
-.creator {
+.config-list-tab {
+    gap: 0;
+}
+
+.config-list-tab__header {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0 14px;
+    border-bottom: 1px solid var(--border-color-soft);
+}
+
+.config-list-tab__title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.config-list-tab__hint {
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.config-list-tab__count {
+    flex-shrink: 0;
+    border-radius: 999px;
+    padding: 2px 8px;
+    background: var(--bg-subtle);
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.config-card-list {
+    display: grid;
     gap: 10px;
-    flex-wrap: wrap;
+    padding-top: 14px;
 }
 
-.creator input {
-    flex: 1 1 220px;
-}
-
-.list {
+.config-card-row {
     display: grid;
-    gap: 8px;
-}
-
-.row {
-    display: grid;
-    grid-template-columns: minmax(200px, 1.4fr) minmax(200px, 1.2fr) 88px 72px auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 10px;
     align-items: center;
+    min-height: 54px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color-soft);
+    border-radius: 8px;
+    background: var(--surface-overlay);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, background 0.18s ease;
+}
+
+.config-card-row:hover,
+.config-card-row--editing {
+    border-color: color-mix(in srgb, var(--primary-300) 72%, var(--border-color-soft));
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.config-card-row--disabled {
+    opacity: 0.62;
+}
+
+.config-card-row__main {
+    min-width: 0;
+}
+
+.config-card-row__title {
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.config-card-row__description {
+    overflow: hidden;
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.config-card-row__sort {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.config-card-row__actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.config-card-row:hover .config-card-row__actions,
+.config-card-row--editing .config-card-row__actions {
+    opacity: 1;
+}
+
+.config-card-row__editor {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.2fr) 82px 104px;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+}
+
+.config-switch-field {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.config-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+}
+
+.config-action-btn:hover:not(:disabled) {
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+}
+
+.config-action-btn--primary {
+    color: var(--primary-600);
+}
+
+.config-action-btn--danger {
+    color: var(--danger);
+}
+
+.config-action-btn--danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: var(--danger);
+}
+
+.config-action-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.config-create {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) 28px 28px;
+    align-items: center;
+    gap: 8px;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.config-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 10px 14px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.config-add:hover:not(:disabled) {
+    border-color: var(--primary-400);
+    background: color-mix(in srgb, var(--primary-100) 38%, transparent);
+    color: var(--primary-600);
+}
+
+.config-add:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
 }
 
 .empty {
@@ -31,7 +209,9 @@
 }
 
 @media (max-width: 1200px) {
-    .row {
+    .config-card-row,
+    .config-card-row__editor,
+    .config-create {
         grid-template-columns: 1fr 1fr;
     }
 }

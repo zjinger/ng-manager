@@ -39,6 +39,14 @@
                   [ngModel]="stageEditDraft(item.id).sort"
                   (ngModelChange)="setStageEditSort(item.id, $event)"
                 />
+                <label class="phase-switch-field">
+                  <span>{{ stageEditDraft(item.id).enabled ? '启用' : '停用' }}</span>
+                  <nz-switch
+                    [ngModel]="stageEditDraft(item.id).enabled"
+                    [nzDisabled]="busy() || isStagePending(item.id)"
+                    (ngModelChange)="setStageEditEnabled(item.id, !!$event)"
+                  ></nz-switch>
+                </label>
                 <button
                   type="button"
                   class="phase-action-btn phase-action-btn--primary"
@@ -67,11 +75,6 @@
 
             @if (canManageConfig()) {
               <div class="phase-card__actions" (click)="$event.stopPropagation()">
-                <nz-switch
-                  [ngModel]="item.enabled"
-                  [nzDisabled]="busy() || isStagePending(item.id)"
-                  (ngModelChange)="updateStage.emit({ id: item.id, patch: { enabled: !!$event } })"
-                ></nz-switch>
                 @if (editingStageId() !== item.id) {
                   <button
                     type="button"
@@ -91,7 +94,11 @@
           @if (isStageExpanded(item)) {
             <div class="phase-task-list">
               @for (template of stageTaskTemplatesByStage(item.id); track template.id) {
-                <div class="phase-task-row" [class.phase-task-row--disabled]="!template.enabled">
+                <div
+                  class="phase-task-row"
+                  [class.phase-task-row--disabled]="!template.enabled"
+                  [class.phase-task-row--editing]="editingStageTaskTemplateId() === template.id"
+                >
                   <span class="phase-task-row__dot"></span>
                   @if (editingStageTaskTemplateId() === template.id) {
                     <div class="phase-task-row__editor">
@@ -115,6 +122,14 @@
                         [ngModel]="stageTaskTemplateEditDraft(template.id).sortOrder"
                         (ngModelChange)="setStageTaskTemplateEditSort(template.id, $event)"
                       />
+                      <label class="phase-switch-field">
+                        <span>{{ stageTaskTemplateEditDraft(template.id).enabled ? '启用' : '停用' }}</span>
+                        <nz-switch
+                          [ngModel]="stageTaskTemplateEditDraft(template.id).enabled"
+                          [nzDisabled]="busy() || isStageTaskTemplatePending(template.id)"
+                          (ngModelChange)="setStageTaskTemplateEditEnabled(template.id, !!$event)"
+                        ></nz-switch>
+                      </label>
                     </div>
                     <div class="phase-task-row__actions">
                       <button
@@ -145,11 +160,6 @@
                     <span class="phase-task-row__sort">排序 {{ template.sortOrder }}</span>
                     @if (canManageConfig()) {
                       <div class="phase-task-row__actions">
-                        <nz-switch
-                          [ngModel]="template.enabled"
-                          [nzDisabled]="busy() || isStageTaskTemplatePending(template.id)"
-                          (ngModelChange)="updateStageTaskTemplate.emit({ id: template.id, patch: { enabled: !!$event } })"
-                        ></nz-switch>
                         <button
                           type="button"
                           class="phase-action-btn"
