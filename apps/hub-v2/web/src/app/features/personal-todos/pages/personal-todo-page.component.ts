@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
@@ -7,14 +8,19 @@ import { NzModalService } from 'ng-zorro-antd/modal';
 import { PageHeaderComponent } from '@shared/ui';
 import { TodoBoardComponent } from '../components/todo-board.component';
 import { TodoListComponent } from '../components/todo-list.component';
+import { TodoRecycleListComponent } from '../components/todo-recycle-list.component';
+import { TodoSidebarComponent } from '../components/todo-sidebar.component';
 import { TodoStatsComponent } from '../components/todo-stats.component';
 import { TodoToolbarComponent } from '../components/todo-toolbar.component';
 import { TodoDialogComponent } from '../dialogs/todo-dialog.component';
+import { TodoFolderManagerComponent } from '../dialogs/todo-folder-manager.component';
 import { TodoTagManagerComponent } from '../dialogs/todo-tag-manager.component';
 import {
   TODO_STATUS_LABELS,
   type Todo,
   type TodoDraft,
+  type TodoFolderDraft,
+  type TodoFolderEntity,
   type TodoStatus,
   type TodoTagDraft,
   type TodoTagEntity,
@@ -25,66 +31,133 @@ import { TodoStore } from '../stores/todo.store';
   selector: 'app-personal-todo-page',
   imports: [
     PageHeaderComponent,
+    NzButtonModule,
     NzIconModule,
     TodoStatsComponent,
     TodoToolbarComponent,
+    TodoSidebarComponent,
     TodoListComponent,
     TodoBoardComponent,
+    TodoRecycleListComponent,
     TodoDialogComponent,
+    TodoFolderManagerComponent,
     TodoTagManagerComponent,
   ],
   template: `
     <app-page-header title="个人待办" subtitle="管理日常待办、截止日期和个人事项。" />
 
     @if (store.loadError()) {
-      <div class="todo-warning" [class.todo-warning--cache]="store.cacheFallback()">
+      <div class="todo-warning">
         <span nz-icon nzType="warning"></span>
         {{ store.loadError() }}
       </div>
     }
 
-    <app-todo-stats [stats]="store.stats()" />
+    <section class="todo-page">
+      <app-todo-stats [stats]="store.stats()" />
 
-    <app-todo-toolbar
-      [statusFilter]="store.statusFilter()"
-      [priorityFilter]="store.priorityFilter()"
-      [tagFilter]="store.tagFilter()"
-      [keyword]="store.keyword()"
-      [viewMode]="store.viewMode()"
-      [tags]="store.tags()"
-      (create)="openCreateDialog()"
-      (manageTags)="openTagManager()"
-      (statusFilterChange)="store.setStatusFilter($event)"
-      (priorityFilterChange)="store.setPriorityFilter($event)"
-      (tagFilterChange)="store.setTagFilter($event)"
-      (keywordChange)="store.setKeyword($event)"
-      (viewModeChange)="store.setViewMode($event)"
-    />
+      <app-todo-toolbar
+        [statusFilter]="store.statusFilter()"
+        [priorityFilter]="store.priorityFilter()"
+        [tagFilter]="store.tagFilter()"
+        [keyword]="store.keyword()"
+        [viewMode]="store.viewMode()"
+        [groupBy]="store.groupBy()"
+        [showPrimaryActions]="store.scope() !== 'recycle'"
+        [tags]="store.tags()"
+        (create)="openCreateDialog()"
+        (manageTags)="openTagManager()"
+        (manageFolders)="openFolderManager()"
+        (statusFilterChange)="store.setStatusFilter($event)"
+        (priorityFilterChange)="store.setPriorityFilter($event)"
+        (tagFilterChange)="store.setTagFilter($event)"
+        (keywordChange)="store.setKeyword($event)"
+        (viewModeChange)="store.setViewMode($event)"
+        (groupByChange)="store.setGroupBy($event)"
+      />
 
-    @if (store.viewMode() === 'list') {
-      <app-todo-list
-        [todos]="store.filteredTodos()"
-        [tags]="store.tags()"
-        [hasCompleted]="store.completedCount() > 0"
-        (clearCompleted)="confirmClearCompleted()"
-        (edit)="openEditDialog($event)"
-        (delete)="confirmDelete($event)"
-        (toggleDone)="toggleDone($event)"
-      />
-    } @else {
-      <app-todo-board
-        [columns]="store.boardColumns()"
-        [tags]="store.tags()"
-        (statusChange)="moveTodo($event.id, $event.status)"
-        (edit)="openEditDialog($event)"
-        (delete)="confirmDelete($event)"
-      />
-    }
+      <div class="todo-layout">
+        <app-todo-sidebar
+          [scope]="store.scope()"
+          [selectedFolderId]="store.selectedFolderId()"
+          [folders]="store.folders()"
+          [folderCounts]="store.folderCounts()"
+          [totalCount]="store.activeTotalCount()"
+          [unfiledCount]="store.unfiledCount()"
+          [recycleCount]="store.recycleCount()"
+          (selectAll)="store.showAll()"
+          (selectFolder)="store.showFolder($event)"
+          (selectRecycle)="store.showRecycle()"
+          (manageFolders)="openFolderManager()"
+        />
+
+        <main class="todo-main">
+        @if (store.scope() === 'recycle') {
+          <app-todo-recycle-list
+            [todos]="store.filteredTodos()"
+            [folders]="store.folders()"
+            [folderById]="store.folderById()"
+            [total]="store.total()"
+            [loadingMore]="store.loadingMore()"
+            [hasMore]="store.hasMore()"
+            (restore)="restoreTodo($event)"
+            (permanentlyDelete)="confirmPermanentDelete($event)"
+            (emptyRecycle)="confirmEmptyRecycle()"
+            (loadMore)="store.loadMore()"
+          />
+        } @else if (store.viewMode() === 'list') {
+          <app-todo-list
+            [title]="store.currentScopeTitle()"
+            [nodes]="store.todoListNodes()"
+            [tags]="store.tags()"
+            [folders]="store.folders()"
+            [tagById]="store.tagById()"
+            [folderById]="store.folderById()"
+            [hasCompleted]="store.completedCount() > 0"
+            [total]="store.total()"
+            [loadingMore]="store.loadingMore()"
+            [hasMore]="store.hasMore()"
+            (clearCompleted)="confirmClearCompleted()"
+            (edit)="openEditDialog($event)"
+            (delete)="confirmDelete($event)"
+            (toggleDone)="toggleDone($event)"
+            (loadMore)="store.loadMore()"
+          />
+        } @else {
+          <div class="todo-board-shell" (scroll)="onBoardScroll($event)">
+            <div class="todo-board-note">
+              当前看板已加载 {{ store.loadedCount() }} 条待办，共 {{ store.total() }} 条；极大量数据建议使用列表视图。
+            </div>
+            <app-todo-board
+              [columns]="store.boardColumns()"
+              [tags]="store.tags()"
+              [folders]="store.folders()"
+              [tagById]="store.tagById()"
+              [folderById]="store.folderById()"
+              (statusChange)="moveTodo($event.id, $event.status)"
+              (edit)="openEditDialog($event)"
+              (delete)="confirmDelete($event)"
+            />
+            <div class="todo-board-load-more">
+              @if (store.loadingMore()) {
+                <span>正在加载...</span>
+              } @else if (store.hasMore()) {
+                <button nz-button nzType="link" (click)="store.loadMore()">加载更多</button>
+              } @else {
+                <span>已加载全部 {{ store.total() }} 条待办</span>
+              }
+            </div>
+          </div>
+        }
+        </main>
+      </div>
+    </section>
 
     <app-todo-dialog
       [visible]="dialogOpen()"
       [todo]="editingTodo()"
       [tags]="store.tags()"
+      [folders]="store.folders()"
       (save)="saveTodo($event)"
       (cancel)="closeDialog()"
     />
@@ -98,11 +171,64 @@ import { TodoStore } from '../stores/todo.store';
       (deleteTag)="confirmDeleteTag($event)"
       (cancel)="closeTagManager()"
     />
+
+    <app-todo-folder-manager
+      [visible]="folderManagerOpen()"
+      [folders]="store.folders()"
+      [resetToken]="folderFormResetToken()"
+      (createFolder)="createFolder($event)"
+      (updateFolder)="updateFolder($event.id, $event.draft)"
+      (deleteFolder)="confirmDeleteFolder($event)"
+      (cancel)="closeFolderManager()"
+    />
   `,
   styles: [
     `
       :host {
         display: block;
+      }
+
+      .todo-page {
+        display: grid;
+        gap: 16px;
+      }
+
+      .todo-layout {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+
+      .todo-main {
+        display: grid;
+        gap: 16px;
+        min-width: 0;
+      }
+
+      .todo-board-shell {
+        display: grid;
+        gap: 12px;
+        max-height: min(760px, calc(100vh - 300px));
+        overflow: auto;
+      }
+
+      .todo-board-note {
+        padding: 8px 12px;
+        border: 1px solid var(--border-color-soft);
+        border-radius: var(--border-radius-sm);
+        background: var(--bg-subtle);
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+
+      .todo-board-load-more {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 52px;
+        color: var(--text-muted);
+        font-size: 12px;
       }
 
       .todo-warning {
@@ -121,6 +247,12 @@ import { TodoStore } from '../stores/todo.store';
       .todo-warning span[nz-icon] {
         color: var(--color-warning);
       }
+
+      @media (max-width: 900px) {
+        .todo-layout {
+          grid-template-columns: 1fr;
+        }
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -135,6 +267,8 @@ export class PersonalTodoPageComponent {
   readonly editingTodo = signal<Todo | null>(null);
   readonly tagManagerOpen = signal(false);
   readonly tagFormResetToken = signal(0);
+  readonly folderManagerOpen = signal(false);
+  readonly folderFormResetToken = signal(0);
 
   openCreateDialog(): void {
     this.editingTodo.set(null);
@@ -157,6 +291,14 @@ export class PersonalTodoPageComponent {
 
   closeTagManager(): void {
     this.tagManagerOpen.set(false);
+  }
+
+  openFolderManager(): void {
+    this.folderManagerOpen.set(true);
+  }
+
+  closeFolderManager(): void {
+    this.folderManagerOpen.set(false);
   }
 
   saveTodo(draft: TodoDraft): void {
@@ -209,7 +351,7 @@ export class PersonalTodoPageComponent {
   confirmDelete(todo: Todo): void {
     this.modal.confirm({
       nzTitle: '删除待办',
-      nzContent: `确定删除「${todo.title}」吗？此操作不可恢复。`,
+      nzContent: `确定删除「${todo.title}」吗？删除后可在回收站恢复。`,
       nzOkText: '删除',
       nzOkDanger: true,
       nzCancelText: '取消',
@@ -218,7 +360,7 @@ export class PersonalTodoPageComponent {
           .delete(todo.id)
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
-            next: () => this.message.info('待办已删除'),
+            next: () => this.message.info('待办已移入回收站'),
             error: () => this.message.error('待办删除失败'),
           });
       },
@@ -232,7 +374,7 @@ export class PersonalTodoPageComponent {
 
     this.modal.confirm({
       nzTitle: '清除已完成待办',
-      nzContent: `确定清除 ${this.store.completedCount()} 条已完成待办吗？`,
+      nzContent: `确定清除 ${this.store.completedCount()} 条已完成待办吗？清除后可在回收站恢复。`,
       nzOkText: '清除',
       nzOkDanger: true,
       nzCancelText: '取消',
@@ -241,11 +383,70 @@ export class PersonalTodoPageComponent {
           .clearCompleted()
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
-            next: () => this.message.info('已清除已完成待办'),
+            next: () => this.message.info('已完成待办已移入回收站'),
             error: () => this.message.error('清除已完成待办失败'),
           });
       },
     });
+  }
+
+  restoreTodo(todo: Todo): void {
+    this.store
+      .restore(todo.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.message.success('待办已恢复'),
+        error: () => this.message.error('待办恢复失败'),
+      });
+  }
+
+  confirmPermanentDelete(todo: Todo): void {
+    this.modal.confirm({
+      nzTitle: '永久删除待办',
+      nzContent: `确定永久删除「${todo.title}」吗？此操作不可恢复。`,
+      nzOkText: '永久删除',
+      nzOkDanger: true,
+      nzCancelText: '取消',
+      nzOnOk: () => {
+        this.store
+          .permanentlyDelete(todo.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => this.message.info('待办已永久删除'),
+            error: () => this.message.error('待办永久删除失败'),
+          });
+      },
+    });
+  }
+
+  confirmEmptyRecycle(): void {
+    if (this.store.recycleCount() === 0) {
+      return;
+    }
+
+    this.modal.confirm({
+      nzTitle: '清空回收站',
+      nzContent: `将永久删除回收站中的 ${this.store.recycleCount()} 条待办，此操作不可恢复。`,
+      nzOkText: '清空',
+      nzOkDanger: true,
+      nzCancelText: '取消',
+      nzOnOk: () => {
+        this.store
+          .emptyRecycle()
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => this.message.info('回收站已清空'),
+            error: () => this.message.error('清空回收站失败'),
+          });
+      },
+    });
+  }
+
+  onBoardScroll(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (target.scrollHeight - target.scrollTop - target.clientHeight < 120) {
+      this.store.loadMore();
+    }
   }
 
   createTag(draft: TodoTagDraft): void {
@@ -288,6 +489,51 @@ export class PersonalTodoPageComponent {
           .subscribe({
             next: () => this.message.info('标签已删除'),
             error: () => this.message.error('标签删除失败'),
+          });
+      },
+    });
+  }
+
+  createFolder(draft: TodoFolderDraft): void {
+    this.store
+      .createFolder(draft)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.folderFormResetToken.update((value) => value + 1);
+          this.message.success('文件夹已创建');
+        },
+        error: () => this.message.error('文件夹创建失败'),
+      });
+  }
+
+  updateFolder(id: string, draft: TodoFolderDraft): void {
+    this.store
+      .updateFolder(id, draft)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.folderFormResetToken.update((value) => value + 1);
+          this.message.success('文件夹已更新');
+        },
+        error: () => this.message.error('文件夹更新失败'),
+      });
+  }
+
+  confirmDeleteFolder(folder: TodoFolderEntity): void {
+    this.modal.confirm({
+      nzTitle: '删除文件夹',
+      nzContent: `确定删除「${folder.name}」吗？文件夹内待办会归为未分类。`,
+      nzOkText: '删除',
+      nzOkDanger: true,
+      nzCancelText: '取消',
+      nzOnOk: () => {
+        this.store
+          .deleteFolder(folder.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => this.message.info('文件夹已删除'),
+            error: () => this.message.error('文件夹删除失败'),
           });
       },
     });

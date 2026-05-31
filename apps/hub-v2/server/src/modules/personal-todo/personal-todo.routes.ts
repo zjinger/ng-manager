@@ -2,8 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
 import {
+  createPersonalTodoFolderSchema,
   createPersonalTodoSchema,
   createPersonalTodoTagSchema,
+  listPersonalTodoQuerySchema,
+  updatePersonalTodoFolderSchema,
   updatePersonalTodoSchema,
   updatePersonalTodoStatusSchema,
   updatePersonalTodoTagSchema
@@ -12,7 +15,8 @@ import {
 export default async function personalTodoRoutes(app: FastifyInstance) {
   app.get("/personal-todos", async (request) => {
     const ctx = requireAuth(request);
-    return ok(await app.container.personalTodoQuery.getSnapshot(ctx));
+    const query = listPersonalTodoQuerySchema.parse(request.query);
+    return ok(await app.container.personalTodoQuery.getSnapshot(query, ctx));
   });
 
   app.post("/personal-todos", async (request, reply) => {
@@ -41,6 +45,23 @@ export default async function personalTodoRoutes(app: FastifyInstance) {
     return ok(await app.container.personalTodoCommand.clearCompleted(ctx), "completed personal todos cleared");
   });
 
+  app.delete("/personal-todos/recycle", async (request) => {
+    const ctx = requireAuth(request);
+    return ok(await app.container.personalTodoCommand.emptyRecycle(ctx), "personal todo recycle emptied");
+  });
+
+  app.patch("/personal-todos/:todoId/restore", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { todoId: string };
+    return ok(await app.container.personalTodoCommand.restoreTodo(params.todoId, ctx), "personal todo restored");
+  });
+
+  app.delete("/personal-todos/:todoId/permanent", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { todoId: string };
+    return ok(await app.container.personalTodoCommand.permanentlyDeleteTodo(params.todoId, ctx), "personal todo permanently deleted");
+  });
+
   app.delete("/personal-todos/:todoId", async (request) => {
     const ctx = requireAuth(request);
     const params = request.params as { todoId: string };
@@ -66,5 +87,24 @@ export default async function personalTodoRoutes(app: FastifyInstance) {
     const params = request.params as { tagId: string };
     return ok(await app.container.personalTodoCommand.deleteTag(params.tagId, ctx), "personal todo tag deleted");
   });
-}
 
+  app.post("/personal-todo-folders", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const body = createPersonalTodoFolderSchema.parse(request.body);
+    const entity = await app.container.personalTodoCommand.createFolder(body, ctx);
+    return reply.status(201).send(ok(entity, "personal todo folder created"));
+  });
+
+  app.patch("/personal-todo-folders/:folderId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { folderId: string };
+    const body = updatePersonalTodoFolderSchema.parse(request.body);
+    return ok(await app.container.personalTodoCommand.updateFolder(params.folderId, body, ctx), "personal todo folder updated");
+  });
+
+  app.delete("/personal-todo-folders/:folderId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { folderId: string };
+    return ok(await app.container.personalTodoCommand.deleteFolder(params.folderId, ctx), "personal todo folder deleted");
+  });
+}

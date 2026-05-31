@@ -3,6 +3,7 @@ import { z } from "zod";
 export const personalTodoPrioritySchema = z.enum(["low", "medium", "high", "critical"]);
 export const personalTodoStatusSchema = z.enum(["todo", "doing", "done"]);
 export const personalTodoTagColorSchema = z.enum(["blue", "purple", "green", "red", "orange", "cyan", "gray"]);
+export const personalTodoFolderColorSchema = personalTodoTagColorSchema;
 
 const dueSchema = z
   .string()
@@ -26,6 +27,7 @@ export const createPersonalTodoSchema = z.object({
   priority: personalTodoPrioritySchema,
   status: personalTodoStatusSchema,
   due: dueSchema,
+  folderId: z.string().trim().min(1).max(80).nullable().optional(),
   tagIds: z.array(z.string().trim().min(1).max(80)).max(20).optional().default([])
 });
 
@@ -43,4 +45,26 @@ export const createPersonalTodoTagSchema = z.object({
 export const updatePersonalTodoTagSchema = z.object({
   name: z.string().trim().min(1).max(24).optional(),
   color: personalTodoTagColorSchema.optional()
+});
+
+export const createPersonalTodoFolderSchema = z.object({
+  name: z.string().trim().min(1).max(24),
+  color: personalTodoFolderColorSchema
+});
+
+export const updatePersonalTodoFolderSchema = z.object({
+  name: z.string().trim().min(1).max(24).optional(),
+  color: personalTodoFolderColorSchema.optional()
+});
+
+export const listPersonalTodoQuerySchema = z.object({
+  scope: z.enum(["active", "recycle"]).optional().default("active"),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(200).optional().default(50),
+  status: z.union([personalTodoStatusSchema, z.literal("all")]).optional().default("all"),
+  priority: z.union([personalTodoPrioritySchema, z.literal("all")]).optional().default("all"),
+  tagId: z.string().trim().min(1).max(80).optional(),
+  folderId: z.string().trim().min(1).max(80).optional(),
+  keyword: z.string().trim().max(100).optional(),
+  groupBy: z.enum(["none", "status", "priority", "folder", "due"]).optional().default("status")
 });

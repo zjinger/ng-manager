@@ -6,7 +6,9 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import {
   TODO_PRIORITY_OPTIONS,
+  TODO_GROUP_OPTIONS,
   TODO_STATUS_OPTIONS,
+  type TodoGroupBy,
   type TodoPriorityFilter,
   type TodoStatusFilter,
   type TodoTagFilter,
@@ -30,14 +32,20 @@ import { FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggl
   template: `
     <app-page-toolbar>
       <div toolbar-primary class="todo-toolbar__primary">
-        <button nz-button nzType="primary" class="toolbar-create-btn" (click)="create.emit()">
-          <span nz-icon nzType="plus"></span>
-          新建待办
-        </button>
-        <button nz-button nzType="default" (click)="manageTags.emit()">
-          <span nz-icon nzType="tags"></span>
-          管理标签
-        </button>
+        @if (showPrimaryActions()) {
+          <button nz-button nzType="primary" class="toolbar-create-btn" (click)="create.emit()">
+            <span nz-icon nzType="plus"></span>
+            新建待办
+          </button>
+          <button nz-button nzType="default" (click)="manageTags.emit()">
+            <span nz-icon nzType="tags"></span>
+            管理标签
+          </button>
+          <button nz-button nzType="default" (click)="manageFolders.emit()">
+            <span nz-icon nzType="folder-open"></span>
+            管理文件夹
+          </button>
+        }
       </div>
 
       <app-filter-bar toolbar-filters class="todo-toolbar__filters">
@@ -69,6 +77,15 @@ import { FilterBarComponent, PageToolbarComponent, SearchBoxComponent, ViewToggl
           <nz-option nzLabel="全部标签" nzValue="all"></nz-option>
           @for (item of tags(); track item.id) {
             <nz-option [nzLabel]="item.name" [nzValue]="item.id"></nz-option>
+          }
+        </nz-select>
+        <nz-select
+          class="todo-toolbar__select"
+          [ngModel]="groupBy()"
+          (ngModelChange)="groupByChange.emit($event)"
+        >
+          @for (item of groupOptions; track item.value) {
+            <nz-option [nzLabel]="item.label" [nzValue]="item.value"></nz-option>
           }
         </nz-select>
       </app-filter-bar>
@@ -115,18 +132,23 @@ export class TodoToolbarComponent {
   readonly tagFilter = input.required<TodoTagFilter>();
   readonly keyword = input('');
   readonly viewMode = input.required<TodoViewMode>();
+  readonly groupBy = input.required<TodoGroupBy>();
+  readonly showPrimaryActions = input(true);
   readonly tags = input<TodoTagEntity[]>([]);
 
   readonly create = output<void>();
   readonly manageTags = output<void>();
+  readonly manageFolders = output<void>();
   readonly statusFilterChange = output<TodoStatusFilter>();
   readonly priorityFilterChange = output<TodoPriorityFilter>();
   readonly tagFilterChange = output<TodoTagFilter>();
   readonly keywordChange = output<string>();
   readonly viewModeChange = output<TodoViewMode>();
+  readonly groupByChange = output<TodoGroupBy>();
 
   readonly statusOptions = TODO_STATUS_OPTIONS;
   readonly priorityOptions = TODO_PRIORITY_OPTIONS;
+  readonly groupOptions = TODO_GROUP_OPTIONS;
   readonly viewOptions = [
     { value: 'list' as const, icon: 'unordered-list', ariaLabel: '列表视图' },
     { value: 'board' as const, icon: 'appstore', ariaLabel: '看板视图' },

@@ -1,22 +1,17 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
-import {
-  TODO_PRIORITY_LABELS,
-  TODO_STATUS_LABELS,
-  type Todo,
-  type TodoPriority,
-  type TodoStatus,
-  type TodoTagEntity,
-} from '../models/todo.model';
 import { PanelCardComponent } from '@shared/ui';
+import { type Todo, type TodoFolderEntity, type TodoListNode, type TodoTagEntity } from '../models/todo.model';
+import { TodoListRowComponent, type TodoImagePreview } from './todo-list-row.component';
 
 @Component({
   selector: 'app-todo-list',
-  imports: [NzButtonModule, NzIconModule, PanelCardComponent],
+  imports: [ScrollingModule, NzButtonModule, NzIconModule, PanelCardComponent, TodoListRowComponent],
   template: `
-    <app-panel-card title="待办列表" [count]="todos().length">
+    <app-panel-card [title]="title()" [count]="totalCount()">
       <button
         panel-actions
         nz-button
@@ -29,296 +24,101 @@ import { PanelCardComponent } from '@shared/ui';
         <span nz-icon nzType="clear"></span>
       </button>
 
-      @if (todos().length === 0) {
+      @if (totalCount() === 0) {
         <section class="todo-empty">
           <span class="todo-empty__icon" nz-icon nzType="check-circle"></span>
           <strong>暂无待办</strong>
         </section>
       } @else {
-        <div class="todo-list">
-          @for (todo of todos(); track todo.id) {
-            <article class="todo-row" [class.todo-row--done]="todo.status === 'done'">
-              <button
-                type="button"
-                class="todo-row__check"
-                [class.is-done]="todo.status === 'done'"
-                [attr.aria-label]="todo.status === 'done' ? '恢复待办' : '完成待办'"
-                (click)="toggleDone.emit(todo)"
-              >
-                @if (todo.status === 'done') {
-                  <span nz-icon nzType="check"></span>
+        <div class="todo-scroll">
+          <cdk-virtual-scroll-viewport
+            class="todo-viewport"
+            itemSize="80"
+            minBufferPx="800"
+            maxBufferPx="1600"
+            (scrolledIndexChange)="onScrolledIndexChange($event)"
+          >
+            <ng-container *cdkVirtualFor="let node of nodes(); trackBy: trackByNode">
+              @if (node.type === 'group') {
+                <header class="todo-group-header">
+                  <strong>{{ node.label }}</strong>
+                  <span>{{ node.count }}</span>
+                </header>
+              } @else {
+                @if (node.todo; as todo) {
+                  <app-todo-list-row
+                    [todo]="todo"
+                    [tagById]="tagById()"
+                    [folderById]="folderById()"
+                    (edit)="edit.emit($event)"
+                    (delete)="delete.emit($event)"
+                    (toggleDone)="toggleDone.emit($event)"
+                    (previewChange)="setHoveredPreview($event)"
+                  ></app-todo-list-row>
                 }
-              </button>
+              }
+            </ng-container>
+          </cdk-virtual-scroll-viewport>
 
-              <i class="todo-row__priority" [attr.data-priority]="todo.priority"></i>
-
-              <div class="todo-row__content">
-                <div class="todo-row__title-line">
-                  <strong>{{ todo.title }}</strong>
-                  <span class="todo-status" [attr.data-status]="displayStatus(todo)">
-                    {{ statusLabel(todo) }}
-                  </span>
-                </div>
-                @if (todo.desc) {
-                  <p>{{ todo.desc }}</p>
-                }
-                <div class="todo-row__meta">
-                  <span class="todo-priority-dot" [attr.data-priority]="todo.priority"></span>
-                  <span>{{ priorityLabel(todo.priority) }}</span>
-                  @if (todo.due) {
-                    <span class="todo-due" [class.todo-due--overdue]="isOverdue(todo)">
-                      <span nz-icon nzType="calendar"></span>
-                      {{ formatDue(todo.due) }}
-                    </span>
-                  }
-                  @for (tag of todoTags(todo); track tag.id) {
-                    <span class="todo-tag" [attr.data-color]="tag.color">{{ tag.name }}</span>
-                  }
-                </div>
-              </div>
-
-              <div class="todo-row__actions">
-                <button nz-button nzType="text" nzShape="circle" title="编辑" (click)="edit.emit(todo)">
-                  <span nz-icon nzType="edit"></span>
-                </button>
-                <button nz-button nzType="text" nzShape="circle" title="删除" nzDanger (click)="delete.emit(todo)">
-                  <span nz-icon nzType="delete"></span>
-                </button>
-              </div>
-            </article>
+          @if (hoveredPreview(); as preview) {
+            <div
+              class="todo-image-hover-preview"
+              [style.left.px]="preview.left"
+              [style.top.px]="preview.top"
+            >
+              <img class="todo-image-hover-preview__image" [src]="preview.src" [alt]="preview.alt" />
+            </div>
           }
+
+          <div class="todo-load-more">
+            @if (loadingMore()) {
+              <span>正在加载...</span>
+            } @else if (hasMore()) {
+              <button nz-button nzType="link" (click)="loadMore.emit()">加载更多</button>
+              <span>已加载 {{ loadedCount() }} / {{ total() }}</span>
+            } @else {
+              <span>已加载全部 {{ total() }} 条待办</span>
+            }
+          </div>
         </div>
       }
     </app-panel-card>
   `,
   styles: [
     `
-      .todo-list {
+      .todo-scroll {
         display: grid;
       }
 
-      .todo-row {
-        display: grid;
-        grid-template-columns: 28px 4px minmax(0, 1fr) auto;
+      .todo-viewport {
+        height: min(680px, max(260px, calc(100vh - 330px)));
+      }
+
+      .todo-group-header {
+        display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 14px 16px;
+        gap: 8px;
+        box-sizing: border-box;
+        height: 80px;
+        overflow: hidden;
+        padding: 0 24px;
         border-top: 1px solid var(--border-color-soft);
-        transition: var(--transition-base);
+        color: var(--text-secondary);
       }
 
-      .todo-row:first-child {
+      .todo-group-header:first-child {
         border-top: 0;
       }
 
-      .todo-row:hover {
-        background: var(--bg-subtle);
-      }
-
-      .todo-row--done .todo-row__content {
-        opacity: 0.68;
-      }
-
-      .todo-row--done .todo-row__title-line strong {
-        text-decoration: line-through;
-      }
-
-      .todo-row__check {
-        width: 24px;
-        height: 24px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid var(--gray-300);
-        border-radius: 50%;
-        background: transparent;
-        color: #fff;
-        cursor: pointer;
-        transition: var(--transition-base);
-      }
-
-      .todo-row__check:hover {
-        border-color: var(--color-info);
-      }
-
-      .todo-row__check.is-done {
-        border-color: var(--color-success);
-        background: var(--color-success);
-      }
-
-      .todo-row__priority {
-        width: 4px;
-        height: 46px;
+      .todo-group-header span {
+        min-width: 22px;
         border-radius: 999px;
-        background: var(--priority-low);
-      }
-
-      .todo-row__priority[data-priority='critical'] {
-        background: var(--priority-critical);
-      }
-
-      .todo-row__priority[data-priority='high'] {
-        background: var(--priority-high);
-      }
-
-      .todo-row__priority[data-priority='medium'] {
-        background: var(--priority-medium);
-      }
-
-      .todo-row__content {
-        min-width: 0;
-      }
-
-      .todo-row__title-line {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        min-width: 0;
-      }
-
-      .todo-row__title-line strong {
-        min-width: 0;
-        color: var(--text-primary);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .todo-row__content p {
-        margin: 4px 0 0;
+        padding: 1px 8px;
+        background: var(--bg-subtle);
         color: var(--text-muted);
-        font-size: 13px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .todo-row__meta {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-top: 7px;
-        color: var(--text-disabled);
+        text-align: center;
         font-size: 12px;
-      }
-
-      .todo-row__actions {
-        display: inline-flex;
-        align-items: center;
-        gap: 2px;
-        opacity: 0;
-        pointer-events: none;
-        transition: var(--transition-base);
-      }
-
-      .todo-row:hover .todo-row__actions,
-      .todo-row__actions:focus-within {
-        opacity: 1;
-        pointer-events: auto;
-      }
-
-      .todo-status,
-      .todo-tag {
-        display: inline-flex;
-        align-items: center;
-        flex-shrink: 0;
-        border-radius: var(--border-radius-sm);
-        font-size: 11px;
         font-weight: 700;
-      }
-
-      .todo-status {
-        padding: 2px 8px;
-      }
-
-      .todo-status[data-status='todo'] {
-        background: var(--status-todo-bg);
-        color: var(--status-todo);
-      }
-
-      .todo-status[data-status='doing'] {
-        background: var(--status-doing-bg);
-        color: var(--status-doing);
-      }
-
-      .todo-status[data-status='done'] {
-        background: var(--status-done-bg);
-        color: var(--status-done);
-      }
-
-      .todo-status[data-status='overdue'] {
-        background: var(--color-danger-light);
-        color: var(--color-danger);
-      }
-
-      .todo-priority-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--priority-low);
-      }
-
-      .todo-priority-dot[data-priority='critical'] {
-        background: var(--priority-critical);
-      }
-
-      .todo-priority-dot[data-priority='high'] {
-        background: var(--priority-high);
-      }
-
-      .todo-priority-dot[data-priority='medium'] {
-        background: var(--priority-medium);
-      }
-
-      .todo-due {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-      }
-
-      .todo-due--overdue {
-        color: var(--color-danger);
-        font-weight: 700;
-      }
-
-      .todo-tag {
-        padding: 1px 7px;
-      }
-
-      .todo-tag[data-color='blue'] {
-        background: var(--color-info-light);
-        color: var(--color-info);
-      }
-
-      .todo-tag[data-color='purple'] {
-        background: rgba(139, 92, 246, 0.14);
-        color: #7c3aed;
-      }
-
-      .todo-tag[data-color='green'] {
-        background: var(--color-success-light);
-        color: var(--color-success);
-      }
-
-      .todo-tag[data-color='red'] {
-        background: var(--color-danger-light);
-        color: var(--color-danger);
-      }
-
-      .todo-tag[data-color='orange'] {
-        background: rgba(234, 88, 12, 0.14);
-        color: #c2410c;
-      }
-
-      .todo-tag[data-color='cyan'] {
-        background: rgba(8, 145, 178, 0.14);
-        color: #0e7490;
-      }
-
-      .todo-tag[data-color='gray'] {
-        background: rgba(100, 116, 139, 0.14);
-        color: #475569;
       }
 
       .todo-empty {
@@ -335,85 +135,87 @@ import { PanelCardComponent } from '@shared/ui';
         color: var(--gray-300);
       }
 
-      @media (max-width: 700px) {
-        .todo-row {
-          grid-template-columns: 28px 4px minmax(0, 1fr);
-        }
+      .todo-load-more {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 52px;
+        border-top: 1px solid var(--border-color-soft);
+        color: var(--text-muted);
+        font-size: 12px;
+      }
 
-        .todo-row__actions {
-          grid-column: 3;
-          justify-self: start;
-          opacity: 1;
-          pointer-events: auto;
-        }
+      .todo-image-hover-preview {
+        position: fixed;
+        z-index: 1200;
+        width: 360px;
+        height: 240px;
+        padding: 8px;
+        border: 1px solid color-mix(in srgb, var(--primary-300) 30%, var(--border-color));
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--bg-container) 92%, white 8%);
+        box-shadow: 0 22px 48px rgba(15, 23, 42, 0.24);
+        pointer-events: none;
+        backdrop-filter: blur(10px);
+      }
+
+      .todo-image-hover-preview__image {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        border-radius: 10px;
+        background: var(--bg-subtle);
+      }
+
+      :host-context(html[data-theme='dark']) .todo-image-hover-preview {
+        background: color-mix(in srgb, var(--bg-container) 88%, black 12%);
+        border-color: rgba(129, 140, 248, 0.28);
+        box-shadow: 0 28px 56px rgba(2, 6, 23, 0.46);
       }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TodoListComponent {
-  readonly todos = input.required<Todo[]>();
+  readonly nodes = input.required<TodoListNode[]>();
+  readonly title = input('待办列表');
   readonly tags = input<TodoTagEntity[]>([]);
+  readonly folders = input<TodoFolderEntity[]>([]);
+  readonly tagById = input<Map<string, TodoTagEntity>>(new Map());
+  readonly folderById = input<Map<string, TodoFolderEntity>>(new Map());
   readonly hasCompleted = input(false);
+  readonly total = input(0);
+  readonly loadingMore = input(false);
+  readonly hasMore = input(false);
   readonly edit = output<Todo>();
   readonly delete = output<Todo>();
   readonly toggleDone = output<Todo>();
   readonly clearCompleted = output<void>();
+  readonly loadMore = output<void>();
+  readonly hoveredPreview = signal<TodoImagePreview | null>(null);
 
-  priorityLabel(priority: TodoPriority): string {
-    return TODO_PRIORITY_LABELS[priority];
+  readonly trackByNode = (_: number, node: TodoListNode): string => node.id;
+
+  totalCount(): number {
+    return this.total();
   }
 
-  todoTags(todo: Todo): TodoTagEntity[] {
-    const tags = new Map(this.tags().map((tag) => [tag.id, tag]));
-    return todo.tagIds.map((tagId) => tags.get(tagId)).filter((tag): tag is TodoTagEntity => !!tag);
+  loadedCount(): number {
+    return this.nodes().filter((node) => node.type === 'todo').length;
   }
 
-  statusLabel(todo: Todo): string {
-    return this.isOverdue(todo) ? '已逾期' : TODO_STATUS_LABELS[todo.status];
-  }
-
-  displayStatus(todo: Todo): TodoStatus | 'overdue' {
-    return this.isOverdue(todo) ? 'overdue' : todo.status;
-  }
-
-  isOverdue(todo: Todo): boolean {
-    return !!todo.due && todo.due < this.todayIso() && todo.status !== 'done';
-  }
-
-  formatDue(due: string): string {
-    const diff = this.diffDays(due, this.todayIso());
-    if (diff === 0) {
-      return '今天';
+  onScrolledIndexChange(index: number): void {
+    if (this.hoveredPreview()) {
+      this.hoveredPreview.set(null);
     }
-    if (diff === 1) {
-      return '明天';
+    if (this.nodes().length - index < 16) {
+      this.loadMore.emit();
     }
-    if (diff === -1) {
-      return '昨天';
-    }
-    if (diff > 0 && diff <= 7) {
-      return `${diff}天后`;
-    }
-    if (diff < 0 && diff >= -7) {
-      return `${Math.abs(diff)}天前`;
-    }
-
-    const [, month, day] = due.split('-');
-    return `${Number(month)}月${Number(day)}日`;
   }
 
-  private diffDays(leftIso: string, rightIso: string): number {
-    const left = Date.parse(`${leftIso}T00:00:00`);
-    const right = Date.parse(`${rightIso}T00:00:00`);
-    return Math.round((left - right) / 86_400_000);
-  }
-
-  private todayIso(): string {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  setHoveredPreview(preview: TodoImagePreview | null): void {
+    this.hoveredPreview.set(preview);
   }
 }

@@ -8,6 +8,7 @@ const TABLES_TO_DROP = [
   "personal_todo_seed_state",
   "personal_todo_tag_links",
   "personal_todos",
+  "personal_todo_folders",
   "personal_todo_tags"
 ];
 

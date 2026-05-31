@@ -5,6 +5,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import {
   type Todo,
   type TodoBoardColumn,
+  type TodoFolderEntity,
   type TodoStatus,
   type TodoTagEntity,
 } from '../models/todo.model';
@@ -51,6 +52,9 @@ import {
                 }
                 <footer>
                   <span class="todo-card__tag-list">
+                    @if (todoFolder(todo); as folder) {
+                      <span class="todo-card__folder" [attr.data-color]="folder.color">{{ folder.name }}</span>
+                    }
                     @for (tag of todoTags(todo); track tag.id) {
                       <span class="todo-card__tag" [attr.data-color]="tag.color">{{ tag.name }}</span>
                     }
@@ -215,6 +219,15 @@ import {
         font-weight: 700;
       }
 
+      .todo-card__folder {
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(100, 116, 139, 0.14);
+        color: #475569;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
       .todo-card__tag[data-color='blue'] {
         background: var(--color-info-light);
         color: var(--color-info);
@@ -248,6 +261,36 @@ import {
       .todo-card__tag[data-color='gray'] {
         background: rgba(100, 116, 139, 0.14);
         color: #475569;
+      }
+
+      .todo-card__folder[data-color='blue'] {
+        background: var(--color-info-light);
+        color: var(--color-info);
+      }
+
+      .todo-card__folder[data-color='purple'] {
+        background: rgba(139, 92, 246, 0.14);
+        color: #7c3aed;
+      }
+
+      .todo-card__folder[data-color='green'] {
+        background: var(--color-success-light);
+        color: var(--color-success);
+      }
+
+      .todo-card__folder[data-color='red'] {
+        background: var(--color-danger-light);
+        color: var(--color-danger);
+      }
+
+      .todo-card__folder[data-color='orange'] {
+        background: rgba(234, 88, 12, 0.14);
+        color: #c2410c;
+      }
+
+      .todo-card__folder[data-color='cyan'] {
+        background: rgba(8, 145, 178, 0.14);
+        color: #0e7490;
       }
 
       .todo-card__due {
@@ -286,6 +329,9 @@ import {
 export class TodoBoardComponent {
   readonly columns = input.required<TodoBoardColumn[]>();
   readonly tags = input<TodoTagEntity[]>([]);
+  readonly folders = input<TodoFolderEntity[]>([]);
+  readonly tagById = input<Map<string, TodoTagEntity>>(new Map());
+  readonly folderById = input<Map<string, TodoFolderEntity>>(new Map());
   readonly statusChange = output<{ id: string; status: TodoStatus }>();
   readonly edit = output<Todo>();
   readonly delete = output<Todo>();
@@ -330,8 +376,15 @@ export class TodoBoardComponent {
   }
 
   todoTags(todo: Todo): TodoTagEntity[] {
-    const tags = new Map(this.tags().map((tag) => [tag.id, tag]));
+    const tags = this.tagById();
     return todo.tagIds.map((tagId) => tags.get(tagId)).filter((tag): tag is TodoTagEntity => !!tag);
+  }
+
+  todoFolder(todo: Todo): TodoFolderEntity | null {
+    if (!todo.folderId) {
+      return null;
+    }
+    return this.folderById().get(todo.folderId) ?? null;
   }
 
   isOverdue(todo: Todo): boolean {

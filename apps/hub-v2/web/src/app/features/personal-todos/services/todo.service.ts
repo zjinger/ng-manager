@@ -3,28 +3,23 @@ import { Observable } from 'rxjs';
 
 import { ApiClientService } from '@core/http/api-client.service';
 import {
-  TODO_CACHE_KEY,
-  TODO_TAG_COLORS,
+  type TodoFolderDraft,
+  type TodoFolderEntity,
   type Todo,
   type TodoDraft,
-  type TodoPriority,
-  type TodoSnapshot,
+  type TodoPage,
+  type TodoPageQuery,
   type TodoStatus,
-  type TodoTagColor,
   type TodoTagDraft,
   type TodoTagEntity,
 } from '../models/todo.model';
-
-const PRIORITIES: TodoPriority[] = ['low', 'medium', 'high', 'critical'];
-const STATUSES: TodoStatus[] = ['todo', 'doing', 'done'];
-const TAG_COLORS = TODO_TAG_COLORS.map((item) => item.value);
 
 @Injectable({ providedIn: 'root' })
 export class TodoService {
   private readonly api = inject(ApiClientService);
 
-  loadSnapshot(): Observable<TodoSnapshot> {
-    return this.api.get<TodoSnapshot>('/personal-todos');
+  loadSnapshot(query: TodoPageQuery): Observable<TodoPage> {
+    return this.api.get<TodoPage>('/personal-todos', query);
   }
 
   create(draft: TodoDraft): Observable<Todo> {
@@ -47,6 +42,18 @@ export class TodoService {
     return this.api.delete<{ deleted: number }>('/personal-todos/completed');
   }
 
+  restore(id: string): Observable<Todo> {
+    return this.api.patch<Todo, Record<string, never>>(`/personal-todos/${id}/restore`, {});
+  }
+
+  permanentlyDelete(id: string): Observable<{ id: string }> {
+    return this.api.delete<{ id: string }>(`/personal-todos/${id}/permanent`);
+  }
+
+  emptyRecycle(): Observable<{ deleted: number }> {
+    return this.api.delete<{ deleted: number }>('/personal-todos/recycle');
+  }
+
   createTag(draft: TodoTagDraft): Observable<TodoTagEntity> {
     return this.api.post<TodoTagEntity, TodoTagDraft>('/personal-todo-tags', this.normalizeTagDraft(draft));
   }
@@ -59,24 +66,16 @@ export class TodoService {
     return this.api.delete<{ id: string }>(`/personal-todo-tags/${id}`);
   }
 
-  readCachedSnapshot(): TodoSnapshot | null {
-    try {
-      const raw = localStorage.getItem(TODO_CACHE_KEY);
-      if (!raw) {
-        return null;
-      }
-      return this.normalizeSnapshot(JSON.parse(raw));
-    } catch {
-      return null;
-    }
+  createFolder(draft: TodoFolderDraft): Observable<TodoFolderEntity> {
+    return this.api.post<TodoFolderEntity, TodoFolderDraft>('/personal-todo-folders', this.normalizeFolderDraft(draft));
   }
 
-  writeCachedSnapshot(snapshot: TodoSnapshot): void {
-    try {
-      localStorage.setItem(TODO_CACHE_KEY, JSON.stringify(snapshot));
-    } catch {
-      // localStorage can be unavailable in restricted browser modes.
-    }
+  updateFolder(id: string, draft: TodoFolderDraft): Observable<TodoFolderEntity> {
+    return this.api.patch<TodoFolderEntity, Partial<TodoFolderDraft>>(`/personal-todo-folders/${id}`, this.normalizeFolderDraft(draft));
+  }
+
+  deleteFolder(id: string): Observable<{ id: string }> {
+    return this.api.delete<{ id: string }>(`/personal-todo-folders/${id}`);
   }
 
   normalizeTitle(value: string): string {
@@ -99,6 +98,7 @@ export class TodoService {
       priority: draft.priority,
       status: draft.status,
       due: draft.due || null,
+      folderId: draft.folderId || null,
       tagIds: this.normalizeIds(draft.tagIds),
     };
   }
@@ -110,64 +110,10 @@ export class TodoService {
     };
   }
 
-  private normalizeSnapshot(value: unknown): TodoSnapshot | null {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-    const record = value as Record<string, unknown>;
-    const todos = Array.isArray(record['todos'])
-      ? record['todos'].map((item) => this.normalizeTodo(item)).filter((item): item is Todo => !!item)
-      : [];
-    const tags = Array.isArray(record['tags'])
-      ? record['tags'].map((item) => this.normalizeTag(item)).filter((item): item is TodoTagEntity => !!item)
-      : [];
-    return { todos, tags };
-  }
-
-  private normalizeTodo(value: unknown): Todo | null {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-    const record = value as Record<string, unknown>;
-    const id = typeof record['id'] === 'string' ? record['id'] : '';
-    const title = typeof record['title'] === 'string' ? this.normalizeTitle(record['title']) : '';
-    const priority = record['priority'];
-    const status = record['status'];
-    const createdAt = typeof record['createdAt'] === 'string' ? record['createdAt'] : '';
-    if (!id || !title || !this.isPriority(priority) || !this.isStatus(status) || !createdAt) {
-      return null;
-    }
+  private normalizeFolderDraft(draft: TodoFolderDraft): TodoFolderDraft {
     return {
-      id,
-      title,
-      desc: typeof record['desc'] === 'string' ? this.normalizeOptionalText(record['desc'], 500) : undefined,
-      priority,
-      status,
-      due: typeof record['due'] === 'string' && record['due'] ? record['due'] : null,
-      tagIds: Array.isArray(record['tagIds']) ? this.normalizeIds(record['tagIds']) : [],
-      createdAt,
-      updatedAt: typeof record['updatedAt'] === 'string' ? record['updatedAt'] : undefined,
-    };
-  }
-
-  private normalizeTag(value: unknown): TodoTagEntity | null {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-    const record = value as Record<string, unknown>;
-    const id = typeof record['id'] === 'string' ? record['id'] : '';
-    const name = typeof record['name'] === 'string' ? this.normalizeText(record['name'], 24) : '';
-    const color = record['color'];
-    if (!id || !name || !this.isTagColor(color)) {
-      return null;
-    }
-    return {
-      id,
-      name,
-      color,
-      sortOrder: typeof record['sortOrder'] === 'number' ? record['sortOrder'] : 0,
-      createdAt: typeof record['createdAt'] === 'string' ? record['createdAt'] : '',
-      updatedAt: typeof record['updatedAt'] === 'string' ? record['updatedAt'] : '',
+      name: this.normalizeText(draft.name, 24),
+      color: draft.color,
     };
   }
 
@@ -188,17 +134,5 @@ export class TodoService {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  }
-
-  private isPriority(value: unknown): value is TodoPriority {
-    return typeof value === 'string' && PRIORITIES.includes(value as TodoPriority);
-  }
-
-  private isStatus(value: unknown): value is TodoStatus {
-    return typeof value === 'string' && STATUSES.includes(value as TodoStatus);
-  }
-
-  private isTagColor(value: unknown): value is TodoTagColor {
-    return typeof value === 'string' && TAG_COLORS.includes(value as TodoTagColor);
   }
 }

@@ -15,6 +15,7 @@ import {
   TODO_STATUS_OPTIONS,
   type Todo,
   type TodoDraft,
+  type TodoFolderEntity,
   type TodoPriority,
   type TodoStatus,
   type TodoTagEntity,
@@ -121,6 +122,21 @@ import {
                     nzPlaceHolder="选择截止日期"
                     class="todo-date-picker"
                   />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+
+          <div class="row" nz-row nzGutter="16">
+            <div class="col" nz-col nzSpan="24">
+              <nz-form-item>
+                <nz-form-label>文件夹</nz-form-label>
+                <nz-form-control>
+                  <nz-select formControlName="folderId" nzAllowClear nzPlaceHolder="选择文件夹">
+                    @for (folder of folders(); track folder.id) {
+                      <nz-option [nzLabel]="folder.name" [nzValue]="folder.id"></nz-option>
+                    }
+                  </nz-select>
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -264,6 +280,7 @@ export class TodoDialogComponent {
   readonly visible = input(false);
   readonly todo = input<Todo | null>(null);
   readonly tags = input<TodoTagEntity[]>([]);
+  readonly folders = input<TodoFolderEntity[]>([]);
   readonly save = output<TodoDraft>();
   readonly cancel = output<void>();
   readonly selectedTagIds = signal<string[]>([]);
@@ -281,6 +298,7 @@ export class TodoDialogComponent {
     priority: this.fb.control<TodoPriority>('medium'),
     status: this.fb.control<TodoStatus>('todo'),
     due: new FormControl<Date | null>(null),
+    folderId: this.fb.control<string | null>(null),
   });
 
   constructor() {
@@ -296,6 +314,7 @@ export class TodoDialogComponent {
         priority: todo?.priority ?? 'medium',
         status: todo?.status ?? 'todo',
         due: todo?.due ? this.parseIsoDate(todo.due) : null,
+        folderId: todo?.folderId ?? null,
       });
       this.selectedTagIds.set([...(todo?.tagIds ?? [])]);
     });
@@ -322,6 +341,7 @@ export class TodoDialogComponent {
       priority: value.priority,
       status: value.status,
       due: value.due ? this.formatIsoDate(value.due) : null,
+      folderId: value.folderId || null,
       tagIds: this.selectedTagIds(),
     });
   }

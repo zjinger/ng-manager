@@ -5,6 +5,10 @@ export type TodoStatusFilter = TodoStatus | 'all';
 export type TodoPriorityFilter = TodoPriority | 'all';
 export type TodoTagFilter = string | 'all';
 export type TodoTagColor = 'blue' | 'purple' | 'green' | 'red' | 'orange' | 'cyan' | 'gray';
+export type TodoFolderColor = TodoTagColor;
+export type TodoScope = 'all' | 'folder' | 'recycle';
+export type TodoQueryScope = 'active' | 'recycle';
+export type TodoGroupBy = 'none' | 'status' | 'priority' | 'folder' | 'due';
 
 export interface Todo {
   id: string;
@@ -13,9 +17,11 @@ export interface Todo {
   priority: TodoPriority;
   status: TodoStatus;
   due?: string | null;
+  folderId?: string | null;
   tagIds: string[];
   createdAt: string;
   updatedAt?: string;
+  deletedAt?: string | null;
 }
 
 export interface TodoDraft {
@@ -24,6 +30,7 @@ export interface TodoDraft {
   priority: TodoPriority;
   status: TodoStatus;
   due?: string | null;
+  folderId?: string | null;
   tagIds: string[];
 }
 
@@ -41,9 +48,44 @@ export interface TodoTagDraft {
   color: TodoTagColor;
 }
 
-export interface TodoSnapshot {
-  todos: Todo[];
+export interface TodoFolderEntity {
+  id: string;
+  name: string;
+  color: TodoFolderColor;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TodoFolderDraft {
+  name: string;
+  color: TodoFolderColor;
+}
+
+export interface TodoPageQuery {
+  scope: TodoQueryScope;
+  page: number;
+  pageSize: number;
+  status: TodoStatusFilter;
+  priority: TodoPriorityFilter;
+  tagId: TodoTagFilter;
+  folderId: string | 'all' | 'none';
+  keyword: string;
+  groupBy: TodoGroupBy;
+}
+
+export interface TodoPage {
+  items: Todo[];
+  total: number;
+  page: number;
+  pageSize: number;
   tags: TodoTagEntity[];
+  folders: TodoFolderEntity[];
+  stats: TodoStats;
+  folderCounts: Record<string, number>;
+  unfiledCount: number;
+  recycleCount: number;
+  unfinishedCount: number;
 }
 
 export interface TodoStats {
@@ -59,12 +101,31 @@ export interface TodoBoardColumn {
   items: Todo[];
 }
 
+export interface TodoGroup {
+  key: string;
+  label: string;
+  items: Todo[];
+}
+
+export type TodoListNode =
+  | {
+      id: string;
+      type: 'group';
+      label: string;
+      count: number;
+    }
+  | {
+      id: string;
+      type: 'todo';
+      todo: Todo;
+    };
+
 export interface TodoOption<T extends string> {
   value: T;
   label: string;
 }
 
-export const TODO_CACHE_KEY = 'hub-v2:personal-todos:snapshot';
+export const TODO_PAGE_SIZE_OPTIONS = [50, 100, 200];
 
 export const TODO_STATUS_OPTIONS: TodoOption<TodoStatus>[] = [
   { value: 'todo', label: '待办' },
@@ -87,6 +148,14 @@ export const TODO_TAG_COLORS: Array<TodoOption<TodoTagColor> & { swatch: string 
   { value: 'orange', label: '橙色', swatch: '#ea580c' },
   { value: 'cyan', label: '青色', swatch: '#0891b2' },
   { value: 'gray', label: '灰色', swatch: '#64748b' },
+];
+
+export const TODO_GROUP_OPTIONS: TodoOption<TodoGroupBy>[] = [
+  { value: 'none', label: '不分组' },
+  { value: 'status', label: '按状态分组' },
+  { value: 'priority', label: '按优先级分组' },
+  { value: 'folder', label: '按文件夹分组' },
+  { value: 'due', label: '按截止日期分组' },
 ];
 
 export const TODO_STATUS_LABELS: Record<TodoStatus, string> = {
