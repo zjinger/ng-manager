@@ -13,6 +13,7 @@ import type {
   CreateRdStageTaskInput,
   CreateRdStageInput,
   RdItemEntity,
+  RdItemStageNoteEntity,
   RdMemberBlockEntity,
   RdItemProgress,
   RdLogEntity,
@@ -24,6 +25,7 @@ import type {
   RdStageEntity,
   ResolveRdMemberBlockInput,
   UpdateRdItemInput,
+  UpdateRdItemWithStageTasksInput,
   UpdateRdItemProgressInput,
   UpdateRdStageTaskInput,
   UpdateRdStageInput,
@@ -79,6 +81,10 @@ export class RdApiService {
     return this.api.get<{ items: RdStageHistoryEntry[] }>(`/rd/items/${itemId}/stage-history`).pipe(map((response) => response.items));
   }
 
+  listStageNotes(itemId: string) {
+    return this.api.get<{ items: RdItemStageNoteEntity[] }>(`/rd/items/${itemId}/stage-notes`).pipe(map((response) => response.items));
+  }
+
   listStageTasks(itemId: string) {
     return this.api.get<{ items: RdStageTaskEntity[] }>(`/rd/items/${itemId}/stage-tasks`).pipe(map((response) => response.items));
   }
@@ -93,6 +99,10 @@ export class RdApiService {
 
   update(itemId: string, input: UpdateRdItemInput) {
     return this.api.patch<RdItemEntity, UpdateRdItemInput>(`/rd/items/${itemId}`, input);
+  }
+
+  updateWithStageTasks(itemId: string, input: UpdateRdItemWithStageTasksInput) {
+    return this.api.patch<RdItemEntity, UpdateRdItemWithStageTasksInput>(`/rd/items/${itemId}/edit`, input);
   }
 
   start(itemId: string) {

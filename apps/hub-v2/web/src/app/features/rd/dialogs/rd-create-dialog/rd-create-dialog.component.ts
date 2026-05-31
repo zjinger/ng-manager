@@ -198,7 +198,7 @@ const DEFAULT_DRAFT: Draft = {
             <div nz-col nzSpan="12">
               <nz-form-item>
                 <nz-form-label nzFor="planStartAt">计划开始</nz-form-label>
-                <nz-form-control>
+                <nz-form-control [nzValidateStatus]="hasInvalidPlanRange() ? 'error' : ''">
                   <nz-date-picker
                     style="width:100%"
                     nzPlaceHolder="请选择日期"
@@ -214,7 +214,10 @@ const DEFAULT_DRAFT: Draft = {
             <div nz-col nzSpan="12">
               <nz-form-item>
                 <nz-form-label nzFor="planEndAt">计划结束</nz-form-label>
-                <nz-form-control>
+                <nz-form-control
+                  [nzValidateStatus]="hasInvalidPlanRange() ? 'error' : ''"
+                  nzErrorTip="计划开始不能晚于计划结束。"
+                >
                   <nz-date-picker
                     style="width:100%"
                     nzPlaceHolder="请选择日期"
@@ -228,83 +231,81 @@ const DEFAULT_DRAFT: Draft = {
               </nz-form-item>
             </div>
           </div>
-          @if (hasInvalidPlanRange()) {
-            <p class="template-preview__warning">计划开始不能晚于计划结束。</p>
-          }
 
-          <nz-form-label class="template-preview-label" nzRequired>阶段任务</nz-form-label>
-          <div class="template-preview">
-            <div class="template-preview__header">
-              <div>
-                <span>按执行人选择当前阶段模板任务，也可手动输入；每位执行人必须指定任务。</span>
-              </div>
-              <span>将创建 {{ selectedInitialStageTaskCount() }} 个任务</span>
-            </div>
-            @if (assignedExecutorMembers().length > 0) {
-              <div class="template-preview__list">
-                @for (member of assignedExecutorMembers(); track member.userId) {
-                  <div class="template-preview__item">
-                    <span class="template-preview__owner">{{ member.displayName }}</span>
-                    <div class="template-preview__task-input">
-                      <input
-                        nz-input
-                        maxlength="200"
-                        [nzAutocomplete]="taskTitleAuto"
-                        [ngModel]="memberTaskTitle(member.userId)"
-                        [ngModelOptions]="{ standalone: true }"
-                        (ngModelChange)="setMemberTaskTitle(member.userId, $event)"
-                        placeholder="必填：选择模板或手动输入任务"
-                      />
-                      <nz-autocomplete #taskTitleAuto [nzDefaultActiveFirstOption]="false">
-                        @for (task of selectedStageTemplateTasks(); track task.id) {
-                          <nz-auto-option [nzValue]="task.title" [nzLabel]="task.title">
-                            <div class="template-preview__option">
-                              <strong>{{ task.title }}</strong>
-                              @if (task.description) {
-                                <span>{{ task.description }}</span>
-                              }
-                            </div>
-                          </nz-auto-option>
-                        }
-                      </nz-autocomplete>
-                      @if (memberTaskDescription(member.userId); as description) {
-                        <small>{{ description }}</small>
-                      }
-                    </div>
-                    <div class="template-preview__date-range">
-                      <nz-date-picker
-                        nzFormat="yyyy-MM-dd"
-                        nzPlaceHolder="计划开始"
-                        nzPopupClassName="hub-datepicker-overlay"
-                        [ngModel]="memberTaskPlanStartDate(member.userId)"
-                        [ngModelOptions]="{ standalone: true }"
-                        (ngModelChange)="setMemberTaskPlanDate(member.userId, 'start', $event)"
-                      ></nz-date-picker>
-                      <nz-date-picker
-                        nzFormat="yyyy-MM-dd"
-                        nzPlaceHolder="计划结束"
-                        nzPopupClassName="hub-datepicker-overlay"
-                        [ngModel]="memberTaskPlanEndDate(member.userId)"
-                        [ngModelOptions]="{ standalone: true }"
-                        (ngModelChange)="setMemberTaskPlanDate(member.userId, 'end', $event)"
-                      ></nz-date-picker>
-                    </div>
+          <nz-form-item>
+            <nz-form-label class="template-preview-label" nzRequired>阶段任务</nz-form-label>
+            <nz-form-control
+              [nzValidateStatus]="hasStageTaskError() ? 'error' : ''"
+              [nzErrorTip]="stageTaskErrorTip()"
+            >
+              <div class="template-preview">
+                <div class="template-preview__header">
+                  <div>
+                    <span>按执行人选择当前阶段模板任务，也可手动输入；每位执行人必须指定任务。</span>
                   </div>
+                  <span>将创建 {{ selectedInitialStageTaskCount() }} 个任务</span>
+                </div>
+                @if (assignedExecutorMembers().length > 0) {
+                  <div class="template-preview__list">
+                    @for (member of assignedExecutorMembers(); track member.userId) {
+                      <div class="template-preview__item">
+                        <span class="template-preview__owner">{{ member.displayName }}</span>
+                        <div class="template-preview__task-input">
+                          <input
+                            nz-input
+                            maxlength="200"
+                            [nzAutocomplete]="taskTitleAuto"
+                            [ngModel]="memberTaskTitle(member.userId)"
+                            [ngModelOptions]="{ standalone: true }"
+                            (ngModelChange)="setMemberTaskTitle(member.userId, $event)"
+                            placeholder="必填：选择模板或手动输入任务"
+                          />
+                          <nz-autocomplete #taskTitleAuto [nzDefaultActiveFirstOption]="false">
+                            @for (task of selectedStageTemplateTasks(); track task.id) {
+                              <nz-auto-option [nzValue]="task.title" [nzLabel]="task.title">
+                                <div class="template-preview__option">
+                                  <strong>{{ task.title }}</strong>
+                                  @if (task.description) {
+                                    <span>{{ task.description }}</span>
+                                  }
+                                </div>
+                              </nz-auto-option>
+                            }
+                          </nz-autocomplete>
+                          @if (memberTaskDescription(member.userId); as description) {
+                            <small>{{ description }}</small>
+                          }
+                        </div>
+                        <div class="template-preview__date-range">
+                          <nz-date-picker
+                            nzFormat="yyyy-MM-dd"
+                            nzPlaceHolder="计划开始"
+                            nzPopupClassName="hub-datepicker-overlay"
+                            [ngModel]="memberTaskPlanStartDate(member.userId)"
+                            [ngModelOptions]="{ standalone: true }"
+                            (ngModelChange)="setMemberTaskPlanDate(member.userId, 'start', $event)"
+                          ></nz-date-picker>
+                          <nz-date-picker
+                            nzFormat="yyyy-MM-dd"
+                            nzPlaceHolder="计划结束"
+                            nzPopupClassName="hub-datepicker-overlay"
+                            [ngModel]="memberTaskPlanEndDate(member.userId)"
+                            [ngModelOptions]="{ standalone: true }"
+                            (ngModelChange)="setMemberTaskPlanDate(member.userId, 'end', $event)"
+                          ></nz-date-picker>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                  @if (selectedStageTemplateTasks().length === 0) {
+                    <p class="template-preview__hint">当前阶段未配置任务模板，可直接手动输入阶段任务。</p>
+                  }
+                } @else {
+                  <p class="template-preview__empty">选择分配执行人后，可按执行人新增当前阶段任务。</p>
                 }
               </div>
-              @if (hasMissingStageTaskTitle()) {
-                <p class="template-preview__warning">请为每位执行人选择或填写阶段任务标题。</p>
-              }
-              @if (hasInvalidStageTaskPlanRange()) {
-                <p class="template-preview__warning">阶段任务计划时间必须在研发项计划开始和计划结束之间，且开始不能晚于结束。</p>
-              }
-              @if (selectedStageTemplateTasks().length === 0) {
-                <p class="template-preview__hint">当前阶段未配置任务模板，可直接手动输入阶段任务。</p>
-              }
-            } @else {
-              <p class="template-preview__empty">选择分配执行人后，可按执行人新增当前阶段任务。</p>
-            }
-          </div>
+            </nz-form-control>
+          </nz-form-item>
         </form>
       </div>
 
@@ -330,7 +331,7 @@ const DEFAULT_DRAFT: Draft = {
       }
       .template-preview-label {
         height: auto;
-        padding: 0 0 8px;
+        padding: 0;
       }
       .template-preview__header {
         display: flex;
@@ -409,11 +410,6 @@ const DEFAULT_DRAFT: Draft = {
       .template-preview__empty,
       .template-preview__hint {
         margin: 0;
-      }
-      .template-preview__warning {
-        margin: 0 0 10px;
-        color: var(--danger);
-        font-size: 12px;
       }
       .template-preview__hint {
         margin-top: 8px;
@@ -648,6 +644,20 @@ export class RdCreateDialogComponent {
   hasMissingStageTaskTitle(): boolean {
     const titles = this.memberTaskTitles();
     return this.assignedExecutorMembers().some((member) => !titles[member.userId]?.trim());
+  }
+
+  hasStageTaskError(): boolean {
+    return this.hasMissingStageTaskTitle() || this.hasInvalidStageTaskPlanRange();
+  }
+
+  stageTaskErrorTip(): string {
+    if (this.hasMissingStageTaskTitle()) {
+      return '请为每位执行人选择或填写阶段任务标题。';
+    }
+    if (this.hasInvalidStageTaskPlanRange()) {
+      return '阶段任务计划时间必须在研发项计划开始和计划结束之间，且开始不能晚于结束。';
+    }
+    return '';
   }
 
   private formatDate(value: unknown): string {

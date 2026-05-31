@@ -4,7 +4,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 
 import type { IssueEntity } from '../../../issues/models/issue.model';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
-import type { RdItemEntity, RdLogEntity, RdMemberBlockEntity, RdStageEntity, RdStageHistoryEntry, RdStageTaskEntity, RdStageTaskStatus, RdStageTaskTemplateEntity } from '../../models/rd.model';
+import type { RdItemEntity, RdItemStageNoteEntity, RdLogEntity, RdMemberBlockEntity, RdStageEntity, RdStageHistoryEntry, RdStageTaskEntity, RdStageTaskStatus, RdStageTaskTemplateEntity } from '../../models/rd.model';
 import { RdDetailContentComponent } from '../rd-detail-content/rd-detail-content.component';
 import { RdProgressPanelComponent, type MemberProgressItem } from '../rd-progress-panel/rd-progress-panel.component';
 import { RdStageTasksPanelComponent } from '../rd-stage-tasks-panel/rd-stage-tasks-panel.component';
@@ -53,6 +53,7 @@ import { RdStageTasksPanelComponent } from '../rd-stage-tasks-panel/rd-stage-tas
               [item]="item()"
               [logs]="logs()"
               [stages]="stages()"
+              [stageNotes]="stageNotes()"
               [flowActionPlacement]="'below-flow'"
               [stageHistory]="stageHistory()"
               [memberProgressList]="memberProgressList()"
@@ -105,6 +106,7 @@ import { RdStageTasksPanelComponent } from '../rd-stage-tasks-panel/rd-stage-tas
               [item]="item()"
               [logs]="logs()"
               [stages]="stages()"
+              [stageNotes]="stageNotes()"
               [stageTasks]="stageTasks()"
               [stageHistory]="stageHistory()"
               [memberProgressList]="memberProgressList()"
@@ -130,6 +132,7 @@ import { RdStageTasksPanelComponent } from '../rd-stage-tasks-panel/rd-stage-tas
               [item]="item()"
               [logs]="logs()"
               [stages]="stages()"
+              [stageNotes]="stageNotes()"
               [stageHistory]="stageHistory()"
               [memberProgressList]="memberProgressList()"
               [canEditBasic]="canEditBasic()"
@@ -227,6 +230,7 @@ export class RdDetailDrawerComponent {
   readonly item = input<RdItemEntity | null>(null);
   readonly logs = input<RdLogEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
+  readonly stageNotes = input<RdItemStageNoteEntity[]>([]);
   readonly stageHistory = input<RdStageHistoryEntry[]>([]);
   readonly stageTasks = input<RdStageTaskEntity[]>([]);
   readonly stageTaskTemplates = input<RdStageTaskTemplateEntity[]>([]);

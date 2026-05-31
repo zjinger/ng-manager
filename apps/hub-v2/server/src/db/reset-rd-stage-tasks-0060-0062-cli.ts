@@ -3,7 +3,11 @@ import { runMigrations } from "../shared/db/migrate";
 import { loadMigrationEnv } from "../shared/env/env";
 import { assertNonProductionScript } from "./production-guard";
 
-const MIGRATION_NAMES = ["0062_rd_stage_task_owners.sql", "0060_rd_stage_tasks.sql"];
+const MIGRATION_NAMES = [
+  "0066_rd_stage_task_baseline_backfill.sql",
+  "0062_rd_stage_task_owners.sql",
+  "0060_rd_stage_tasks.sql"
+];
 const TABLES_TO_DROP = ["rd_stage_task_owners", "rd_stage_tasks"];
 
 function main() {

@@ -151,6 +151,7 @@ export class RdStageFlowService {
       if (selectedInitialStageTasks.length > 0) {
         this.initializeStageTasks(current.projectId, id, selectedInitialStageTasks, advanceAt);
       }
+      this.upsertStageNote(current.projectId, id, targetStage, description || null, advanceAt);
 
       const advanced = this.requireItem(id);
       this.context.repo.createStageHistory({
@@ -191,6 +192,8 @@ export class RdStageFlowService {
             (nextMembersRef.memberNames.length > 0 ? `；成员: ${nextMembersRef.memberNames.join("、")}` : "；成员: 未指定") +
             ((nextPlanStartAt || nextPlanEndAt) ? `；计划: ${nextPlanStartAt || "-"} ~ ${nextPlanEndAt || "-"}` : ""),
           {
+            stageId: targetStage.id,
+            stageKey: resolveRdStageKey(targetStage),
             description: description || null,
             stageName: targetStage.name,
             memberNames: nextMembersRef.memberNames,
@@ -201,6 +204,16 @@ export class RdStageFlowService {
       );
       return advanced;
     });
+    if (description) {
+      await this.context.uploadCommand.promoteMarkdownUploads(
+        {
+          content: description,
+          bucket: "rd",
+          entityId: entity.id
+        },
+        ctx
+      );
+    }
     await this.event.emitRdEvent("rd.updated", "advance_stage", entity, ctx);
     return this.member.withVerifierFallback(entity);
   }
@@ -211,6 +224,26 @@ export class RdStageFlowService {
       throw new AppError(ERROR_CODES.RD_STAGE_NOT_FOUND, `rd stage not found: ${id}`, 404);
     }
     return stage;
+  }
+
+  private upsertStageNote(
+    projectId: string,
+    itemId: string,
+    stage: RdStageEntity,
+    description: string | null,
+    now: string
+  ): void {
+    const existing = this.context.repo.findStageNoteByItemAndStage(itemId, stage.id);
+    this.context.repo.upsertStageNote({
+      id: existing?.id ?? genId("rdsn"),
+      projectId,
+      itemId,
+      stageId: stage.id,
+      stageKey: resolveRdStageKey(stage),
+      description: description?.trim() || null,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now
+    });
   }
 
   private requireItem(id: string): RdItemEntity {

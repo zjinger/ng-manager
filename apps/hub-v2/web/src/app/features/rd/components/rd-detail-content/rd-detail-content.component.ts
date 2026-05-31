@@ -5,7 +5,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 
 import { MarkdownViewerComponent, PanelCardComponent } from '@shared/ui';
 import type { IssueEntity } from '../../../issues/models/issue.model';
-import { resolveRdStageName, type RdItemEntity, type RdLogEntity, type RdStageEntity, type RdStageHistoryEntry, type RdStageTaskEntity } from '../../models/rd.model';
+import { resolveRdStageName, type RdItemEntity, type RdItemStageNoteEntity, type RdLogEntity, type RdStageEntity, type RdStageHistoryEntry, type RdStageTaskEntity } from '../../models/rd.model';
 import { RdActivityTimelineComponent } from '../rd-activity-timeline/rd-activity-timeline.component';
 import { RdDetailNoteComponent } from '../rd-detail-note/rd-detail-note.component';
 import { RdFlowCardComponent } from '../rd-flow-card/rd-flow-card.component';
@@ -210,6 +210,7 @@ export class RdDetailContentComponent {
   readonly item = input<RdItemEntity | null>(null);
   readonly logs = input<RdLogEntity[]>([]);
   readonly stages = input<RdStageEntity[]>([]);
+  readonly stageNotes = input<RdItemStageNoteEntity[]>([]);
   readonly stageTasks = input<RdStageTaskEntity[]>([]);
   readonly memberProgressList = input<MemberProgressItem[]>([]);
   readonly canEditBasic = input(false);
@@ -245,6 +246,23 @@ export class RdDetailContentComponent {
   });
   readonly detailNotes = computed(() => {
     const notes: Array<{ id: string; label: string; content: string; createdAt: string }> = [];
+    const current = this.item();
+    const currentStageNote = current?.stageId
+      ? this.stageNotes().find((note) => note.stageId === current.stageId)
+      : null;
+    const currentStageName = currentStageNote ? this.stageNameByStageNote(currentStageNote) : '';
+    if (current && currentStageNote) {
+      notes.push({
+        id: `stage-note-${currentStageNote.id}`,
+        label: this.buildNoteLabel([
+          currentStageName,
+          this.formatPlanRange(current.planStartAt, current.planEndAt),
+          this.memberDisplayNames().join('、'),
+        ]),
+        content: currentStageNote.description?.trim() || '暂无阶段说明。',
+        createdAt: currentStageNote.createdAt,
+      });
+    }
 
     for (const log of this.logs()) {
       const content = log.content?.trim() || '';
@@ -258,6 +276,10 @@ export class RdDetailContentComponent {
         const descMatch = content.match(/(?:^|；)\s*说明[:：]\s*(.+)$/);
         const desc = descFromMeta || descMatch?.[1]?.trim() || '暂无阶段说明。';
         const stageName = this.readMetaString(meta, 'stageName') || this.parseAdvanceStageName(content);
+        const stageId = this.readMetaString(meta, 'stageId');
+        if (currentStageNote && (stageId === currentStageNote.stageId || (!stageId && stageName === currentStageName))) {
+          continue;
+        }
         const planText = this.formatPlanRange(this.readMetaString(meta, 'planStartAt'), this.readMetaString(meta, 'planEndAt')) || this.parseAdvancePlanText(content);
         const ownerText = this.readMetaStringArray(meta, 'memberNames').join('、') || this.parseAdvanceMemberText(content);
         notes.push({
@@ -346,6 +368,11 @@ export class RdDetailContentComponent {
   private stageNameByTask(task: RdStageTaskEntity): string {
     const matchedStage = this.stages().find((stage) => resolveRdStageName(task.stageKey) === stage.name || stage.id === task.stageKey);
     return matchedStage?.name || resolveRdStageName(task.stageKey);
+  }
+
+  private stageNameByStageNote(note: RdItemStageNoteEntity): string {
+    const matchedStage = this.stages().find((stage) => stage.id === note.stageId || resolveRdStageName(note.stageKey) === stage.name);
+    return matchedStage?.name || resolveRdStageName(note.stageKey);
   }
 
   private formatStageTaskPlanRange(task: RdStageTaskEntity): string {

@@ -14,6 +14,7 @@ import {
   listRdStagesQuerySchema,
   resolveRdMemberBlockSchema,
   updateRdItemProgressSchema,
+  updateRdItemWithStageTasksSchema,
   updateRdItemSchema,
   updateRdStageTaskSchema,
   updateRdStageSchema
@@ -72,11 +73,24 @@ export default async function rdRoutes(app: FastifyInstance) {
     return ok({ items: await app.container.rdQuery.listStageHistory(params.itemId, ctx) });
   });
 
+  app.get("/rd/items/:itemId/stage-notes", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    return ok({ items: await app.container.rdQuery.listStageNotes(params.itemId, ctx) });
+  });
+
   app.patch("/rd/items/:itemId", async (request) => {
     const ctx = requireAuth(request);
     const params = request.params as { itemId: string };
     const body = updateRdItemSchema.parse(request.body);
     return ok(await app.container.rdCommand.updateItem(params.itemId, body, ctx));
+  });
+
+  app.patch("/rd/items/:itemId/edit", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { itemId: string };
+    const body = updateRdItemWithStageTasksSchema.parse(request.body);
+    return ok(await app.container.rdCommand.updateItemWithStageTasks(params.itemId, body, ctx), "rd item edited");
   });
 
   app.post("/rd/items/:itemId/start", async (request) => {

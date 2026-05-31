@@ -142,6 +142,9 @@ export class RdItemService {
     const assigneeName = memberIds.length > 0 ? members.memberNames[0] : current.assigneeName;
     const stageId =
       input.stageId === undefined ? current.stageId : await this.resolveStageId(current.projectId, input.stageId);
+    const planStartAt = input.planStartAt === undefined ? current.planStartAt : input.planStartAt?.trim() || null;
+    const planEndAt = input.planEndAt === undefined ? current.planEndAt : input.planEndAt?.trim() || null;
+    this.validatePlanRange(planStartAt, planEndAt);
     const now = nowIso();
     const updated = this.context.repo.transaction(() => {
       const success = this.context.repo.updateItem(id, {
@@ -155,12 +158,15 @@ export class RdItemService {
         verifier_id: members.verifierId,
         verifier_name: members.verifierName,
         member_ids: JSON.stringify(memberIds),
-        plan_start_at: input.planStartAt === undefined ? current.planStartAt : input.planStartAt?.trim() || null,
-        plan_end_at: input.planEndAt === undefined ? current.planEndAt : input.planEndAt?.trim() || null,
+        plan_start_at: planStartAt,
+        plan_end_at: planEndAt,
         updated_at: now
       }, input.version);
       if (success) {
         this.ensureMemberProgressRows(id, [...current.memberIds, current.assigneeId ?? "", ...memberIds], now);
+        if (input.stageDescription !== undefined) {
+          this.upsertCurrentStageNote(current.projectId, id, stageId, input.stageDescription, now);
+        }
       }
       return success;
     });
@@ -169,9 +175,17 @@ export class RdItemService {
     }
     const entity = this.requireItem(id);
     await this.promoteTempMarkdownUploads(entity.id, entity.description, ctx);
+    if (input.stageDescription !== undefined) {
+      await this.promoteTempMarkdownUploads(entity.id, input.stageDescription, ctx);
+    }
     this.context.repo.createLog(this.log.createLog(entity, "update", ctx, await this.log.createUpdateLogContent(current, input)));
     await this.event.emitRdEvent("rd.updated", "updated", entity, ctx);
     return this.member.withVerifierFallback(entity);
+  }
+
+  async listStageNotes(id: string, ctx: RequestContext) {
+    const item = await this.requireItemWithAccess(id, ctx, "list rd stage notes");
+    return this.context.repo.listStageNotesByItemId(item.id);
   }
 
   async listItems(query: ListRdItemsQuery, ctx: RequestContext): Promise<RdItemListResult> {
@@ -226,6 +240,44 @@ export class RdItemService {
     if (item.version !== version) {
       throw new AppError(ERROR_CODES.RD_ITEM_VERSION_CONFLICT, "rd item version conflict", 409);
     }
+  }
+
+  private validatePlanRange(planStartAt: string | null, planEndAt: string | null): void {
+    if (!planStartAt || !planEndAt) {
+      return;
+    }
+    const startAt = Date.parse(planStartAt);
+    const endAt = Date.parse(planEndAt);
+    if (Number.isFinite(startAt) && Number.isFinite(endAt) && startAt > endAt) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd planStartAt must be earlier than or equal to planEndAt", 400);
+    }
+  }
+
+  private upsertCurrentStageNote(
+    projectId: string,
+    itemId: string,
+    stageId: string | null,
+    description: string | null | undefined,
+    now: string
+  ): void {
+    if (!stageId) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd current stage is required for stage description", 400);
+    }
+    const stage = this.context.repo.findStageById(stageId);
+    if (!stage || stage.projectId !== projectId) {
+      throw new AppError(ERROR_CODES.RD_STAGE_NOT_FOUND, `rd stage not found: ${stageId}`, 404);
+    }
+    const existing = this.context.repo.findStageNoteByItemAndStage(itemId, stage.id);
+    this.context.repo.upsertStageNote({
+      id: existing?.id ?? genId("rdsn"),
+      projectId,
+      itemId,
+      stageId: stage.id,
+      stageKey: resolveRdStageKey(stage),
+      description: description?.trim() || null,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now
+    });
   }
 
   private async resolveStageId(projectId: string, stageId: string | null | undefined): Promise<string | null> {

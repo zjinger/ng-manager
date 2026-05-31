@@ -9,6 +9,7 @@ import type {
   RdItemEntity,
   RdStageHistoryEntry,
   RdStageTaskEntity,
+  UpdateRdItemWithStageTasksInput,
   UpdateRdStageTaskInput
 } from "../rd.types";
 import type { RdEventService } from "./rd-event.service";
@@ -22,6 +23,30 @@ type ResolvedStageTaskOwners = {
   ownerName: string | null;
   ownerIds: string[];
   ownerNames: string[];
+};
+
+type PreparedStageTaskCreate = {
+  input: CreateRdStageTaskInput;
+  owner: ResolvedStageTaskOwners;
+  stageKey: string;
+  title: string;
+  description: string | null;
+  plannedStartAt: string | null;
+  plannedEndAt: string | null;
+};
+
+type PreparedStageTaskUpdate = {
+  task: RdStageTaskEntity;
+  input: UpdateRdStageTaskInput;
+  owner: ResolvedStageTaskOwners;
+  ownerChanged: boolean;
+  taskProgressChanged: boolean;
+  nextStatus: RdStageTaskEntity["status"];
+  nextProgress: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  plannedStartAt: string | null;
+  plannedEndAt: string | null;
 };
 
 export class RdStageTaskService {
@@ -130,6 +155,7 @@ export class RdStageTaskService {
     const plannedStartAt = input.plannedStartAt === undefined ? task.plannedStartAt : input.plannedStartAt?.trim() || null;
     const plannedEndAt = input.plannedEndAt === undefined ? task.plannedEndAt : input.plannedEndAt?.trim() || null;
     this.validateStageTaskPlanRange(plannedStartAt, plannedEndAt);
+    this.ensureCurrentStageKeepsActiveAssignments(item, task, nextStatus, ownerChanged ? owner.ownerIds : undefined);
     const updated = this.context.repo.transaction(() => {
       const ok = this.context.repo.updateStageTask(task.id, {
         stage_key: input.stageKey?.trim() || task.stageKey,
@@ -180,6 +206,9 @@ export class RdStageTaskService {
     }
     const entity = this.requireStageTask(task.id);
     const latestItem = this.requireItem(item.id);
+    if (input.description !== undefined && entity.description?.trim()) {
+      await this.promoteStageTaskMarkdownUploads(latestItem.id, entity.description, ctx);
+    }
     this.context.repo.createLog(this.log.createLog(item, "update", ctx, `更新阶段任务：${entity.title}`));
     await this.event.emitRdEvent("rd.updated", "stage_task_updated", latestItem, ctx);
     return entity;
@@ -187,6 +216,368 @@ export class RdStageTaskService {
 
   async cancelStageTask(taskId: string, ctx: RequestContext): Promise<RdStageTaskEntity> {
     return this.updateStageTask(taskId, { status: "cancelled" }, ctx);
+  }
+
+  async updateItemWithStageTasks(
+    id: string,
+    input: UpdateRdItemWithStageTasksInput,
+    ctx: RequestContext
+  ): Promise<RdItemEntity> {
+    const current = await this.requireItemWithAccess(id, ctx, "edit rd item with stage tasks");
+    await this.permission.requireBasicEditAccess(current, ctx, "edit rd item with stage tasks");
+    this.requireItemVersion(current, input.version);
+    const members = await this.member.resolveMembers(
+      current.projectId,
+      input.memberIds === undefined
+        ? this.member.collectEffectiveMemberIds(current.memberIds, current.assigneeId)
+        : input.memberIds,
+      input.verifierId === undefined ? current.verifierId : input.verifierId
+    );
+    const memberIds = members.memberIds;
+    const allowedOwnerIds = new Set(memberIds);
+    const assigneeId = memberIds.length > 0 ? memberIds[0] : current.assigneeId;
+    const assigneeName = memberIds.length > 0 ? members.memberNames[0] : current.assigneeName;
+    const stageId =
+      input.stageId === undefined ? current.stageId : await this.resolveStageId(current.projectId, input.stageId);
+    const stage = stageId ? this.context.repo.findStageById(stageId) : null;
+    const currentStageKey = stage ? resolveRdStageKey(stage) : "";
+    const planStartAt = input.planStartAt === undefined ? current.planStartAt : input.planStartAt?.trim() || null;
+    const planEndAt = input.planEndAt === undefined ? current.planEndAt : input.planEndAt?.trim() || null;
+    this.validateItemPlanRange(planStartAt, planEndAt);
+
+    const taskCreates = await this.prepareStageTaskCreates(
+      current,
+      currentStageKey,
+      input.taskCreates ?? [],
+      allowedOwnerIds
+    );
+    const taskUpdates = await this.prepareStageTaskUpdates(
+      current,
+      currentStageKey,
+      input.taskUpdates ?? [],
+      allowedOwnerIds
+    );
+    const taskCancelIds = [...new Set((input.taskCancelIds ?? []).map((item) => item.trim()).filter(Boolean))];
+    const taskCancels = taskCancelIds.map((taskId) => this.requireEditableCurrentStageTask(current, currentStageKey, taskId));
+    this.ensureBatchKeepsActiveAssignments(current, currentStageKey, taskCreates, taskUpdates, taskCancels);
+
+    const now = nowIso();
+    const updated = this.context.repo.transaction(() => {
+      const success = this.context.repo.updateItem(id, {
+        title: input.title?.trim() || current.title,
+        description: input.description === undefined ? current.description : input.description?.trim() || null,
+        stage_id: stageId,
+        type: input.type ?? current.type,
+        priority: input.priority ?? current.priority,
+        assignee_id: assigneeId,
+        assignee_name: assigneeName,
+        verifier_id: members.verifierId,
+        verifier_name: members.verifierName,
+        member_ids: JSON.stringify(memberIds),
+        plan_start_at: planStartAt,
+        plan_end_at: planEndAt,
+        updated_at: now
+      }, input.version);
+      if (!success) {
+        return false;
+      }
+      this.ensureMemberProgressRows(id, [...current.memberIds, current.assigneeId ?? "", ...memberIds], now);
+      if (input.stageDescription !== undefined) {
+        this.upsertCurrentStageNote(current.projectId, id, stageId, input.stageDescription, now);
+      }
+      for (const task of taskCreates) {
+        this.createPreparedStageTask(current, task, now);
+      }
+      for (const task of taskUpdates) {
+        this.updatePreparedStageTask(task, now);
+      }
+      for (const task of taskCancels) {
+        this.cancelPreparedStageTask(task, now);
+      }
+      this.refreshItemProgressByCurrentStageTasks(this.requireItem(id), now);
+      return true;
+    });
+    if (!updated) {
+      throw new AppError(ERROR_CODES.RD_ITEM_VERSION_CONFLICT, "rd item version conflict", 409);
+    }
+    const entity = this.requireItem(id);
+    await this.context.uploadCommand.promoteMarkdownUploads(
+      { content: entity.description, bucket: "rd", entityId: entity.id },
+      ctx
+    );
+    if (input.stageDescription !== undefined) {
+      await this.context.uploadCommand.promoteMarkdownUploads(
+        { content: input.stageDescription, bucket: "rd", entityId: entity.id },
+        ctx
+      );
+    }
+    for (const task of [...taskCreates.map((item) => item.description), ...taskUpdates.map((item) => item.input.description ?? null)]) {
+      if (task?.trim()) {
+        await this.promoteStageTaskMarkdownUploads(entity.id, task, ctx);
+      }
+    }
+    this.context.repo.createLog(this.log.createLog(entity, "update", ctx, await this.log.createUpdateLogContent(current, input)));
+    for (const task of taskCreates) {
+      this.context.repo.createLog(
+        this.log.createLog(entity, "update", ctx, this.createStageTaskLogContent({
+          ...this.createStageTaskEntityForPrepared(current, task, now),
+          ownerProgresses: []
+        }))
+      );
+    }
+    for (const task of taskUpdates) {
+      const latestTask = this.requireStageTask(task.task.id);
+      this.context.repo.createLog(this.log.createLog(entity, "update", ctx, `更新阶段任务：${latestTask.title}`));
+    }
+    for (const task of taskCancels) {
+      this.context.repo.createLog(this.log.createLog(entity, "update", ctx, `取消阶段任务：${task.title}`));
+    }
+    await this.event.emitRdEvent("rd.updated", "updated", entity, ctx);
+    return this.member.withVerifierFallback(entity);
+  }
+
+  private async prepareStageTaskCreates(
+    item: RdItemEntity,
+    currentStageKey: string,
+    inputs: CreateRdStageTaskInput[],
+    allowedOwnerIds: Set<string>
+  ): Promise<PreparedStageTaskCreate[]> {
+    const result: PreparedStageTaskCreate[] = [];
+    for (const input of inputs) {
+      const stageKey = input.stageKey.trim();
+      if (!currentStageKey || stageKey !== currentStageKey) {
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task must belong to current stage", 400);
+      }
+      const title = input.title.trim();
+      const owner = await this.resolveStageTaskOwners(item.projectId, input.ownerIds, input.ownerId, input.ownerName);
+      this.ensureStageTaskOwnersAllowed(owner.ownerIds, allowedOwnerIds);
+      const plannedStartAt = input.plannedStartAt?.trim() || null;
+      const plannedEndAt = input.plannedEndAt?.trim() || null;
+      this.validateStageTaskPlanRange(plannedStartAt, plannedEndAt);
+      result.push({
+        input,
+        owner,
+        stageKey,
+        title,
+        description: input.description?.trim() || null,
+        plannedStartAt,
+        plannedEndAt
+      });
+    }
+    return result;
+  }
+
+  private async prepareStageTaskUpdates(
+    item: RdItemEntity,
+    currentStageKey: string,
+    updates: Array<{ taskId: string; input: UpdateRdStageTaskInput }>,
+    allowedOwnerIds: Set<string>
+  ): Promise<PreparedStageTaskUpdate[]> {
+    const result: PreparedStageTaskUpdate[] = [];
+    const seen = new Set<string>();
+    for (const update of updates) {
+      const taskId = update.taskId.trim();
+      if (seen.has(taskId)) {
+        continue;
+      }
+      seen.add(taskId);
+      const task = this.requireEditableCurrentStageTask(item, currentStageKey, taskId);
+      const input = update.input;
+      const owner = await this.resolveStageTaskOwners(
+        item.projectId,
+        input.ownerIds,
+        input.ownerId === undefined ? task.ownerId : input.ownerId,
+        input.ownerName === undefined ? task.ownerName : input.ownerName
+      );
+      const ownerChanged = input.ownerIds !== undefined || input.ownerId !== undefined || input.ownerName !== undefined;
+      if (ownerChanged) {
+        this.ensureStageTaskOwnersAllowed(owner.ownerIds, allowedOwnerIds);
+      }
+      const taskProgressChanged =
+        input.status !== undefined ||
+        input.progress !== undefined ||
+        input.startedAt !== undefined ||
+        input.completedAt !== undefined;
+      const nextStatus = input.status ?? task.status;
+      const nextProgress = this.resolveStageTaskProgress(nextStatus, input.progress ?? task.progress);
+      const startedAt =
+        input.startedAt === undefined
+          ? (task.startedAt || (nextStatus === "in_progress" || nextStatus === "done" ? nowIso() : null))
+          : input.startedAt?.trim() || null;
+      const completedAt =
+        input.completedAt === undefined
+          ? (nextStatus === "done" ? task.completedAt || nowIso() : nextStatus === "cancelled" ? task.completedAt : null)
+          : input.completedAt?.trim() || null;
+      const plannedStartAt = input.plannedStartAt === undefined ? task.plannedStartAt : input.plannedStartAt?.trim() || null;
+      const plannedEndAt = input.plannedEndAt === undefined ? task.plannedEndAt : input.plannedEndAt?.trim() || null;
+      this.validateStageTaskPlanRange(plannedStartAt, plannedEndAt);
+      result.push({
+        task,
+        input,
+        owner,
+        ownerChanged,
+        taskProgressChanged,
+        nextStatus,
+        nextProgress,
+        startedAt,
+        completedAt,
+        plannedStartAt,
+        plannedEndAt
+      });
+    }
+    return result;
+  }
+
+  private requireEditableCurrentStageTask(item: RdItemEntity, currentStageKey: string, taskId: string): RdStageTaskEntity {
+    const task = this.requireStageTask(taskId);
+    if (task.itemId !== item.id) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task does not match current rd item", 400);
+    }
+    if (!currentStageKey || task.stageKey !== currentStageKey) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task must belong to current stage", 400);
+    }
+    if (task.status === "cancelled") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task is cancelled", 400);
+    }
+    return task;
+  }
+
+  private ensureStageTaskOwnersAllowed(ownerIds: string[], allowedOwnerIds: Set<string>): void {
+    if (ownerIds.length === 0) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task owner is required", 400);
+    }
+    for (const ownerId of ownerIds) {
+      if (!allowedOwnerIds.has(ownerId)) {
+        throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task owner must be selected rd item member", 400);
+      }
+    }
+  }
+
+  private ensureBatchKeepsActiveAssignments(
+    item: RdItemEntity,
+    currentStageKey: string,
+    creates: PreparedStageTaskCreate[],
+    updates: PreparedStageTaskUpdate[],
+    cancels: RdStageTaskEntity[]
+  ): void {
+    if (!currentStageKey) {
+      return;
+    }
+    const cancelIds = new Set(cancels.map((task) => task.id));
+    const updateById = new Map(updates.map((task) => [task.task.id, task]));
+    const currentTasks = this.context.repo
+      .listStageTasksByItemId(item.id)
+      .filter((task) => task.stageKey === currentStageKey && task.status !== "cancelled");
+    let activeAssignments = creates.reduce((count, task) => count + task.owner.ownerIds.length, 0);
+    for (const task of currentTasks) {
+      if (cancelIds.has(task.id)) {
+        continue;
+      }
+      const update = updateById.get(task.id);
+      if (update) {
+        if (update.nextStatus === "cancelled") {
+          continue;
+        }
+        activeAssignments += update.ownerChanged ? update.owner.ownerIds.length : this.countActiveStageTaskOwners(task);
+        continue;
+      }
+      activeAssignments += this.countActiveStageTaskOwners(task);
+    }
+    if (activeAssignments <= 0) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "current stage must keep at least one active stage task owner", 400);
+    }
+  }
+
+  private createPreparedStageTask(item: RdItemEntity, prepared: PreparedStageTaskCreate, now: string): RdStageTaskEntity {
+    this.ensureCurrentStageBaselineTasksBeforeFirstExplicitTask(item, prepared.stageKey, now);
+    const entity = this.createStageTaskEntityForPrepared(item, prepared, now);
+    this.context.repo.createStageTask(entity);
+    this.context.repo.replaceStageTaskOwners(entity, this.createStageTaskOwnerRows(entity, now));
+    return entity;
+  }
+
+  private createStageTaskEntityForPrepared(item: RdItemEntity, prepared: PreparedStageTaskCreate, now: string): RdStageTaskEntity {
+    const status = prepared.input.status ?? "pending";
+    return {
+      id: genId("rdst"),
+      projectId: item.projectId,
+      itemId: item.id,
+      stageKey: prepared.stageKey,
+      title: prepared.title,
+      description: prepared.description,
+      status,
+      ownerId: prepared.owner.ownerId,
+      ownerName: prepared.owner.ownerName,
+      ownerIds: prepared.owner.ownerIds,
+      ownerNames: prepared.owner.ownerNames,
+      progress: this.resolveStageTaskProgress(status, prepared.input.progress),
+      plannedStartAt: prepared.plannedStartAt,
+      plannedEndAt: prepared.plannedEndAt,
+      startedAt: prepared.input.startedAt?.trim() || (status === "in_progress" || status === "done" ? now : null),
+      completedAt: prepared.input.completedAt?.trim() || (status === "done" ? now : null),
+      sortOrder: prepared.input.sortOrder ?? this.context.repo.getNextStageTaskSortOrder(item.id, prepared.stageKey),
+      remark: prepared.input.remark?.trim() || null,
+      createdAt: now,
+      updatedAt: now,
+      ownerProgresses: []
+    };
+  }
+
+  private updatePreparedStageTask(prepared: PreparedStageTaskUpdate, now: string): void {
+    const { task, input, owner, ownerChanged, taskProgressChanged } = prepared;
+    const ok = this.context.repo.updateStageTask(task.id, {
+      stage_key: input.stageKey?.trim() || task.stageKey,
+      title: input.title?.trim() || task.title,
+      description: input.description === undefined ? task.description : input.description?.trim() || null,
+      status: prepared.nextStatus,
+      owner_id: owner.ownerId,
+      owner_name: owner.ownerName,
+      progress: prepared.nextProgress,
+      planned_start_at: prepared.plannedStartAt,
+      planned_end_at: prepared.plannedEndAt,
+      started_at: prepared.startedAt,
+      completed_at: prepared.completedAt,
+      sort_order: input.sortOrder ?? task.sortOrder,
+      remark: input.remark === undefined ? task.remark : input.remark?.trim() || null,
+      updated_at: now
+    });
+    if (!ok) {
+      throw new AppError(ERROR_CODES.RD_ACTION_FAILED, "failed to update rd stage task", 500);
+    }
+    if (ownerChanged) {
+      const ownerTask = {
+        ...task,
+        ownerIds: owner.ownerIds,
+        ownerNames: owner.ownerNames,
+        status: taskProgressChanged ? prepared.nextStatus : "pending" as RdStageTaskEntity["status"],
+        progress: taskProgressChanged ? prepared.nextProgress : 0,
+        startedAt: taskProgressChanged ? prepared.startedAt : null,
+        completedAt: taskProgressChanged ? prepared.completedAt : null
+      };
+      const existingOwnerProgressByUserId = new Map(task.ownerProgresses.map((row) => [row.userId, row]));
+      this.context.repo.replaceStageTaskOwners(
+        { id: task.id, projectId: task.projectId, itemId: task.itemId },
+        this.createStageTaskOwnerRows(ownerTask, now, existingOwnerProgressByUserId)
+      );
+    }
+    if (taskProgressChanged) {
+      this.syncStageTaskOwnerProgressFromTaskState(task.id, prepared.nextStatus, prepared.nextProgress, prepared.startedAt, prepared.completedAt, now);
+    }
+    if (ownerChanged || taskProgressChanged) {
+      this.updateStageTaskAggregateFromOwners(task.id, now);
+    }
+  }
+
+  private cancelPreparedStageTask(task: RdStageTaskEntity, now: string): void {
+    const ok = this.context.repo.updateStageTask(task.id, {
+      status: "cancelled",
+      completed_at: task.completedAt,
+      updated_at: now
+    });
+    if (!ok) {
+      throw new AppError(ERROR_CODES.RD_ACTION_FAILED, "failed to cancel rd stage task", 500);
+    }
+    this.syncStageTaskOwnerProgressFromTaskState(task.id, "cancelled", task.progress, task.startedAt, task.completedAt, now);
   }
 
   private requireItem(id: string): RdItemEntity {
@@ -209,6 +600,83 @@ export class RdStageTaskService {
     const item = this.requireItem(id);
     await this.context.projectAccess.requireProjectAccess(item.projectId, ctx, action);
     return item;
+  }
+
+  private requireItemVersion(item: RdItemEntity, version: number): void {
+    if (item.version !== version) {
+      throw new AppError(ERROR_CODES.RD_ITEM_VERSION_CONFLICT, "rd item version conflict", 409);
+    }
+  }
+
+  private validateItemPlanRange(planStartAt: string | null, planEndAt: string | null): void {
+    if (!planStartAt || !planEndAt) {
+      return;
+    }
+    const startAt = Date.parse(planStartAt);
+    const endAt = Date.parse(planEndAt);
+    if (Number.isFinite(startAt) && Number.isFinite(endAt) && startAt > endAt) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd planStartAt must be earlier than or equal to planEndAt", 400);
+    }
+  }
+
+  private async resolveStageId(projectId: string, stageId: string | null | undefined): Promise<string | null> {
+    const normalized = stageId?.trim() || null;
+    if (!normalized) {
+      return null;
+    }
+    const stage = this.context.repo.findStageById(normalized);
+    if (!stage) {
+      throw new AppError(ERROR_CODES.RD_STAGE_NOT_FOUND, `rd stage not found: ${normalized}`, 404);
+    }
+    if (stage.projectId !== projectId) {
+      throw new AppError(ERROR_CODES.RD_STAGE_PROJECT_MISMATCH, "rd stage project mismatch", 400);
+    }
+    return stage.id;
+  }
+
+  private ensureMemberProgressRows(itemId: string, memberIds: string[], updatedAt: string): void {
+    const existingIds = new Set(this.context.repo.listProgressByItemId(itemId).map((row) => row.user_id));
+    for (const memberId of this.member.collectEffectiveMemberIds(memberIds)) {
+      if (existingIds.has(memberId)) {
+        continue;
+      }
+      this.context.repo.upsertProgress({
+        id: genId("rdp"),
+        item_id: itemId,
+        user_id: memberId,
+        progress: 0,
+        note: null,
+        updated_at: updatedAt
+      });
+      existingIds.add(memberId);
+    }
+  }
+
+  private upsertCurrentStageNote(
+    projectId: string,
+    itemId: string,
+    stageId: string | null,
+    description: string | null | undefined,
+    now: string
+  ): void {
+    if (!stageId) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd current stage is required for stage description", 400);
+    }
+    const stage = this.context.repo.findStageById(stageId);
+    if (!stage || stage.projectId !== projectId) {
+      throw new AppError(ERROR_CODES.RD_STAGE_NOT_FOUND, `rd stage not found: ${stageId}`, 404);
+    }
+    const existing = this.context.repo.findStageNoteByItemAndStage(itemId, stage.id);
+    this.context.repo.upsertStageNote({
+      id: existing?.id ?? genId("rdsn"),
+      projectId,
+      itemId,
+      stageId: stage.id,
+      stageKey: resolveRdStageKey(stage),
+      description: description?.trim() || null,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now
+    });
   }
 
   private async resolveStageTaskOwners(
@@ -247,20 +715,24 @@ export class RdStageTaskService {
     createdAt: string,
     existingByUserId: Map<string, RdStageTaskEntity["ownerProgresses"][number]> = new Map()
   ) {
-    return task.ownerIds.map((userId, index) => ({
-      id: existingByUserId.get(userId)?.id ?? genId("rdsto"),
-      taskId: task.id,
-      projectId: task.projectId,
-      itemId: task.itemId,
-      userId,
-      userName: task.ownerNames[index] ?? userId,
-      status: existingByUserId.get(userId)?.status ?? task.status,
-      progress: existingByUserId.get(userId)?.progress ?? task.progress,
-      startedAt: existingByUserId.get(userId)?.startedAt ?? task.startedAt,
-      completedAt: existingByUserId.get(userId)?.completedAt ?? task.completedAt,
-      createdAt: existingByUserId.get(userId)?.createdAt ?? createdAt,
-      updatedAt: createdAt
-    }));
+    return task.ownerIds.map((userId, index) => {
+      const existing = existingByUserId.get(userId);
+      const shouldReuseExistingState = !!existing && existing.status !== "cancelled";
+      return {
+        id: existingByUserId.get(userId)?.id ?? genId("rdsto"),
+        taskId: task.id,
+        projectId: task.projectId,
+        itemId: task.itemId,
+        userId,
+        userName: task.ownerNames[index] ?? userId,
+        status: shouldReuseExistingState ? existing.status : task.status,
+        progress: shouldReuseExistingState ? existing.progress : task.progress,
+        startedAt: shouldReuseExistingState ? existing.startedAt : task.startedAt,
+        completedAt: shouldReuseExistingState ? existing.completedAt : task.completedAt,
+        createdAt: existingByUserId.get(userId)?.createdAt ?? createdAt,
+        updatedAt: createdAt
+      };
+    });
   }
 
   private resolveStageTaskProgress(status: RdStageTaskEntity["status"], progress: number | undefined): number {
@@ -359,6 +831,43 @@ export class RdStageTaskService {
   private createStageTaskLogContent(task: RdStageTaskEntity): string {
     const ownerText = task.ownerNames.map((name) => name.trim()).filter(Boolean).join("、");
     return ownerText ? `新增阶段任务：${task.title}；执行人：${ownerText}` : `新增阶段任务：${task.title}`;
+  }
+
+  private ensureCurrentStageKeepsActiveAssignments(
+    item: RdItemEntity,
+    task: RdStageTaskEntity,
+    nextStatus: RdStageTaskEntity["status"],
+    nextOwnerIds: string[] | undefined
+  ): void {
+    const stage = item.stageId ? this.context.repo.findStageById(item.stageId) : null;
+    const currentStageKey = stage ? resolveRdStageKey(stage) : "";
+    if (!currentStageKey || task.stageKey !== currentStageKey) {
+      return;
+    }
+    const currentTasks = this.context.repo
+      .listStageTasksByItemId(item.id)
+      .filter((itemTask) => itemTask.stageKey === currentStageKey && itemTask.status !== "cancelled");
+    const nextActiveAssignmentCount = currentTasks.reduce((count, itemTask) => {
+      if (itemTask.id !== task.id) {
+        return count + this.countActiveStageTaskOwners(itemTask);
+      }
+      if (nextStatus === "cancelled") {
+        return count;
+      }
+      return count + (nextOwnerIds === undefined ? this.countActiveStageTaskOwners(itemTask) : nextOwnerIds.length);
+    }, 0);
+    if (nextActiveAssignmentCount <= 0) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "current stage must keep at least one active stage task owner", 400);
+    }
+  }
+
+  private countActiveStageTaskOwners(task: RdStageTaskEntity): number {
+    const activeOwnerProgressCount = task.ownerProgresses.filter((owner) => owner.status !== "cancelled").length;
+    if (activeOwnerProgressCount > 0) {
+      return activeOwnerProgressCount;
+    }
+    const ownerIds = [...new Set((task.ownerIds?.length ? task.ownerIds : task.ownerId ? [task.ownerId] : []).map((id) => id.trim()).filter(Boolean))];
+    return ownerIds.length;
   }
 
   private async promoteStageTaskMarkdownUploads(itemId: string, description: string | null, ctx: RequestContext): Promise<void> {

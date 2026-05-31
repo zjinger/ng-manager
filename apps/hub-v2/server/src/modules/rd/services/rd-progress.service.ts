@@ -62,7 +62,7 @@ export class RdProgressService {
       if (currentStageKey && stageTask.stageKey !== currentStageKey) {
         throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task does not match current stage", 400);
       }
-      if (!stageTaskOwner) {
+      if (!stageTaskOwner || stageTaskOwner.status === "cancelled") {
         throw new AppError(ERROR_CODES.RD_PROGRESS_FORBIDDEN, "update rd stage task owner progress forbidden", 403);
       }
     }

@@ -22,7 +22,7 @@ import { RdCloseDialogComponent } from '../../dialogs/rd-close-dialog/rd-close-d
 import { RdCompleteDialogComponent } from '../../dialogs/rd-complete-dialog/rd-complete-dialog.component';
 import { RdEditDialogComponent, type RdEditDialogSaveInput } from '../../dialogs/rd-edit-dialog/rd-edit-dialog.component';
 import { RdProgressUpdateDialogComponent, type RdProgressUpdateDialogSaveInput } from '../../dialogs/rd-progress-update-dialog/rd-progress-update-dialog.component';
-import { getRdMemberIds, resolveRdStageKey, type RdInitialStageTaskInput, type RdItemEntity, type RdItemProgress, type RdLogEntity, type RdMemberBlockEntity, type RdStageEntity, type RdStageHistoryEntry, type RdStageTaskEntity, type RdStageTaskStatus, type RdStageTaskTemplateEntity } from '../../models/rd.model';
+import { getRdMemberIds, resolveRdStageKey, type RdInitialStageTaskInput, type RdItemEntity, type RdItemProgress, type RdItemStageNoteEntity, type RdLogEntity, type RdMemberBlockEntity, type RdStageEntity, type RdStageHistoryEntry, type RdStageTaskEntity, type RdStageTaskStatus, type RdStageTaskTemplateEntity } from '../../models/rd.model';
 import { RdApiService } from '../../services/rd-api.service';
 import { RdPermissionService } from '../../services/rd-permission.service';
 
@@ -113,6 +113,7 @@ const LINKED_ISSUES_PAGE_SIZE = 10;
                   [item]="current"
                   [logs]="logs()"
                   [stages]="stages()"
+                  [stageNotes]="stageNotes()"
                   [stageTasks]="stageTasks()"
                   [stageHistory]="stageHistory()"
                   [memberProgressList]="memberProgressList()"
@@ -133,6 +134,7 @@ const LINKED_ISSUES_PAGE_SIZE = 10;
                   [item]="current"
                   [logs]="logs()"
                   [stages]="stages()"
+                  [stageNotes]="stageNotes()"
                   [stageHistory]="stageHistory()"
                   [memberProgressList]="memberProgressList()"
                   [canEditBasic]="canEditBasic()"
@@ -159,6 +161,7 @@ const LINKED_ISSUES_PAGE_SIZE = 10;
                   [item]="current"
                   [logs]="logs()"
                   [stages]="stages()"
+                  [stageNotes]="stageNotes()"
                   [stageHistory]="stageHistory()"
                   [memberProgressList]="memberProgressList()"
                   [canEditBasic]="canEditBasic()"
@@ -215,6 +218,10 @@ const LINKED_ISSUES_PAGE_SIZE = 10;
       [busy]="busy()"
       [item]="item()"
       [members]="members()"
+      [stages]="stages()"
+      [stageNotes]="stageNotes()"
+      [stageTasks]="stageTasks()"
+      [stageTaskTemplates]="stageTaskTemplates()"
       (cancel)="editOpen.set(false)"
       (save)="saveBasic($event)"
     />
@@ -290,6 +297,7 @@ export class RdDetailPageComponent {
 
   readonly item = signal<RdItemEntity | null>(null);
   readonly logs = signal<RdLogEntity[]>([]);
+  readonly stageNotes = signal<RdItemStageNoteEntity[]>([]);
   readonly stageHistory = signal<RdStageHistoryEntry[]>([]);
   readonly stageTasks = signal<RdStageTaskEntity[]>([]);
   readonly stages = signal<RdStageEntity[]>([]);
@@ -407,6 +415,7 @@ export class RdDetailPageComponent {
       if (!id) {
         this.item.set(null);
         this.logs.set([]);
+        this.stageNotes.set([]);
         this.stageHistory.set([]);
         this.stageTasks.set([]);
         this.stages.set([]);
@@ -461,8 +470,28 @@ export class RdDetailPageComponent {
     if (!current || !this.canEditBasic()) {
       return;
     }
-    this.runAction(() => this.rdApi.update(current.id, { version: current.version, ...input }));
-    this.editOpen.set(false);
+    this.busy.set(true);
+    this.rdApi.updateWithStageTasks(current.id, {
+      version: current.version,
+      title: input.title,
+      description: input.description,
+      memberIds: input.memberIds,
+      verifierId: input.verifierId,
+      planStartAt: input.planStartAt,
+      planEndAt: input.planEndAt,
+      stageDescription: input.stageDescription,
+      taskCreates: input.taskCreates,
+      taskUpdates: input.taskUpdates,
+      taskCancelIds: input.taskCancelIds,
+    }).subscribe({
+      next: (updated) => {
+        this.editOpen.set(false);
+        this.refreshStageTaskState(updated.id);
+      },
+      error: () => {
+        this.busy.set(false);
+      },
+    });
   }
 
   resolveMemberBlock(blockId: string): void {
@@ -588,7 +617,13 @@ export class RdDetailPageComponent {
     return this.stageTasks()
       .filter((task) => task.status !== 'cancelled')
       .filter((task) => !currentStageKey || task.stageKey === currentStageKey)
-      .filter((task) => (task.ownerIds ?? []).includes(userId) || task.ownerId === userId)
+      .filter((task) => {
+        const ownerProgress = task.ownerProgresses?.find((owner) => owner.userId === userId);
+        if (ownerProgress) {
+          return ownerProgress.status !== 'cancelled';
+        }
+        return (task.ownerIds ?? []).includes(userId) || task.ownerId === userId;
+      })
       .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
   }
 
@@ -697,12 +732,14 @@ export class RdDetailPageComponent {
     forkJoin({
       item: this.rdApi.getById(itemId),
       tasks: this.rdApi.listStageTasks(itemId),
+      stageNotes: this.rdApi.listStageNotes(itemId),
       progress: this.rdApi.listProgress(itemId),
       logs: this.rdApi.listLogs(itemId),
     }).subscribe({
-      next: ({ item, tasks, progress, logs }) => {
+      next: ({ item, tasks, stageNotes, progress, logs }) => {
         this.item.set(item);
         this.stageTasks.set(tasks);
+        this.stageNotes.set(stageNotes);
         this.progressList.set(progress);
         this.logs.set(logs);
         this.busy.set(false);
@@ -724,6 +761,7 @@ export class RdDetailPageComponent {
         this.item.set(item);
         forkJoin({
           logs: this.rdApi.listLogs(item.id),
+          stageNotes: this.rdApi.listStageNotes(item.id),
           stageHistory: this.rdApi.listStageHistory(item.id),
           stageTasks: this.rdApi.listStageTasks(item.id),
           stages: this.rdApi.listStages(item.projectId),
@@ -733,8 +771,9 @@ export class RdDetailPageComponent {
           memberBlocks: this.rdApi.listMemberBlocks(item.id),
           linkedIssues: this.issueApi.list({ projectId: item.projectId, rdItemId: item.id, page: 1, pageSize: LINKED_ISSUES_PAGE_SIZE }),
         }).subscribe({
-          next: ({ logs, stageHistory, stageTasks, stages, stageTaskTemplates, members, progress, memberBlocks, linkedIssues }) => {
+          next: ({ logs, stageNotes, stageHistory, stageTasks, stages, stageTaskTemplates, members, progress, memberBlocks, linkedIssues }) => {
             this.logs.set(logs);
+            this.stageNotes.set(stageNotes);
             this.stageHistory.set(stageHistory);
             this.stageTasks.set(stageTasks);
             this.stages.set(stages);
@@ -749,6 +788,7 @@ export class RdDetailPageComponent {
           },
           error: () => {
             this.logs.set([]);
+            this.stageNotes.set([]);
             this.stageHistory.set([]);
             this.stageTasks.set([]);
             this.stages.set([]);
@@ -790,6 +830,10 @@ export class RdDetailPageComponent {
         this.item.set(item);
         this.rdApi.listLogs(item.id).subscribe({
           next: (logs) => this.logs.set(logs),
+        });
+        this.rdApi.listStageNotes(item.id).subscribe({
+          next: (items) => this.stageNotes.set(items),
+          error: () => this.stageNotes.set([]),
         });
         this.rdApi.listStageHistory(item.id).subscribe({
           next: (items) => this.stageHistory.set(items),

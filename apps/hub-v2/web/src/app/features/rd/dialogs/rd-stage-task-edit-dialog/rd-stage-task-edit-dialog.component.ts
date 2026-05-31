@@ -11,10 +11,20 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import { ImageUploadService } from '../../../../shared/services/image-upload.service';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
-import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity } from '../../models/rd.model';
+import type { RdStageTaskTemplateEntity } from '../../models/rd.model';
+
+export interface RdStageTaskEditDraft {
+  localId: string;
+  taskId: string | null;
+  title: string;
+  description: string;
+  ownerIds: string[];
+  plannedStartDate: Date | null;
+  plannedEndDate: Date | null;
+}
 
 @Component({
-  selector: 'app-rd-stage-task-create-dialog',
+  selector: 'app-rd-stage-task-edit-dialog',
   standalone: true,
   imports: [
     FormsModule,
@@ -32,26 +42,22 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
     <app-dialog-shell
       [open]="open()"
       [width]="820"
-      [title]="'新增阶段任务'"
-      [subtitle]="''"
-      [icon]="'plus'"
+      [title]="initialDraft()?.taskId ? '编辑阶段任务' : '新增阶段任务'"
+      [subtitle]="stageName()"
+      [icon]="initialDraft()?.taskId ? 'edit' : 'plus'"
       (cancel)="cancel.emit()"
     >
       <div dialog-body>
-        <form id="rd-stage-task-create-form" nz-form nzLayout="vertical" (ngSubmit)="submitCreate()">
+        <form id="rd-stage-task-edit-form" nz-form nzLayout="vertical" (ngSubmit)="submitDraft()">
           <nz-form-item>
             <nz-form-label>阶段</nz-form-label>
             <nz-form-control>
-              <div class="stage-task-stage-field">
-                <strong>{{ currentStageName() }}</strong>
+              <div class="stage-field">
+                <strong>{{ stageName() || '未归类' }}</strong>
                 <span>当前阶段</span>
               </div>
             </nz-form-control>
           </nz-form-item>
-
-          @if (!canOpenCreateDialog()) {
-            <div class="stage-task-warning">当前研发项没有可用阶段，不能新增阶段任务。</div>
-          }
 
           <nz-form-item>
             <nz-form-label nzRequired>任务标题</nz-form-label>
@@ -60,15 +66,15 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
                 nz-input
                 maxlength="200"
                 [nzAutocomplete]="taskTitleAuto"
-                [ngModel]="taskTitle()"
+                [ngModel]="title()"
                 name="taskTitle"
-                (ngModelChange)="onTaskTitleChange($event)"
+                (ngModelChange)="onTitleChange($event)"
                 placeholder="选择模板或手动输入任务标题"
               />
               <nz-autocomplete #taskTitleAuto [nzDefaultActiveFirstOption]="false">
-                @for (template of currentStageTemplates(); track template.id) {
+                @for (template of templates(); track template.id) {
                   <nz-auto-option [nzValue]="template.title" [nzLabel]="template.title">
-                    <div class="stage-task-title-option">
+                    <div class="task-option">
                       <strong>{{ template.title }}</strong>
                       @if (template.description) {
                         <span>{{ template.description }}</span>
@@ -84,28 +90,28 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
             <nz-form-label>描述</nz-form-label>
             <nz-form-control>
               <app-markdown-editor
-                [ngModel]="taskDescription() || ''"
+                [ngModel]="description()"
                 name="taskDescription"
                 [config]="editorConfig"
                 [imageUploadHandler]="uploadMarkdownImage"
-                [placeholder]="'补充任务说明、验收口径或交付要求。（会显示在研发项描述区域）'"
+                [placeholder]="'补充任务说明、验收口径或交付要求。'"
                 minHeight="180px"
-                (contentChange)="setTaskDescription($event)"
+                (contentChange)="description.set($event)"
                 (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
               />
             </nz-form-control>
           </nz-form-item>
 
           <nz-form-item>
-            <nz-form-label nzRequired>执行人</nz-form-label>
+            <nz-form-label nzRequired>负责人</nz-form-label>
             <nz-form-control>
               <nz-select
                 nzMode="multiple"
                 nzShowSearch
-                nzPlaceHolder="选择执行该任务的项目成员"
-                [ngModel]="selectedOwnerIds()"
+                nzPlaceHolder="选择负责人"
+                [ngModel]="ownerIds()"
                 name="ownerIds"
-                (ngModelChange)="onSelectedOwnersChange($event)"
+                (ngModelChange)="onOwnersChange($event)"
               >
                 @for (member of ownerOptions(); track member.userId) {
                   <nz-option [nzLabel]="member.displayName" [nzValue]="member.userId"></nz-option>
@@ -114,7 +120,7 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
             </nz-form-control>
           </nz-form-item>
 
-          <div class="stage-task-date-range">
+          <div class="date-range">
             <nz-form-item>
               <nz-form-label>计划开始</nz-form-label>
               <nz-form-control [nzValidateStatus]="hasInvalidDateRange() ? 'error' : ''">
@@ -124,14 +130,14 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
                   [ngModel]="plannedStartDate()"
                   name="plannedStartAt"
                   (ngModelChange)="setPlannedDate('start', $event)"
-                ></nz-date-picker>
+                />
               </nz-form-control>
             </nz-form-item>
             <nz-form-item>
               <nz-form-label>计划结束</nz-form-label>
               <nz-form-control
                 [nzValidateStatus]="hasInvalidDateRange() ? 'error' : ''"
-                nzErrorTip="计划开始不能晚于计划结束。"
+                nzErrorTip="任务计划时间需合法，且必须在当前阶段计划周期内。"
               >
                 <nz-date-picker
                   nzFormat="yyyy-MM-dd"
@@ -139,7 +145,7 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
                   [ngModel]="plannedEndDate()"
                   name="plannedEndAt"
                   (ngModelChange)="setPlannedDate('end', $event)"
-                ></nz-date-picker>
+                />
               </nz-form-control>
             </nz-form-item>
           </div>
@@ -149,8 +155,8 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
       <ng-container dialog-footer>
         <app-form-actions>
           <button nz-button type="button" (click)="cancel.emit()">取消</button>
-          <button nz-button nzType="primary" [disabled]="!canSubmitCreate()" type="submit" form="rd-stage-task-create-form">
-            创建阶段任务
+          <button nz-button nzType="primary" [disabled]="!canSubmit()" type="submit" form="rd-stage-task-edit-form">
+            确认
           </button>
         </app-form-actions>
       </ng-container>
@@ -158,7 +164,7 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
   `,
   styles: [
     `
-      .stage-task-stage-field {
+      .stage-field {
         min-height: 32px;
         display: flex;
         align-items: center;
@@ -169,46 +175,40 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
         border-radius: 6px;
         background: var(--bg-subtle);
       }
-      .stage-task-stage-field strong {
+      .stage-field strong {
         color: var(--text-primary);
         font-size: 13px;
       }
-      .stage-task-stage-field span,
-      .stage-task-warning {
+      .stage-field span {
         color: var(--text-muted);
         font-size: 12px;
       }
-      .stage-task-warning {
-        margin: -2px 0 8px;
-      }
-      .stage-task-title-option {
+      .task-option {
         min-width: 0;
-        display: flex;
-        flex-direction: column;
+        display: grid;
         gap: 2px;
       }
-      .stage-task-title-option strong,
-      .stage-task-title-option span {
+      .task-option strong,
+      .task-option span {
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .stage-task-title-option span {
+      .task-option span {
         color: var(--text-muted);
         font-size: 12px;
       }
-      .stage-task-date-range {
-        min-width: 0;
+      .date-range {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 8px;
       }
-      .stage-task-date-range nz-date-picker {
+      .date-range nz-date-picker {
         width: 100%;
       }
       @media (max-width: 760px) {
-        .stage-task-date-range {
+        .date-range {
           grid-template-columns: 1fr;
         }
       }
@@ -216,69 +216,34 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RdStageTaskCreateDialogComponent {
+export class RdStageTaskEditDialogComponent {
   private readonly imageUpload = inject(ImageUploadService);
   private readonly message = inject(NzMessageService);
 
   readonly open = input(false);
-  readonly stages = input<RdStageEntity[]>([]);
+  readonly stageName = input('');
+  readonly initialDraft = input<RdStageTaskEditDraft | null>(null);
   readonly members = input<ProjectMemberEntity[]>([]);
   readonly memberIds = input<string[]>([]);
-  readonly currentStageId = input<string | null>(null);
-  readonly planStartAt = input<string | null>(null);
-  readonly planEndAt = input<string | null>(null);
-  readonly stageTaskTemplates = input<RdStageTaskTemplateEntity[]>([]);
-
-  readonly createTasks = output<{
-    tasks: Array<{
-      stageKey: string;
-      title: string;
-      description?: string | null;
-      ownerIds: string[];
-      plannedStartAt?: string | null;
-      plannedEndAt?: string | null;
-    }>;
-  }>();
+  readonly templates = input<RdStageTaskTemplateEntity[]>([]);
+  readonly stagePlanStartDate = input<Date | null>(null);
+  readonly stagePlanEndDate = input<Date | null>(null);
+  readonly confirm = output<RdStageTaskEditDraft>();
   readonly cancel = output<void>();
 
-  readonly selectedOwnerIds = signal<string[]>([]);
-  readonly taskTitleValue = signal('');
-  readonly taskDescriptionValue = signal<string | null>(null);
-  readonly plannedStartDateValue = signal<Date | null>(null);
-  readonly plannedEndDateValue = signal<Date | null>(null);
+  readonly title = signal('');
+  readonly description = signal('');
+  readonly ownerIds = signal<string[]>([]);
+  readonly plannedStartDate = signal<Date | null>(null);
+  readonly plannedEndDate = signal<Date | null>(null);
   readonly editorConfig = {
     autosave: false,
     status: ['lines', 'words'],
   };
   readonly uploadMarkdownImage = async (file: File): Promise<string> => this.imageUpload.uploadImage(file);
 
-  readonly currentStage = computed(() => {
-    const stageId = this.currentStageId()?.trim();
-    if (!stageId) {
-      return null;
-    }
-    return this.stages().find((stage) => stage.id === stageId) ?? null;
-  });
-
-  readonly currentStageKey = computed(() => {
-    const stage = this.currentStage();
-    return stage && stage.enabled ? resolveRdStageKey(stage) : '';
-  });
-
-  readonly currentStageName = computed(() => this.currentStage()?.name ?? '未归类');
-
-  readonly currentStageTemplates = computed(() => {
-    const stage = this.currentStage();
-    if (!stage || !stage.enabled) {
-      return [];
-    }
-    return this.stageTaskTemplates()
-      .filter((template) => template.stageId === stage.id && template.enabled)
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
-  });
-
   readonly ownerOptions = computed(() => {
-    const allowedIds = new Set(this.memberIds().map((item) => item.trim()).filter(Boolean));
+    const allowedIds = new Set(this.memberIds().map((id) => id.trim()).filter(Boolean));
     const members = this.members().filter((member) => member.userId.trim());
     if (allowedIds.size === 0) {
       return members;
@@ -291,117 +256,90 @@ export class RdStageTaskCreateDialogComponent {
       if (!this.open()) {
         return;
       }
-      this.selectedOwnerIds.set([]);
-      this.taskTitleValue.set('');
-      this.taskDescriptionValue.set(null);
-      this.plannedStartDateValue.set(this.normalizeDate(this.planStartAt()));
-      this.plannedEndDateValue.set(this.normalizeDate(this.planEndAt()));
+      const draft = this.initialDraft();
+      this.title.set(draft?.title ?? '');
+      this.description.set(draft?.description ?? '');
+      this.ownerIds.set(draft?.ownerIds ?? []);
+      this.plannedStartDate.set(draft?.plannedStartDate ? new Date(draft.plannedStartDate) : this.cloneDate(this.stagePlanStartDate()));
+      this.plannedEndDate.set(draft?.plannedEndDate ? new Date(draft.plannedEndDate) : this.cloneDate(this.stagePlanEndDate()));
     });
   }
 
-  canOpenCreateDialog(): boolean {
-    return !!this.currentStageKey();
+  canSubmit(): boolean {
+    return !!this.title().trim() && this.ownerIds().length > 0 && !this.hasInvalidDateRange();
   }
 
-  canSubmitCreate(): boolean {
-    if (!this.currentStageKey() || this.selectedOwnerIds().length === 0) {
-      return false;
-    }
-    return !!this.taskTitle().trim() && !this.hasInvalidDateRange();
-  }
-
-  submitCreate(): void {
-    const stageKey = this.currentStageKey();
-    if (!stageKey || !this.canSubmitCreate()) {
+  submitDraft(): void {
+    if (!this.canSubmit()) {
       return;
     }
-    this.createTasks.emit({
-      tasks: [
-        {
-          stageKey,
-          ownerIds: this.selectedOwnerIds(),
-          title: this.taskTitle().trim(),
-          description: this.taskDescription(),
-          plannedStartAt: this.formatDate(this.plannedStartDate()) ?? null,
-          plannedEndAt: this.formatDate(this.plannedEndDate()) ?? null,
-        },
-      ],
+    const initial = this.initialDraft();
+    this.confirm.emit({
+      localId: initial?.localId ?? `new-${Date.now()}`,
+      taskId: initial?.taskId ?? null,
+      title: this.title().trim(),
+      description: this.description(),
+      ownerIds: this.ownerIds(),
+      plannedStartDate: this.cloneDate(this.plannedStartDate()),
+      plannedEndDate: this.cloneDate(this.plannedEndDate()),
     });
   }
 
-  onSelectedOwnersChange(value: unknown): void {
-    const allowedIds = new Set(this.ownerOptions().map((member) => member.userId));
-    const selectedOwnerIds = Array.isArray(value)
-      ? [...new Set((value as string[]).map((item) => item.trim()).filter((item) => item && allowedIds.has(item)))]
-      : [];
-    this.selectedOwnerIds.set(selectedOwnerIds);
-  }
-
-  onTaskTitleChange(value: unknown): void {
-    const title = this.normalizeTitle(value);
-    this.setTaskTitle(title);
-    const template = this.currentStageTemplates().find((item) => item.title === title.trim()) ?? null;
+  onTitleChange(value: unknown): void {
+    const title = String(value ?? '').slice(0, 200);
+    this.title.set(title);
+    const template = this.templates().find((item) => item.title === title.trim()) ?? null;
     if (template) {
-      this.taskDescriptionValue.set(template.description);
+      this.description.set(template.description ?? '');
     }
   }
 
-  normalizeTitle(value: unknown): string {
-    return String(value ?? '').slice(0, 200);
-  }
-
-  taskTitle(): string {
-    return this.taskTitleValue();
-  }
-
-  taskDescription(): string | null {
-    return this.taskDescriptionValue();
-  }
-
-  setTaskDescription(value: string): void {
-    this.taskDescriptionValue.set(value.trim() ? value : null);
-  }
-
-  plannedStartDate(): Date | null {
-    return this.plannedStartDateValue();
-  }
-
-  plannedEndDate(): Date | null {
-    return this.plannedEndDateValue();
+  onOwnersChange(value: unknown): void {
+    const allowedIds = new Set(this.ownerOptions().map((member) => member.userId));
+    const ids = Array.isArray(value)
+      ? Array.from(new Set(value.map((item) => String(item || '').trim()).filter((id) => id && allowedIds.has(id))))
+      : [];
+    this.ownerIds.set(ids);
   }
 
   setPlannedDate(key: 'start' | 'end', value: unknown): void {
     const date = this.normalizeDate(value);
     if (key === 'start') {
-      this.plannedStartDateValue.set(date);
+      this.plannedStartDate.set(date);
       return;
     }
-    this.plannedEndDateValue.set(date);
+    this.plannedEndDate.set(date);
   }
 
   hasInvalidDateRange(): boolean {
     const start = this.plannedStartDate();
     const end = this.plannedEndDate();
-    return !!start && !!end && start.getTime() > end.getTime();
-  }
-
-  setTaskTitle(title: string): void {
-    this.taskTitleValue.set(title);
+    if (start && end && start.getTime() > end.getTime()) {
+      return true;
+    }
+    const stageStart = this.stagePlanStartDate();
+    const stageEnd = this.stagePlanEndDate();
+    if (stageStart && start && start.getTime() < stageStart.getTime()) {
+      return true;
+    }
+    if (stageEnd && start && start.getTime() > stageEnd.getTime()) {
+      return true;
+    }
+    if (stageStart && end && end.getTime() < stageStart.getTime()) {
+      return true;
+    }
+    if (stageEnd && end && end.getTime() > stageEnd.getTime()) {
+      return true;
+    }
+    return false;
   }
 
   onMarkdownImageUploadFailed(message: string): void {
     this.message.error(message || '图片上传失败');
   }
 
-  private formatDate(value: unknown): string | undefined {
-    const date = this.normalizeDate(value);
-    if (!date) {
-      return undefined;
-    }
-    const year = date.getFullYear();
-    const month = `${date.getMonth() + 1}`.padStart(2, '0');
-    const day = `${date.getDate()}`.padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  private cloneDate(value: Date | null): Date | null {
+    return value ? new Date(value) : null;
   }
 
   private normalizeDate(value: unknown): Date | null {

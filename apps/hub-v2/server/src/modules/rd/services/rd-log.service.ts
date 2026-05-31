@@ -73,6 +73,9 @@ export class RdLogService {
     if (input.planStartAt !== undefined || input.planEndAt !== undefined) {
       changes.push("更新计划时间");
     }
+    if (input.stageDescription !== undefined) {
+      changes.push("更新当前阶段说明");
+    }
     return changes.length > 0 ? changes.join("；") : "更新研发项信息";
   }
 

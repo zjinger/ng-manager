@@ -150,7 +150,10 @@ export interface MemberProgressItem extends RdItemProgress {
                 <span class="member-item__task-label">当前任务：</span>
                 <div class="member-item__task-list">
                   @for (task of stageTaskHintsFor(item); track task.id) {
-                    <span class="member-item__task-chip">
+                    <span
+                      class="member-item__task-chip"
+                      [class.member-item__task-chip--cancelled]="isStageTaskAssignmentCancelled(item, task)"
+                    >
                       <span class="member-item__task-title">{{ task.title }}</span>
                       @if (formatStageTaskPlanRange(task); as range) {
                         <span class="member-item__task-plan">{{ range }}</span>
@@ -376,6 +379,12 @@ export interface MemberProgressItem extends RdItemProgress {
         font-size: 12px;
         line-height: 16px;
       }
+      .member-item__task-chip--cancelled {
+        border-color: rgba(239, 68, 68, 0.28);
+        background: rgba(239, 68, 68, 0.08);
+        color: var(--danger, #ef4444);
+        text-decoration: line-through;
+      }
       .member-item__task-title {
         min-width: 0;
         overflow: hidden;
@@ -389,6 +398,10 @@ export interface MemberProgressItem extends RdItemProgress {
         color: var(--primary);
         font-weight: 700;
         flex: 0 0 auto;
+      }
+      .member-item__task-chip--cancelled .member-item__task-plan,
+      .member-item__task-chip--cancelled .member-item__task-progress {
+        color: inherit;
       }
       .member-item__block-label {
         flex: 0 0 auto;
@@ -472,11 +485,7 @@ export class RdProgressPanelComponent {
     return this.stageTasks()
       .filter((task) => task.status !== 'cancelled')
       .filter((task) => this.isCurrentStageTask(task))
-      .filter((task) => {
-        const ownerIds = task.ownerIds ?? [];
-        const ownerNames = task.ownerNames ?? [];
-        return (!!id && (ownerIds.includes(id) || task.ownerId === id)) || (!!name && (ownerNames.includes(name) || task.ownerName === name));
-      })
+      .filter((task) => this.stageTaskOwnerFor(member, task) !== null)
       .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
   }
 
@@ -524,13 +533,14 @@ export class RdProgressPanelComponent {
   }
 
   stageTaskProgressFor(member: MemberProgressItem, task: RdStageTaskEntity): number {
-    const id = member.userId.trim();
-    const ownerProgress = task.ownerProgresses?.find((owner) => owner.userId === id);
+    const ownerProgress = this.stageTaskOwnerFor(member, task);
     return Math.max(0, Math.min(100, ownerProgress?.progress ?? task.progress ?? 0));
   }
 
   startableStageTasksFor(member: MemberProgressItem): RdStageTaskEntity[] {
-    return this.stageTaskHintsFor(member).filter((task) => this.stageTaskProgressFor(member, task) <= 0);
+    return this.stageTaskHintsFor(member).filter(
+      (task) => !this.isStageTaskAssignmentCancelled(member, task) && this.stageTaskProgressFor(member, task) <= 0,
+    );
   }
 
   startTaskConfirmPrompt(member: MemberProgressItem): string {
@@ -593,5 +603,39 @@ export class RdProgressPanelComponent {
       quickStart: true,
       stageTaskId: taskId,
     });
+  }
+
+  isStageTaskAssignmentCancelled(member: MemberProgressItem, task: RdStageTaskEntity): boolean {
+    return this.stageTaskOwnerFor(member, task)?.status === 'cancelled';
+  }
+
+  private stageTaskOwnerFor(member: MemberProgressItem, task: RdStageTaskEntity): RdStageTaskEntity['ownerProgresses'][number] | null {
+    const id = member.userId.trim();
+    const name = member.memberName.trim();
+    const ownerProgress = task.ownerProgresses?.find(
+      (owner) => (!!id && owner.userId === id) || (!!name && owner.userName === name),
+    );
+    if (ownerProgress) {
+      return ownerProgress;
+    }
+    const ownerIds = task.ownerIds ?? [];
+    const ownerNames = task.ownerNames ?? [];
+    if ((!!id && (ownerIds.includes(id) || task.ownerId === id)) || (!!name && (ownerNames.includes(name) || task.ownerName === name))) {
+      return {
+        id: '',
+        taskId: task.id,
+        projectId: task.projectId,
+        itemId: task.itemId,
+        userId: id,
+        userName: name,
+        status: task.status,
+        progress: task.progress,
+        startedAt: task.startedAt,
+        completedAt: task.completedAt,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+      };
+    }
+    return null;
   }
 }

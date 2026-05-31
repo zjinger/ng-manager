@@ -105,7 +105,8 @@ export const updateRdItemSchema = z.object({
   memberIds: z.array(z.string().trim().min(1)).min(1).optional(),
   verifierId: z.string().trim().nullable().optional(),
   planStartAt: z.string().trim().nullable().optional(),
-  planEndAt: z.string().trim().nullable().optional()
+  planEndAt: z.string().trim().nullable().optional(),
+  stageDescription: z.string().trim().max(4000).nullable().optional()
 }).strict();
 
 export const blockRdItemSchema = z.object({
@@ -170,6 +171,15 @@ export const updateRdStageTaskSchema = z.object({
   completedAt: z.string().trim().nullable().optional(),
   sortOrder: z.coerce.number().int().optional(),
   remark: z.string().trim().max(1000).nullable().optional()
+}).strict();
+
+export const updateRdItemWithStageTasksSchema = updateRdItemSchema.extend({
+  taskCreates: z.array(createRdStageTaskSchema).optional(),
+  taskUpdates: z.array(z.object({
+    taskId: z.string().trim().min(1),
+    input: updateRdStageTaskSchema
+  }).strict()).optional(),
+  taskCancelIds: z.array(z.string().trim().min(1)).optional()
 }).strict();
 
 export const listRdItemsQuerySchema = z.object({

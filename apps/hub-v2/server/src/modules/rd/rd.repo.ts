@@ -4,6 +4,7 @@ import type {
   ListRdItemsQuery,
   RdDashboardActivity,
   RdDashboardTodo,
+  RdItemStageNoteEntity,
   RdItemEntity,
   RdItemListResult,
   RdMemberBlockEntity,
@@ -108,6 +109,17 @@ type RdStageTaskTemplateRow = {
   description: string | null;
   sort_order: number;
   enabled: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type RdItemStageNoteRow = {
+  id: string;
+  project_id: string;
+  item_id: string;
+  stage_id: string;
+  stage_key: string;
+  description: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -458,6 +470,51 @@ INSERT INTO rd_items (
     return result.changes > 0;
   }
 
+  upsertStageNote(entity: RdItemStageNoteEntity): void {
+    this.db
+      .prepare(
+        `
+          INSERT INTO rd_item_stage_notes (
+            id, project_id, item_id, stage_id, stage_key, description, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(item_id, stage_id) DO UPDATE SET
+            stage_key = excluded.stage_key,
+            description = excluded.description,
+            updated_at = excluded.updated_at
+        `
+      )
+      .run(
+        entity.id,
+        entity.projectId,
+        entity.itemId,
+        entity.stageId,
+        entity.stageKey,
+        entity.description,
+        entity.createdAt,
+        entity.updatedAt
+      );
+  }
+
+  findStageNoteByItemAndStage(itemId: string, stageId: string): RdItemStageNoteEntity | null {
+    const row = this.db
+      .prepare("SELECT * FROM rd_item_stage_notes WHERE item_id = ? AND stage_id = ?")
+      .get(itemId, stageId) as RdItemStageNoteRow | undefined;
+    return row ? this.mapStageNote(row) : null;
+  }
+
+  listStageNotesByItemId(itemId: string): RdItemStageNoteEntity[] {
+    const rows = this.db
+      .prepare(
+        `
+          SELECT * FROM rd_item_stage_notes
+          WHERE item_id = ?
+          ORDER BY created_at ASC, id ASC
+        `
+      )
+      .all(itemId) as RdItemStageNoteRow[];
+    return rows.map((row) => this.mapStageNote(row));
+  }
+
   createStageTask(entity: RdStageTaskEntity): void {
     this.db
       .prepare(
@@ -510,13 +567,36 @@ INSERT INTO rd_items (
   }
 
   replaceStageTaskOwners(task: Pick<RdStageTaskEntity, "id" | "projectId" | "itemId">, owners: RdStageTaskOwnerEntity[]): void {
-    this.db.prepare("DELETE FROM rd_stage_task_owners WHERE task_id = ?").run(task.id);
+    const nextOwnerIds = new Set(owners.map((owner) => owner.userId));
+    const existingOwners = this.db
+      .prepare("SELECT * FROM rd_stage_task_owners WHERE task_id = ?")
+      .all(task.id) as RdStageTaskOwnerRow[];
+    const updatedAt = owners[0]?.updatedAt ?? existingOwners[0]?.updated_at ?? new Date().toISOString();
+    const cancelStmt = this.db.prepare(
+      `
+        UPDATE rd_stage_task_owners
+        SET status = 'cancelled', progress = 0, started_at = NULL, completed_at = NULL, updated_at = ?
+        WHERE task_id = ? AND user_id = ? AND status <> 'cancelled'
+      `
+    );
+    for (const owner of existingOwners) {
+      if (!nextOwnerIds.has(owner.user_id)) {
+        cancelStmt.run(updatedAt, task.id, owner.user_id);
+      }
+    }
     const stmt = this.db.prepare(
       `
         INSERT INTO rd_stage_task_owners (
           id, task_id, project_id, item_id, user_id, user_name, status, progress,
           started_at, completed_at, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(task_id, user_id) DO UPDATE SET
+          user_name = excluded.user_name,
+          status = excluded.status,
+          progress = excluded.progress,
+          started_at = excluded.started_at,
+          completed_at = excluded.completed_at,
+          updated_at = excluded.updated_at
       `
     );
     for (const owner of owners) {
@@ -994,6 +1074,19 @@ INSERT INTO rd_items (
     };
   }
 
+  private mapStageNote(row: RdItemStageNoteRow): RdItemStageNoteEntity {
+    return {
+      id: row.id,
+      projectId: row.project_id,
+      itemId: row.item_id,
+      stageId: row.stage_id,
+      stageKey: row.stage_key,
+      description: row.description,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
   private attachStageTaskOwners(tasks: RdStageTaskEntity[]): RdStageTaskEntity[] {
     if (tasks.length === 0) {
       return tasks;
@@ -1020,12 +1113,14 @@ INSERT INTO rd_items (
       if (owners.length === 0) {
         return task;
       }
+      const activeOwners = owners.filter((owner) => owner.status !== "cancelled");
+      const primaryOwner = activeOwners[0] ?? owners[0];
       return {
         ...task,
-        ownerId: owners[0]?.user_id ?? task.ownerId,
-        ownerName: owners[0]?.user_name ?? task.ownerName,
-        ownerIds: owners.map((owner) => owner.user_id),
-        ownerNames: owners.map((owner) => owner.user_name || owner.user_id),
+        ownerId: primaryOwner?.user_id ?? task.ownerId,
+        ownerName: primaryOwner?.user_name ?? task.ownerName,
+        ownerIds: activeOwners.map((owner) => owner.user_id),
+        ownerNames: activeOwners.map((owner) => owner.user_name || owner.user_id),
         ownerProgresses: owners.map((owner) => ({
           id: owner.id,
           taskId: owner.task_id,

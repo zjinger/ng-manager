@@ -225,6 +225,17 @@ export interface RdStageTaskTemplateEntity {
   updatedAt: string;
 }
 
+export interface RdItemStageNoteEntity {
+  id: string;
+  projectId: string;
+  itemId: string;
+  stageId: string;
+  stageKey: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RdStageTaskTemplateSelectionInput {
   templateId: string;
   ownerId?: string | null;
@@ -395,6 +406,12 @@ export interface UpdateRdStageTaskInput {
   remark?: string | null;
 }
 
+export interface UpdateRdItemWithStageTasksInput extends UpdateRdItemInput {
+  taskCreates?: CreateRdStageTaskInput[];
+  taskUpdates?: Array<{ taskId: string; input: UpdateRdStageTaskInput }>;
+  taskCancelIds?: string[];
+}
+
 export interface UpdateRdItemInput {
   version: number;
   title?: string;
@@ -406,6 +423,7 @@ export interface UpdateRdItemInput {
   verifierId?: string | null;
   planStartAt?: string | null;
   planEndAt?: string | null;
+  stageDescription?: string | null;
 }
 
 export interface UpdateRdItemProgressInput {

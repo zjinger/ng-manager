@@ -19,6 +19,7 @@ import type {
   RdDashboardTodo,
   RdItemEntity,
   RdItemListResult,
+  RdItemStageNoteEntity,
   RdItemProgress,
   RdLogEntity,
   RdMemberBlockEntity,
@@ -28,6 +29,7 @@ import type {
   RdStageTaskEntity,
   ResolveRdMemberBlockInput,
   UpdateRdItemInput,
+  UpdateRdItemWithStageTasksInput,
   UpdateRdItemProgressInput,
   UpdateRdStageInput,
   UpdateRdStageTaskInput
@@ -94,6 +96,10 @@ export class RdService implements RdCommandContract, RdQueryContract {
 
   updateItem(id: string, input: UpdateRdItemInput, ctx: RequestContext): Promise<RdItemEntity> {
     return this.item.updateItem(id, input, ctx);
+  }
+
+  updateItemWithStageTasks(id: string, input: UpdateRdItemWithStageTasksInput, ctx: RequestContext): Promise<RdItemEntity> {
+    return this.stageTask.updateItemWithStageTasks(id, input, ctx);
   }
 
   start(id: string, ctx: RequestContext): Promise<RdItemEntity> {
@@ -190,6 +196,10 @@ export class RdService implements RdCommandContract, RdQueryContract {
 
   listStageTasks(id: string, ctx: RequestContext): Promise<RdStageTaskEntity[]> {
     return this.stageTask.listStageTasks(id, ctx);
+  }
+
+  listStageNotes(id: string, ctx: RequestContext): Promise<RdItemStageNoteEntity[]> {
+    return this.item.listStageNotes(id, ctx);
   }
 
   createStageTask(id: string, input: CreateRdStageTaskInput, ctx: RequestContext): Promise<RdStageTaskEntity> {

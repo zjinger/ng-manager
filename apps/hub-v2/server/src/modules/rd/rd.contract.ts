@@ -14,6 +14,7 @@ import type {
   RdDashboardTodo,
   RdDashboardActivity,
   RdItemListResult,
+  RdItemStageNoteEntity,
   RdItemProgress,
   RdMemberBlockEntity,
   RdProgressHistory,
@@ -22,6 +23,7 @@ import type {
   RdLogEntity,
   RdStageEntity,
   UpdateRdItemInput,
+  UpdateRdItemWithStageTasksInput,
   UpdateRdItemProgressInput,
   ResolveRdMemberBlockInput,
   UpdateRdStageTaskInput,
@@ -33,6 +35,7 @@ export interface RdCommandContract {
   updateStage(id: string, input: UpdateRdStageInput, ctx: RequestContext): Promise<RdStageEntity>;
   createItem(input: CreateRdItemInput, ctx: RequestContext): Promise<RdItemEntity>;
   updateItem(id: string, input: UpdateRdItemInput, ctx: RequestContext): Promise<RdItemEntity>;
+  updateItemWithStageTasks(id: string, input: UpdateRdItemWithStageTasksInput, ctx: RequestContext): Promise<RdItemEntity>;
   start(id: string, ctx: RequestContext): Promise<RdItemEntity>;
   block(id: string, input: BlockRdItemInput, ctx: RequestContext): Promise<RdItemEntity>;
   resume(id: string, ctx: RequestContext): Promise<RdItemEntity>;
@@ -69,4 +72,5 @@ export interface RdQueryContract {
   listMemberBlocks(id: string, ctx: RequestContext): Promise<RdMemberBlockEntity[]>;
   listStageHistory(id: string, ctx: RequestContext): Promise<RdStageHistoryEntry[]>;
   listStageTasks(id: string, ctx: RequestContext): Promise<RdStageTaskEntity[]>;
+  listStageNotes(id: string, ctx: RequestContext): Promise<RdItemStageNoteEntity[]>;
 }
