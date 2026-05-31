@@ -1,69 +1,47 @@
-import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 
 import { DialogShellComponent } from '@shared/ui';
-import { NzTooltipModule } from "ng-zorro-antd/tooltip";
 import type {
   CreateRdStageInput,
   CreateRdStageTaskTemplateInput,
   RdStageEntity,
   RdStageTaskTemplateEntity,
   UpdateRdStageInput,
-  UpdateRdStageTaskTemplateInput
+  UpdateRdStageTaskTemplateInput,
 } from '../../../rd/models/rd.model';
 import type {
   CreateProjectApiTokenInput,
   CreateProjectMetaItemInput,
   CreateProjectVersionItemInput,
   ProjectApiTokenEntity,
-  ProjectApiTokenScope,
   ProjectMetaItem,
   ProjectSummary,
   ProjectVersionItem,
   UpdateProjectMetaItemInput,
-  UpdateProjectVersionItemInput
+  UpdateProjectVersionItemInput,
 } from '../../models/project.model';
-
-interface StageEditDraft {
-  name: string;
-  sort: number;
-}
-
-interface StageTaskTemplateEditDraft {
-  title: string;
-  description: string;
-  sortOrder: number;
-}
+import { ProjectConfigApiTokensTabComponent } from './components/project-config-api-tokens-tab.component';
+import { ProjectConfigEnvironmentsTabComponent } from './components/project-config-environments-tab.component';
+import { ProjectConfigRdStagesTabComponent } from './components/project-config-rd-stages-tab.component';
+import { ProjectConfigVersionsTabComponent } from './components/project-config-versions-tab.component';
 
 @Component({
   selector: 'app-project-config-dialog',
   standalone: true,
   imports: [
-    DatePipe,
-    FormsModule,
     NzButtonModule,
-    NzDatePickerModule,
-    NzIconModule,
-    NzInputModule,
-    NzPopconfirmModule,
-    NzSelectModule,
-    NzSwitchModule,
     NzTabsModule,
     DialogShellComponent,
-    NzTooltipModule
+    ProjectConfigEnvironmentsTabComponent,
+    ProjectConfigVersionsTabComponent,
+    ProjectConfigRdStagesTabComponent,
+    ProjectConfigApiTokensTabComponent,
   ],
   templateUrl: './project-config-dialog.component.html',
   styleUrls: ['./project-config-dialog.component.less'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProjectConfigDialogComponent {
   readonly open = input(false);
@@ -99,304 +77,4 @@ export class ProjectConfigDialogComponent {
   readonly revokeApiToken = output<string>();
   readonly copyLatestToken = output<string>();
   readonly clearLatestToken = output<void>();
-
-  readonly environmentDraft = signal('');
-  readonly versionDraft = signal('');
-  readonly stageDraft = signal('');
-  readonly stageTaskTemplateDraftByStage = signal<Record<string, string>>({});
-  readonly expandedStageIds = signal<Record<string, boolean>>({});
-  readonly addingStage = signal(false);
-  readonly addingTaskStageId = signal<string | null>(null);
-  readonly editingStageId = signal<string | null>(null);
-  readonly stageEditDrafts = signal<Record<string, StageEditDraft>>({});
-  readonly editingStageTaskTemplateId = signal<string | null>(null);
-  readonly stageTaskTemplateEditDrafts = signal<Record<string, StageTaskTemplateEditDraft>>({});
-  readonly tokenNameDraft = signal('');
-  readonly tokenScopesDraft = signal<ProjectApiTokenScope[]>(['issues:read', 'rd:read']); //'feedbacks:read'
-  readonly tokenExpiresAt = signal<Date | null>(null);
-
-  isEnvironmentPending(id: string): boolean {
-    return this.pendingEnvironmentIds().includes(id);
-  }
-
-  isVersionPending(id: string): boolean {
-    return this.pendingVersionIds().includes(id);
-  }
-
-  isStagePending(id: string): boolean {
-    return this.pendingStageIds().includes(id);
-  }
-
-  isStageTaskTemplatePending(id: string): boolean {
-    return this.pendingStageTaskTemplateIds().includes(id);
-  }
-
-  isTokenPending(id: string): boolean {
-    return this.pendingTokenIds().includes(id);
-  }
-
-  asNumber(value: unknown): number {
-    const n = Number(value);
-    return Number.isFinite(n) && n >= 0 ? n : 0;
-  }
-
-  submitEnvironmentCreate(): void {
-    const name = this.environmentDraft().trim();
-    if (!name) {
-      return;
-    }
-    this.createEnvironment.emit({ name });
-    this.environmentDraft.set('');
-  }
-
-  submitVersionCreate(): void {
-    const version = this.versionDraft().trim();
-    if (!version) {
-      return;
-    }
-    this.createVersion.emit({ version });
-    this.versionDraft.set('');
-  }
-
-  submitStageCreate(): void {
-    const name = this.stageDraft().trim();
-    const projectId = this.project()?.id;
-    if (!name || !projectId) {
-      return;
-    }
-    this.createStage.emit({ projectId, name });
-    this.stageDraft.set('');
-    this.addingStage.set(false);
-  }
-
-  sortedStages(): RdStageEntity[] {
-    return [...this.stages()].sort((a, b) => a.sort - b.sort || a.createdAt.localeCompare(b.createdAt));
-  }
-
-  defaultExpandedStageId(): string | null {
-    const stages = this.sortedStages();
-    return stages.find((item) => item.enabled)?.id ?? stages[0]?.id ?? null;
-  }
-
-  isStageExpanded(item: RdStageEntity): boolean {
-    const explicit = this.expandedStageIds()[item.id];
-    if (typeof explicit === 'boolean') {
-      return explicit;
-    }
-    if (!item.enabled) {
-      return false;
-    }
-    return item.id === this.defaultExpandedStageId();
-  }
-
-  toggleStage(item: RdStageEntity): void {
-    const expanded = this.isStageExpanded(item);
-    this.expandedStageIds.update((current) => ({
-      ...current,
-      [item.id]: !expanded,
-    }));
-  }
-
-  openStageCreator(): void {
-    this.addingStage.set(true);
-  }
-
-  closeStageCreator(): void {
-    this.stageDraft.set('');
-    this.addingStage.set(false);
-  }
-
-  startStageEdit(item: RdStageEntity): void {
-    this.editingStageId.set(item.id);
-    this.stageEditDrafts.update((current) => ({
-      ...current,
-      [item.id]: { name: item.name, sort: item.sort },
-    }));
-  }
-
-  cancelStageEdit(): void {
-    this.editingStageId.set(null);
-  }
-
-  stageEditDraft(id: string): StageEditDraft {
-    return this.stageEditDrafts()[id] ?? { name: '', sort: 0 };
-  }
-
-  setStageEditName(id: string, name: string): void {
-    this.stageEditDrafts.update((current) => ({
-      ...current,
-      [id]: { ...this.stageEditDraft(id), name },
-    }));
-  }
-
-  setStageEditSort(id: string, sort: unknown): void {
-    this.stageEditDrafts.update((current) => ({
-      ...current,
-      [id]: { ...this.stageEditDraft(id), sort: this.asNumber(sort) },
-    }));
-  }
-
-  saveStageEdit(item: RdStageEntity): void {
-    const draft = this.stageEditDraft(item.id);
-    this.saveStage(item, draft.name, draft.sort);
-    this.editingStageId.set(null);
-  }
-
-  stageTaskTemplatesByStage(stageId: string): RdStageTaskTemplateEntity[] {
-    return this.stageTaskTemplates()
-      .filter((item) => item.stageId === stageId)
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
-  }
-
-  stageTaskTemplateDraft(stageId: string): string {
-    return this.stageTaskTemplateDraftByStage()[stageId] ?? '';
-  }
-
-  setStageTaskTemplateDraft(stageId: string, value: string): void {
-    this.stageTaskTemplateDraftByStage.update((current) => ({
-      ...current,
-      [stageId]: value,
-    }));
-  }
-
-  submitStageTaskTemplateCreate(stageId: string): void {
-    const title = this.stageTaskTemplateDraft(stageId).trim();
-    if (!title) {
-      return;
-    }
-    this.createStageTaskTemplate.emit({ stageId, title });
-    this.setStageTaskTemplateDraft(stageId, '');
-    this.addingTaskStageId.set(null);
-  }
-
-  openStageTaskTemplateCreator(stageId: string): void {
-    this.addingTaskStageId.set(stageId);
-    this.expandedStageIds.update((current) => ({
-      ...current,
-      [stageId]: true,
-    }));
-  }
-
-  closeStageTaskTemplateCreator(stageId: string): void {
-    this.setStageTaskTemplateDraft(stageId, '');
-    this.addingTaskStageId.set(null);
-  }
-
-  startStageTaskTemplateEdit(item: RdStageTaskTemplateEntity): void {
-    this.editingStageTaskTemplateId.set(item.id);
-    this.stageTaskTemplateEditDrafts.update((current) => ({
-      ...current,
-      [item.id]: {
-        title: item.title,
-        description: item.description ?? '',
-        sortOrder: item.sortOrder,
-      },
-    }));
-  }
-
-  cancelStageTaskTemplateEdit(): void {
-    this.editingStageTaskTemplateId.set(null);
-  }
-
-  stageTaskTemplateEditDraft(id: string): StageTaskTemplateEditDraft {
-    return this.stageTaskTemplateEditDrafts()[id] ?? { title: '', description: '', sortOrder: 0 };
-  }
-
-  setStageTaskTemplateEditTitle(id: string, title: string): void {
-    this.stageTaskTemplateEditDrafts.update((current) => ({
-      ...current,
-      [id]: { ...this.stageTaskTemplateEditDraft(id), title },
-    }));
-  }
-
-  setStageTaskTemplateEditDescription(id: string, description: string): void {
-    this.stageTaskTemplateEditDrafts.update((current) => ({
-      ...current,
-      [id]: { ...this.stageTaskTemplateEditDraft(id), description },
-    }));
-  }
-
-  setStageTaskTemplateEditSort(id: string, sortOrder: unknown): void {
-    this.stageTaskTemplateEditDrafts.update((current) => ({
-      ...current,
-      [id]: { ...this.stageTaskTemplateEditDraft(id), sortOrder: this.asNumber(sortOrder) },
-    }));
-  }
-
-  saveStageTaskTemplateEdit(item: RdStageTaskTemplateEntity): void {
-    const draft = this.stageTaskTemplateEditDraft(item.id);
-    this.saveStageTaskTemplate(item, draft.title, draft.description, draft.sortOrder);
-    this.editingStageTaskTemplateId.set(null);
-  }
-
-  templateDescriptionSummary(description: string | null): string {
-    const value = (description ?? '').trim();
-    return value || '无描述';
-  }
-
-  saveEnvironment(item: ProjectMetaItem, name: string, description: string, sort: number): void {
-    const patch: UpdateProjectMetaItemInput = {};
-    if (name.trim() !== item.name) patch.name = name.trim();
-    if ((description.trim() || null) !== item.description) patch.description = description.trim() || null;
-    if (sort !== item.sort) patch.sort = sort;
-    if (Object.keys(patch).length > 0) {
-      this.updateEnvironment.emit({ id: item.id, patch });
-    }
-  }
-
-  saveVersion(item: ProjectVersionItem, version: string, description: string, sort: number): void {
-    const patch: UpdateProjectVersionItemInput = {};
-    if (version.trim() !== item.version) patch.version = version.trim();
-    if ((description.trim() || null) !== item.description) patch.description = description.trim() || null;
-    if (sort !== item.sort) patch.sort = sort;
-    if (Object.keys(patch).length > 0) {
-      this.updateVersion.emit({ id: item.id, patch });
-    }
-  }
-
-  saveStage(item: RdStageEntity, name: string, sort: number): void {
-    const patch: UpdateRdStageInput = {};
-    if (name.trim() !== item.name) patch.name = name.trim();
-    if (sort !== item.sort) patch.sort = sort;
-    if (Object.keys(patch).length > 0) {
-      this.updateStage.emit({ id: item.id, patch });
-    }
-  }
-
-  saveStageTaskTemplate(item: RdStageTaskTemplateEntity, title: string, description: string, sortOrder: number): void {
-    const patch: UpdateRdStageTaskTemplateInput = {};
-    if (title.trim() !== item.title) patch.title = title.trim();
-    if ((description.trim() || null) !== item.description) patch.description = description.trim() || null;
-    if (sortOrder !== item.sortOrder) patch.sortOrder = sortOrder;
-    if (Object.keys(patch).length > 0) {
-      this.updateStageTaskTemplate.emit({ id: item.id, patch });
-    }
-  }
-
-  canSubmitTokenCreate(): boolean {
-    return this.tokenNameDraft().trim().length > 0 && this.tokenScopesDraft().length > 0;
-  }
-
-  submitTokenCreate(): void {
-    if (!this.canSubmitTokenCreate()) {
-      return;
-    }
-    this.createApiToken.emit({
-      name: this.tokenNameDraft().trim(),
-      scopes: this.tokenScopesDraft(),
-      expiresAt: this.tokenExpiresAt() ? this.tokenExpiresAt()!.toISOString() : null
-    });
-    this.tokenNameDraft.set('');
-    this.tokenExpiresAt.set(null);
-  }
-
-  renderScopes(scopes: ProjectApiTokenScope[]): string {
-    return scopes
-      .map((scope) => {
-        if (scope === 'issues:read') return 'Issue读取';
-        if (scope === 'rd:read') return '研发项读取';
-        return '反馈读取';
-      })
-      .join(' / ');
-  }
 }

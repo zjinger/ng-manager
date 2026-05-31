@@ -1,0 +1,64 @@
+<section class="section">
+  <div class="creator">
+    <input
+      nz-input
+      placeholder="新增版本号，如v1.0.0"
+      [ngModel]="versionDraft()"
+      (ngModelChange)="versionDraft.set($event)"
+    />
+    @if (canManageConfig()) {
+      <button
+        nz-button
+        nzType="primary"
+        [disabled]="!versionDraft().trim() || busy()"
+        (click)="submitVersionCreate()"
+      >
+        <nz-icon nzType="plus" nzTheme="outline" />新增
+      </button>
+    }
+  </div>
+  <div class="list">
+    @for (item of versions(); track item.id) {
+      <div class="row">
+        <input #versionRef nz-input [ngModel]="item.version" />
+        <input
+          #descRef
+          nz-input
+          [ngModel]="item.description || ''"
+          placeholder="描述"
+        />
+        <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
+        @if (canManageConfig()) {
+          <nz-switch
+            [ngModel]="item.enabled"
+            [nzDisabled]="busy() || isVersionPending(item.id)"
+            (ngModelChange)="updateVersion.emit({ id: item.id, patch: { enabled: !!$event } })"
+          ></nz-switch>
+          <button
+            nz-button
+            nzType="default"
+            [disabled]="busy() || isVersionPending(item.id)"
+            [nzLoading]="isVersionPending(item.id)"
+            (click)="saveVersion(item, versionRef.value, descRef.value, asNumber(sortRef.value))"
+          >
+            保存
+          </button>
+          <button
+            nz-button
+            nzType="default"
+            nzDanger
+            [disabled]="busy() || isVersionPending(item.id)"
+            [nzLoading]="isVersionPending(item.id)"
+            nz-popconfirm
+            nzPopconfirmTitle="确认删除该版本？"
+            (nzOnConfirm)="removeVersion.emit(item.id)"
+          >
+            删除
+          </button>
+        }
+      </div>
+    } @empty {
+      <div class="empty">暂无版本配置</div>
+    }
+  </div>
+</section>

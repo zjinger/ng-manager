@@ -1,0 +1,79 @@
+.section {
+    display: grid;
+    gap: 14px;
+}
+
+.token-once {
+    border: 1px solid var(--primary-300);
+    border-radius: 10px;
+    padding: 12px;
+    background: color-mix(in srgb, var(--primary-100) 36%, transparent);
+    display: grid;
+    gap: 8px;
+}
+
+.token-once__title {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.token-once__actions {
+    display: flex;
+    gap: 8px;
+}
+
+.token-creator {
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) minmax(220px, 1fr) 220px auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.token-list {
+    border: 1px solid var(--border-color-soft);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.token-list__head,
+.token-list__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 90px 150px 110px 150px 88px;
+    gap: 10px;
+    padding: 10px 12px;
+    align-items: center;
+}
+
+.token-list__head {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border-color-soft);
+}
+
+.token-list__row {
+    border-bottom: 1px solid var(--border-color-soft);
+}
+
+.token-list__row:last-child {
+    border-bottom: 0;
+}
+
+.token-list__prefix {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+}
+
+.empty {
+    color: var(--text-muted);
+    padding: 12px 0;
+}
+
+@media (max-width: 1200px) {
+    .token-creator,
+    .token-list__head,
+    .token-list__row {
+        grid-template-columns: 1fr 1fr;
+    }
+}

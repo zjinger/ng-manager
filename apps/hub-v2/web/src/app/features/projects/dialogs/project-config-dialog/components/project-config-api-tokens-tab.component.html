@@ -1,0 +1,108 @@
+<section class="section">
+  @if (latestCreatedToken()) {
+    <div class="token-once">
+      <div class="token-once__title">新 Token（仅展示一次）</div>
+      <div class="token-once__value">
+        {{ latestCreatedToken() }}
+        <button
+          type="button"
+          nz-button
+          nzType="default"
+          (click)="copyLatestToken.emit(latestCreatedToken()!)"
+        >
+          <nz-icon nzType="copy" nzTheme="outline" />
+          复制Token
+        </button>
+      </div>
+      <div class="token-once__actions">
+        <button type="button" nz-button nzType="default" (click)="clearLatestToken.emit()">
+          <nz-icon nzType="check" nzTheme="outline" />
+          已保存，关闭展示
+        </button>
+      </div>
+    </div>
+  }
+
+  <div class="token-creator">
+    <input
+      nz-input
+      placeholder="Token 名称，如 webapp-readonly"
+      [ngModel]="tokenNameDraft()"
+      (ngModelChange)="tokenNameDraft.set($event)"
+    />
+    <nz-select
+      nzMode="multiple"
+      nzPlaceHolder="选择读取权限"
+      [ngModel]="tokenScopesDraft()"
+      (ngModelChange)="tokenScopesDraft.set($event)"
+    >
+      <nz-option nzLabel="测试单读取" nzValue="issues:read"></nz-option>
+      <nz-option nzLabel="研发项读取" nzValue="rd:read"></nz-option>
+      <!-- <nz-option nzLabel="反馈读取" nzValue="feedbacks:read"></nz-option> -->
+    </nz-select>
+    <nz-date-picker
+      nzShowTime
+      nzPlaceHolder="过期时间（可选）"
+      [ngModel]="tokenExpiresAt()"
+      (ngModelChange)="tokenExpiresAt.set($event)"
+    ></nz-date-picker>
+    @if (canManageConfig()) {
+      <button
+        nz-button
+        nzType="primary"
+        [disabled]="busy() || !canSubmitTokenCreate()"
+        (click)="submitTokenCreate()"
+      >
+        <nz-icon nzType="plus" nzTheme="outline" />生成 Token
+      </button>
+    }
+  </div>
+
+  <div class="token-list">
+    <div class="token-list__head">
+      <div>名称</div>
+      <div>权限</div>
+      <div>状态</div>
+      <div>过期时间</div>
+      <div>最近使用</div>
+      <div>前缀</div>
+      @if (canManageConfig()) {
+        <div>操作</div>
+      }
+    </div>
+    @for (item of apiTokens(); track item.id) {
+      <div class="token-list__row">
+        <div>{{ item.name }}</div>
+        <div>{{ renderScopes(item.scopes) }}</div>
+        <div>{{ item.status === 'active' ? '生效中' : '已吊销' }}</div>
+        <div>
+          {{ item.expiresAt ? (item.expiresAt | date: 'yyyy-MM-dd HH:mm') : '永不过期' }}
+        </div>
+        <div>{{ item.lastUsedAt ? (item.lastUsedAt | date: 'MM-dd HH:mm') : '-' }}</div>
+        <div class="token-list__prefix">{{ item.tokenPrefix }}</div>
+        @if (canManageConfig()) {
+          <div>
+            @if (item.status == 'active') {
+              <button
+                nz-button
+                nzType="default"
+                nzDanger
+                [disabled]="busy() || isTokenPending(item.id)"
+                [nzLoading]="isTokenPending(item.id)"
+                nz-popconfirm
+                nzPopconfirmTitle="确认注销该 Token？吊销后不可恢复。"
+                (nzOnConfirm)="revokeApiToken.emit(item.id)"
+              >
+                <nz-icon nzType="minus" nzTheme="outline" />
+              </button>
+            } @else {
+              <span style="color: var(--text-muted)">已注销</span>
+            }
+          </div>
+        }
+      </div>
+    } @empty {
+      <div class="empty">暂无 API Token</div>
+    }
+  </div>
+</section>

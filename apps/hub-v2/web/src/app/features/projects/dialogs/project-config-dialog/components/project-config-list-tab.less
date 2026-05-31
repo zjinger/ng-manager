@@ -1,0 +1,37 @@
+.section {
+    display: grid;
+    gap: 14px;
+}
+
+.creator {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.creator input {
+    flex: 1 1 220px;
+}
+
+.list {
+    display: grid;
+    gap: 8px;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: minmax(200px, 1.4fr) minmax(200px, 1.2fr) 88px 72px auto auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.empty {
+    color: var(--text-muted);
+    padding: 12px 0;
+}
+
+@media (max-width: 1200px) {
+    .row {
+        grid-template-columns: 1fr 1fr;
+    }
+}

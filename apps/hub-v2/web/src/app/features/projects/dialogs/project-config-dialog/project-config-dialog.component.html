@@ -1,525 +1,69 @@
 <app-dialog-shell
   [open]="open()"
   [width]="1040"
-  [title]="project() ?'项目配置 · '+ project()!.name  : '项目配置'"
+  [title]="project() ? '项目配置 · ' + project()!.name : '项目配置'"
   [subtitle]="'维护环境、版本、研发阶段和 API Token。'"
   [icon]="'setting'"
   (cancel)="cancel.emit()"
 >
   <div dialog-body class="config-dialog">
-    <nz-tabs nzSize="small" [nzDestroyInactiveTabPane]="true">
+    <nz-tabs nzSize="small" [nzDestroyInactiveTabPane]="false">
       <nz-tab nzTitle="环境">
-        <section class="section">
-          <div class="creator">
-            <input
-              nz-input
-              placeholder="新增环境名称，如19号机测试环境"
-              [ngModel]="environmentDraft()"
-              (ngModelChange)="environmentDraft.set($event)"
-            />
-            <button
-              nz-button
-              nzType="primary"
-              [disabled]="!environmentDraft().trim() || busy()"
-              (click)="submitEnvironmentCreate()"
-            >
-              <nz-icon nzType="plus" nzTheme="outline" />新增
-            </button>
-          </div>
-          <div class="list">
-            @for (item of environments(); track item.id) {
-              <div class="row">
-                <input #nameRef nz-input [ngModel]="item.name" />
-                <input
-                  #descRef
-                  nz-input
-                  [ngModel]="item.description || ''"
-                  placeholder="描述"
-                />
-                <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
-                @if (canManageConfig()) {
-                  <nz-switch
-                    [ngModel]="item.enabled"
-                    [nzDisabled]="busy() || isEnvironmentPending(item.id)"
-                    (ngModelChange)="
-                      updateEnvironment.emit({ id: item.id, patch: { enabled: !!$event } })
-                    "
-                  ></nz-switch>
-                  <button
-                    nz-button
-                    nzType="default"
-                    [disabled]="busy() || isEnvironmentPending(item.id)"
-                    [nzLoading]="isEnvironmentPending(item.id)"
-                    (click)="
-                      saveEnvironment(item, nameRef.value, descRef.value, asNumber(sortRef.value))
-                    "
-                  >
-                    保存
-                  </button>
-                  <button
-                    nz-button
-                    nzType="default"
-                    nzDanger
-                    [disabled]="busy() || isEnvironmentPending(item.id)"
-                    [nzLoading]="isEnvironmentPending(item.id)"
-                    nz-popconfirm
-                    nzPopconfirmTitle="确认删除该环境？"
-                    (nzOnConfirm)="removeEnvironment.emit(item.id)"
-                  >
-                    删除
-                  </button>
-                }
-              </div>
-            } @empty {
-              <div class="empty">暂无环境配置</div>
-            }
-          </div>
-        </section>
+        <app-project-config-environments-tab
+          [busy]="busy()"
+          [environments]="environments()"
+          [pendingEnvironmentIds]="pendingEnvironmentIds()"
+          [canManageConfig]="canManageConfig()"
+          (createEnvironment)="createEnvironment.emit($event)"
+          (updateEnvironment)="updateEnvironment.emit($event)"
+          (removeEnvironment)="removeEnvironment.emit($event)"
+        />
       </nz-tab>
 
       <nz-tab nzTitle="版本">
-        <section class="section">
-          <div class="creator">
-            <input
-              nz-input
-              placeholder="新增版本号，如v1.0.0"
-              [ngModel]="versionDraft()"
-              (ngModelChange)="versionDraft.set($event)"
-            />
-            @if (canManageConfig()) {
-              <button
-                nz-button
-                nzType="primary"
-                [disabled]="!versionDraft().trim() || busy()"
-                (click)="submitVersionCreate()"
-              >
-                <nz-icon nzType="plus" nzTheme="outline" />新增
-              </button>
-            }
-          </div>
-          <div class="list">
-            @for (item of versions(); track item.id) {
-              <div class="row">
-                <input #versionRef nz-input [ngModel]="item.version" />
-                <input
-                  #descRef
-                  nz-input
-                  [ngModel]="item.description || ''"
-                  placeholder="描述"
-                />
-                <input #sortRef nz-input type="number" [ngModel]="item.sort" min="0" />
-                @if (canManageConfig()) {
-                  <nz-switch
-                    [ngModel]="item.enabled"
-                    [nzDisabled]="busy() || isVersionPending(item.id)"
-                    (ngModelChange)="
-                      updateVersion.emit({ id: item.id, patch: { enabled: !!$event } })
-                    "
-                  ></nz-switch>
-                  <button
-                    nz-button
-                    nzType="default"
-                    [disabled]="busy() || isVersionPending(item.id)"
-                    [nzLoading]="isVersionPending(item.id)"
-                    (click)="
-                      saveVersion(item, versionRef.value, descRef.value, asNumber(sortRef.value))
-                    "
-                  >
-                    保存
-                  </button>
-                  <button
-                    nz-button
-                    nzType="default"
-                    nzDanger
-                    [disabled]="busy() || isVersionPending(item.id)"
-                    [nzLoading]="isVersionPending(item.id)"
-                    nz-popconfirm
-                    nzPopconfirmTitle="确认删除该版本？"
-                    (nzOnConfirm)="removeVersion.emit(item.id)"
-                  >
-                    删除
-                  </button>
-                }
-              </div>
-            } @empty {
-              <div class="empty">暂无版本配置</div>
-            }
-          </div>
-        </section>
+        <app-project-config-versions-tab
+          [busy]="busy()"
+          [versions]="versions()"
+          [pendingVersionIds]="pendingVersionIds()"
+          [canManageConfig]="canManageConfig()"
+          (createVersion)="createVersion.emit($event)"
+          (updateVersion)="updateVersion.emit($event)"
+          (removeVersion)="removeVersion.emit($event)"
+        />
       </nz-tab>
 
       <nz-tab nzTitle="阶段与任务模板">
-        <section class="section phase-config">
-          <div class="phase-config__header">
-            <div>
-              <div class="phase-config__title">阶段任务模板</div>
-              <div class="phase-config__hint">按阶段维护推进和新建研发项时可选择的任务模板。</div>
-            </div>
-            <span class="phase-config__count">{{ sortedStages().length }} 个阶段</span>
-          </div>
-
-          <div class="phase-timeline">
-            @for (item of sortedStages(); track item.id) {
-              <div class="phase-timeline__item" [class.phase-timeline__item--last]="$last">
-                <div class="phase-timeline__line">
-                  <span class="phase-timeline__dot" [class.phase-timeline__dot--disabled]="!item.enabled"></span>
-                  <span class="phase-timeline__connector"></span>
-                </div>
-
-                <div
-                  class="phase-card"
-                  [class.phase-card--expanded]="isStageExpanded(item)"
-                  [class.phase-card--disabled]="!item.enabled"
-                >
-                  <div class="phase-card__header" role="button" tabindex="0" (click)="toggleStage(item)">
-                    <nz-icon class="phase-card__expand" [nzType]="isStageExpanded(item) ? 'down' : 'right'" nzTheme="outline" />
-
-                    @if (editingStageId() === item.id) {
-                      <div class="phase-card__editor" (click)="$event.stopPropagation()">
-                        <input
-                          nz-input
-                          placeholder="阶段名称"
-                          [ngModel]="stageEditDraft(item.id).name"
-                          (ngModelChange)="setStageEditName(item.id, $event)"
-                        />
-                        <input
-                          nz-input
-                          type="number"
-                          min="0"
-                          placeholder="排序"
-                          [ngModel]="stageEditDraft(item.id).sort"
-                          (ngModelChange)="setStageEditSort(item.id, $event)"
-                        />
-                        <button
-                          type="button"
-                          class="phase-action-btn phase-action-btn--primary"
-                          nz-tooltip
-                          nzTooltipTitle="保存阶段"
-                          [disabled]="busy() || isStagePending(item.id) || !stageEditDraft(item.id).name.trim()"
-                          (click)="saveStageEdit(item)"
-                        >
-                          <nz-icon nzType="check" nzTheme="outline" />
-                        </button>
-                        <button
-                          type="button"
-                          class="phase-action-btn"
-                          nz-tooltip
-                          nzTooltipTitle="取消"
-                          (click)="cancelStageEdit()"
-                        >
-                          <nz-icon nzType="close" nzTheme="outline" />
-                        </button>
-                      </div>
-                    } @else {
-                      <div class="phase-card__name">{{ item.name }}</div>
-                      <span class="phase-card__meta">排序 {{ item.sort }}</span>
-                      <span class="phase-card__count">{{ stageTaskTemplatesByStage(item.id).length }} 项任务</span>
-                    }
-
-                    @if (canManageConfig()) {
-                      <div class="phase-card__actions" (click)="$event.stopPropagation()">
-                        <nz-switch
-                          [ngModel]="item.enabled"
-                          [nzDisabled]="busy() || isStagePending(item.id)"
-                          (ngModelChange)="updateStage.emit({ id: item.id, patch: { enabled: !!$event } })"
-                        ></nz-switch>
-                        @if (editingStageId() !== item.id) {
-                          <button
-                            type="button"
-                            class="phase-action-btn"
-                            nz-tooltip
-                            nzTooltipTitle="编辑阶段"
-                            [disabled]="busy() || isStagePending(item.id)"
-                            (click)="startStageEdit(item)"
-                          >
-                            <nz-icon nzType="edit" nzTheme="outline" />
-                          </button>
-                        }
-                      </div>
-                    }
-                  </div>
-
-                  @if (isStageExpanded(item)) {
-                    <div class="phase-task-list">
-                      @for (template of stageTaskTemplatesByStage(item.id); track template.id) {
-                        <div class="phase-task-row" [class.phase-task-row--disabled]="!template.enabled">
-                          <span class="phase-task-row__dot"></span>
-                          @if (editingStageTaskTemplateId() === template.id) {
-                            <div class="phase-task-row__editor">
-                              <input
-                                nz-input
-                                placeholder="任务标题"
-                                [ngModel]="stageTaskTemplateEditDraft(template.id).title"
-                                (ngModelChange)="setStageTaskTemplateEditTitle(template.id, $event)"
-                              />
-                              <input
-                                nz-input
-                                placeholder="描述"
-                                [ngModel]="stageTaskTemplateEditDraft(template.id).description"
-                                (ngModelChange)="setStageTaskTemplateEditDescription(template.id, $event)"
-                              />
-                              <input
-                                nz-input
-                                type="number"
-                                min="0"
-                                placeholder="排序"
-                                [ngModel]="stageTaskTemplateEditDraft(template.id).sortOrder"
-                                (ngModelChange)="setStageTaskTemplateEditSort(template.id, $event)"
-                              />
-                            </div>
-                            <div class="phase-task-row__actions">
-                              <button
-                                type="button"
-                                class="phase-action-btn phase-action-btn--primary"
-                                nz-tooltip
-                                nzTooltipTitle="保存任务"
-                                [disabled]="busy() || isStageTaskTemplatePending(template.id) || !stageTaskTemplateEditDraft(template.id).title.trim()"
-                                (click)="saveStageTaskTemplateEdit(template)"
-                              >
-                                <nz-icon nzType="check" nzTheme="outline" />
-                              </button>
-                              <button
-                                type="button"
-                                class="phase-action-btn"
-                                nz-tooltip
-                                nzTooltipTitle="取消"
-                                (click)="cancelStageTaskTemplateEdit()"
-                              >
-                                <nz-icon nzType="close" nzTheme="outline" />
-                              </button>
-                            </div>
-                          } @else {
-                            <div class="phase-task-row__main">
-                              <div class="phase-task-row__title">{{ template.title }}</div>
-                              <div class="phase-task-row__description">{{ templateDescriptionSummary(template.description) }}</div>
-                            </div>
-                            <span class="phase-task-row__sort">排序 {{ template.sortOrder }}</span>
-                            @if (canManageConfig()) {
-                              <div class="phase-task-row__actions">
-                                <nz-switch
-                                  [ngModel]="template.enabled"
-                                  [nzDisabled]="busy() || isStageTaskTemplatePending(template.id)"
-                                  (ngModelChange)="updateStageTaskTemplate.emit({ id: template.id, patch: { enabled: !!$event } })"
-                                ></nz-switch>
-                                <button
-                                  type="button"
-                                  class="phase-action-btn"
-                                  nz-tooltip
-                                  nzTooltipTitle="编辑任务"
-                                  [disabled]="busy() || isStageTaskTemplatePending(template.id)"
-                                  (click)="startStageTaskTemplateEdit(template)"
-                                >
-                                  <nz-icon nzType="edit" nzTheme="outline" />
-                                </button>
-                              </div>
-                            }
-                          }
-                        </div>
-                      } @empty {
-                        <div class="phase-task-empty">该阶段暂无任务模板</div>
-                      }
-
-                      @if (canManageConfig()) {
-                        @if (addingTaskStageId() === item.id) {
-                          <div class="phase-task-create">
-                            <input
-                              nz-input
-                              placeholder="新增模板任务标题"
-                              [ngModel]="stageTaskTemplateDraft(item.id)"
-                              (ngModelChange)="setStageTaskTemplateDraft(item.id, $event)"
-                            />
-                            <button
-                              type="button"
-                              class="phase-action-btn phase-action-btn--primary"
-                              nz-tooltip
-                              nzTooltipTitle="新增任务"
-                              [disabled]="busy() || !stageTaskTemplateDraft(item.id).trim()"
-                              (click)="submitStageTaskTemplateCreate(item.id)"
-                            >
-                              <nz-icon nzType="check" nzTheme="outline" />
-                            </button>
-                            <button
-                              type="button"
-                              class="phase-action-btn"
-                              nz-tooltip
-                              nzTooltipTitle="取消"
-                              (click)="closeStageTaskTemplateCreator(item.id)"
-                            >
-                              <nz-icon nzType="close" nzTheme="outline" />
-                            </button>
-                          </div>
-                        } @else {
-                          <button
-                            type="button"
-                            class="phase-task-add"
-                            [disabled]="busy()"
-                            (click)="openStageTaskTemplateCreator(item.id)"
-                          >
-                            <nz-icon nzType="plus" nzTheme="outline" />
-                            添加任务
-                          </button>
-                        }
-                      }
-                    </div>
-                  }
-                </div>
-              </div>
-            } @empty {
-              <div class="empty">暂无研发阶段配置</div>
-            }
-
-            @if (canManageConfig()) {
-              @if (addingStage()) {
-                <div class="phase-create">
-                  <input
-                    nz-input
-                    placeholder="新增阶段名称，如开发阶段"
-                    [ngModel]="stageDraft()"
-                    (ngModelChange)="stageDraft.set($event)"
-                  />
-                  <button
-                    type="button"
-                    class="phase-action-btn phase-action-btn--primary"
-                    nz-tooltip
-                    nzTooltipTitle="新增阶段"
-                    [disabled]="!stageDraft().trim() || busy()"
-                    (click)="submitStageCreate()"
-                  >
-                    <nz-icon nzType="check" nzTheme="outline" />
-                  </button>
-                  <button
-                    type="button"
-                    class="phase-action-btn"
-                    nz-tooltip
-                    nzTooltipTitle="取消"
-                    (click)="closeStageCreator()"
-                  >
-                    <nz-icon nzType="close" nzTheme="outline" />
-                  </button>
-                </div>
-              } @else {
-                <button type="button" class="phase-add" [disabled]="busy()" (click)="openStageCreator()">
-                  <nz-icon nzType="plus" nzTheme="outline" />
-                  添加新阶段
-                </button>
-              }
-            }
-          </div>
-        </section>
+        <app-project-config-rd-stages-tab
+          [busy]="busy()"
+          [project]="project()"
+          [stages]="stages()"
+          [stageTaskTemplates]="stageTaskTemplates()"
+          [pendingStageIds]="pendingStageIds()"
+          [pendingStageTaskTemplateIds]="pendingStageTaskTemplateIds()"
+          [canManageConfig]="canManageConfig()"
+          (createStage)="createStage.emit($event)"
+          (updateStage)="updateStage.emit($event)"
+          (createStageTaskTemplate)="createStageTaskTemplate.emit($event)"
+          (updateStageTaskTemplate)="updateStageTaskTemplate.emit($event)"
+        />
       </nz-tab>
 
       <nz-tab nzTitle="API Token">
-        <section class="section">
-          @if (latestCreatedToken()) {
-            <div class="token-once">
-              <div class="token-once__title">新 Token（仅展示一次）</div>
-              <div class="token-once__value">
-                {{ latestCreatedToken() }}
-                <button
-                  type="button"
-                  nz-button
-                  nzType="default"
-                  (click)="copyLatestToken.emit(latestCreatedToken()!)"
-                >
-                  <nz-icon nzType="copy" nzTheme="outline" />
-                  复制Token
-                </button>
-              </div>
-              <div class="token-once__actions">
-                <button type="button" nz-button nzType="default" (click)="clearLatestToken.emit()">
-                  <nz-icon nzType="check" nzTheme="outline" />
-                  已保存，关闭展示
-                </button>
-              </div>
-            </div>
-          }
-
-          <div class="token-creator">
-            <input
-              nz-input
-              placeholder="Token 名称，如 webapp-readonly"
-              [ngModel]="tokenNameDraft()"
-              (ngModelChange)="tokenNameDraft.set($event)"
-            />
-            <nz-select
-              nzMode="multiple"
-              nzPlaceHolder="选择读取权限"
-              [ngModel]="tokenScopesDraft()"
-              (ngModelChange)="tokenScopesDraft.set($event)"
-            >
-              <nz-option nzLabel="测试单读取" nzValue="issues:read"></nz-option>
-              <nz-option nzLabel="研发项读取" nzValue="rd:read"></nz-option>
-              <!-- <nz-option nzLabel="反馈读取" nzValue="feedbacks:read"></nz-option> -->
-            </nz-select>
-            <nz-date-picker
-              nzShowTime
-              nzPlaceHolder="过期时间（可选）"
-              [ngModel]="tokenExpiresAt()"
-              (ngModelChange)="tokenExpiresAt.set($event)"
-            ></nz-date-picker>
-            @if (canManageConfig()) {
-              <button
-                nz-button
-                nzType="primary"
-                [disabled]="busy() || !canSubmitTokenCreate()"
-                (click)="submitTokenCreate()"
-              >
-                <nz-icon nzType="plus" nzTheme="outline" />生成 Token
-              </button>
-            }
-          </div>
-
-          <div class="token-list">
-            <div class="token-list__head">
-              <div>名称</div>
-              <div>权限</div>
-              <div>状态</div>
-              <div>过期时间</div>
-              <div>最近使用</div>
-              <div>前缀</div>
-              @if (canManageConfig()) {
-                <div>操作</div>
-              }
-            </div>
-            @for (item of apiTokens(); track item.id) {
-              <div class="token-list__row">
-                <div>{{ item.name }}</div>
-                <div>{{ renderScopes(item.scopes) }}</div>
-                <div>{{ item.status === 'active' ? '生效中' : '已吊销' }}</div>
-                <div>
-                  {{ item.expiresAt ? (item.expiresAt | date: 'yyyy-MM-dd HH:mm') : '永不过期' }}
-                </div>
-                <div>{{ item.lastUsedAt ? (item.lastUsedAt | date: 'MM-dd HH:mm') : '-' }}</div>
-                <div class="token-list__prefix">{{ item.tokenPrefix }}</div>
-                @if (canManageConfig()) {
-                  <div>
-                    @if (item.status == 'active') {
-                      <button
-                        nz-button
-                        nzType="default"
-                        nzDanger
-                        [disabled]="busy() || isTokenPending(item.id)"
-                        [nzLoading]="isTokenPending(item.id)"
-                        nz-popconfirm
-                        nzPopconfirmTitle="确认注销该 Token？吊销后不可恢复。"
-                        (nzOnConfirm)="revokeApiToken.emit(item.id)"
-                      >
-                        <nz-icon nzType="minus" nzTheme="outline" />
-                      </button>
-                    } @else {
-                      <span style="color: var(--text-muted)">已注销</span>
-                    }
-                  </div>
-                }
-              </div>
-            } @empty {
-              <div class="empty">暂无 API Token</div>
-            }
-          </div>
-        </section>
+        <app-project-config-api-tokens-tab
+          [busy]="busy()"
+          [apiTokens]="apiTokens()"
+          [latestCreatedToken]="latestCreatedToken()"
+          [pendingTokenIds]="pendingTokenIds()"
+          [canManageConfig]="canManageConfig()"
+          (createApiToken)="createApiToken.emit($event)"
+          (revokeApiToken)="revokeApiToken.emit($event)"
+          (copyLatestToken)="copyLatestToken.emit($event)"
+          (clearLatestToken)="clearLatestToken.emit()"
+        />
       </nz-tab>
     </nz-tabs>
   </div>
+
   <ng-container dialog-footer>
     <button nz-button type="button" (click)="cancel.emit()">关闭</button>
   </ng-container>
