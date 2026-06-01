@@ -10,11 +10,15 @@ import {
   ElementRef,
   ViewChild,
   viewChild,
+  inject,
 } from '@angular/core';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 import { CurlActionsComponent } from './curl-actions.component';
 import { ApiResponseEntity } from '@models/api-client/api-response.model';
@@ -23,6 +27,7 @@ import { ResponseBodyViewerComponent } from './response-body-viewer/response-bod
 import { formatBytes } from '@app/utils/file.utils';
 import { JsonViewerComponent } from '@app/shared/components/json-viewer';
 import { TextSearchComponent } from './text-search/text-search.component';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 
 @Component({
   selector: 'app-response-viewer',
@@ -33,6 +38,9 @@ import { TextSearchComponent } from './text-search/text-search.component';
     NzTagModule,
     NzSpinModule,
     NzAlertModule,
+    NzButtonModule,
+    NzIconModule,
+    NzTooltipModule,
     CurlActionsComponent,
     ResponseBodyViewerComponent,
     JsonViewerComponent,
@@ -102,6 +110,10 @@ import { TextSearchComponent } from './text-search/text-search.component';
           </nz-tab>
         </nz-tabs>
         <ng-template #extraTemplate>
+          <button nz-button nzType="text" nz-tooltip nzTooltipTitle="copy body" (click)="copyBody()">
+            <span nz-icon nzType="copy"></span>
+          </button>
+          <span class="sep"></span>
           <app-text-search [searchContainer]="currentTabPane()"></app-text-search>
         </ng-template>
       }
@@ -210,11 +222,22 @@ import { TextSearchComponent } from './text-search/text-search.component';
         flex: 1;
         display: flex;
         justify-content: flex-end;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .sep {
+        width: 1px;
+        height: 16px;
+        background: #d9d9d9;
+        margin: 0 4px;
+        flex-shrink: 0;
       }
     `,
   ],
 })
 export class ResponseViewerComponent implements OnChanges {
+  private readonly msg = inject(NzMessageService);
   @Input() sending = false;
   @Input() result: SendResponse | null = null;
   @Input() activedTabId: string | null = null;
@@ -281,28 +304,6 @@ export class ResponseViewerComponent implements OnChanges {
     return 'red';
   });
 
-  // isJson = computed(() => {
-  //   const res = this.response();
-  //   if (!res) return false;
-
-  //   const ct = (res.headers?.['content-type'] ?? res.headers?.['Content-Type'] ?? '').toLowerCase();
-  //   if (ct.includes('application/json')) return true;
-
-  //   // 容错：bodyText 看起来像 JSON
-  //   const t = (res.bodyText ?? '').trim();
-  //   return (t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'));
-  // });
-
-  // prettyJson = computed(() => {
-  //   const t = (this.response()?.bodyText ?? '').trim();
-  //   try {
-  //     const obj = JSON.parse(t);
-  //     return JSON.stringify(obj, null, 2);
-  //   } catch {
-  //     return this.response()?.bodyText ?? '';
-  //   }
-  // });
-
   rawDump = computed(() => {
     const res = this.response();
     if (!res) return '';
@@ -322,4 +323,16 @@ export class ResponseViewerComponent implements OnChanges {
       2,
     );
   });
+
+  copyBody() {
+    const text = this.response()?.bodyText ?? '';
+    if (!text) {
+      this.msg.warning('响应体为空，无内容可复制');
+      return;
+    }
+    navigator.clipboard.writeText(text).then(
+      () => this.msg.success('已复制到剪贴板'),
+      () => this.msg.error('复制失败'),
+    );
+  }
 }
