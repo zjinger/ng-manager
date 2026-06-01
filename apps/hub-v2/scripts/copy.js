@@ -34,14 +34,11 @@ const SERVER_PACKAGE_JSON = path.join(HUB_ROOT, "server", "package.json");
 const SERVER_PACKAGE_LOCK = path.join(HUB_ROOT, "server", "package-lock.json");
 const SERVER_ENV_PROD = path.join(HUB_ROOT, "server", ".env.production");
 const SERVER_DB_MIGRATIONS = path.join(HUB_ROOT, "server", "src", "db", "migrations");
-const SERVER_LEGACY_RBAC_CLEANUP_SCRIPT = path.join(HUB_ROOT, "server", "scripts", "cleanup-legacy-rbac-member-bindings.cjs");
-
 
 const HUB_ECOSYSTEM = path.join(HUB_ROOT, "ecosystem.config.cjs");
 
 const BUILD_DIR = path.join(HUB_ROOT, "build");
 const BUILD_DB_MIGRATIONS = path.join(BUILD_DIR, "db", "migrations");
-const BUILD_SCRIPTS_DIR = path.join(BUILD_DIR, "scripts");
 const BUILD_WWW = path.join(BUILD_DIR, "www");
 
 async function removeDir(dir) {
@@ -112,14 +109,8 @@ async function generateProdPackageJson(src, dest) {
     prodPkg.engines = pkg.engines;
   }
 
-  // 生产发布包内统一使用 dist 下的 CLI，避免依赖 tsx 与 src 目录
-  // "db:migrate:from-v1": "node db/migrate-from-v1.js" 已经过时，第一次迁移后就不再需要，且依赖了 src 目录，改为 "db:migrate": "node db/migrate-cli.js"
-  // "db:verify:from-v1": "node db/migrate-from-v1.verify.js" 同样已经过时，且依赖了 src 目录，暂时不提供独立的验证命令，验证逻辑可以集成到 db:migrate 中，或者提供一个新的 db:migrate:verify 命令
-  //"rbac:cleanup-legacy-member-bindings": "node scripts/cleanup-legacy-rbac-member-bindings.cjs", 清理默认的 RBAC 绑定关系的命令，虽然不依赖 src 目录，但考虑到这是一个一次性的迁移命令，且执行后就不再需要了，为了避免误操作导致生产环境权限问题，不建议将这个命令包含在生产包中，保留在开发环境中供迁移使用即可，如果需要在生产环境执行，可以直接使用 node 执行 build/scripts/cleanup-legacy-rbac-member-bindings.cjs，或者提供一个单独的脚本来执行这个命令，并在文档中说明如何使用，例如：
-  // "db:reset:project-feature-progress-0058": "node db/reset-project-feature-progress-0058-cli.js" 清空功能点进度管理
   prodPkg.scripts = {
     "db:migrate": "node db/migrate-cli.js",
-    "db:reset:rd-task-sheets-0055": "node db/reset-rd-task-sheets-0055-cli.js",
   };
 
   await fs.promises.writeFile(dest, JSON.stringify(prodPkg, null, 2));
@@ -143,31 +134,25 @@ async function main() {
   // 3. server/src/db/migrations -> build/db/migrations
   await copyDir(SERVER_DB_MIGRATIONS, BUILD_DB_MIGRATIONS);
 
-  // 4. server/scripts/cleanup-legacy-rbac-member-bindings.cjs -> build/scripts
-  await copyFileIfExists(
-    SERVER_LEGACY_RBAC_CLEANUP_SCRIPT,
-    path.join(BUILD_SCRIPTS_DIR, "cleanup-legacy-rbac-member-bindings.cjs"),
-  );
-
-  // 5. generate production package.json : server/package.json -> build/package.json
+  // 4. generate production package.json : server/package.json -> build/package.json
   await generateProdPackageJson(
     SERVER_PACKAGE_JSON,
     path.join(BUILD_DIR, "package.json"),
   );
 
-  // 6. server/package-lock.json -> build/package-lock.json
+  // 5. server/package-lock.json -> build/package-lock.json
   await copyFileIfExists(
     SERVER_PACKAGE_LOCK,
     path.join(BUILD_DIR, "package-lock.json"),
   );
 
-  // 7. server/.env.production -> build/.env.production
+  // 6. server/.env.production -> build/.env.production
   await copyFileIfExists(
     SERVER_ENV_PROD,
     path.join(BUILD_DIR, ".env.production"),
   );
 
-  // 8. hub-v2/ecosystem.config.cjs -> build/ecosystem.config.cjs
+  // 7. hub-v2/ecosystem.config.cjs -> build/ecosystem.config.cjs
   await copyFileIfExists(
     HUB_ECOSYSTEM,
     path.join(BUILD_DIR, "ecosystem.config.cjs"),
