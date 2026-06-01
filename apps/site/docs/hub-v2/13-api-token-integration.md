@@ -215,8 +215,10 @@ RD：
 Docs：
 
 - `POST /api/personal/projects/:projectKey/docs`
+- `PATCH /api/personal/projects/:projectKey/docs/:docId`
+- `POST /api/personal/projects/:projectKey/docs/:docId/publish`
 
-请求体：
+创建请求体：
 
 ```json
 {
@@ -231,15 +233,40 @@ Docs：
 }
 ```
 
+编辑请求体：
+
+```json
+{
+  "title": "更新后的文档标题",
+  "content": "# 更新后的文档正文",
+  "slug": "updated-doc-slug",
+  "categoryId": "automation",
+  "summary": "更新后的文档摘要",
+  "tags": ["auto", "hub-v2"],
+  "source": "cli"
+}
+```
+
+发布请求体：
+
+```json
+{
+  "source": "cli"
+}
+```
+
 说明：
 
 - 必须使用 Personal Token，不允许使用 Project Token 创建文档
-- 必须包含 `doc:create:write` scope
+- 创建必须包含 `doc:create:write` scope
+- 编辑必须包含 `doc:update:write` scope
+- 发布必须包含 `doc:publish:write` scope
 - `content` 会按现有文档模型归一化为 `contentMd`
 - `categoryId` 作为现有 `category` 字段的兼容别名处理；当前没有独立文档分类表
-- `status` 仅允许缺省或 `draft`，该接口不负责发布或归档
+- 创建时 `status` 仅允许缺省或 `draft`
+- 编辑接口不允许通过 `status` 发布或归档；发布必须调用 `/publish`
 - `slug` 可选；未传时由服务端按标题生成项目内唯一 slug
-- 创建成功后写入 Token 调用审计，不记录 token 原文和完整正文
+- 创建、编辑、发布成功后写入 Token 调用审计，不记录 token 原文和完整正文
 
 ---
 
@@ -271,6 +298,8 @@ Docs：
 | Feedback | 列表与详情 | `feedbacks:read` |
 | Docs | 读取预留 | `docs:read` |
 | Docs | 创建文档 | `doc:create:write` |
+| Docs | 编辑文档 | `doc:update:write` |
+| Docs | 发布文档 | `doc:publish:write` |
 | RD | 状态流转与进度 | `rd:transition:write` |
 | RD | 编辑基础信息 | `rd:edit:write` |
 
@@ -286,7 +315,7 @@ Docs：
 
 - Issue 参照 [11 Issue 权限矩阵](/hub-v2/11-issue-permission-matrix)
 - RD 参照 [10 RD 权限矩阵](/hub-v2/10-rd-permission-matrix)
-- Docs 创建要求 token owner 是目标项目成员，并复用现有文档创建 service 的项目访问校验
+- Docs 创建、编辑、发布要求 token owner 是目标项目成员，并复用现有文档 service 的项目访问校验与创建者校验
 
 安全补充（Token 鉴权阶段）：
 
@@ -444,4 +473,16 @@ curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"自动生成文档\",\"content\":\"# 自动生成文档\\n\\n这是由脚本创建的文档。\",\"categoryId\":\"automation\",\"summary\":\"自动化创建的文档\",\"tags\":[\"auto\",\"hub-v2\"],\"status\":\"draft\",\"source\":\"cli\"}"
+```
+
+### 9.11 Personal Token 编辑文档
+
+```bash
+curl -X PATCH "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DOC_ID>" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"更新后的文档标题\",\"content\":\"# 更新后的文档正文\",\"slug\":\"updated-doc-slug\",\"categoryId\":\"automation\",\"summary\":\"更新后的文档摘要\",\"tags\":[\"auto\",\"hub-v2\"],\"source\":\"cli\"}"
+```
+
+### 9.12 Personal Token 发布文档
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DOC_ID>/publish" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"source\":\"cli\"}"
 ```

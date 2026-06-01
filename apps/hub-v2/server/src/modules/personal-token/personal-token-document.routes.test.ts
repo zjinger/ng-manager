@@ -127,6 +127,101 @@ describe("personal token document routes", () => {
     assert.equal(countDocuments(ctx), 0);
   });
 
+  it("updates a project document with personal token and writes token audit log without content", async () => {
+    const ctx = await createTestApp();
+    const token = await createPersonalToken(ctx, ["doc:create:write", "doc:update:write"]);
+    const created = await createDocumentWithPersonalToken(ctx, token);
+
+    const response = await ctx.app.inject({
+      method: "PATCH",
+      url: `/api/personal/projects/${ctx.project.key}/docs/${created.id}`,
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json"
+      },
+      payload: {
+        title: "更新后的 Token 文档",
+        slug: "updated-token-doc",
+        content: "# 更新后的 Token 文档\n\n这里是更新后的正文。",
+        categoryId: "automation-updated",
+        summary: "Token API 更新文档",
+        tags: ["auto", "updated"],
+        source: "test"
+      }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const payload = response.json();
+    assert.equal(payload.code, "OK");
+    assert.equal(payload.data.id, created.id);
+    assert.equal(payload.data.title, "更新后的 Token 文档");
+    assert.equal(payload.data.slug, "updated-token-doc");
+    assert.equal(payload.data.categoryId, "automation-updated");
+    assert.equal(payload.data.status, "draft");
+
+    const document = ctx.db.prepare("SELECT * FROM documents WHERE id = ?").get(created.id) as any;
+    assert.equal(document.title, "更新后的 Token 文档");
+    assert.equal(document.content_md, "# 更新后的 Token 文档\n\n这里是更新后的正文。");
+
+    const audit = ctx.db
+      .prepare("SELECT * FROM api_token_audit_logs WHERE action = ? AND resource_id = ?")
+      .get("doc.update", created.id) as any;
+    assert.equal(audit.token_type, "personal");
+    assert.ok(!audit.metadata_json.includes("这里是更新后的正文"));
+    const metadata = JSON.parse(audit.metadata_json);
+    assert.equal(metadata.slug, "updated-token-doc");
+    assert.equal(metadata.contentUpdated, true);
+    assert.deepEqual(metadata.tags, ["auto", "updated"]);
+  });
+
+  it("publishes a project document with personal token and writes token audit log", async () => {
+    const ctx = await createTestApp();
+    const token = await createPersonalToken(ctx, ["doc:create:write", "doc:publish:write"]);
+    const created = await createDocumentWithPersonalToken(ctx, token);
+
+    const response = await ctx.app.inject({
+      method: "POST",
+      url: `/api/personal/projects/${ctx.project.key}/docs/${created.id}/publish`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { source: "test" }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const payload = response.json();
+    assert.equal(payload.code, "OK");
+    assert.equal(payload.data.id, created.id);
+    assert.equal(payload.data.status, "published");
+    assert.ok(payload.data.publishAt);
+
+    const audit = ctx.db
+      .prepare("SELECT * FROM api_token_audit_logs WHERE action = ? AND resource_id = ?")
+      .get("doc.publish", created.id) as any;
+    assert.equal(audit.token_type, "personal");
+    const metadata = JSON.parse(audit.metadata_json);
+    assert.equal(metadata.status, "published");
+    assert.equal(metadata.source, "test");
+  });
+
+  it("rejects personal document update without doc:update:write", async () => {
+    const ctx = await createTestApp();
+    const creatorToken = await createPersonalToken(ctx, ["doc:create:write"]);
+    const created = await createDocumentWithPersonalToken(ctx, creatorToken);
+
+    const response = await ctx.app.inject({
+      method: "PATCH",
+      url: `/api/personal/projects/${ctx.project.key}/docs/${created.id}`,
+      headers: { authorization: `Bearer ${creatorToken}` },
+      payload: {
+        title: "Should not update"
+      }
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().code, "TOKEN_SCOPE_FORBIDDEN");
+    const document = ctx.db.prepare("SELECT title FROM documents WHERE id = ?").get(created.id) as any;
+    assert.equal(document.title, created.title);
+  });
+
   it("rejects unknown projectKey before creating a document", async () => {
     const ctx = await createTestApp();
     const token = await createPersonalToken(ctx, ["doc:create:write"]);
@@ -312,7 +407,13 @@ function requestContext(ctx: TestApp): RequestContext {
   };
 }
 
-async function createPersonalToken(ctx: TestApp, scopes: Array<"doc:create:write" | "issue:comment:write">): Promise<string> {
+type TestPersonalTokenScope =
+  | "doc:create:write"
+  | "doc:update:write"
+  | "doc:publish:write"
+  | "issue:comment:write";
+
+async function createPersonalToken(ctx: TestApp, scopes: TestPersonalTokenScope[]): Promise<string> {
   const result = await ctx.app.container.personalTokenCommand.create(
     {
       name: `personal-${scopes.join("-")}`,
@@ -322,6 +423,23 @@ async function createPersonalToken(ctx: TestApp, scopes: Array<"doc:create:write
     requestContext(ctx)
   );
   return result.token;
+}
+
+async function createDocumentWithPersonalToken(ctx: TestApp, token: string): Promise<{ id: string; title: string }> {
+  const response = await ctx.app.inject({
+    method: "POST",
+    url: `/api/personal/projects/${ctx.project.key}/docs`,
+    headers: { authorization: `Bearer ${token}` },
+    payload: {
+      title: "Token Draft",
+      slug: `token-draft-${Date.now().toString(36)}`,
+      content: "draft content",
+      categoryId: "automation",
+      source: "test"
+    }
+  });
+  assert.equal(response.statusCode, 201);
+  return response.json().data;
 }
 
 async function createProjectToken(ctx: TestApp): Promise<string> {

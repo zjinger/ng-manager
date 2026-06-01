@@ -209,7 +209,9 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
     };
 
     const docsCaps = {
-      canCreate: scopeSet.has("doc:create:write")
+      canCreate: scopeSet.has("doc:create:write"),
+      canUpdate: scopeSet.has("doc:update:write"),
+      canPublish: scopeSet.has("doc:publish:write")
     };
 
     const hasWriteScope =
@@ -219,6 +221,8 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       issueCaps.canManageBranches ||
       issueCaps.canManageParticipants ||
       docsCaps.canCreate ||
+      docsCaps.canUpdate ||
+      docsCaps.canPublish ||
       rdCaps.canTransition ||
       rdCaps.canEdit ||
       rdCaps.canDelete;
@@ -279,6 +283,8 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       scope === "issue:branch:write" ||
       scope === "issue:participant:write" ||
       scope === "doc:create:write" ||
+      scope === "doc:update:write" ||
+      scope === "doc:publish:write" ||
       scope === "rd:transition:write" ||
       scope === "rd:edit:write" ||
       scope === "rd:delete:write"

@@ -311,6 +311,8 @@ export class ProfilePersonalTokenComponent {
     { value: 'issue:branch:write', label: '测试单协作分支', desc: '创建/删除测试单关联的协作分支' },
     { value: 'issue:participant:write', label: '测试单协作人', desc: '添加或移除协作人' },
     { value: 'doc:create:write', label: '文档创建', desc: '通过 Token API 新建项目文档' },
+    { value: 'doc:update:write', label: '文档编辑', desc: '通过 Token API 编辑项目文档内容' },
+    { value: 'doc:publish:write', label: '文档发布', desc: '通过 Token API 发布项目文档' },
     { value: 'rd:transition:write', label: '研发项状态流转', desc: '开始、阻塞、恢复、完成' },
     { value: 'rd:edit:write', label: '研发项编辑', desc: '编辑标题、描述、计划时间等' },
     { value: 'rd:delete:write', label: '研发项删除', desc: '删除研发项' },
@@ -344,6 +346,8 @@ export class ProfilePersonalTokenComponent {
         'issue:branch:write',
         'issue:participant:write',
         'doc:create:write',
+        'doc:update:write',
+        'doc:publish:write',
         'rd:transition:write',
         'rd:edit:write',
         'rd:delete:write'
