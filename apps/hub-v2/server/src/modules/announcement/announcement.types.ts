@@ -56,6 +56,7 @@ export interface ListAnnouncementsQuery {
   pageSize?: number;
   keyword?: string;
   status?: AnnouncementStatus;
+  statusGroup?: "active";
   domain?: AnnouncementDomain;
   scope?: AnnouncementScope;
   projectId?: string;

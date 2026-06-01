@@ -31,6 +31,7 @@ export const listAnnouncementsQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().optional(),
   keyword: z.string().trim().optional(),
   status: z.enum(["draft", "published", "archived"]).optional(),
+  statusGroup: z.enum(["active"]).optional(),
   domain: z.enum(["content", "reimbursement"]).optional(),
   scope: z.enum(["global", "project"]).optional(),
   projectId: z.string().trim().optional()

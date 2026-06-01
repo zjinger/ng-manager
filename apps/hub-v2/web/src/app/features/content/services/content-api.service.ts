@@ -22,7 +22,7 @@ export class ContentApiService {
   private readonly api = inject(ApiClientService);
 
   listAnnouncements(query: Partial<ContentQuery>) {
-    return this.api.get<AnnouncementListResult>('/announcements', query);
+    return this.api.get<AnnouncementListResult>('/announcements', this.normalizeListQuery(query));
   }
 
   getAnnouncementById(announcementId: string) {
@@ -30,7 +30,7 @@ export class ContentApiService {
   }
 
   listDocuments(query: Partial<ContentQuery>) {
-    return this.api.get<DocumentListResult>('/documents', query);
+    return this.api.get<DocumentListResult>('/documents', this.normalizeListQuery(query));
   }
 
   getDocumentById(documentId: string) {
@@ -38,7 +38,7 @@ export class ContentApiService {
   }
 
   listReleases(query: Partial<ContentQuery>) {
-    return this.api.get<ReleaseListResult>('/releases', query);
+    return this.api.get<ReleaseListResult>('/releases', this.normalizeListQuery(query));
   }
 
   getReleaseById(releaseId: string) {
@@ -103,5 +103,13 @@ export class ContentApiService {
 
   deleteArchivedRelease(releaseId: string) {
     return this.api.delete<{ id: string }>(`/releases/${releaseId}`);
+  }
+
+  private normalizeListQuery(query: Partial<ContentQuery>): Partial<ContentQuery> {
+    if (query.status !== 'active') {
+      return query;
+    }
+    const { status: _status, ...rest } = query;
+    return { ...rest, statusGroup: 'active' };
   }
 }

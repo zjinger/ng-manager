@@ -7,7 +7,7 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzInputModule } from 'ng-zorro-antd/input';
 
-import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
+import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import type { AnnouncementEntity, CreateAnnouncementInput } from '../../models/content.model';
 
 type Draft = Omit<CreateAnnouncementInput, 'projectId' | 'domain' | 'effectiveAt' | 'notifyRelatedUsers'> & {
@@ -36,6 +36,7 @@ const DEFAULT_DRAFT: Draft = {
     NzInputModule,
     DialogShellComponent,
     FormActionsComponent,
+    MarkdownEditorComponent,
   ],
   template: `
     <app-dialog-shell
@@ -105,16 +106,17 @@ const DEFAULT_DRAFT: Draft = {
           <div nz-row nzGutter="16">
             <div nz-col nzSpan="24">
               <nz-form-item>
-                <nz-form-label>正文</nz-form-label>
+                <nz-form-label nzRequired>正文</nz-form-label>
                 <nz-form-control>
-                  <textarea
-                    nz-input
-                    rows="10"
-                    placeholder="公告正文，当前先用 textarea 代替富文本编辑器。"
+                  <app-markdown-editor
                     [ngModel]="draft().contentMd"
+                    [config]="editorConfig"
                     name="contentMd"
-                    (ngModelChange)="updateField('contentMd', $event)"
-                  ></textarea>
+                    [minHeight]="'260px'"
+                    [maxHeight]="'420px'"
+                    (contentChange)="updateField('contentMd', $event)"
+                    [placeholder]="'请输入公告正文，支持 Markdown 语法'"
+                  />
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -173,6 +175,10 @@ export class AnnouncementCreateDialogComponent {
 
   readonly draft = signal<Draft>({ ...DEFAULT_DRAFT });
   readonly isEdit = computed(() => !!this.value());
+  readonly editorConfig = {
+    autosave: false,
+    status: ['lines', 'words'],
+  };
   readonly expireAtDate = computed<Date | null>(() => {
     const value = this.draft().expireAt?.trim();
     if (!value) {

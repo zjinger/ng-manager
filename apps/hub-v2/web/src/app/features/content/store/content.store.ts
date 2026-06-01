@@ -21,7 +21,7 @@ const DEFAULT_QUERY: ContentQuery = {
   page: 1,
   pageSize: 20,
   keyword: '',
-  status: '',
+  status: 'active',
   projectId: '',
 };
 

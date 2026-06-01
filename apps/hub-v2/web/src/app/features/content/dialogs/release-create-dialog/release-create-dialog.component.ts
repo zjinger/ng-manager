@@ -6,7 +6,7 @@ import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
-import { DialogShellComponent, FormActionsComponent } from '@shared/ui';
+import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import type { CreateReleaseInput, ReleaseEntity } from '../../models/content.model';
@@ -25,7 +25,7 @@ const DEFAULT_DRAFT: Draft = {
 @Component({
   selector: 'app-release-create-dialog',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzInputModule, NzSwitchModule, NzIconModule, DialogShellComponent, FormActionsComponent],
+  imports: [FormsModule, NzButtonModule, NzFormModule, NzGridModule, NzInputModule, NzSwitchModule, NzIconModule, DialogShellComponent, FormActionsComponent, MarkdownEditorComponent],
   template: `
     <app-dialog-shell
       [open]="open()"
@@ -128,14 +128,15 @@ const DEFAULT_DRAFT: Draft = {
               <nz-form-item>
                 <nz-form-label>更新说明</nz-form-label>
                 <nz-form-control>
-                  <textarea
-                    nz-input
-                    rows="10"
-                    placeholder="补充本次版本更新内容。"
+                  <app-markdown-editor
                     [ngModel]="draft().notes"
+                    [config]="editorConfig"
                     name="notes"
-                    (ngModelChange)="updateField('notes', $event)"
-                  ></textarea>
+                    [minHeight]="'260px'"
+                    [maxHeight]="'420px'"
+                    (contentChange)="updateField('notes', $event)"
+                    [placeholder]="'补充本次版本更新内容，支持 Markdown 语法。'"
+                  />
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -174,6 +175,10 @@ export class ReleaseCreateDialogComponent {
 
   readonly draft = signal<Draft>({ ...DEFAULT_DRAFT });
   readonly isEdit = computed(() => !!this.value());
+  readonly editorConfig = {
+    autosave: false,
+    status: ['lines', 'words'],
+  };
 
   constructor() {
     effect(() => {

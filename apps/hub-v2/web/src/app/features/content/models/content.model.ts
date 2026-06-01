@@ -1,7 +1,7 @@
 import type { PageResult } from '@core/types';
 
 export type ContentTab = 'announcements' | 'documents' | 'releases';
-export type ContentStatus = 'draft' | 'published' | 'archived' | '';
+export type ContentStatus = 'active' | 'draft' | 'published' | 'archived' | '';
 export type AnnouncementDomain = 'content' | 'reimbursement';
 
 export interface AnnouncementEntity {
@@ -66,6 +66,7 @@ export interface ContentQuery {
   pageSize: number;
   keyword?: string;
   status?: ContentStatus;
+  statusGroup?: 'active';
   domain?: AnnouncementDomain | '';
   scope?: 'global' | 'project';
   projectId?: string;

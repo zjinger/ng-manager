@@ -132,6 +132,8 @@ export class ReleaseRepo {
     if (query.status) {
       conditions.push("status = ?");
       params.push(query.status);
+    } else if (query.statusGroup === "active") {
+      conditions.push("status IN ('draft', 'published')");
     }
 
     if (query.projectId?.trim()) {

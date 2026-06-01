@@ -25,6 +25,7 @@ export const listDocumentsQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().optional(),
   keyword: z.string().trim().optional(),
   status: z.enum(["draft", "published", "archived"]).optional(),
+  statusGroup: z.enum(["active"]).optional(),
   projectId: z.string().trim().optional(),
   category: z.string().trim().optional()
 });

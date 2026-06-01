@@ -45,6 +45,7 @@ export interface ListReleasesQuery {
   pageSize?: number;
   keyword?: string;
   status?: ReleaseStatus;
+  statusGroup?: "active";
   projectId?: string;
   channel?: string;
 }

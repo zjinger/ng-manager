@@ -139,7 +139,7 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
 
             <section class="detail-section">
               <h4>正文</h4>
-              <pre class="detail-plain">{{ item.contentMd }}</pre>
+              <app-markdown-viewer [content]="item.contentMd || '暂无内容'" />
             </section>
           }
 
@@ -222,7 +222,7 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
 
             <section class="detail-section">
               <h4>更新说明</h4>
-              <pre class="detail-plain">{{ item.notes || '暂无更新说明' }}</pre>
+              <app-markdown-viewer [content]="item.notes || '暂无更新说明'" />
             </section>
           }
         </div>

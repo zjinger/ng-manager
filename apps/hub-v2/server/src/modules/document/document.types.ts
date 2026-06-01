@@ -45,6 +45,7 @@ export interface ListDocumentsQuery {
   pageSize?: number;
   keyword?: string;
   status?: DocumentStatus;
+  statusGroup?: "active";
   projectId?: string;
   category?: string;
 }

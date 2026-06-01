@@ -3,10 +3,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { map } from 'rxjs';
 
 import { AuthStore } from '@core/auth';
@@ -40,13 +42,17 @@ import type { ProjectMemberEntity } from '../../../projects/models/project.model
 import { ProjectApiService } from '../../../projects/services/project-api.service';
 import { ContentStore } from '../../store/content.store';
 
+type ContentQuickStatus = 'active' | 'draft' | 'published';
+
 @Component({
   selector: 'app-content-management-page',
   standalone: true,
   imports: [
     FormsModule,
     NzButtonModule,
+    NzDrawerModule,
     NzSelectModule,
+    NzSwitchModule,
     NzIconModule,
     PageHeaderComponent,
     PageToolbarComponent,
@@ -73,17 +79,24 @@ import { ContentStore } from '../../store/content.store';
         <nz-select
           nzPlaceHolder="全部状态"
           class="toolbar-select"
-          [ngModel]="status()"
-          (ngModelChange)="status.set($event)"
-          style="width: 100px;"
+          [ngModel]="quickStatus()"
+          (ngModelChange)="setQuickStatus($event)"
+          style="width: 130px;"
         >
-          <nz-option nzLabel="全部状态" nzValue=""></nz-option>
+          <nz-option nzLabel="全部" nzValue="active"></nz-option>
           <nz-option nzLabel="草稿" nzValue="draft"></nz-option>
           <nz-option nzLabel="已发布" nzValue="published"></nz-option>
-          <nz-option nzLabel="已归档" nzValue="archived"></nz-option>
         </nz-select>
 
         <button nz-button class="toolbar-filter-btn" (click)="applyFilters()">筛选</button>
+        <button
+          nz-button
+          class="toolbar-filter-btn"
+          [class.toolbar-filter-btn--active]="archiveFilterEnabled()"
+          (click)="advancedOpen.set(true)"
+        >
+          高级筛选
+        </button>
 
         <button
           nz-button
@@ -106,6 +119,37 @@ import { ContentStore } from '../../store/content.store';
         (submitted)="applyFilters()"
       />
     </app-page-toolbar>
+
+    <nz-drawer
+      [nzVisible]="advancedOpen()"
+      nzPlacement="right"
+      [nzClosable]="true"
+      [nzWidth]="420"
+      nzTitle="高级筛选"
+      (nzOnClose)="advancedOpen.set(false)"
+    >
+      <ng-template nzDrawerContent>
+        <div class="advanced-panel">
+          <div class="advanced-field">
+            <label>归档数据</label>
+            <div class="advanced-switch">
+              <div>
+                <strong>仅看已归档</strong>
+                <p>开启后列表只展示已归档内容，可进入详情执行删除。</p>
+              </div>
+              <nz-switch
+                [ngModel]="archiveFilterEnabled()"
+                (ngModelChange)="toggleArchiveFilter($event)"
+              ></nz-switch>
+            </div>
+          </div>
+          <div class="advanced-actions">
+            <button nz-button (click)="clearAdvanced()">重置</button>
+            <button nz-button nzType="primary" (click)="applyAdvanced()">应用筛选</button>
+          </div>
+        </div>
+      </ng-template>
+    </nz-drawer>
 
     <app-list-state
       [loading]="store.loading()"
@@ -194,6 +238,48 @@ import { ContentStore } from '../../store/content.store';
         gap: 12px;
         flex-wrap: wrap;
       }
+      .toolbar-filter-btn--active {
+        border-color: #1677ff;
+        color: #1677ff;
+      }
+      .advanced-panel {
+        display: grid;
+        gap: 14px;
+      }
+      .advanced-field {
+        display: grid;
+        gap: 8px;
+      }
+      .advanced-field label {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .advanced-switch {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--surface-subtle);
+      }
+      .advanced-switch strong {
+        display: block;
+        color: var(--text-primary);
+        font-size: 14px;
+      }
+      .advanced-switch p {
+        margin: 4px 0 0;
+        color: var(--text-secondary);
+        font-size: 12px;
+      }
+      .advanced-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 6px;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -209,7 +295,13 @@ export class ContentManagementPageComponent {
   private readonly router = inject(Router);
 
   readonly keyword = signal('');
-  readonly status = signal<ContentStatus>('');
+  readonly status = signal<ContentStatus>('active');
+  readonly quickStatus = computed<ContentQuickStatus>(() => {
+    const current = this.status();
+    return current === 'draft' || current === 'published' ? current : 'active';
+  });
+  readonly archiveFilterEnabled = computed(() => this.status() === 'archived');
+  readonly advancedOpen = signal(false);
   readonly announcementDialogOpen = signal(false);
   readonly documentDialogOpen = signal(false);
   readonly releaseDialogOpen = signal(false);
@@ -385,6 +477,23 @@ export class ContentManagementPageComponent {
       status: this.status(),
     });
     this.syncListRouteQuery();
+  }
+
+  setQuickStatus(status: ContentQuickStatus): void {
+    this.status.set(status);
+  }
+
+  toggleArchiveFilter(enabled: boolean): void {
+    this.status.set(enabled ? 'archived' : 'active');
+  }
+
+  applyAdvanced(): void {
+    this.applyFilters();
+    this.advancedOpen.set(false);
+  }
+
+  clearAdvanced(): void {
+    this.status.set('active');
   }
 
   openCreateDialog(): void {
