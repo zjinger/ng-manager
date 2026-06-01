@@ -4,6 +4,7 @@ export type PersonalTokenScope =
   | "issue:assign:write" // 分配权限
   | "issue:branch:write" // 协作分支权限
   | "issue:participant:write" // 参与者管理权限
+  | "doc:create:write" // 文档创建权限
   | "rd:transition:write" // 需求流转权限
   | "rd:edit:write" // 需求编辑权限
   | "rd:delete:write"; // 需求删除权限
@@ -81,6 +82,9 @@ export interface PersonalProjectCapabilitiesResult {
       canTransition: boolean;
       canEdit: boolean;
       canDelete: boolean;
+    };
+    docs: {
+      canCreate: boolean;
     };
   };
   writable: boolean;

@@ -108,6 +108,22 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
     this.repo.updateStatus(token.id, "revoked", nowIso());
   }
 
+  async deleteRevoked(tokenId: string, ctx: RequestContext): Promise<void> {
+    const ownerUserId = ctx.userId?.trim();
+    if (!ownerUserId) {
+      throw new AppError(ERROR_CODES.TOKEN_OWNER_REQUIRED, "token owner required", 400);
+    }
+
+    const token = this.repo.findById(tokenId.trim());
+    if (!token || token.ownerUserId !== ownerUserId) {
+      throw new AppError(ERROR_CODES.TOKEN_NOT_FOUND, "token not found", 404);
+    }
+    if (token.status !== "revoked") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "only revoked personal tokens can be deleted", 400);
+    }
+    this.repo.deleteById(token.id);
+  }
+
   async verifyToken(rawToken: string): Promise<VerifyPersonalApiTokenResult | null> {
     const tokenValue = rawToken.trim();
     if (!tokenValue.startsWith(`${TOKEN_PREFIX}_`) || tokenValue.length < TOKEN_PREFIX_LENGTH) {
@@ -192,12 +208,17 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       canDelete: scopeSet.has("rd:delete:write")
     };
 
+    const docsCaps = {
+      canCreate: scopeSet.has("doc:create:write")
+    };
+
     const hasWriteScope =
       issueCaps.canComment ||
       issueCaps.canTransition ||
       issueCaps.canAssign ||
       issueCaps.canManageBranches ||
       issueCaps.canManageParticipants ||
+      docsCaps.canCreate ||
       rdCaps.canTransition ||
       rdCaps.canEdit ||
       rdCaps.canDelete;
@@ -233,7 +254,8 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       scopes: {
         all: Array.from(scopeSet),
         issue: issueCaps,
-        rd: rdCaps
+        rd: rdCaps,
+        docs: docsCaps
       },
       writable,
       readOnlyReason
@@ -256,6 +278,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       scope === "issue:assign:write" ||
       scope === "issue:branch:write" ||
       scope === "issue:participant:write" ||
+      scope === "doc:create:write" ||
       scope === "rd:transition:write" ||
       scope === "rd:edit:write" ||
       scope === "rd:delete:write"

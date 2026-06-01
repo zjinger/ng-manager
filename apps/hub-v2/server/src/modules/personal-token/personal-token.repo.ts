@@ -86,6 +86,11 @@ export class PersonalTokenRepo {
     return result.changes > 0;
   }
 
+  deleteById(id: string): boolean {
+    const result = this.db.prepare("DELETE FROM personal_api_tokens WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
   touchLastUsed(id: string, now: string): void {
     this.db
       .prepare("UPDATE personal_api_tokens SET last_used_at = ?, updated_at = ? WHERE id = ?")

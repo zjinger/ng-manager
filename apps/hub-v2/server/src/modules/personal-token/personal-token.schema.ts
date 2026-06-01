@@ -10,6 +10,7 @@ export const createPersonalTokenSchema = z.object({
         "issue:assign:write",
         "issue:branch:write",
         "issue:participant:write",
+        "doc:create:write",
         "rd:transition:write",
         "rd:edit:write",
         "rd:delete:write"
@@ -49,3 +50,26 @@ export const personalRdItemIdParamSchema = z.object({
   projectKey: z.string().trim().min(1).max(80),
   itemId: z.string().trim().min(1)
 });
+
+export const personalDocumentProjectParamSchema = z.object({
+  projectKey: z.string().trim().min(1).max(80)
+});
+
+export const createPersonalDocumentSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120),
+    content: z.string().min(1).optional(),
+    contentMd: z.string().min(1).optional(),
+    slug: z.string().trim().min(1).max(80).optional(),
+    category: z.string().trim().max(80).optional(),
+    categoryId: z.string().trim().max(80).optional(),
+    summary: z.string().trim().max(500).optional(),
+    tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+    status: z.enum(["draft"]).optional(),
+    source: z.string().trim().max(40).optional(),
+    version: z.string().trim().max(40).optional()
+  })
+  .refine((value) => Boolean(value.content?.trim() || value.contentMd?.trim()), {
+    message: "content is required",
+    path: ["content"]
+  });

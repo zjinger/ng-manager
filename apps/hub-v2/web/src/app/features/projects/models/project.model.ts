@@ -471,7 +471,7 @@ export interface UpdateProjectVersionItemInput {
   description?: string | null;
 }
 
-export type ProjectApiTokenScope = 'issues:read' | 'rd:read' | 'feedbacks:read';
+export type ProjectApiTokenScope = 'issues:read' | 'rd:read' | 'feedbacks:read' | 'docs:read';
 export type ProjectApiTokenStatus = 'active' | 'revoked';
 
 export interface ProjectApiTokenEntity {

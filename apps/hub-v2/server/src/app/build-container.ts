@@ -18,6 +18,9 @@ import type { AnnouncementCommandContract, AnnouncementQueryContract } from "../
 import type { ApiTokenCommandContract, ApiTokenQueryContract } from "../modules/api-token/api-token.contract";
 import { ApiTokenRepo } from "../modules/api-token/api-token.repo";
 import { ApiTokenService } from "../modules/api-token/api-token.service";
+import type { ApiTokenAuditLogCommandContract } from "../modules/api-token-audit-log/api-token-audit-log.contract";
+import { ApiTokenAuditLogRepo } from "../modules/api-token-audit-log/api-token-audit-log.repo";
+import { ApiTokenAuditLogService } from "../modules/api-token-audit-log/api-token-audit-log.service";
 import type { AuthCommandContract, AuthQueryContract } from "../modules/auth/auth.contract";
 import { DashboardService } from "../modules/dashboard/dashboard.service";
 import { DashboardRepo } from "../modules/dashboard/dashboard.repo";
@@ -125,6 +128,7 @@ export type AppContainer = {
   authQuery: AuthQueryContract;
   apiTokenCommand: ApiTokenCommandContract;
   apiTokenQuery: ApiTokenQueryContract;
+  apiTokenAuditLogCommand: ApiTokenAuditLogCommandContract;
   userCommand: UserCommandContract;
   userQuery: UserQueryContract;
   projectCommand: ProjectCommandContract;
@@ -303,6 +307,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const feedbackRepo = new FeedbackRepo(db);
   const feedbackService = new FeedbackService(feedbackRepo, projectRepo, projectAccess);
   const apiTokenRepo = new ApiTokenRepo(db);
+  const apiTokenAuditLogService = new ApiTokenAuditLogService(new ApiTokenAuditLogRepo(db));
   const apiTokenService = new ApiTokenService(
     apiTokenRepo,
     authRepo,
@@ -346,6 +351,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     authQuery: authService,
     apiTokenCommand: apiTokenService,
     apiTokenQuery: apiTokenService,
+    apiTokenAuditLogCommand: apiTokenAuditLogService,
     userCommand: userService,
     userQuery: userService,
     projectCommand: projectService,

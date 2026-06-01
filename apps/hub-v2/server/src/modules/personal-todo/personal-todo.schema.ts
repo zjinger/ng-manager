@@ -4,6 +4,7 @@ export const personalTodoPrioritySchema = z.enum(["low", "medium", "high", "crit
 export const personalTodoStatusSchema = z.enum(["todo", "doing", "done"]);
 export const personalTodoTagColorSchema = z.enum(["blue", "purple", "green", "red", "orange", "cyan", "gray"]);
 export const personalTodoFolderColorSchema = personalTodoTagColorSchema;
+export const PERSONAL_TODO_DESC_MAX_LENGTH = 10000;
 
 const dueSchema = z
   .string()
@@ -23,7 +24,7 @@ const dueSchema = z
 
 export const createPersonalTodoSchema = z.object({
   title: z.string().trim().min(1).max(100),
-  desc: z.string().trim().max(500).optional(),
+  desc: z.string().trim().max(PERSONAL_TODO_DESC_MAX_LENGTH).optional(),
   priority: personalTodoPrioritySchema,
   status: personalTodoStatusSchema,
   due: dueSchema,

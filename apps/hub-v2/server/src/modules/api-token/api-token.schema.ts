@@ -10,7 +10,7 @@ export const projectParamSchema = z.object({
 export const createProjectTokenSchema = z.object({
   name: z.string().trim().min(1).max(80),
   scopes: z
-    .array(z.enum(["issues:read", "rd:read", "feedbacks:read"]))
+    .array(z.enum(["issues:read", "rd:read", "feedbacks:read", "docs:read"]))
     .min(1)
     .max(16),
   expiresAt: z.string().trim().min(1).optional().nullable()

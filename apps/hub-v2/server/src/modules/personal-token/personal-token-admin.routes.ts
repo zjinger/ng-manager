@@ -29,4 +29,11 @@ export default async function personalTokenAdminRoutes(app: FastifyInstance) {
     await app.container.personalTokenCommand.revoke(params.tokenId, ctx);
     return ok({ id: params.tokenId }, "personal api token revoked");
   });
+
+  app.delete("/personal-api-tokens/:tokenId/revoked", async (request) => {
+    const ctx = requireAuth(request);
+    const params = personalTokenIdParamSchema.parse(request.params);
+    await app.container.personalTokenCommand.deleteRevoked(params.tokenId, ctx);
+    return ok({ id: params.tokenId }, "personal api token deleted");
+  });
 }

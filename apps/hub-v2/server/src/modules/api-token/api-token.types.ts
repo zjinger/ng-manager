@@ -16,7 +16,7 @@ import type { IssueBranchEntity } from "../issue/branch/issue-branch.types";
 import type { ProjectMemberEntity } from "../project/project.types";
 import type { RdStageEntity } from "../rd/rd.types";
 
-export type ApiTokenScope = "issues:read" | "rd:read" | "feedbacks:read";
+export type ApiTokenScope = "issues:read" | "rd:read" | "feedbacks:read" | "docs:read";
 export type ApiTokenStatus = "active" | "revoked";
 
 export interface ProjectApiTokenEntity {

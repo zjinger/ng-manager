@@ -359,7 +359,7 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
   }
 
   private isScope(scope: string): scope is ApiTokenScope {
-    return scope === "issues:read" || scope === "rd:read" || scope === "feedbacks:read";
+    return scope === "issues:read" || scope === "rd:read" || scope === "feedbacks:read" || scope === "docs:read";
   }
 
   private assertTokenProject(projectKey: string, ctx: RequestContext) {

@@ -73,6 +73,7 @@ export class ProjectConfigApiTokensTabComponent {
       .map((scope) => {
         if (scope === 'issues:read') return 'Issue读取';
         if (scope === 'rd:read') return '研发项读取';
+        if (scope === 'docs:read') return '文档读取';
         return '反馈读取';
       })
       .join(' / ');

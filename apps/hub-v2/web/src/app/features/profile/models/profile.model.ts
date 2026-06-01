@@ -43,6 +43,7 @@ export type PersonalTokenScope =
   | 'issue:assign:write'
   | 'issue:branch:write'
   | 'issue:participant:write'
+  | 'doc:create:write'
   | 'rd:transition:write'
   | 'rd:edit:write'
   | 'rd:delete:write';

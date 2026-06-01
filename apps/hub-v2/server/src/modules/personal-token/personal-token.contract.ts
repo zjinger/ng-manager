@@ -11,6 +11,7 @@ import type {
 export interface PersonalTokenCommandContract {
   create(input: CreatePersonalApiTokenInput, ctx: RequestContext): Promise<CreatePersonalApiTokenResult>;
   revoke(tokenId: string, ctx: RequestContext): Promise<void>;
+  deleteRevoked(tokenId: string, ctx: RequestContext): Promise<void>;
 }
 
 export interface PersonalTokenQueryContract {

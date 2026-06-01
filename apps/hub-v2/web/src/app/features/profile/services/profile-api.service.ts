@@ -90,4 +90,8 @@ export class ProfileApiService {
   revokePersonalToken(tokenId: string): Observable<{ id: string }> {
     return this.api.delete<{ id: string }>(`/personal-api-tokens/${tokenId}`);
   }
+
+  deleteRevokedPersonalToken(tokenId: string): Observable<{ id: string }> {
+    return this.api.delete<{ id: string }>(`/personal-api-tokens/${tokenId}/revoked`);
+  }
 }

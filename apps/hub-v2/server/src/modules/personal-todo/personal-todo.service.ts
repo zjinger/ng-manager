@@ -427,7 +427,7 @@ export class PersonalTodoService implements PersonalTodoCommandContract, Persona
   }
 
   private normalizeOptionalMarkdown(value: string | undefined): string | undefined {
-    const normalized = (value ?? "").replace(/\r\n?/g, "\n").trim().slice(0, 500);
+    const normalized = (value ?? "").replace(/\r\n?/g, "\n").trim();
     return normalized || undefined;
   }
 

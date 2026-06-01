@@ -20,7 +20,7 @@ export interface DocumentEntity {
 
 export interface CreateDocumentInput {
   projectId?: string | null;
-  slug: string;
+  slug?: string;
   title: string;
   category?: string;
   summary?: string;

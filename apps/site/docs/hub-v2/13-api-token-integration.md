@@ -1,17 +1,17 @@
 # 13 Hub V2 Token 体系与 webapp 读写接入方案
 
-最后更新：2026-05-22
+最后更新：2026-06-01
 
 ## 1. 背景与目标
 
-`ng-manager/webapp` 需要在不进入 Hub 管理端的前提下，直接读取并操作 Hub V2 的 Issue 与 RD 数据。  
+`ng-manager/webapp` 需要在不进入 Hub 管理端的前提下，直接读取并操作 Hub V2 的 Issue、RD 与文档数据。  
 本方案用于冻结 Token 体系、接口口径、权限口径与审计口径，直接指导开发与测试。
 
 目标如下：
 
 - 提供稳定的 webapp 接入链路
 - 统一 Token 体系与权限模型
-- 统一 Issue 与 RD 的读写方案
+- 统一 Issue、RD 与文档的读写方案
 
 ---
 
@@ -81,7 +81,7 @@
 
 1. `POST /api/client/hub-token/resolve`  
 入参：`{ projectId }`  
-出参：`{ baseUrl, tokenConfigured, projectKey }`
+出参：`{ baseUrl, tokenConfigured, personalTokenConfigured, projectKey }`
 
 2. `POST /api/client/hub-token/request`  
 入参示例：
@@ -99,9 +99,27 @@
 
 - webapp 推荐统一传业务相对路径（如 `/issues`、`/issues/:issueId/logs`、`/rd-items`）
 - packages/server 会基于 `projectId` 自动补齐到 `/projects/:projectKey/...` 后转发
+- 读取请求默认使用 Project Token；关键写请求需显式传 `tokenType: "personal"`
 - 二进制直连读取场景可通过 packages/server 代理：
   - `GET /api/client/hub-token/projects/:projectId/issues/:issueId/attachments/:attachmentId/raw`
   - `GET /api/client/hub-token/projects/:projectId/issues/:issueId/uploads/:uploadId/raw`
+
+Personal Token 写入请求示例：
+
+```json
+{
+  "projectId": "proj_xxx",
+  "path": "/docs",
+  "method": "POST",
+  "tokenType": "personal",
+  "body": {
+    "title": "自动生成文档",
+    "content": "# 自动生成文档",
+    "status": "draft",
+    "source": "webapp"
+  }
+}
+```
 
 ---
 
@@ -155,6 +173,10 @@ Feedback：
 - `GET /api/token/projects/:projectKey/feedbacks`
 - `GET /api/token/projects/:projectKey/feedbacks/:feedbackId`
 
+Docs：
+
+- 当前仅预留 `docs:read` scope；Project Token 文档读取接口暂未开放。
+
 ---
 
 ## 5.3 写入接口
@@ -190,6 +212,35 @@ RD：
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/progress`
 - `PATCH /api/personal/projects/:projectKey/rd-items/:itemId`
 
+Docs：
+
+- `POST /api/personal/projects/:projectKey/docs`
+
+请求体：
+
+```json
+{
+  "title": "自动生成文档",
+  "content": "# 自动生成文档\n\n这是由脚本创建的文档。",
+  "slug": "optional-doc-slug",
+  "categoryId": "automation",
+  "summary": "自动化创建的文档",
+  "tags": ["auto", "hub-v2"],
+  "status": "draft",
+  "source": "cli"
+}
+```
+
+说明：
+
+- 必须使用 Personal Token，不允许使用 Project Token 创建文档
+- 必须包含 `doc:create:write` scope
+- `content` 会按现有文档模型归一化为 `contentMd`
+- `categoryId` 作为现有 `category` 字段的兼容别名处理；当前没有独立文档分类表
+- `status` 仅允许缺省或 `draft`，该接口不负责发布或归档
+- `slug` 可选；未传时由服务端按标题生成项目内唯一 slug
+- 创建成功后写入 Token 调用审计，不记录 token 原文和完整正文
+
 ---
 
 ## 5.4 Personal Token 自检接口
@@ -218,6 +269,8 @@ RD：
 | Issue | 协作人管理 | `issue:participant:write` |
 | RD | 列表与详情 | `rd:read` |
 | Feedback | 列表与详情 | `feedbacks:read` |
+| Docs | 读取预留 | `docs:read` |
+| Docs | 创建文档 | `doc:create:write` |
 | RD | 状态流转与进度 | `rd:transition:write` |
 | RD | 编辑基础信息 | `rd:edit:write` |
 
@@ -233,6 +286,7 @@ RD：
 
 - Issue 参照 [11 Issue 权限矩阵](/hub-v2/11-issue-permission-matrix)
 - RD 参照 [10 RD 权限矩阵](/hub-v2/10-rd-permission-matrix)
+- Docs 创建要求 token owner 是目标项目成员，并复用现有文档创建 service 的项目访问校验
 
 安全补充（Token 鉴权阶段）：
 
@@ -286,6 +340,26 @@ Personal Token 表：`personal_api_tokens`
 - `status`
 - `expires_at`
 - `last_used_at`
+
+Token 调用审计表：`api_token_audit_logs`
+
+- `token_type`
+- `token_id`
+- `actor_user_id`
+- `project_id`
+- `project_key`
+- `action`
+- `resource_type`
+- `resource_id`
+- `ip`
+- `user_agent`
+- `metadata_json`
+- `created_at`
+
+说明：
+
+- `metadata_json` 只记录标题、分类、摘要、标签、状态、来源、slug 等非敏感信息
+- 不记录 token 原文、完整正文 content 或敏感请求头
 
 ---
 
@@ -364,4 +438,10 @@ curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/progress" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"progress\":40,\"note\":\"完成核心模块联调\"}"
+```
+
+### 9.10 Personal Token 创建文档
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"自动生成文档\",\"content\":\"# 自动生成文档\\n\\n这是由脚本创建的文档。\",\"categoryId\":\"automation\",\"summary\":\"自动化创建的文档\",\"tags\":[\"auto\",\"hub-v2\"],\"status\":\"draft\",\"source\":\"cli\"}"
 ```

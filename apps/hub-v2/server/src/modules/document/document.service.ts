@@ -33,8 +33,9 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
 
   async create(input: CreateDocumentInput, ctx: RequestContext): Promise<DocumentEntity> {
     const projectId = input.projectId?.trim() || null;
-    const slug = input.slug.trim();
-    if (this.repo.existsByProjectAndSlug(projectId, slug)) {
+    const explicitSlug = input.slug?.trim() || "";
+    const slug = explicitSlug || this.generateUniqueSlug(projectId, input.title);
+    if (explicitSlug && this.repo.existsByProjectAndSlug(projectId, slug)) {
       throw new AppError(ERROR_CODES.DOCUMENT_SLUG_EXISTS, `document slug already exists: ${input.slug}`, 409);
     }
     await this.requireProjectOrAdmin(projectId, ctx, "create document");
@@ -50,7 +51,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
       contentMd: input.contentMd,
       status: "draft",
       version: input.version?.trim() || null,
-      createdBy: ctx.accountId,
+      createdBy: ctx.authType === "personal_token" ? ctx.userId ?? ctx.accountId : ctx.accountId,
       publishAt: null,
       createdAt: now,
       updatedAt: now
@@ -276,6 +277,33 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     const userId = ctx.userId?.trim();
     const accountId = ctx.accountId?.trim();
     return normalizedActorId === userId || normalizedActorId === accountId;
+  }
+
+  private generateUniqueSlug(projectId: string | null, title: string): string {
+    const base = this.slugify(title) || `doc-${Date.now().toString(36)}`;
+    if (!this.repo.existsByProjectAndSlug(projectId, base)) {
+      return base;
+    }
+
+    for (let index = 2; index <= 100; index += 1) {
+      const suffix = `-${index}`;
+      const candidate = `${base.slice(0, Math.max(1, 80 - suffix.length))}${suffix}`;
+      if (!this.repo.existsByProjectAndSlug(projectId, candidate)) {
+        return candidate;
+      }
+    }
+
+    const suffix = `-${genId("slug")}`;
+    return `${base.slice(0, Math.max(1, 80 - suffix.length))}${suffix}`;
+  }
+
+  private slugify(value: string): string {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80);
   }
 
   private recordContentLog(
