@@ -1,6 +1,6 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
@@ -14,6 +14,7 @@ import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 
+import { ApiError } from '@core/http';
 import { PanelCardComponent } from '@shared/ui';
 import type { PersonalApiTokenAuditLogItem, PersonalApiTokenEntity, PersonalTokenScope } from '../../models/profile.model';
 import { ProfileApiService } from '../../services/profile-api.service';
@@ -47,8 +48,14 @@ type ScopeOption = {
   template: `
     <app-panel-card title="开发访问令牌 (Personal Token)">
       <div class="token-header">
-        <p class="token-hint">用于以你的身份调用 Hub v2 写接口。新建后只会展示一次完整 Token，请立即保存。</p>
+        <div>
+          <p class="token-hint">用于以你的身份调用 Hub v2 写接口。新建后只会展示一次完整 Token，请立即保存。</p>
+          @if (tokenLimitReached()) {
+            <p class="token-limit-warning">最多创建 5 个 Token，请删除已撤销记录后再创建。</p>
+          }
+        </div>
         <div class="token-header__actions">
+          <span class="token-count">{{ tokenCount() }}/{{ tokenLimit }}</span>
           <button
             nz-button
             nzShape="circle"
@@ -57,7 +64,13 @@ type ScopeOption = {
           >
             <nz-icon [nzType]="auditVisible() ? 'up' : 'history'" />
           </button>
-          <button nz-button nzType="primary" (click)="openCreateModal()">
+          <button
+            nz-button
+            nzType="primary"
+            [disabled]="tokenLimitReached()"
+            [title]="tokenLimitReached() ? '最多创建 5 个 Token，请删除已撤销记录后再创建' : '新建 Token'"
+            (click)="openCreateModal()"
+          >
             <nz-icon nzType="plus" />
             新建 Token
           </button>
@@ -287,6 +300,16 @@ type ScopeOption = {
         color: var(--text-muted);
         font-size: 13px;
       }
+      .token-limit-warning {
+        margin: 6px 0 0;
+        color: var(--color-danger);
+        font-size: 12px;
+      }
+      .token-count {
+        color: var(--text-muted);
+        font-size: 12px;
+        white-space: nowrap;
+      }
       .token-empty {
         color: var(--text-muted);
         padding: 12px 18px;
@@ -510,9 +533,12 @@ export class ProfilePersonalTokenComponent {
   private readonly message = inject(NzMessageService);
   private readonly clipboard = inject(Clipboard);
 
+  readonly tokenLimit = 5;
   readonly loading = signal(false);
   readonly creating = signal(false);
   readonly items = signal<PersonalApiTokenEntity[]>([]);
+  readonly tokenCount = computed(() => this.items().length);
+  readonly tokenLimitReached = computed(() => this.tokenCount() >= this.tokenLimit);
   readonly createOpen = signal(false);
   readonly revealOpen = signal(false);
   readonly revealToken = signal('');
@@ -571,6 +597,10 @@ export class ProfilePersonalTokenComponent {
   }
 
   openCreateModal(): void {
+    if (this.tokenLimitReached()) {
+      this.message.warning('最多创建 5 个 Token，请删除已撤销记录后再创建');
+      return;
+    }
     this.createName.set('');
     this.selectedScopes.set(
       [
@@ -625,8 +655,11 @@ export class ProfilePersonalTokenComponent {
           this.revealOpen.set(true);
           this.load();
         },
-        error: () => {
+        error: (error: unknown) => {
           this.creating.set(false);
+          if (error instanceof ApiError && error.code === 'TOKEN_LIMIT_EXCEEDED') {
+            return;
+          }
           this.message.error('Token 创建失败');
         },
       });

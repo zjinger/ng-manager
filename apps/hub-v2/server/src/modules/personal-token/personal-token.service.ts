@@ -20,6 +20,7 @@ import { UserRepo } from "../user/user.repo";
 
 const TOKEN_PREFIX = "ngm_uptk";
 const TOKEN_PREFIX_LENGTH = 17;
+const PERSONAL_TOKEN_LIMIT = 5;
 
 export class PersonalTokenService implements PersonalTokenCommandContract, PersonalTokenQueryContract {
   constructor(
@@ -42,6 +43,12 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
     const scopes = Array.from(new Set(input.scopes)).filter((scope) => this.isScope(scope));
     if (scopes.length === 0) {
       throw new AppError(ERROR_CODES.TOKEN_SCOPE_REQUIRED, "at least one scope is required", 400);
+    }
+
+    if (this.repo.countByOwner(ownerUserId) >= PERSONAL_TOKEN_LIMIT) {
+      throw new AppError(ERROR_CODES.TOKEN_LIMIT_EXCEEDED, "personal token limit exceeded", 409, {
+        limit: PERSONAL_TOKEN_LIMIT
+      });
     }
 
     const now = nowIso();

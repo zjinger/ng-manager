@@ -39,6 +39,12 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
       <ng-template nzDrawerContent>
         <div class="detail-panel">
           <div class="detail-actions">
+            @if (tab() === 'documents' && document(); as item) {
+              <button nz-button nzSize="small" (click)="downloadDocumentAsMarkdown(item)">
+                <nz-icon nzType="download" />
+                下载
+              </button>
+            }
             @if (canEdit()) {
               <button nz-button nzSize="small" (click)="edit.emit()">编辑</button>
             }
@@ -515,5 +521,32 @@ export class ContentDetailDrawerComponent {
       return '确认删除这篇已归档文档吗？删除后将从文档管理列表中隐藏。';
     }
     return '确认删除这条已作废版本吗？删除后将从版本管理列表中隐藏。';
+  }
+
+  downloadDocumentAsMarkdown(item: DocumentEntity): void {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+    const filename = `${this.safeMarkdownFilename(item.slug || item.title || item.id)}.md`;
+    const blob = new Blob([item.contentMd || ''], { type: 'text/markdown;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  private safeMarkdownFilename(value: string): string {
+    const normalized = value
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, '-')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    return normalized || 'document';
   }
 }

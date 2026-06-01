@@ -63,6 +63,13 @@ export class PersonalTokenRepo {
     return rows.map((row) => this.mapEntity(row));
   }
 
+  countByOwner(ownerUserId: string): number {
+    const row = this.db
+      .prepare("SELECT COUNT(*) AS count FROM personal_api_tokens WHERE owner_user_id = ?")
+      .get(ownerUserId) as { count: number } | undefined;
+    return row?.count ?? 0;
+  }
+
   findById(id: string): (PersonalApiTokenEntity & { tokenHash: string }) | null {
     const row = this.db
       .prepare("SELECT * FROM personal_api_tokens WHERE id = ? LIMIT 1")

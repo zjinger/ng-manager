@@ -87,6 +87,79 @@ describe("PersonalTokenService.deleteRevoked", () => {
   });
 });
 
+describe("PersonalTokenService.create", () => {
+  it("allows up to five personal tokens for the same user", async () => {
+    const service = createService();
+    const ctx = createUserContext("usr_1");
+
+    for (let index = 1; index <= 5; index += 1) {
+      const created = await createToken(service, ctx, `token ${index}`);
+      assert.equal(created.entity.ownerUserId, "usr_1");
+    }
+
+    const tokens = await service.list(ctx);
+    assert.equal(tokens.items.length, 5);
+  });
+
+  it("rejects the sixth personal token for the same user", async () => {
+    const service = createService();
+    const ctx = createUserContext("usr_1");
+
+    for (let index = 1; index <= 5; index += 1) {
+      await createToken(service, ctx, `token ${index}`);
+    }
+
+    await assert.rejects(
+      () => createToken(service, ctx, "token 6"),
+      (error) =>
+        error instanceof AppError &&
+        error.code === ERROR_CODES.TOKEN_LIMIT_EXCEEDED &&
+        error.statusCode === 409 &&
+        error.details?.["limit"] === 5
+    );
+  });
+
+  it("counts revoked tokens until their records are deleted", async () => {
+    const service = createService();
+    const ctx = createUserContext("usr_1");
+    let revokedTokenId = "";
+
+    for (let index = 1; index <= 5; index += 1) {
+      const created = await createToken(service, ctx, `token ${index}`);
+      if (index === 1) {
+        revokedTokenId = created.entity.id;
+      }
+    }
+
+    await service.revoke(revokedTokenId, ctx);
+
+    await assert.rejects(
+      () => createToken(service, ctx, "token 6"),
+      (error) =>
+        error instanceof AppError &&
+        error.code === ERROR_CODES.TOKEN_LIMIT_EXCEEDED &&
+        error.statusCode === 409
+    );
+
+    await service.deleteRevoked(revokedTokenId, ctx);
+    const createdAfterDelete = await createToken(service, ctx, "token 6");
+    assert.equal(createdAfterDelete.entity.ownerUserId, "usr_1");
+  });
+
+  it("does not count another user's personal tokens", async () => {
+    const service = createService();
+    const ownerCtx = createUserContext("usr_1");
+    const otherCtx = createUserContext("usr_2");
+
+    for (let index = 1; index <= 5; index += 1) {
+      await createToken(service, otherCtx, `other token ${index}`);
+    }
+
+    const created = await createToken(service, ownerCtx, "owner token");
+    assert.equal(created.entity.ownerUserId, "usr_1");
+  });
+});
+
 function createService(): PersonalTokenService {
   const db = new Database(":memory:");
   cleanup.push(db);
@@ -120,4 +193,15 @@ function createUserContext(userId: string) {
     authType: "user",
     source: "http"
   });
+}
+
+function createToken(service: PersonalTokenService, ctx: ReturnType<typeof createUserContext>, name: string) {
+  return service.create(
+    {
+      name,
+      scopes: ["doc:create:write"],
+      expiresAt: null
+    },
+    ctx
+  );
 }
