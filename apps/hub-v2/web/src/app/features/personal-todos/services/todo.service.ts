@@ -82,8 +82,8 @@ export class TodoService {
     return this.normalizeText(value, 100);
   }
 
-  normalizeOptionalText(value: string | undefined, maxLength: number): string | undefined {
-    const normalized = this.normalizeMarkdownText(value ?? '', maxLength);
+  normalizeOptionalText(value: string | undefined): string | undefined {
+    const normalized = this.normalizeMarkdownText(value ?? '');
     return normalized || undefined;
   }
 
@@ -94,7 +94,7 @@ export class TodoService {
   private normalizeDraft(draft: TodoDraft): TodoDraft {
     return {
       title: this.normalizeTitle(draft.title),
-      desc: this.normalizeOptionalText(draft.desc, 500),
+      desc: this.normalizeOptionalText(draft.desc),
       priority: draft.priority,
       status: draft.status,
       due: draft.due || null,
@@ -121,8 +121,8 @@ export class TodoService {
     return value.replace(/\s+/g, ' ').trim().slice(0, maxLength);
   }
 
-  private normalizeMarkdownText(value: string, maxLength: number): string {
-    return value.replace(/\r\n?/g, '\n').trim().slice(0, maxLength);
+  private normalizeMarkdownText(value: string): string {
+    return value.replace(/\r\n?/g, '\n').trim();
   }
 
   private normalizeIds(values: unknown[]): string[] {

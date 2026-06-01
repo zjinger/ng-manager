@@ -13,6 +13,7 @@ import { UPLOAD_TARGETS } from '@shared/constants';
 import { ImageUploadService } from '@shared/services/image-upload.service';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import {
+  TODO_DESC_MAX_LENGTH,
   TODO_PRIORITY_OPTIONS,
   TODO_STATUS_OPTIONS,
   type Todo,
@@ -73,16 +74,20 @@ import {
             <div class="col" nz-col nzSpan="24">
               <nz-form-item>
                 <nz-form-label nzFor="todo-desc">待办描述</nz-form-label>
-                <nz-form-control>
+                <nz-form-control [nzErrorTip]="descErrorTpl">
                   <app-markdown-editor
                     formControlName="desc"
                     [config]="editorConfig"
                     [imageUploadHandler]="uploadMarkdownImage"
                     [minHeight]="'200px'"
                     [maxHeight]="'360px'"
+                    [maxLength]="descMaxLength"
                     (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
                     [placeholder]="'补充待办背景、目标、检查清单或备注'"
                   />
+                  <ng-template #descErrorTpl>
+                    待办描述不能超过 {{ descMaxLength }} 字
+                  </ng-template>
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -292,6 +297,7 @@ export class TodoDialogComponent {
 
   readonly priorityOptions = TODO_PRIORITY_OPTIONS;
   readonly statusOptions = TODO_STATUS_OPTIONS;
+  readonly descMaxLength = TODO_DESC_MAX_LENGTH;
   readonly editorConfig = {
     autosave: false,
     status: ['lines', 'words'],
@@ -300,7 +306,7 @@ export class TodoDialogComponent {
     this.imageUpload.uploadImage(file, UPLOAD_TARGETS.markdownImage);
   readonly form = this.fb.group({
     title: ['', [Validators.required, Validators.maxLength(100)]],
-    desc: ['', [Validators.maxLength(500)]],
+    desc: ['', [Validators.maxLength(TODO_DESC_MAX_LENGTH)]],
     priority: this.fb.control<TodoPriority>('medium'),
     status: this.fb.control<TodoStatus>('todo'),
     due: new FormControl<Date | null>(null),
@@ -337,6 +343,9 @@ export class TodoDialogComponent {
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      if (this.form.controls.desc.hasError('maxlength')) {
+        this.message.error(`待办描述不能超过 ${TODO_DESC_MAX_LENGTH} 字`);
+      }
       return;
     }
 

@@ -22,6 +22,9 @@ export type RdMainStageKey =
   | 'delivery_launch'
   | 'project_closure';
 export const RD_VISIBLE_STATUSES: RdItemStatus[] = ['todo', 'doing', 'blocked', 'done', 'accepted'];
+export const RD_ADVANCE_DESCRIPTION_MAX_LENGTH = 2000;
+export const RD_STAGE_TASK_DESCRIPTION_MAX_LENGTH = 2000;
+export const RD_STAGE_DESCRIPTION_MAX_LENGTH = 4000;
 export type RdAction =
   | 'create'
   | 'update'

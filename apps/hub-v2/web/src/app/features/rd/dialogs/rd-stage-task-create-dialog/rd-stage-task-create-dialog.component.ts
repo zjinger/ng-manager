@@ -12,7 +12,12 @@ import { UPLOAD_TARGETS } from '@shared/constants';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import { ImageUploadService } from '../../../../shared/services/image-upload.service';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
-import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity } from '../../models/rd.model';
+import {
+  RD_STAGE_TASK_DESCRIPTION_MAX_LENGTH,
+  resolveRdStageKey,
+  type RdStageEntity,
+  type RdStageTaskTemplateEntity,
+} from '../../models/rd.model';
 
 @Component({
   selector: 'app-rd-stage-task-create-dialog',
@@ -90,6 +95,7 @@ import { resolveRdStageKey, type RdStageEntity, type RdStageTaskTemplateEntity }
                 [config]="editorConfig"
                 [imageUploadHandler]="uploadMarkdownImage"
                 [placeholder]="'补充任务说明、验收口径或交付要求。（会显示在研发项描述区域）'"
+                [maxLength]="taskDescriptionMaxLength"
                 minHeight="180px"
                 (contentChange)="setTaskDescription($event)"
                 (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
@@ -247,6 +253,7 @@ export class RdStageTaskCreateDialogComponent {
   readonly taskDescriptionValue = signal<string | null>(null);
   readonly plannedStartDateValue = signal<Date | null>(null);
   readonly plannedEndDateValue = signal<Date | null>(null);
+  readonly taskDescriptionMaxLength = RD_STAGE_TASK_DESCRIPTION_MAX_LENGTH;
   readonly editorConfig = {
     autosave: false,
     status: ['lines', 'words'],
@@ -309,11 +316,15 @@ export class RdStageTaskCreateDialogComponent {
     if (!this.currentStageKey() || this.selectedOwnerIds().length === 0) {
       return false;
     }
-    return !!this.taskTitle().trim() && !this.hasInvalidDateRange();
+    return !!this.taskTitle().trim() && !this.hasInvalidDateRange() && !this.hasTaskDescriptionError();
   }
 
   submitCreate(): void {
     const stageKey = this.currentStageKey();
+    if (this.hasTaskDescriptionError()) {
+      this.message.error(`描述不能超过 ${this.taskDescriptionMaxLength} 字`);
+      return;
+    }
     if (!stageKey || !this.canSubmitCreate()) {
       return;
     }
@@ -362,6 +373,10 @@ export class RdStageTaskCreateDialogComponent {
 
   setTaskDescription(value: string): void {
     this.taskDescriptionValue.set(value.trim() ? value : null);
+  }
+
+  hasTaskDescriptionError(): boolean {
+    return (this.taskDescription() ?? '').length > this.taskDescriptionMaxLength;
   }
 
   plannedStartDate(): Date | null {

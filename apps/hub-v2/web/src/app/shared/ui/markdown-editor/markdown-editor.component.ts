@@ -1,6 +1,7 @@
 import {
     AfterViewInit,
     ChangeDetectionStrategy,
+    ChangeDetectorRef,
     Component,
     ElementRef,
     EventEmitter,
@@ -10,7 +11,8 @@ import {
     Output,
     SimpleChanges,
     ViewChild,
-    forwardRef
+    forwardRef,
+    inject
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -44,6 +46,8 @@ import type {
 })
 export class MarkdownEditorComponent
     implements AfterViewInit, OnChanges, OnDestroy, ControlValueAccessor {
+    private readonly cdr = inject(ChangeDetectorRef);
+
     @ViewChild('editorHost', { static: true })
     editorHost!: ElementRef<HTMLTextAreaElement>;
 
@@ -54,6 +58,8 @@ export class MarkdownEditorComponent
     @Input() minHeight = '240px';
 
     @Input() maxHeight = '';
+
+    @Input() maxLength?: number;
 
     @Input() readonly = false;
 
@@ -96,6 +102,10 @@ export class MarkdownEditorComponent
         if (changes['minHeight'] || changes['maxHeight'] || changes['config']) {
             this.applyMinHeight();
         }
+
+        if (changes['config'] || changes['maxLength']) {
+            this.cdr.markForCheck();
+        }
     }
 
     writeValue(value: string | null): void {
@@ -108,6 +118,7 @@ export class MarkdownEditorComponent
             this.suppressChange = false;
             this.scheduleEditorRefresh();
         }
+        this.cdr.markForCheck();
     }
 
     registerOnChange(fn: (value: string) => void): void {
@@ -195,6 +206,24 @@ export class MarkdownEditorComponent
         this.ready.emit(this.editor);
     }
 
+    currentLength(): number {
+        return this.innerValue.length;
+    }
+
+    resolvedMaxLength(): number | null {
+        const limit = this.maxLength ?? this.config.maxLength;
+        return typeof limit === 'number' && Number.isFinite(limit) && limit > 0 ? limit : null;
+    }
+
+    lengthLimitLabel(): string {
+        return this.config.maxLengthLabel ?? '字数';
+    }
+
+    isOverLengthLimit(): boolean {
+        const limit = this.resolvedMaxLength();
+        return limit !== null && this.currentLength() > limit;
+    }
+
     private bindEvents(): void {
         if (!this.editor) {
             return;
@@ -211,6 +240,7 @@ export class MarkdownEditorComponent
             this.innerValue = value;
             this.onChange(value);
             this.contentChange.emit(value);
+            this.cdr.markForCheck();
         });
 
         cm.on('blur', () => {
@@ -234,6 +264,7 @@ export class MarkdownEditorComponent
         this.innerValue = value;
         this.onChange(value);
         this.contentChange.emit(value);
+        this.cdr.markForCheck();
     }
 
     private setEditorReadonlyState(): void {

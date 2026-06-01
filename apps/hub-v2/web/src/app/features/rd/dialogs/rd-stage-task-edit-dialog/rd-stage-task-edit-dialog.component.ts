@@ -12,7 +12,7 @@ import { UPLOAD_TARGETS } from '@shared/constants';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import { ImageUploadService } from '../../../../shared/services/image-upload.service';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
-import type { RdStageTaskTemplateEntity } from '../../models/rd.model';
+import { RD_STAGE_TASK_DESCRIPTION_MAX_LENGTH, type RdStageTaskTemplateEntity } from '../../models/rd.model';
 
 export interface RdStageTaskEditDraft {
   localId: string;
@@ -96,6 +96,7 @@ export interface RdStageTaskEditDraft {
                 [config]="editorConfig"
                 [imageUploadHandler]="uploadMarkdownImage"
                 [placeholder]="'补充任务说明、验收口径或交付要求。'"
+                [maxLength]="taskDescriptionMaxLength"
                 minHeight="180px"
                 (contentChange)="description.set($event)"
                 (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
@@ -234,6 +235,7 @@ export class RdStageTaskEditDialogComponent {
 
   readonly title = signal('');
   readonly description = signal('');
+  readonly taskDescriptionMaxLength = RD_STAGE_TASK_DESCRIPTION_MAX_LENGTH;
   readonly ownerIds = signal<string[]>([]);
   readonly plannedStartDate = signal<Date | null>(null);
   readonly plannedEndDate = signal<Date | null>(null);
@@ -268,10 +270,14 @@ export class RdStageTaskEditDialogComponent {
   }
 
   canSubmit(): boolean {
-    return !!this.title().trim() && this.ownerIds().length > 0 && !this.hasInvalidDateRange();
+    return !!this.title().trim() && this.ownerIds().length > 0 && !this.hasInvalidDateRange() && !this.hasDescriptionError();
   }
 
   submitDraft(): void {
+    if (this.hasDescriptionError()) {
+      this.message.error(`描述不能超过 ${this.taskDescriptionMaxLength} 字`);
+      return;
+    }
     if (!this.canSubmit()) {
       return;
     }
@@ -338,6 +344,10 @@ export class RdStageTaskEditDialogComponent {
 
   onMarkdownImageUploadFailed(message: string): void {
     this.message.error(message || '图片上传失败');
+  }
+
+  hasDescriptionError(): boolean {
+    return this.description().length > this.taskDescriptionMaxLength;
   }
 
   private cloneDate(value: Date | null): Date | null {

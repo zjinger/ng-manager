@@ -22,6 +22,8 @@ import { DialogShellComponent, MarkdownEditorComponent, MarkdownViewerComponent 
 import { ImageUploadService } from '../../../../shared/services/image-upload.service';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import {
+  RD_STAGE_DESCRIPTION_MAX_LENGTH,
+  RD_STAGE_TASK_DESCRIPTION_MAX_LENGTH,
   getRdMemberIds,
   resolveRdStageKey,
   type CreateRdStageTaskInput,
@@ -280,6 +282,7 @@ type TaskDraft = RdEditStageTaskDraft;
                   [imageUploadHandler]="uploadMarkdownImage"
                   (contentChange)="stageDescription.set($event)"
                   (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
+                  [maxLength]="stageDescriptionMaxLength"
                   [minHeight]="'130px'"
                   [placeholder]="'补充当前阶段的目标、注意事项或验收口径。'"
                 />
@@ -454,6 +457,8 @@ export class RdEditDialogComponent {
   readonly memberIds = signal<string[]>([]);
   readonly verifierId = signal<string | null>(null);
   readonly stageDescription = signal('');
+  readonly stageDescriptionMaxLength = RD_STAGE_DESCRIPTION_MAX_LENGTH;
+  readonly stageTaskDescriptionMaxLength = RD_STAGE_TASK_DESCRIPTION_MAX_LENGTH;
   readonly stageDescriptionEditing = signal(false);
   readonly planStartDate = signal<Date | null>(null);
   readonly planEndDate = signal<Date | null>(null);
@@ -528,7 +533,14 @@ export class RdEditDialogComponent {
   }
 
   isFormValid(): boolean {
-    if (!this.title().trim() || this.memberIds().length === 0 || this.hasInvalidStageDateRange() || this.hasNoActiveStageTaskOwner()) {
+    if (
+      !this.title().trim() ||
+      this.memberIds().length === 0 ||
+      this.hasInvalidStageDateRange() ||
+      this.hasNoActiveStageTaskOwner() ||
+      this.hasStageDescriptionError() ||
+      this.hasTaskDescriptionError()
+    ) {
       return false;
     }
     return this.taskDrafts().every((draft) => this.isDraftValid(draft));
@@ -536,6 +548,11 @@ export class RdEditDialogComponent {
 
   submitForm(): void {
     if (!this.isFormValid()) {
+      if (this.hasStageDescriptionError()) {
+        this.message.error(`阶段说明不能超过 ${this.stageDescriptionMaxLength} 字`);
+      } else if (this.hasTaskDescriptionError()) {
+        this.message.error(`阶段任务描述不能超过 ${this.stageTaskDescriptionMaxLength} 字`);
+      }
       return;
     }
     const title = this.title().trim();
@@ -642,6 +659,14 @@ export class RdEditDialogComponent {
       return false;
     }
     return this.taskDrafts().reduce((count, draft) => count + draft.ownerIds.length, 0) <= 0;
+  }
+
+  hasStageDescriptionError(): boolean {
+    return this.stageDescription().length > this.stageDescriptionMaxLength;
+  }
+
+  hasTaskDescriptionError(): boolean {
+    return this.taskDrafts().some((draft) => draft.description.length > this.stageTaskDescriptionMaxLength);
   }
 
   isDraftDateInvalid(draft: TaskDraft): boolean {

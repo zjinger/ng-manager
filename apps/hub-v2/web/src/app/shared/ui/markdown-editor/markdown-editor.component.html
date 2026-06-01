@@ -1,3 +1,14 @@
-<div class="markdown-editor" [class.is-disabled]="disabled" [class.is-readonly]="readonly">
+<div
+  class="markdown-editor"
+  [class.is-disabled]="disabled"
+  [class.is-readonly]="readonly"
+  [class.has-length-error]="isOverLengthLimit()"
+>
   <textarea #editorHost></textarea>
+  @if (resolvedMaxLength(); as limit) {
+    <div class="markdown-editor__limit" [class.is-error]="isOverLengthLimit()">
+      <span>{{ lengthLimitLabel() }}</span>
+      <span>{{ currentLength() }} / {{ limit }}</span>
+    </div>
+  }
 </div>

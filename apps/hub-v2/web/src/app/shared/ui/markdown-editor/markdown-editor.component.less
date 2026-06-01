@@ -14,6 +14,27 @@
   &.is-disabled {
     opacity: 0.72;
   }
+
+  &.has-length-error {
+    ::ng-deep .editor-toolbar,
+    ::ng-deep .CodeMirror {
+      border-color: var(--error-color, #ff4d4f);
+    }
+  }
+}
+
+.markdown-editor__limit {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--text-muted, #94a3b8);
+  font-size: 12px;
+  line-height: 1.4;
+
+  &.is-error {
+    color: var(--error-color, #ff4d4f);
+  }
 }
 
 :host ::ng-deep .EasyMDEContainer {

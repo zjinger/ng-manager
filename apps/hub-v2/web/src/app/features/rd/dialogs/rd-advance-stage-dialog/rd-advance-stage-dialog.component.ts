@@ -14,7 +14,13 @@ import { ImageUploadService } from '@shared/services/image-upload.service';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import { RdMemberStageTaskPickerComponent } from '../../components/rd-member-stage-task-picker/rd-member-stage-task-picker.component';
-import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskTemplateEntity } from '../../models/rd.model';
+import {
+  RD_ADVANCE_DESCRIPTION_MAX_LENGTH,
+  type RdInitialStageTaskInput,
+  type RdItemEntity,
+  type RdStageEntity,
+  type RdStageTaskTemplateEntity,
+} from '../../models/rd.model';
 
 @Component({
   selector: 'app-rd-advance-stage-dialog',
@@ -105,6 +111,7 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
                       [ngModelOptions]="{ standalone: true }"
                       [imageUploadHandler]="uploadMarkdownImage"
                       [placeholder]="'可选：填写本次推进说明（会显示在研发项描述区域）'"
+                      [maxLength]="advanceDescriptionMaxLength"
                       minHeight="160px"
                       (contentChange)="description.set(normalizeDescription($event))"
                       (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
@@ -190,7 +197,7 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
             nz-button
             nzType="primary"
             [nzLoading]="busy()"
-            [disabled]="busy() || !selectedStageId() || selectedMemberIds().length === 0 || hasMissingStageTaskTitle() || invalidDateRange() || invalidStageTaskPlanRange()"
+            [disabled]="busy() || !selectedStageId() || selectedMemberIds().length === 0 || hasMissingStageTaskTitle() || invalidDateRange() || invalidStageTaskPlanRange() || hasAdvanceDescriptionError()"
             type="submit"
             form="rd-advance-stage-form"
           >
@@ -249,6 +256,7 @@ export class RdAdvanceStageDialogComponent {
   readonly selectedStageId = signal('');
   readonly selectedMemberIds = signal<string[]>([]);
   readonly description = signal('');
+  readonly advanceDescriptionMaxLength = RD_ADVANCE_DESCRIPTION_MAX_LENGTH;
   readonly planStartDate = signal<Date | null>(null);
   readonly planEndDate = signal<Date | null>(null);
   readonly memberTaskTitles = signal<Record<string, string>>({});
@@ -465,6 +473,10 @@ export class RdAdvanceStageDialogComponent {
   confirmSelection(): void {
     this.submitAttempted.set(true);
     const stageId = this.selectedStageId().trim();
+    if (this.hasAdvanceDescriptionError()) {
+      this.message.error(`描述不能超过 ${this.advanceDescriptionMaxLength} 字`);
+      return;
+    }
     if (!stageId || this.hasMissingStageTaskTitle() || this.invalidDateRange() || this.invalidStageTaskPlanRange()) {
       return;
     }
@@ -492,7 +504,11 @@ export class RdAdvanceStageDialogComponent {
   }
 
   normalizeDescription(value: unknown): string {
-    return String(value ?? '').slice(0, 2000);
+    return String(value ?? '');
+  }
+
+  hasAdvanceDescriptionError(): boolean {
+    return this.description().length > this.advanceDescriptionMaxLength;
   }
 
   onMarkdownImageUploadFailed(message: string): void {

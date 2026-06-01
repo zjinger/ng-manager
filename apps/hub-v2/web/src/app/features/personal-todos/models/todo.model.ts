@@ -126,6 +126,7 @@ export interface TodoOption<T extends string> {
 }
 
 export const TODO_PAGE_SIZE_OPTIONS = [50, 100, 200];
+export const TODO_DESC_MAX_LENGTH = 10000;
 
 export const TODO_STATUS_OPTIONS: TodoOption<TodoStatus>[] = [
   { value: 'todo', label: '待办' },

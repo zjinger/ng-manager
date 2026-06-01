@@ -42,6 +42,8 @@ export interface MarkdownEditorConfig {
     spellChecker?: boolean;
     autosave?: boolean;
     autosaveUniqueId?: string;
+    maxLength?: number;
+    maxLengthLabel?: string;
     status?: boolean | string[];
     previewClass?: string | string[];
     toolbar?: MarkdownEditorToolbarItem[];
