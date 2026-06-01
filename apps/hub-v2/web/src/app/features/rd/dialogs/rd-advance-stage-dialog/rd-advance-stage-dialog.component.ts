@@ -1,6 +1,5 @@
 ﻿import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NzAutocompleteModule } from 'ng-zorro-antd/auto-complete';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -14,6 +13,7 @@ import { UPLOAD_TARGETS } from '@shared/constants';
 import { ImageUploadService } from '@shared/services/image-upload.service';
 import { DialogShellComponent, FormActionsComponent, MarkdownEditorComponent } from '@shared/ui';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
+import { RdMemberStageTaskPickerComponent } from '../../components/rd-member-stage-task-picker/rd-member-stage-task-picker.component';
 import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskTemplateEntity } from '../../models/rd.model';
 
 @Component({
@@ -21,7 +21,6 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
   standalone: true,
   imports: [
     FormsModule,
-    NzAutocompleteModule,
     NzSelectModule,
     NzButtonModule,
     NzInputModule,
@@ -32,6 +31,7 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
     DialogShellComponent,
     FormActionsComponent,
     MarkdownEditorComponent,
+    RdMemberStageTaskPickerComponent,
   ],
   template: `
     <app-dialog-shell
@@ -154,76 +154,25 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
 
             <nz-form-item>
               <nz-form-label class="template-preview-label" nzRequired>阶段任务</nz-form-label>
-              <nz-form-control
-                [nzValidateStatus]="showStageTaskError() ? 'error' : ''"
-                [nzErrorTip]="stageTaskErrorTip()"
-              >
-                <div class="template-preview">
-                  <div class="template-preview__header">
-                    <div>
-                      <span>按执行人选择当前阶段模板任务，也可手动输入；每位执行人必须指定任务。</span>
-                    </div>
-                    <span>将创建 {{ selectedStageTaskCount() }} 个任务</span>
-                  </div>
-                  @if (selectedExecutorMembers().length > 0) {
-                    <div class="template-preview__list">
-                      @for (member of selectedExecutorMembers(); track member.userId) {
-                        <div class="template-preview__item">
-                          <span class="template-preview__owner">{{ member.displayName }}</span>
-                          <div class="template-preview__task-input">
-                            <input
-                              nz-input
-                              maxlength="200"
-                              [nzAutocomplete]="taskTitleAuto"
-                              [ngModel]="memberTaskTitle(member.userId)"
-                              [ngModelOptions]="{ standalone: true }"
-                              (ngModelChange)="setMemberTaskTitle(member.userId, $event)"
-                              placeholder="必填：选择模板或手动输入任务"
-                            />
-                            <nz-autocomplete #taskTitleAuto [nzDefaultActiveFirstOption]="false">
-                              @for (task of selectedTemplateTasks(); track task.id) {
-                                <nz-auto-option [nzValue]="task.title" [nzLabel]="task.title">
-                                  <div class="template-preview__option">
-                                    <strong>{{ task.title }}</strong>
-                                    @if (task.description) {
-                                      <span>{{ task.description }}</span>
-                                    }
-                                  </div>
-                                </nz-auto-option>
-                              }
-                            </nz-autocomplete>
-                            @if (memberTaskDescription(member.userId); as taskDescription) {
-                              <small>{{ taskDescription }}</small>
-                            }
-                          </div>
-                          <div class="template-preview__date-range">
-                            <nz-date-picker
-                              nzFormat="yyyy-MM-dd"
-                              nzPlaceHolder="计划开始"
-                              nzPopupClassName="hub-datepicker-overlay"
-                              [ngModel]="memberTaskPlanStartDate(member.userId)"
-                              [ngModelOptions]="{ standalone: true }"
-                              (ngModelChange)="setMemberTaskPlanDate(member.userId, 'start', $event)"
-                            ></nz-date-picker>
-                            <nz-date-picker
-                              nzFormat="yyyy-MM-dd"
-                              nzPlaceHolder="计划结束"
-                              nzPopupClassName="hub-datepicker-overlay"
-                              [ngModel]="memberTaskPlanEndDate(member.userId)"
-                              [ngModelOptions]="{ standalone: true }"
-                              (ngModelChange)="setMemberTaskPlanDate(member.userId, 'end', $event)"
-                            ></nz-date-picker>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                    @if (selectedTemplateTasks().length === 0) {
-                      <p class="template-preview__empty">该阶段未配置任务模板，可直接手动输入阶段任务。</p>
-                    }
-                  } @else {
-                    <p class="template-preview__empty">选择执行人后，可按执行人配置下一阶段任务。</p>
-                  }
-                </div>
+              <nz-form-control>
+                <app-rd-member-stage-task-picker
+                  [members]="selectedExecutorMembers()"
+                  [templates]="selectedTemplateTasks()"
+                  [taskTitles]="memberTaskTitles()"
+                  [taskDescriptions]="memberTaskDescriptions()"
+                  [taskPlanStartDates]="memberTaskPlanStartDates()"
+                  [taskPlanEndDates]="memberTaskPlanEndDates()"
+                  [titleErrors]="memberTaskTitleErrors()"
+                  [planErrors]="memberTaskPlanErrors()"
+                  [taskCount]="selectedStageTaskCount()"
+                  emptyText="选择执行人后，可按执行人配置下一阶段任务。"
+                  noTemplateText="该阶段未配置任务模板，可直接手动输入阶段任务。"
+                  [missingTitleError]="showMissingStageTaskTitleError() ? '请为每位执行人选择或填写阶段任务标题。' : ''"
+                  [planError]="showStageTaskPlanError() ? '阶段任务计划时间需在下一阶段计划周期内，且开始不能晚于结束。' : ''"
+                  (taskTitleChange)="setMemberTaskTitle($event.userId, $event.value)"
+                  (taskTitleBlur)="markMemberTaskTitleTouched($event)"
+                  (taskPlanDateChange)="setMemberTaskPlanDate($event.userId, $event.key, $event.value)"
+                />
               </nz-form-control>
             </nz-form-item>
           </form>
@@ -268,113 +217,15 @@ import type { RdInitialStageTaskInput, RdItemEntity, RdStageEntity, RdStageTaskT
         color: var(--text-muted);
         font-size: 12px;
       }
-      .template-preview {
-        border: 1px solid var(--border-color-soft);
-        border-radius: 8px;
-        background: var(--bg-subtle);
-        padding: 12px;
-      }
       .template-preview-label {
         margin-top: 8px;
         margin-bottom: 6px;
-      }
-      .template-preview__header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 8px;
-      }
-      .template-preview__header strong {
-        color: var(--text-heading);
-        font-size: 13px;
-      }
-      .template-preview__header div {
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-      .template-preview__header span,
-      .template-preview__empty {
-        color: var(--text-muted);
-        font-size: 12px;
-      }
-      .template-preview__list {
-        display: grid;
-        gap: 8px;
-        margin: 0;
-      }
-      .template-preview__item {
-        display: grid;
-        grid-template-columns: 96px minmax(0, 1fr) 280px;
-        gap: 12px;
-        align-items: center;
-        min-width: 0;
-        padding: 8px 10px;
-        border: 1px solid var(--border-color-soft);
-        border-radius: 6px;
-        background: var(--bg-container);
-      }
-      .template-preview__owner {
-        color: var(--text-secondary);
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .template-preview__task-input,
-      .template-preview__option {
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-      .template-preview__date-range {
-        min-width: 0;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 8px;
-      }
-      .template-preview__date-range nz-date-picker {
-        width: 100%;
-      }
-      .template-preview__option strong,
-      .template-preview__option span {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .template-preview__option span,
-      .template-preview__task-input small {
-        color: var(--text-muted);
-        font-size: 12px;
-      }
-      .template-preview__task-input small {
-        display: -webkit-box;
-        overflow: hidden;
-        line-height: 1.45;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
-      }
-      .template-preview__empty {
-        margin: 0;
       }
       @media (max-width: 768px) {
         .advance-form [nz-col] {
           width: 100%;
           max-width: 100%;
           flex: 0 0 100%;
-        }
-        .template-preview__header {
-          align-items: flex-start;
-          flex-direction: column;
-        }
-        .template-preview__list {
-          grid-template-columns: 1fr;
-        }
-        .template-preview__item,
-        .template-preview__date-range {
-          grid-template-columns: 1fr;
         }
       }
     `,
@@ -405,6 +256,8 @@ export class RdAdvanceStageDialogComponent {
   readonly memberTaskDescriptions = signal<Record<string, string | null>>({});
   readonly memberTaskPlanStartDates = signal<Record<string, Date | null>>({});
   readonly memberTaskPlanEndDates = signal<Record<string, Date | null>>({});
+  readonly memberTaskTitleTouched = signal<Record<string, boolean>>({});
+  readonly memberTaskPlanTouched = signal<Record<string, boolean>>({});
   readonly memberTouched = signal(false);
   readonly stageTaskTouched = signal(false);
   readonly submitAttempted = signal(false);
@@ -439,32 +292,7 @@ export class RdAdvanceStageDialogComponent {
     return start.getTime() > end.getTime();
   });
   readonly invalidStageTaskPlanRange = computed(() => {
-    const itemStart = this.planStartDate();
-    const itemEnd = this.planEndDate();
-    const titles = this.memberTaskTitles();
-    for (const member of this.selectedExecutorMembers()) {
-      if (!titles[member.userId]?.trim()) {
-        continue;
-      }
-      const start = this.memberTaskPlanStartDate(member.userId);
-      const end = this.memberTaskPlanEndDate(member.userId);
-      if (!start && !end) {
-        continue;
-      }
-      if (!itemStart || !itemEnd) {
-        return true;
-      }
-      if (start && end && start.getTime() > end.getTime()) {
-        return true;
-      }
-      if (start && (start.getTime() < itemStart.getTime() || start.getTime() > itemEnd.getTime())) {
-        return true;
-      }
-      if (end && (end.getTime() < itemStart.getTime() || end.getTime() > itemEnd.getTime())) {
-        return true;
-      }
-    }
-    return false;
+    return this.selectedExecutorMembers().some((member) => this.hasInvalidMemberTaskPlanRange(member.userId));
   });
   readonly hasMissingStageTaskTitle = computed(() => {
     const titles = this.memberTaskTitles();
@@ -522,6 +350,61 @@ export class RdAdvanceStageDialogComponent {
     return '';
   }
 
+  hasInvalidMemberTaskPlanRange(userId: string): boolean {
+    const start = this.memberTaskPlanStartDate(userId);
+    const end = this.memberTaskPlanEndDate(userId);
+    if (!start && !end) {
+      return false;
+    }
+    if (start && end && start.getTime() > end.getTime()) {
+      return true;
+    }
+    const itemStart = this.planStartDate();
+    const itemEnd = this.planEndDate();
+    if (itemStart && start && start.getTime() < itemStart.getTime()) {
+      return true;
+    }
+    if (itemEnd && start && start.getTime() > itemEnd.getTime()) {
+      return true;
+    }
+    if (itemStart && end && end.getTime() < itemStart.getTime()) {
+      return true;
+    }
+    return !!itemEnd && !!end && end.getTime() > itemEnd.getTime();
+  }
+
+  showMemberTaskTitleError(userId: string): boolean {
+    return (this.submitAttempted() || !!this.memberTaskTitleTouched()[userId]) && !this.memberTaskTitle(userId).trim();
+  }
+
+  showMissingStageTaskTitleError(): boolean {
+    return this.selectedExecutorMembers().some((member) => this.showMemberTaskTitleError(member.userId));
+  }
+
+  showMemberTaskPlanError(userId: string): boolean {
+    return (this.submitAttempted() || !!this.memberTaskPlanTouched()[userId]) && this.hasInvalidMemberTaskPlanRange(userId);
+  }
+
+  showStageTaskPlanError(): boolean {
+    return this.selectedExecutorMembers().some((member) => this.showMemberTaskPlanError(member.userId));
+  }
+
+  memberTaskTitleErrors(): Record<string, boolean> {
+    const errors: Record<string, boolean> = {};
+    for (const member of this.selectedExecutorMembers()) {
+      errors[member.userId] = this.showMemberTaskTitleError(member.userId);
+    }
+    return errors;
+  }
+
+  memberTaskPlanErrors(): Record<string, boolean> {
+    const errors: Record<string, boolean> = {};
+    for (const member of this.selectedExecutorMembers()) {
+      errors[member.userId] = this.showMemberTaskPlanError(member.userId);
+    }
+    return errors;
+  }
+
   constructor() {
     effect(() => {
       if (!this.open()) {
@@ -535,6 +418,8 @@ export class RdAdvanceStageDialogComponent {
         this.memberTaskDescriptions.set({});
         this.memberTaskPlanStartDates.set({});
         this.memberTaskPlanEndDates.set({});
+        this.memberTaskTitleTouched.set({});
+        this.memberTaskPlanTouched.set({});
         this.memberTouched.set(false);
         this.stageTaskTouched.set(false);
         this.submitAttempted.set(false);
@@ -546,6 +431,8 @@ export class RdAdvanceStageDialogComponent {
       this.description.set('');
       this.planStartDate.set(null);
       this.planEndDate.set(null);
+      this.memberTaskTitleTouched.set({});
+      this.memberTaskPlanTouched.set({});
       this.memberTouched.set(false);
       this.stageTaskTouched.set(false);
       this.submitAttempted.set(false);
@@ -570,6 +457,8 @@ export class RdAdvanceStageDialogComponent {
       this.memberTaskDescriptions.update((current) => this.pickSelectedDescriptionMap(current, selectedIds));
       this.memberTaskPlanStartDates.update((current) => this.pickSelectedDateMap(current, selectedIds));
       this.memberTaskPlanEndDates.update((current) => this.pickSelectedDateMap(current, selectedIds));
+      this.memberTaskTitleTouched.update((current) => this.pickSelectedBooleanMap(current, selectedIds));
+      this.memberTaskPlanTouched.update((current) => this.pickSelectedBooleanMap(current, selectedIds));
     });
   }
 
@@ -627,7 +516,6 @@ export class RdAdvanceStageDialogComponent {
   }
 
   setMemberTaskTitle(userId: string, value: unknown): void {
-    this.stageTaskTouched.set(true);
     const id = userId.trim();
     if (!id) {
       return;
@@ -635,6 +523,7 @@ export class RdAdvanceStageDialogComponent {
     const title = String(value ?? '').slice(0, 200);
     const template = this.selectedTemplateTasks().find((item) => item.title === title.trim()) ?? null;
     this.memberTaskTitles.update((current) => ({ ...current, [id]: title }));
+    this.memberTaskTitleTouched.update((current) => ({ ...current, [id]: true }));
     this.memberTaskTemplateIds.update((current) => {
       const next = { ...current };
       if (template) {
@@ -657,8 +546,15 @@ export class RdAdvanceStageDialogComponent {
     });
   }
 
+  markMemberTaskTitleTouched(userId: string): void {
+    const id = userId.trim();
+    if (!id) {
+      return;
+    }
+    this.memberTaskTitleTouched.update((current) => ({ ...current, [id]: true }));
+  }
+
   setMemberTaskPlanDate(userId: string, key: 'start' | 'end', value: unknown): void {
-    this.stageTaskTouched.set(true);
     const id = userId.trim();
     if (!id) {
       return;
@@ -666,6 +562,7 @@ export class RdAdvanceStageDialogComponent {
     const date = this.normalizeDate(value);
     const target = key === 'start' ? this.memberTaskPlanStartDates : this.memberTaskPlanEndDates;
     target.update((current) => ({ ...current, [id]: date }));
+    this.memberTaskPlanTouched.update((current) => ({ ...current, [id]: true }));
   }
 
   updateDateField(key: 'planStartAt' | 'planEndAt', value: unknown): void {
@@ -717,6 +614,16 @@ export class RdAdvanceStageDialogComponent {
 
   private pickSelectedDateMap(current: Record<string, Date | null>, selectedIds: Set<string>): Record<string, Date | null> {
     const next: Record<string, Date | null> = {};
+    for (const [userId, value] of Object.entries(current)) {
+      if (selectedIds.has(userId)) {
+        next[userId] = value;
+      }
+    }
+    return next;
+  }
+
+  private pickSelectedBooleanMap(current: Record<string, boolean>, selectedIds: Set<string>): Record<string, boolean> {
+    const next: Record<string, boolean> = {};
     for (const [userId, value] of Object.entries(current)) {
       if (selectedIds.has(userId)) {
         next[userId] = value;
