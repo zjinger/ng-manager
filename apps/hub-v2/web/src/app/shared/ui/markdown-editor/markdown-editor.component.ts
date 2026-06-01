@@ -106,6 +106,7 @@ export class MarkdownEditorComponent
             this.suppressChange = true;
             this.editor.value(nextValue);
             this.suppressChange = false;
+            this.scheduleEditorRefresh();
         }
     }
 
@@ -189,6 +190,7 @@ export class MarkdownEditorComponent
         this.setEditorReadonlyState();
         this.applyMinHeight();
         this.bindEvents();
+        this.scheduleEditorRefresh();
 
         this.ready.emit(this.editor);
     }
@@ -275,6 +277,20 @@ export class MarkdownEditorComponent
         if (toolbar) {
             toolbar.style.borderRadius = '10px 10px 0 0';
         }
+    }
+
+    private scheduleEditorRefresh(): void {
+        const refresh = () => {
+            const codeMirror = this.editor?.codemirror as unknown as { refresh?: () => void } | undefined;
+            if (typeof codeMirror?.refresh === 'function') {
+                codeMirror.refresh();
+            }
+        };
+
+        requestAnimationFrame(() => {
+            refresh();
+            requestAnimationFrame(refresh);
+        });
     }
 
     private resolveAutosaveConfig(): Options['autosave'] | undefined {

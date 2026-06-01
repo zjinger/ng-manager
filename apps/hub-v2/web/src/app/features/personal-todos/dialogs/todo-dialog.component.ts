@@ -293,8 +293,7 @@ export class TodoDialogComponent {
   readonly priorityOptions = TODO_PRIORITY_OPTIONS;
   readonly statusOptions = TODO_STATUS_OPTIONS;
   readonly editorConfig = {
-    autosave: true,
-    autosaveUniqueId: 'personal-todo-editor',
+    autosave: false,
     status: ['lines', 'words'],
   };
   readonly uploadMarkdownImage = async (file: File): Promise<string> =>
