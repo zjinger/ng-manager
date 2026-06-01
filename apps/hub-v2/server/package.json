@@ -14,6 +14,8 @@
     "uploads:cleanup-issues-orphan": "tsx src/scripts/cleanup-issue-orphan-uploads.ts",
     "uploads:cleanup-issues-orphan:dist": "node dist/scripts/cleanup-issue-orphan-uploads.js",
     "db:migrate": "tsx src/db/migrate-cli.ts",
+    "issue:move-project": "tsx src/scripts/move-issue-project.ts",
+    "issue:move-project:dist": "node dist/scripts/move-issue-project.js",
     "project:normalize-display-code": "tsx src/scripts/normalize-project-display-code.ts",
     "project:normalize-display-code:dist": "node dist/scripts/normalize-project-display-code.js",
     "rbac:audit": "tsx src/scripts/audit-rbac-consistency.ts",
