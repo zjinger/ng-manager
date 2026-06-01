@@ -48,7 +48,7 @@ import { UiNotifierService } from '@app/core';
         <div class="content">
             <div class="main">
               @switch(step()){ @case(0){
-                <app-step-basic [draft]="draft()" [quickProjects]="quickProjects()" [quickProjectsLoading]="quickProjectsLoading()" />
+                <app-step-basic [draft]="draft()" [quickProjects]="quickProjects()" [quickProjectsLoading]="quickProjectsLoading()" (quickSpriteToggle)="loadQuickProjectList($event)"/>
                 } @case(1){
                 <app-step-advance [draft]="draft()" />
                 }
@@ -124,17 +124,12 @@ export class SpriteConfModalComponent implements OnInit {
   private modal = inject(NzModalService);
   private state = inject(SpriteStateService);
   private notify = inject(UiNotifierService);
+  // 快捷雪碧图（远端获取）
   quickProjects = signal<QuickSpriteProject[]>([]);
   quickProjectsLoading = signal(false);
 
-  async ngOnInit() {
-    try {
-      this.quickProjectsLoading.set(true);
-      const projects = await this.state.getQuickProjects();
-      this.quickProjects.set(projects);
-    } finally {
-      this.quickProjectsLoading.set(false);
-    }
+  ngOnInit() {
+    this.loadQuickProjectList(!!this.draft().quickSpriteEnabled);
   }
 
   constructor() {
@@ -158,6 +153,7 @@ export class SpriteConfModalComponent implements OnInit {
         d.localImageRoot = cfg?.localImageRoot || '';
         d.quickSpriteProjectId = cfg?.quickSpriteProjectId || '';
         d.quickSpriteEnabled = cfg?.quickSpriteEnabled || false;
+        d.quickSpriteBaseUrl = cfg?.quickSpriteBaseUrl || '';
         return d;
       });
     }
@@ -213,6 +209,7 @@ export class SpriteConfModalComponent implements OnInit {
       lessExportDir: d.lessExportDir || '',
       quickSpriteProjectId: d.quickSpriteProjectId,
       quickSpriteEnabled: d.quickSpriteEnabled,
+      quickSpriteBaseUrl: d.quickSpriteBaseUrl || undefined,
     }
 
     const cfg = await this.state.createConfig(assets, nextCfg);
@@ -234,5 +231,18 @@ export class SpriteConfModalComponent implements OnInit {
     //     this.modalRef.close();
     //   }
     // })
+  }
+
+  // 加载快捷雪碧图项目列表
+  async loadQuickProjectList(isQuick: boolean) {
+    if (!isQuick) return;
+    if(this.quickProjects().length > 0) return;
+    try {
+      this.quickProjectsLoading.set(true);
+      const projects = await this.state.getQuickProjects();
+      this.quickProjects.set(projects);
+    } finally {
+      this.quickProjectsLoading.set(false);
+    }
   }
 }

@@ -21,6 +21,8 @@ export interface SpriteConfig {
     quickSpriteProjectId?: string;
     /** 是否启用远端快捷雪碧图（代替本地 SVN 拉取） */
     quickSpriteEnabled?: boolean;
+    /** 远端快捷雪碧图服务的基础 URL（若不配置则使用环境变量 QUICK_SPRITE_BASE_URL） */
+    quickSpriteBaseUrl?: string;
 }
 
 export type GenerateSpriteOptions = {

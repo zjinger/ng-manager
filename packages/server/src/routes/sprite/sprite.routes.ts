@@ -17,7 +17,7 @@ import type {
 import type { GenerateSpriteOptions, SpriteConfig, SpriteGroupItem, SpriteSnapshot } from "@yinuo-ngm/sprite";
 import type { ProjectAssets } from "@yinuo-ngm/project";
 import {
-    BASE_URL,
+    getBaseUrl,
     copyRawResponseHeaders,
     quickFetch,
     mapQuickGroupsToSnapshot,
@@ -45,6 +45,7 @@ function toSpriteConfigDto(cfg: SpriteConfig): SpriteConfigDto {
         localCacheDir: cfg.localCacheDir,
         quickSpriteProjectId: cfg.quickSpriteProjectId,
         quickSpriteEnabled: cfg.quickSpriteEnabled,
+        quickSpriteBaseUrl: cfg.quickSpriteBaseUrl,
     };
 }
 
@@ -86,6 +87,11 @@ export async function spriteRoutes(fastify: FastifyInstance) {
         async (req) => {
             const { projectId } = req.params;
             const cfg = await fastify.core.sprite.getConfig(projectId);
+            // 如果未配置快捷雪碧图URL(TODO:后面迁移到getConfig中)
+            if (cfg && !cfg?.quickSpriteBaseUrl) {
+               const base = getBaseUrl(cfg);
+               cfg.quickSpriteBaseUrl = base
+            }
             return cfg ? toSpriteConfigDto(cfg) : null;
         }
     );
@@ -149,13 +155,15 @@ export async function spriteRoutes(fastify: FastifyInstance) {
         // ========== 快捷雪碧图分流：若配置了 quickSpriteProjectId，从远端拉取已生成列表 ==========
         const quickProjectId = await resolveEnabledRemoteProjectId(fastify, projectId);
         if (quickProjectId) {
-            const [results, remoteProj, localCfg] = await Promise.all([
+            const localCfg = await fastify.core.sprite.getConfig(projectId);
+            const baseUrl = getBaseUrl(localCfg);
+            const [results, remoteProj] = await Promise.all([
                 quickFetch<QuickGenerateResponseDto[]>(
                     fastify,
+                    baseUrl,
                     `/api/project-sprites?projectId=${encodeURIComponent(quickProjectId)}`,
                 ),
-                fetchRemoteProject(fastify, quickProjectId),
-                fastify.core.sprite.getConfig(projectId),
+                fetchRemoteProject(fastify, baseUrl, quickProjectId),
             ]);
             if (!results?.length) {
                 throw new GlobalError(
@@ -186,13 +194,15 @@ export async function spriteRoutes(fastify: FastifyInstance) {
             // ========== 快捷雪碧图分流：若配置了 quickSpriteProjectId，从远端拉取已生成列表 ==========
             const quickProjectId = await resolveEnabledRemoteProjectId(fastify, projectId);
             if (quickProjectId) {
-                const [results, remoteProj, localCfg] = await Promise.all([
+                const localCfg = await fastify.core.sprite.getConfig(projectId);
+                const baseUrl = getBaseUrl(localCfg);
+                const [results, remoteProj] = await Promise.all([
                     quickFetch<QuickGenerateResponseDto[]>(
                         fastify,
+                        baseUrl,
                         `/api/project-sprites?projectId=${encodeURIComponent(quickProjectId)}`,
                     ),
-                    fetchRemoteProject(fastify, quickProjectId),
-                    fastify.core.sprite.getConfig(projectId),
+                    fetchRemoteProject(fastify, baseUrl, quickProjectId),
                 ]);
                 return mapQuickGroupsToSnapshot(projectId, results, remoteProj, localCfg);
             }
@@ -206,8 +216,10 @@ export async function spriteRoutes(fastify: FastifyInstance) {
     // ========== 快捷雪碧图代理路由（供配置弹窗下拉选择） ==========
     // - GET /projects：获取远端项目列表
     fastify.get<{ Reply: QuickSpriteProjectDto[] }>("/quick/projects", async (_req) => {
+        const baseUrl = getBaseUrl();
         const projects = await quickFetch<QuickSpriteProjectDto[]>(
             fastify,
+            baseUrl,
             "/api/projects",
         );
         return projects;
@@ -219,8 +231,10 @@ export async function spriteRoutes(fastify: FastifyInstance) {
         Reply: string[];
     }>("/quick/groups/:projectId", async (req) => {
         const { projectId } = req.params;
+        const baseUrl = getBaseUrl();
         const groups = await quickFetch<string[]>(
             fastify,
+            baseUrl,
             `/api/groups?projectId=${encodeURIComponent(projectId)}`,
         );
         return groups;
@@ -242,7 +256,8 @@ export async function spriteRoutes(fastify: FastifyInstance) {
             );
         }
 
-        const remoteUrl = `${BASE_URL}/sprites/${encodeURIComponent(quickProjectId)}/${encodeURIComponent(group)}.png`;
+        const baseUrl = getBaseUrl(cfg);
+        const remoteUrl = `${baseUrl}/sprites/${encodeURIComponent(quickProjectId)}/${encodeURIComponent(group)}.png`;
         fastify.log.info(`[sprite-proxy] → GET ${remoteUrl}`);
 
         let response: Response;
@@ -279,7 +294,8 @@ export async function spriteRoutes(fastify: FastifyInstance) {
         const { quickProjectId } = req.params;
         const filename = req.params["*"];
 
-        const remoteUrl = buildRemoteMiscUrl(quickProjectId, filename);
+        const baseUrl = getBaseUrl();
+        const remoteUrl = buildRemoteMiscUrl(baseUrl, quickProjectId, filename);
         fastify.log.info(`[sprite-misc-proxy] → GET ${remoteUrl}`);
 
         let response: Response;

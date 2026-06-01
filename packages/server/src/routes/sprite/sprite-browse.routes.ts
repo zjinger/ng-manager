@@ -7,6 +7,7 @@ import {
   resolveEnabledRemoteProjectId,
   fetchAndCacheRemoteMiscImages,
   buildBrowseFromCache,
+  getBaseUrl,
 } from "./sprite-quick.utils";
 
 const SKIP = new Set([
@@ -114,8 +115,10 @@ export default async function spriteBrowseRoutes(fastify: FastifyInstance) {
             // Quick 模式：如果配置了远端项目，从远端获取切图列表
             const quickProjectId = await resolveEnabledRemoteProjectId(fastify, projectId);
             if (quickProjectId) {
+                const cfg = await fastify.core.sprite.getConfig(projectId);
+                const baseUrl = getBaseUrl(cfg);
                 const dir = String(req.query?.dir ?? "").trim();
-                const cache = await fetchAndCacheRemoteMiscImages(fastify, quickProjectId);
+                const cache = await fetchAndCacheRemoteMiscImages(fastify, baseUrl, quickProjectId);
                 return buildBrowseFromCache(quickProjectId, cache, dir || undefined);
             }
             // 本地模式：原有逻辑不变

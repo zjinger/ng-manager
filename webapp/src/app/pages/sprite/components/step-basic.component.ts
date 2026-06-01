@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -42,6 +42,13 @@ import { SpriteDraft } from '../models/sprite-draft.model';
 
         <!-- 快捷项目选择器（仅当启用快捷雪碧图时显示） -->
         @if(draft.quickSpriteEnabled){
+        <nz-form-item>
+          <nz-form-label nzTooltipTitle="远端雪碧图服务的地址，默认为地址http://192.168.1.31:7010" [nzTooltipIcon]="{ type: 'question-circle', theme: 'outline' }">快捷雪碧图地址</nz-form-label>
+          <nz-form-control>
+            <input nz-input [(ngModel)]="draft.quickSpriteBaseUrl" name="quickSpriteBaseUrl" placeholder="http://192.168.1.31:7010" />
+          </nz-form-control>
+          <div class="hint">远程雪碧图服务的基础 URL，不设置时系统将使用默认地址 http://192.168.1.31:7010。</div>
+        </nz-form-item>
         <nz-form-item>
           <nz-form-label nzTooltipTitle="选择远端雪碧图项目" [nzTooltipIcon]="{ type: 'question-circle', theme: 'outline' }">远端项目</nz-form-label>
           <nz-form-control>
@@ -133,12 +140,15 @@ export class StepBasicComponent {
   @Input({ required: true }) draft!: SpriteDraft;
   @Input() quickProjects: QuickSpriteProject[] = [];
   @Input() quickProjectsLoading = false;
+  @Output() quickSpriteToggle = new EventEmitter<boolean>();
 
   onQuickToggle(enabled: boolean) {
     if (!enabled) {
       // 关闭快捷模式时清除项目选择
       this.draft.quickSpriteProjectId = undefined;
     }
+
+    this.quickSpriteToggle.emit(enabled);
   }
 
   onQuickProjectChange(projectId: string | null) {

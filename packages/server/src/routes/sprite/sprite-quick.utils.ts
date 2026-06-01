@@ -15,12 +15,15 @@ import type { SpriteConfig } from "@yinuo-ngm/sprite";
 import { buildLessForSprite } from "@yinuo-ngm/sprite";
 
 /**
- * 远端雪碧图服务的基础 URL
+ * 获取远端雪碧图服务的基础 URL
+ * 优先使用项目配置中的 quickSpriteBaseUrl，否则 fallback 到默认值
  */
-export const BASE_URL = (
-  process.env.QUICK_SPRITE_BASE_URL || "http://localhost:3000"
-).replace(/\/+$/, "");
-
+export function getBaseUrl(cfg?: { quickSpriteBaseUrl?: string } | null): string {
+  return (
+    cfg?.quickSpriteBaseUrl?.trim() ||
+    "http://192.168.1.31:7010"
+  ).replace(/\/+$/, "");
+}
 /**
  * 远端雪碧图 PNG 代理路由前缀
  * 前端通过此路由访问远端生成的雪碧图 PNG，后端实时从远端获取并流式返回（不落盘）
@@ -39,13 +42,15 @@ export function buildQuickPreviewUrl(
 
 /**
  * 通用 fetch 封装：向远端服务发起请求
+ * @param baseUrl 远端服务基础 URL（通过 getBaseUrl() 获取）
  */
 export async function quickFetch<T>(
   fastify: FastifyInstance,
+  baseUrl: string,
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const url = `${BASE_URL}${path}`;
+  const url = `${baseUrl}${path}`;
   fastify.log.info(`[sprite-quick] → ${init?.method || "GET"} ${url}`);
 
   let res: Response;
@@ -63,7 +68,7 @@ export async function quickFetch<T>(
     );
     throw new GlobalError(
       GlobalErrorCodes.INTERNAL_ERROR,
-      `无法连接远端雪碧图服务 (${BASE_URL})：${err?.message || err}`,
+      `无法连接远端雪碧图服务 (${baseUrl})：${err?.message || err}`,
     );
   }
 
@@ -101,11 +106,13 @@ export async function resolveEnabledRemoteProjectId(
  */
 export async function fetchRemoteProject(
   fastify: FastifyInstance,
+  baseUrl: string,
   quickProjectId: string,
 ): Promise<QuickSpriteProjectDto | null> {
   try {
     return await quickFetch<QuickSpriteProjectDto>(
       fastify,
+      baseUrl,
       `/api/projects/${encodeURIComponent(quickProjectId)}`,
     );
   } catch {
@@ -308,6 +315,7 @@ const MISC_CACHE_TTL = 5 * 60 * 1000;
  */
 export async function fetchAndCacheRemoteMiscImages(
   fastify: FastifyInstance,
+  baseUrl: string,
   quickProjectId: string,
   forceRefresh = false,
 ): Promise<QuickImagesResponseDto> {
@@ -317,6 +325,7 @@ export async function fetchAndCacheRemoteMiscImages(
   }
   const data = await quickFetch<QuickImagesResponseDto>(
     fastify,
+    baseUrl,
     `/api/misc/list?projectId=${encodeURIComponent(quickProjectId)}`,
   );
   miscCache.set(quickProjectId, { time: Date.now(), data });
@@ -403,8 +412,9 @@ export const MISC_PROXY_PREFIX = "/api/sprite/misc-proxy";
  * 构建远端切图原始 URL
  */
 export function buildRemoteMiscUrl(
+  baseUrl: string,
   quickProjectId: string,
   filename: string,
 ): string {
-  return `${BASE_URL}/misc/${encodeURIComponent(quickProjectId)}/misc/${encodeURIComponent(filename)}`;
+  return `${baseUrl}/misc/${encodeURIComponent(quickProjectId)}/misc/${encodeURIComponent(filename)}`;
 }

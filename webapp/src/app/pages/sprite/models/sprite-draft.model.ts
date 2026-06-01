@@ -15,4 +15,6 @@ export interface SpriteDraft {
     quickSpriteProjectId?: string;
     /** 快捷雪碧图：是否启用快速模式 */
     quickSpriteEnabled?: boolean;
+    /** 快捷雪碧图：远端服务基础 URL（不填则使用默认地址） */
+    quickSpriteBaseUrl?: string;
 }
