@@ -18,7 +18,10 @@ import type { AnnouncementCommandContract, AnnouncementQueryContract } from "../
 import type { ApiTokenCommandContract, ApiTokenQueryContract } from "../modules/api-token/api-token.contract";
 import { ApiTokenRepo } from "../modules/api-token/api-token.repo";
 import { ApiTokenService } from "../modules/api-token/api-token.service";
-import type { ApiTokenAuditLogCommandContract } from "../modules/api-token-audit-log/api-token-audit-log.contract";
+import type {
+  ApiTokenAuditLogCommandContract,
+  ApiTokenAuditLogQueryContract
+} from "../modules/api-token-audit-log/api-token-audit-log.contract";
 import { ApiTokenAuditLogRepo } from "../modules/api-token-audit-log/api-token-audit-log.repo";
 import { ApiTokenAuditLogService } from "../modules/api-token-audit-log/api-token-audit-log.service";
 import type { AuthCommandContract, AuthQueryContract } from "../modules/auth/auth.contract";
@@ -129,6 +132,7 @@ export type AppContainer = {
   apiTokenCommand: ApiTokenCommandContract;
   apiTokenQuery: ApiTokenQueryContract;
   apiTokenAuditLogCommand: ApiTokenAuditLogCommandContract;
+  apiTokenAuditLogQuery: ApiTokenAuditLogQueryContract;
   userCommand: UserCommandContract;
   userQuery: UserQueryContract;
   projectCommand: ProjectCommandContract;
@@ -352,6 +356,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     apiTokenCommand: apiTokenService,
     apiTokenQuery: apiTokenService,
     apiTokenAuditLogCommand: apiTokenAuditLogService,
+    apiTokenAuditLogQuery: apiTokenAuditLogService,
     userCommand: userService,
     userQuery: userService,
     projectCommand: projectService,

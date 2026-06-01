@@ -41,4 +41,11 @@ export default async function releaseRoutes(app: FastifyInstance) {
     const params = request.params as { releaseId: string };
     return ok(await app.container.releaseCommand.archive(params.releaseId, ctx), "release archived");
   });
+
+  app.delete("/releases/:releaseId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { releaseId: string };
+    await app.container.releaseCommand.deleteArchived(params.releaseId, ctx);
+    return ok({ id: params.releaseId }, "release deleted");
+  });
 }

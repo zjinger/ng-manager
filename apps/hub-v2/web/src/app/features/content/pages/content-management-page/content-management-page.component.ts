@@ -178,9 +178,11 @@ import { ContentStore } from '../../store/content.store';
       [canEdit]="canEditCurrentDetail()"
       [canPublish]="canPublishCurrentDetail()"
       [canArchive]="canArchiveCurrentDetail()"
+      [canDelete]="canDeleteCurrentDetail()"
       (edit)="editCurrentDetail()"
       (publish)="publishCurrentDetail()"
       (archive)="archiveCurrentDetail()"
+      (remove)="deleteCurrentDetail()"
       (close)="closeDetailDrawer(true)"
     />
   `,
@@ -323,6 +325,7 @@ export class ContentManagementPageComponent {
   readonly canEditCurrentDetail = computed(() => this.canEditByTab(this.detailTab()));
   readonly canPublishCurrentDetail = computed(() => this.canPublishByTab(this.detailTab()));
   readonly canArchiveCurrentDetail = computed(() => this.canArchiveByTab(this.detailTab()));
+  readonly canDeleteCurrentDetail = computed(() => this.canDeleteByTab(this.detailTab()));
 
   constructor() {
     this.store.initialize();
@@ -654,6 +657,46 @@ export class ContentManagementPageComponent {
     }
   }
 
+  deleteCurrentDetail(): void {
+    const tab = this.detailTab();
+    if (!this.canDeleteByTab(tab)) {
+      this.message.warning('当前权限不支持该操作');
+      return;
+    }
+    if (tab === 'announcements') {
+      const item = this.detailAnnouncement();
+      if (!item) {
+        return;
+      }
+      this.store.deleteArchivedAnnouncement(item.id, () => {
+        this.message.success('公告已删除');
+        this.closeDetailDrawer(true);
+      });
+      return;
+    }
+    if (tab === 'documents') {
+      const item = this.detailDocument();
+      if (!item) {
+        return;
+      }
+      this.store.deleteArchivedDocument(item.id, () => {
+        this.message.success('文档已删除');
+        this.closeDetailDrawer(true);
+      });
+      return;
+    }
+    if (tab === 'releases') {
+      const item = this.detailRelease();
+      if (!item) {
+        return;
+      }
+      this.store.deleteArchivedRelease(item.id, () => {
+        this.message.success('版本已删除');
+        this.closeDetailDrawer(true);
+      });
+    }
+  }
+
   private confirmPublishAfterCreateAnnouncement(entity: AnnouncementEntity): void {
     this.modal.confirm({
       nzTitle: '公告已创建，是否立即发布？',
@@ -742,6 +785,22 @@ export class ContentManagementPageComponent {
     }
     if (tab === 'releases') {
       return this.isCurrentProjectAdmin() && this.detailRelease()?.status !== 'archived';
+    }
+    return false;
+  }
+
+  private canDeleteByTab(tab: ContentTab | null): boolean {
+    if (tab === 'announcements') {
+      const item = this.detailAnnouncement();
+      return !!item && item.status === 'archived' && this.isCurrentProjectAdmin();
+    }
+    if (tab === 'documents') {
+      const item = this.detailDocument();
+      return !!item && item.status === 'archived' && this.isCurrentProjectMember() && this.isCreatedByCurrentUser(item.createdBy);
+    }
+    if (tab === 'releases') {
+      const item = this.detailRelease();
+      return !!item && item.status === 'archived' && this.isCurrentProjectAdmin();
     }
     return false;
   }

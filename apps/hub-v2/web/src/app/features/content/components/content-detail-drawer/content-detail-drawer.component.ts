@@ -68,6 +68,19 @@ import type { AnnouncementEntity, ContentTab, DocumentEntity, ReleaseEntity } fr
                 {{ archiveActionLabel() }}
               </button>
             }
+            @if (canDelete()) {
+              <button
+                nz-button
+                nzDanger
+                nzSize="small"
+                nz-popconfirm
+                [nzPopconfirmTitle]="deleteConfirmText()"
+                nzPopconfirmPlacement="topRight"
+                (nzOnConfirm)="remove.emit()"
+              >
+                删除
+              </button>
+            }
           </div>
 
           @if (tab() === 'announcements' && announcement(); as item) {
@@ -340,10 +353,12 @@ export class ContentDetailDrawerComponent {
   readonly canEdit = input(true);
   readonly canPublish = input(true);
   readonly canArchive = input(true);
+  readonly canDelete = input(false);
   readonly close = output<void>();
   readonly edit = output<void>();
   readonly publish = output<void>();
   readonly archive = output<void>();
+  readonly remove = output<void>();
 
   readonly drawerBodyStyle = { padding: '18px 20px 24px', overflow: 'auto' };
   readonly isDraft = computed(() => {
@@ -490,5 +505,15 @@ export class ContentDetailDrawerComponent {
       return '确认归档这篇文档吗？归档后将不再对外展示。';
     }
     return '确认作废这条发布记录吗？作废后将不再对外展示。';
+  }
+
+  deleteConfirmText(): string {
+    if (this.tab() === 'announcements') {
+      return '确认删除这条已下线公告吗？删除后将从公告管理列表中隐藏。';
+    }
+    if (this.tab() === 'documents') {
+      return '确认删除这篇已归档文档吗？删除后将从文档管理列表中隐藏。';
+    }
+    return '确认删除这条已作废版本吗？删除后将从版本管理列表中隐藏。';
   }
 }

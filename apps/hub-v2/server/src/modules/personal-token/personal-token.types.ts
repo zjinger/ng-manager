@@ -43,6 +43,7 @@ export interface ListPersonalApiTokensResult {
 
 export interface VerifyPersonalApiTokenResult {
   tokenId: string;
+  tokenPrefix: string;
   ownerUserId: string;
   ownerNickname: string | null;
   scopes: PersonalTokenScope[];

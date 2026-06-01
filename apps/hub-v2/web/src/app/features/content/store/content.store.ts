@@ -227,6 +227,20 @@ export class ContentStore {
     });
   }
 
+  deleteArchivedAnnouncement(announcementId: string, done?: () => void): void {
+    this.busyState.set(true);
+    this.api.deleteArchivedAnnouncement(announcementId).subscribe({
+      next: () => {
+        this.busyState.set(false);
+        done?.();
+        this.removeFromCurrentResult(announcementId);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
   updateDocument(
     documentId: string,
     input: UpdateDocumentInput,
@@ -266,6 +280,20 @@ export class ContentStore {
         this.busyState.set(false);
         done?.(entity);
         this.patchOrRefresh('documents', entity);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
+  deleteArchivedDocument(documentId: string, done?: () => void): void {
+    this.busyState.set(true);
+    this.api.deleteArchivedDocument(documentId).subscribe({
+      next: () => {
+        this.busyState.set(false);
+        done?.();
+        this.removeFromCurrentResult(documentId);
       },
       error: () => {
         this.busyState.set(false);
@@ -319,6 +347,20 @@ export class ContentStore {
     });
   }
 
+  deleteArchivedRelease(releaseId: string, done?: () => void): void {
+    this.busyState.set(true);
+    this.api.deleteArchivedRelease(releaseId).subscribe({
+      next: () => {
+        this.busyState.set(false);
+        done?.();
+        this.removeFromCurrentResult(releaseId);
+      },
+      error: () => {
+        this.busyState.set(false);
+      },
+    });
+  }
+
   private patchOrRefresh(tab: ContentTab, entity: ContentEntity): void {
     const result = this.resultState();
     if (!result) {
@@ -348,6 +390,21 @@ export class ContentStore {
     this.resultState.set({
       ...result,
       items,
+    });
+  }
+
+  private removeFromCurrentResult(entityId: string): void {
+    const result = this.resultState();
+    if (!result) {
+      this.load(true);
+      return;
+    }
+
+    const items = result.items.filter((item) => item.id !== entityId);
+    this.resultState.set({
+      ...result,
+      items,
+      total: Math.max(0, result.total - (items.length === result.items.length ? 0 : 1)),
     });
   }
 }

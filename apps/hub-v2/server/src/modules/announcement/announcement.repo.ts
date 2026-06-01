@@ -21,6 +21,8 @@ type AnnouncementRow = {
   publish_at: string | null;
   expire_at: string | null;
   created_by: string | null;
+  deleted_at: string | null;
+  deleted_by: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -39,8 +41,8 @@ export class AnnouncementRepo {
         `
         INSERT INTO announcements (
           id, project_id, domain, title, summary, content_md, scope, pinned,
-          effective_at, notify_related_users, status, publish_at, expire_at, created_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          effective_at, notify_related_users, status, publish_at, expire_at, created_by, deleted_at, deleted_by, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       )
       .run(
@@ -58,6 +60,8 @@ export class AnnouncementRepo {
         entity.publishAt,
         entity.expireAt,
         entity.createdBy,
+        entity.deletedAt,
+        entity.deletedBy,
         entity.createdAt,
         entity.updatedAt
       );
@@ -76,7 +80,7 @@ export class AnnouncementRepo {
         UPDATE announcements
         SET project_id = ?, domain = ?, title = ?, summary = ?, content_md = ?, scope = ?,
             pinned = ?, effective_at = ?, notify_related_users = ?, status = ?, publish_at = ?, expire_at = ?,
-            created_by = ?, created_at = ?, updated_at = ?
+            created_by = ?, deleted_at = ?, deleted_by = ?, created_at = ?, updated_at = ?
         WHERE id = ?
       `
       )
@@ -94,6 +98,8 @@ export class AnnouncementRepo {
         next.publishAt,
         next.expireAt,
         next.createdBy,
+        next.deletedAt,
+        next.deletedBy,
         next.createdAt,
         next.updatedAt,
         id
@@ -104,14 +110,14 @@ export class AnnouncementRepo {
 
   findById(id: string): AnnouncementEntity | null {
     const row = this.db
-      .prepare("SELECT * FROM announcements WHERE id = ?")
+      .prepare("SELECT * FROM announcements WHERE id = ? AND deleted_at IS NULL")
       .get(id) as AnnouncementRow | undefined;
     return row ? this.mapRow(row) : null;
   }
 
   list(query: ListAnnouncementsQuery): AnnouncementListResult {
     const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
-    const conditions: string[] = [];
+    const conditions: string[] = ["deleted_at IS NULL"];
     const params: unknown[] = [];
 
     if (query.status) {
@@ -166,7 +172,7 @@ export class AnnouncementRepo {
 
   listPublic(projectIds: string[], query: ListAnnouncementsQuery): AnnouncementListResult {
     const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
-    const conditions: string[] = ["status = 'published'", "domain = ?"];
+    const conditions: string[] = ["status = 'published'", "deleted_at IS NULL", "domain = ?"];
     const params: unknown[] = [query.domain ?? "content"];
 
     if (projectIds.length > 0) {
@@ -208,7 +214,7 @@ export class AnnouncementRepo {
   }
 
   listRecentForDashboard(projectIds: string[], limit: number): AnnouncementEntity[] {
-    const conditions: string[] = ["status = 'published'"];
+    const conditions: string[] = ["status = 'published'", "deleted_at IS NULL"];
     const params: unknown[] = [];
 
     if (projectIds.length > 0) {
@@ -234,7 +240,7 @@ export class AnnouncementRepo {
   }
 
   listRecentArchivedForNotifications(projectIds: string[], limit: number): AnnouncementEntity[] {
-    const conditions: string[] = ["status = 'archived'", "domain = 'content'"];
+    const conditions: string[] = ["status = 'archived'", "deleted_at IS NULL", "domain = 'content'"];
     const params: unknown[] = [];
 
     if (projectIds.length > 0) {
@@ -319,6 +325,8 @@ export class AnnouncementRepo {
       publishAt: row.publish_at,
       expireAt: row.expire_at,
       createdBy: row.created_by,
+      deletedAt: row.deleted_at,
+      deletedBy: row.deleted_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

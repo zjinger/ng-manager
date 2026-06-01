@@ -281,6 +281,70 @@ describe("personal token document routes", () => {
     assert.equal(payload.data.slug, "admin-created-doc");
     assert.equal(payload.data.createdBy, ctx.admin.accountId);
   });
+
+  it("lists personal token audit logs only for the current owner", async () => {
+    const ctx = await createTestApp();
+    const token = await createPersonalToken(ctx, ["doc:create:write"]);
+    const created = await createDocumentWithPersonalToken(ctx, token);
+    const tokenRow = ctx.db.prepare("SELECT id, token_prefix FROM personal_api_tokens WHERE token_prefix = ?").get(token.slice(0, 17)) as {
+      id: string;
+      token_prefix: string;
+    };
+
+    await ctx.app.container.personalTokenCommand.revoke(tokenRow.id, requestContext(ctx));
+    await ctx.app.container.personalTokenCommand.deleteRevoked(tokenRow.id, requestContext(ctx));
+    insertOtherOwnerAuditLog(ctx);
+
+    const jwt = ctx.app.jwt.sign({
+      accountId: ctx.admin.accountId,
+      userId: ctx.admin.userId,
+      nickname: ctx.admin.nickname,
+      role: "admin"
+    });
+
+    const response = await ctx.app.inject({
+      method: "GET",
+      url: "/api/admin/personal-api-tokens/audit-logs?pageSize=20",
+      headers: { authorization: `Bearer ${jwt}` }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const payload = response.json();
+    assert.equal(payload.code, "OK");
+    assert.equal(payload.data.total, 1);
+    assert.equal(payload.data.items[0].tokenId, tokenRow.id);
+    assert.equal(payload.data.items[0].tokenName, null);
+    assert.equal(payload.data.items[0].tokenPrefix, tokenRow.token_prefix);
+    assert.equal(payload.data.items[0].action, "doc.create");
+    assert.equal(payload.data.items[0].resourceId, created.id);
+    assert.equal(payload.data.items[0].projectKey, ctx.project.key);
+    assert.ok(!JSON.stringify(payload.data.items[0].metadata).includes(token));
+    assert.ok(!JSON.stringify(payload.data.items[0].metadata).includes("draft content"));
+
+    const filtered = await ctx.app.inject({
+      method: "GET",
+      url: `/api/admin/personal-api-tokens/audit-logs?action=doc.create&projectKey=${ctx.project.key}`,
+      headers: { authorization: `Bearer ${jwt}` }
+    });
+    assert.equal(filtered.statusCode, 200);
+    assert.equal(filtered.json().data.total, 1);
+
+    const otherTokenFilter = await ctx.app.inject({
+      method: "GET",
+      url: "/api/admin/personal-api-tokens/audit-logs?tokenId=uptk_other",
+      headers: { authorization: `Bearer ${jwt}` }
+    });
+    assert.equal(otherTokenFilter.statusCode, 200);
+    assert.equal(otherTokenFilter.json().data.total, 0);
+
+    const futureFilter = await ctx.app.inject({
+      method: "GET",
+      url: "/api/admin/personal-api-tokens/audit-logs?dateFrom=2099-01-01T00:00:00.000Z",
+      headers: { authorization: `Bearer ${jwt}` }
+    });
+    assert.equal(futureFilter.statusCode, 200);
+    assert.equal(futureFilter.json().data.total, 0);
+  });
 });
 
 async function createTestApp(): Promise<TestApp> {
@@ -458,4 +522,32 @@ async function createProjectToken(ctx: TestApp): Promise<string> {
 function countDocuments(ctx: TestApp): number {
   const row = ctx.db.prepare("SELECT COUNT(*) AS total FROM documents").get() as { total: number };
   return row.total;
+}
+
+function insertOtherOwnerAuditLog(ctx: TestApp): void {
+  ctx.db
+    .prepare(
+      `
+        INSERT INTO api_token_audit_logs (
+          id, token_type, token_id, actor_user_id, project_id, project_key,
+          action, resource_type, resource_id, ip, user_agent, metadata_json,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+    )
+    .run(
+      "tlog_other_owner",
+      "personal",
+      "uptk_other",
+      "usr_other",
+      ctx.project.id,
+      "other-project",
+      "doc.create",
+      "doc",
+      "doc_other",
+      "127.0.0.2",
+      "other-agent",
+      JSON.stringify({ tokenPrefix: "ngm_uptk_other1", title: "Other" }),
+      new Date().toISOString()
+    );
 }

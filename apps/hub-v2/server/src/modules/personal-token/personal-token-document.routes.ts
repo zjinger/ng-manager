@@ -49,6 +49,7 @@ export default async function personalTokenDocumentRoutes(app: FastifyInstance) 
       ip: ctx.ip,
       userAgent: ctx.userAgent,
       metadata: {
+        tokenPrefix: ctx.tokenPrefix ?? null,
         title: entity.title,
         categoryId: categoryId ?? null,
         category: entity.category,
@@ -100,6 +101,7 @@ export default async function personalTokenDocumentRoutes(app: FastifyInstance) 
       ip: ctx.ip,
       userAgent: ctx.userAgent,
       metadata: {
+        tokenPrefix: ctx.tokenPrefix ?? null,
         title: entity.title,
         categoryId: categoryId ?? null,
         category: entity.category,
@@ -137,6 +139,7 @@ export default async function personalTokenDocumentRoutes(app: FastifyInstance) 
       ip: ctx.ip,
       userAgent: ctx.userAgent,
       metadata: {
+        tokenPrefix: ctx.tokenPrefix ?? null,
         title: entity.title,
         category: entity.category,
         summary: entity.summary,

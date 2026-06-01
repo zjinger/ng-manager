@@ -14,6 +14,8 @@ type DocumentRow = {
   version: string | null;
   created_by: string | null;
   publish_at: string | null;
+  deleted_at: string | null;
+  deleted_by: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -27,8 +29,8 @@ export class DocumentRepo {
         `
         INSERT INTO documents (
           id, project_id, slug, title, category, summary, content_md, status,
-          version, created_by, publish_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          version, created_by, publish_at, deleted_at, deleted_by, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       )
       .run(
@@ -43,6 +45,8 @@ export class DocumentRepo {
         entity.version,
         entity.createdBy,
         entity.publishAt,
+        entity.deletedAt,
+        entity.deletedBy,
         entity.createdAt,
         entity.updatedAt
       );
@@ -60,7 +64,8 @@ export class DocumentRepo {
         `
         UPDATE documents
         SET project_id = ?, slug = ?, title = ?, category = ?, summary = ?, content_md = ?,
-            status = ?, version = ?, created_by = ?, publish_at = ?, created_at = ?, updated_at = ?
+            status = ?, version = ?, created_by = ?, publish_at = ?, deleted_at = ?, deleted_by = ?,
+            created_at = ?, updated_at = ?
         WHERE id = ?
       `
       )
@@ -75,6 +80,8 @@ export class DocumentRepo {
         next.version,
         next.createdBy,
         next.publishAt,
+        next.deletedAt,
+        next.deletedBy,
         next.createdAt,
         next.updatedAt,
         id
@@ -84,7 +91,9 @@ export class DocumentRepo {
   }
 
   findById(id: string): DocumentEntity | null {
-    const row = this.db.prepare("SELECT * FROM documents WHERE id = ?").get(id) as DocumentRow | undefined;
+    const row = this.db.prepare("SELECT * FROM documents WHERE id = ? AND deleted_at IS NULL").get(id) as
+      | DocumentRow
+      | undefined;
     return row ? this.mapRow(row) : null;
   }
 
@@ -100,21 +109,21 @@ export class DocumentRepo {
       row = excludeId
         ? (this.db
             .prepare(
-              "SELECT 1 as ok FROM documents WHERE project_id = ? AND slug = ? AND id != ? LIMIT 1"
+              "SELECT 1 as ok FROM documents WHERE project_id = ? AND slug = ? AND id != ? AND deleted_at IS NULL LIMIT 1"
             )
             .get(normalizedProjectId, normalizedSlug, excludeId) as { ok: number } | undefined)
         : (this.db
-            .prepare("SELECT 1 as ok FROM documents WHERE project_id = ? AND slug = ? LIMIT 1")
+            .prepare("SELECT 1 as ok FROM documents WHERE project_id = ? AND slug = ? AND deleted_at IS NULL LIMIT 1")
             .get(normalizedProjectId, normalizedSlug) as { ok: number } | undefined);
     } else {
       row = excludeId
         ? (this.db
             .prepare(
-              "SELECT 1 as ok FROM documents WHERE project_id IS NULL AND slug = ? AND id != ? LIMIT 1"
+              "SELECT 1 as ok FROM documents WHERE project_id IS NULL AND slug = ? AND id != ? AND deleted_at IS NULL LIMIT 1"
             )
             .get(normalizedSlug, excludeId) as { ok: number } | undefined)
         : (this.db
-            .prepare("SELECT 1 as ok FROM documents WHERE project_id IS NULL AND slug = ? LIMIT 1")
+            .prepare("SELECT 1 as ok FROM documents WHERE project_id IS NULL AND slug = ? AND deleted_at IS NULL LIMIT 1")
             .get(normalizedSlug) as { ok: number } | undefined);
     }
     return !!row?.ok;
@@ -129,7 +138,7 @@ export class DocumentRepo {
 
     const row = this.db
       .prepare(
-        "SELECT * FROM documents WHERE project_id = ? AND slug = ? AND status = 'published' ORDER BY publish_at DESC, updated_at DESC LIMIT 1"
+        "SELECT * FROM documents WHERE project_id = ? AND slug = ? AND status = 'published' AND deleted_at IS NULL ORDER BY publish_at DESC, updated_at DESC LIMIT 1"
       )
       .get(normalizedProjectId, normalizedSlug) as DocumentRow | undefined;
     return row ? this.mapRow(row) : null;
@@ -137,7 +146,7 @@ export class DocumentRepo {
 
   list(query: ListDocumentsQuery): DocumentListResult {
     const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
-    const conditions: string[] = [];
+    const conditions: string[] = ["deleted_at IS NULL"];
     const params: unknown[] = [];
 
     if (query.status) {
@@ -187,7 +196,7 @@ export class DocumentRepo {
 
   listPublic(projectIds: string[], query: ListDocumentsQuery): DocumentListResult {
     const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
-    const conditions: string[] = ["status = 'published'"];
+    const conditions: string[] = ["status = 'published'", "deleted_at IS NULL"];
     const params: unknown[] = [];
 
     if (projectIds.length > 0) {
@@ -234,7 +243,7 @@ export class DocumentRepo {
   }
 
   listRecentPublishedForNotifications(projectIds: string[], limit: number): DocumentEntity[] {
-    const conditions: string[] = ["status = 'published'"];
+    const conditions: string[] = ["status = 'published'", "deleted_at IS NULL"];
     const params: unknown[] = [];
 
     if (projectIds.length > 0) {
@@ -260,7 +269,7 @@ export class DocumentRepo {
   }
 
   listRecentArchivedForNotifications(projectIds: string[], limit: number): DocumentEntity[] {
-    const conditions: string[] = ["status = 'archived'"];
+    const conditions: string[] = ["status = 'archived'", "deleted_at IS NULL"];
     const params: unknown[] = [];
 
     if (projectIds.length > 0) {
@@ -298,6 +307,8 @@ export class DocumentRepo {
       version: row.version,
       createdBy: row.created_by,
       publishAt: row.publish_at,
+      deletedAt: row.deleted_at,
+      deletedBy: row.deleted_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

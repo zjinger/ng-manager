@@ -51,4 +51,11 @@ export default async function announcementRoutes(app: FastifyInstance) {
       "announcement archived"
     );
   });
+
+  app.delete("/announcements/:announcementId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { announcementId: string };
+    await app.container.announcementCommand.deleteArchived(params.announcementId, ctx);
+    return ok({ id: params.announcementId }, "announcement deleted");
+  });
 }

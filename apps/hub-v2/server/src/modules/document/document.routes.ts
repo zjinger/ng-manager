@@ -42,4 +42,11 @@ export default async function documentRoutes(app: FastifyInstance) {
     const params = request.params as { documentId: string };
     return ok(await app.container.documentCommand.archive(params.documentId, ctx), "document archived");
   });
+
+  app.delete("/documents/:documentId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { documentId: string };
+    await app.container.documentCommand.deleteArchived(params.documentId, ctx);
+    return ok({ id: params.documentId }, "document deleted");
+  });
 }

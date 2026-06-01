@@ -12,6 +12,7 @@ export interface AnnouncementCommandContract {
   update(id: string, input: UpdateAnnouncementInput, ctx: RequestContext): Promise<AnnouncementEntity>;
   publish(id: string, ctx: RequestContext): Promise<AnnouncementEntity>;
   archive(id: string, ctx: RequestContext): Promise<AnnouncementEntity>;
+  deleteArchived(id: string, ctx: RequestContext): Promise<void>;
   markReadBatch(ids: string[], ctx: RequestContext): Promise<number>;
 }
 

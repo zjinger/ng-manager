@@ -151,6 +151,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
     this.repo.touchLastUsed(entity.id, nowIso());
     return {
       tokenId: entity.id,
+      tokenPrefix: entity.tokenPrefix,
       ownerUserId: entity.ownerUserId,
       ownerNickname: owner?.displayName?.trim() || owner?.username?.trim() || entity.ownerUserId,
       scopes: entity.scopes

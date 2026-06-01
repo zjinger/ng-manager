@@ -69,6 +69,10 @@ export class ContentApiService {
     return this.api.post<AnnouncementEntity>(`/announcements/${announcementId}/archive`);
   }
 
+  deleteArchivedAnnouncement(announcementId: string) {
+    return this.api.delete<{ id: string }>(`/announcements/${announcementId}`);
+  }
+
   updateDocument(documentId: string, input: UpdateDocumentInput) {
     return this.api.patch<DocumentEntity, UpdateDocumentInput>(`/documents/${documentId}`, input);
   }
@@ -81,6 +85,10 @@ export class ContentApiService {
     return this.api.post<DocumentEntity>(`/documents/${documentId}/archive`);
   }
 
+  deleteArchivedDocument(documentId: string) {
+    return this.api.delete<{ id: string }>(`/documents/${documentId}`);
+  }
+
   updateRelease(releaseId: string, input: UpdateReleaseInput) {
     return this.api.patch<ReleaseEntity, UpdateReleaseInput>(`/releases/${releaseId}`, input);
   }
@@ -91,5 +99,9 @@ export class ContentApiService {
 
   archiveRelease(releaseId: string) {
     return this.api.post<ReleaseEntity>(`/releases/${releaseId}/archive`);
+  }
+
+  deleteArchivedRelease(releaseId: string) {
+    return this.api.delete<{ id: string }>(`/releases/${releaseId}`);
   }
 }

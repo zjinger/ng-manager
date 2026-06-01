@@ -12,6 +12,7 @@ export interface DocumentCommandContract {
   update(id: string, input: UpdateDocumentInput, ctx: RequestContext): Promise<DocumentEntity>;
   publish(id: string, ctx: RequestContext): Promise<DocumentEntity>;
   archive(id: string, ctx: RequestContext): Promise<DocumentEntity>;
+  deleteArchived(id: string, ctx: RequestContext): Promise<void>;
 }
 
 export interface DocumentQueryContract {

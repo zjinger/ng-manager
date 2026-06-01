@@ -63,6 +63,8 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
       publishAt: null,
       expireAt: normalized.expireAt,
       createdBy: ctx.accountId,
+      deletedAt: null,
+      deletedBy: null,
       createdAt: now,
       updatedAt: now
     };
@@ -224,6 +226,41 @@ export class AnnouncementService implements AnnouncementCommandContract, Announc
     });
     this.recordContentLog("archived", entity, ctx, "下线公告");
     return entity;
+  }
+
+  async deleteArchived(id: string, ctx: RequestContext): Promise<void> {
+    const current = this.requireById(id);
+    await this.requireAnnouncementManage(current.domain, current.projectId, ctx, "delete announcement");
+    if (current.status !== "archived") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "only archived announcements can be deleted", 400);
+    }
+
+    const deletedAt = nowIso();
+    const updated = this.repo.update(id, {
+      deletedAt,
+      deletedBy: ctx.userId ?? ctx.accountId,
+      updatedAt: deletedAt
+    });
+
+    if (!updated) {
+      throw new AppError(ERROR_CODES.ANNOUNCEMENT_UPDATE_FAILED, "failed to delete announcement", 500);
+    }
+
+    await this.eventBus.emit({
+      type: "announcement.deleted",
+      scope: current.projectId ? "project" : "global",
+      projectId: current.projectId ?? undefined,
+      entityType: "announcement",
+      entityId: current.id,
+      action: "deleted",
+      actorId: ctx.accountId,
+      occurredAt: deletedAt,
+      payload: {
+        title: current.title,
+        status: current.status,
+        domain: current.domain
+      }
+    });
   }
 
   async listPublic(query: ListAnnouncementsQuery, ctx: RequestContext): Promise<AnnouncementListResult> {

@@ -19,6 +19,8 @@ export interface AnnouncementEntity {
   publishAt: string | null;
   expireAt: string | null;
   createdBy: string | null;
+  deletedAt: string | null;
+  deletedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -14,6 +14,8 @@ type ReleaseRow = {
   status: "draft" | "published" | "archived";
   published_at: string | null;
   created_by: string | null;
+  deleted_at: string | null;
+  deleted_by: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -27,8 +29,8 @@ export class ReleaseRepo {
         `
         INSERT INTO releases (
           id, project_id, channel, version, title, notes, download_url,
-          sync_project_version, status, published_at, created_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          sync_project_version, status, published_at, created_by, deleted_at, deleted_by, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       )
       .run(
@@ -43,6 +45,8 @@ export class ReleaseRepo {
         entity.status,
         entity.publishedAt,
         entity.createdBy,
+        entity.deletedAt,
+        entity.deletedBy,
         entity.createdAt,
         entity.updatedAt
       );
@@ -60,7 +64,8 @@ export class ReleaseRepo {
         `
         UPDATE releases
         SET project_id = ?, channel = ?, version = ?, title = ?, notes = ?, download_url = ?,
-            sync_project_version = ?, status = ?, published_at = ?, created_by = ?, created_at = ?, updated_at = ?
+            sync_project_version = ?, status = ?, published_at = ?, created_by = ?, deleted_at = ?, deleted_by = ?,
+            created_at = ?, updated_at = ?
         WHERE id = ?
       `
       )
@@ -75,6 +80,8 @@ export class ReleaseRepo {
         next.status,
         next.publishedAt,
         next.createdBy,
+        next.deletedAt,
+        next.deletedBy,
         next.createdAt,
         next.updatedAt,
         id
@@ -84,7 +91,9 @@ export class ReleaseRepo {
   }
 
   findById(id: string): ReleaseEntity | null {
-    const row = this.db.prepare("SELECT * FROM releases WHERE id = ?").get(id) as ReleaseRow | undefined;
+    const row = this.db.prepare("SELECT * FROM releases WHERE id = ? AND deleted_at IS NULL").get(id) as
+      | ReleaseRow
+      | undefined;
     return row ? this.mapRow(row) : null;
   }
 
@@ -97,23 +106,27 @@ export class ReleaseRepo {
     if (projectId) {
       const row = excludeId
         ? this.db
-            .prepare("SELECT 1 as ok FROM releases WHERE project_id = ? AND version = ? AND id != ? LIMIT 1")
+            .prepare("SELECT 1 as ok FROM releases WHERE project_id = ? AND version = ? AND id != ? AND deleted_at IS NULL LIMIT 1")
             .get(projectId, normalizedVersion, excludeId)
-        : this.db.prepare("SELECT 1 as ok FROM releases WHERE project_id = ? AND version = ? LIMIT 1").get(projectId, normalizedVersion);
+        : this.db
+            .prepare("SELECT 1 as ok FROM releases WHERE project_id = ? AND version = ? AND deleted_at IS NULL LIMIT 1")
+            .get(projectId, normalizedVersion);
       return !!row;
     }
 
     const row = excludeId
       ? this.db
-          .prepare("SELECT 1 as ok FROM releases WHERE project_id IS NULL AND version = ? AND id != ? LIMIT 1")
+          .prepare("SELECT 1 as ok FROM releases WHERE project_id IS NULL AND version = ? AND id != ? AND deleted_at IS NULL LIMIT 1")
           .get(normalizedVersion, excludeId)
-      : this.db.prepare("SELECT 1 as ok FROM releases WHERE project_id IS NULL AND version = ? LIMIT 1").get(normalizedVersion);
+      : this.db
+          .prepare("SELECT 1 as ok FROM releases WHERE project_id IS NULL AND version = ? AND deleted_at IS NULL LIMIT 1")
+          .get(normalizedVersion);
     return !!row;
   }
 
   list(query: ListReleasesQuery): ReleaseListResult {
     const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
-    const conditions: string[] = [];
+    const conditions: string[] = ["deleted_at IS NULL"];
     const params: unknown[] = [];
 
     if (query.status) {
@@ -163,7 +176,7 @@ export class ReleaseRepo {
 
   listPublic(query: ListReleasesQuery): ReleaseListResult {
     const { page, pageSize, offset } = normalizePage(query.page, query.pageSize);
-    const conditions: string[] = ["status = 'published'"];
+    const conditions: string[] = ["status = 'published'", "deleted_at IS NULL"];
     const params: unknown[] = [];
 
     if (query.projectId?.trim()) {
@@ -207,7 +220,7 @@ export class ReleaseRepo {
   }
 
   listRecentPublishedForNotifications(projectIds: string[], limit: number): ReleaseEntity[] {
-    const conditions: string[] = ["status = 'published'"];
+    const conditions: string[] = ["status = 'published'", "deleted_at IS NULL"];
     const params: unknown[] = [];
 
     if (projectIds.length > 0) {
@@ -233,7 +246,7 @@ export class ReleaseRepo {
   }
 
   listRecentArchivedForNotifications(projectIds: string[], limit: number): ReleaseEntity[] {
-    const conditions: string[] = ["status = 'archived'"];
+    const conditions: string[] = ["status = 'archived'", "deleted_at IS NULL"];
     const params: unknown[] = [];
 
     if (projectIds.length > 0) {
@@ -271,6 +284,8 @@ export class ReleaseRepo {
       status: row.status,
       publishedAt: row.published_at,
       createdBy: row.created_by,
+      deletedAt: row.deleted_at,
+      deletedBy: row.deleted_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

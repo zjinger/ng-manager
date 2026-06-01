@@ -14,6 +14,8 @@ export interface DocumentEntity {
   version: string | null;
   createdBy: string | null;
   publishAt: string | null;
+  deletedAt: string | null;
+  deletedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -10,6 +10,7 @@ export interface RequestContext {
   authType: RequestAuthType;
   authScopes?: string[];
   tokenId?: string;
+  tokenPrefix?: string;
   source: RequestSource;
   requestId?: string;
   ip?: string;
@@ -25,6 +26,7 @@ type CreateRequestContextInput = {
   authType?: RequestAuthType;
   authScopes?: string[];
   tokenId?: string;
+  tokenPrefix?: string;
   source: RequestSource;
   requestId?: string;
   ip?: string;
@@ -46,6 +48,7 @@ export function createRequestContext(input: CreateRequestContextInput): RequestC
     authType,
     authScopes: input.authScopes ?? [],
     tokenId: input.tokenId,
+    tokenPrefix: input.tokenPrefix,
     source: input.source,
     requestId: input.requestId,
     ip: input.ip,

@@ -9,6 +9,8 @@ import type {
   ChangePasswordInput,
   CreatePersonalApiTokenInput,
   CreatePersonalApiTokenResult,
+  PersonalApiTokenAuditLogQuery,
+  PersonalApiTokenAuditLogResult,
   PersonalApiTokenEntity,
   ProfileActivityRecord,
   ProfileNotificationPrefs,
@@ -93,5 +95,9 @@ export class ProfileApiService {
 
   deleteRevokedPersonalToken(tokenId: string): Observable<{ id: string }> {
     return this.api.delete<{ id: string }>(`/personal-api-tokens/${tokenId}/revoked`);
+  }
+
+  listPersonalTokenAuditLogs(query: PersonalApiTokenAuditLogQuery): Observable<PersonalApiTokenAuditLogResult> {
+    return this.api.get<PersonalApiTokenAuditLogResult>('/personal-api-tokens/audit-logs', query);
   }
 }

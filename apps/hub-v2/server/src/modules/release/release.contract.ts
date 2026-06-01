@@ -12,6 +12,7 @@ export interface ReleaseCommandContract {
   update(id: string, input: UpdateReleaseInput, ctx: RequestContext): Promise<ReleaseEntity>;
   publish(id: string, ctx: RequestContext): Promise<ReleaseEntity>;
   archive(id: string, ctx: RequestContext): Promise<ReleaseEntity>;
+  deleteArchived(id: string, ctx: RequestContext): Promise<void>;
 }
 
 export interface ReleaseQueryContract {

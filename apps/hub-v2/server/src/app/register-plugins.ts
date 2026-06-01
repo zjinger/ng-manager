@@ -86,6 +86,7 @@ export async function registerPlugins(app: FastifyInstance) {
               authType: "personal_token",
               authScopes: verifiedToken.scopes,
               tokenId: verifiedToken.tokenId,
+              tokenPrefix: verifiedToken.tokenPrefix,
               source: "http",
               requestId: request.id,
               ip: request.ip,

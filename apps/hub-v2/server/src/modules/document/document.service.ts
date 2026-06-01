@@ -53,6 +53,8 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
       version: input.version?.trim() || null,
       createdBy: ctx.authType === "personal_token" ? ctx.userId ?? ctx.accountId : ctx.accountId,
       publishAt: null,
+      deletedAt: null,
+      deletedBy: null,
       createdAt: now,
       updatedAt: now
     };
@@ -184,6 +186,41 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
     this.recordContentLog("archived", entity, ctx, "归档文档");
 
     return entity;
+  }
+
+  async deleteArchived(id: string, ctx: RequestContext): Promise<void> {
+    const current = this.requireById(id);
+    await this.requireProjectOrAdmin(current.projectId, ctx, "delete document");
+    this.requireDocumentOwner(current, ctx, "delete document");
+    if (current.status !== "archived") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "only archived documents can be deleted", 400);
+    }
+
+    const deletedAt = nowIso();
+    const updated = this.repo.update(id, {
+      deletedAt,
+      deletedBy: ctx.userId ?? ctx.accountId,
+      updatedAt: deletedAt
+    });
+
+    if (!updated) {
+      throw new AppError(ERROR_CODES.DOCUMENT_UPDATE_FAILED, "failed to delete document", 500);
+    }
+
+    await this.eventBus.emit({
+      type: "document.deleted",
+      scope: current.projectId ? "project" : "global",
+      projectId: current.projectId ?? undefined,
+      entityType: "document",
+      entityId: current.id,
+      action: "deleted",
+      actorId: ctx.accountId,
+      occurredAt: deletedAt,
+      payload: {
+        title: current.title,
+        slug: current.slug
+      }
+    });
   }
 
   async list(query: ListDocumentsQuery, ctx: RequestContext): Promise<DocumentListResult> {

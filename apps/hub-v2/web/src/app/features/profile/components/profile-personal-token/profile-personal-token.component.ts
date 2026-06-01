@@ -9,11 +9,13 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule } from 'ng-zorro-antd/modal';
+import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 
 import { PanelCardComponent } from '@shared/ui';
-import type { PersonalApiTokenEntity, PersonalTokenScope } from '../../models/profile.model';
+import type { PersonalApiTokenAuditLogItem, PersonalApiTokenEntity, PersonalTokenScope } from '../../models/profile.model';
 import { ProfileApiService } from '../../services/profile-api.service';
 
 type ScopeOption = {
@@ -36,7 +38,9 @@ type ScopeOption = {
     NzIconModule,
     NzInputModule,
     NzModalModule,
+    NzPaginationModule,
     NzPopconfirmModule,
+    NzSelectModule,
     NzTagModule,
     PanelCardComponent,
   ],
@@ -44,10 +48,20 @@ type ScopeOption = {
     <app-panel-card title="开发访问令牌 (Personal Token)">
       <div class="token-header">
         <p class="token-hint">用于以你的身份调用 Hub v2 写接口。新建后只会展示一次完整 Token，请立即保存。</p>
-        <button nz-button nzType="primary" (click)="openCreateModal()">
-          <nz-icon nzType="plus" />
-          新建 Token
-        </button>
+        <div class="token-header__actions">
+          <button
+            nz-button
+            nzShape="circle"
+            [title]="auditVisible() ? '收起 Token 使用记录' : '查看 Token 使用记录'"
+            (click)="toggleAuditLogs()"
+          >
+            <nz-icon [nzType]="auditVisible() ? 'up' : 'history'" />
+          </button>
+          <button nz-button nzType="primary" (click)="openCreateModal()">
+            <nz-icon nzType="plus" />
+            新建 Token
+          </button>
+        </div>
       </div>
 
       @if (loading()) {
@@ -96,6 +110,97 @@ type ScopeOption = {
                   </button>
                 }
               </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (auditVisible()) {
+        <div class="audit-section">
+          <div class="audit-section__header">
+            <div>
+              <h3>Token 使用记录</h3>
+              <p>展示通过你的 Personal Token 发起的调用记录。</p>
+            </div>
+            <button nz-button (click)="loadAuditLogs()">
+              <nz-icon nzType="reload" />
+              刷新
+            </button>
+          </div>
+
+          <div class="audit-filters">
+            <nz-select class="audit-filter" nzPlaceHolder="全部 Token" [ngModel]="auditTokenId()" (ngModelChange)="setAuditToken($event)">
+              <nz-option nzLabel="全部 Token" nzValue="" />
+              @for (item of items(); track item.id) {
+                <nz-option [nzLabel]="item.name" [nzValue]="item.id" />
+              }
+            </nz-select>
+            <nz-select class="audit-filter" nzPlaceHolder="全部动作" [ngModel]="auditAction()" (ngModelChange)="setAuditAction($event)">
+              <nz-option nzLabel="全部动作" nzValue="" />
+              @for (action of auditActionOptions; track action.value) {
+                <nz-option [nzLabel]="action.label" [nzValue]="action.value" />
+              }
+            </nz-select>
+            <input
+              nz-input
+              class="audit-project-input"
+              [ngModel]="auditProjectKey()"
+              (ngModelChange)="auditProjectKey.set($event)"
+              (keyup.enter)="searchAuditLogs()"
+              placeholder="projectKey"
+            />
+            <nz-date-picker
+              class="audit-date"
+              nzPlaceHolder="开始日期"
+              [ngModel]="auditDateFrom()"
+              (ngModelChange)="setAuditDateFrom($event)"
+            />
+            <nz-date-picker
+              class="audit-date"
+              nzPlaceHolder="结束日期"
+              [ngModel]="auditDateTo()"
+              (ngModelChange)="setAuditDateTo($event)"
+            />
+            <button nz-button (click)="searchAuditLogs()">筛选</button>
+          </div>
+
+          @if (auditLoading()) {
+            <div class="token-empty">正在加载使用记录...</div>
+          } @else if (auditItems().length === 0) {
+            <div class="token-empty">暂无 Token 使用记录。</div>
+          } @else {
+            <div class="audit-list">
+              @for (log of auditItems(); track log.id) {
+                <div class="audit-row">
+                  <div class="audit-row__main">
+                    <div class="audit-row__title">
+                      <strong>{{ actionLabel(log.action) }}</strong>
+                      <nz-tag nzColor="blue">{{ log.projectKey || '-' }}</nz-tag>
+                    </div>
+                    <div class="audit-row__meta">
+                      <span>{{ tokenDisplay(log) }}</span>
+                      <span>{{ log.createdAt | date: 'yyyy-MM-dd HH:mm:ss' }}</span>
+                      <span>IP: {{ log.ip || '-' }}</span>
+                    </div>
+                    <div class="audit-row__summary">{{ metadataSummary(log) }}</div>
+                  </div>
+                  <div class="audit-row__side">
+                    <span>{{ log.resourceType }}</span>
+                    <span class="mono">{{ log.resourceId || '-' }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+            <div class="audit-pagination">
+              <span>共 {{ auditTotal() }} 条记录</span>
+              <nz-pagination
+                [nzPageIndex]="auditPage()"
+                [nzPageSize]="auditPageSize()"
+                [nzTotal]="auditTotal()"
+                [nzShowSizeChanger]="true"
+                (nzPageIndexChange)="changeAuditPage($event)"
+                (nzPageSizeChange)="changeAuditPageSize($event)"
+              />
             </div>
           }
         </div>
@@ -171,6 +276,11 @@ type ScopeOption = {
         align-items: center;
         gap: 12px;
         padding: 12px 18px;
+      }
+      .token-header__actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
       .token-hint {
         margin: 0;
@@ -278,11 +388,117 @@ type ScopeOption = {
         margin-bottom: 10px;
         word-break: break-all;
       }
+      .audit-section {
+        border-top: 1px solid var(--border-color-soft);
+        margin-top: 4px;
+        padding: 16px 18px 18px;
+      }
+      .audit-section__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .audit-section__header h3 {
+        margin: 0;
+        color: var(--text-heading);
+        font-size: 15px;
+      }
+      .audit-section__header p {
+        margin: 4px 0 0;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .audit-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .audit-filter {
+        width: 180px;
+      }
+      .audit-project-input {
+        width: 180px;
+      }
+      .audit-date {
+        width: 150px;
+      }
+      .audit-list {
+        display: grid;
+        gap: 10px;
+      }
+      .audit-row {
+        border: 1px solid var(--border-color-soft);
+        border-radius: 8px;
+        background: var(--bg-container);
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px;
+      }
+      .audit-row__main {
+        min-width: 0;
+        display: grid;
+        gap: 6px;
+      }
+      .audit-row__title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .audit-row__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .audit-row__summary {
+        color: var(--text-secondary);
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .audit-row__side {
+        display: grid;
+        align-content: center;
+        justify-items: end;
+        gap: 4px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .audit-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 12px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .mono {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+      }
       @media (max-width: 900px) {
         .token-header,
-        .token-row {
+        .token-header__actions,
+        .token-row,
+        .audit-section__header,
+        .audit-row,
+        .audit-pagination {
           flex-direction: column;
           align-items: stretch;
+        }
+        .audit-filter,
+        .audit-project-input,
+        .audit-date {
+          width: 100%;
+        }
+        .audit-row__side {
+          justify-items: start;
         }
       }
     `,
@@ -303,6 +519,18 @@ export class ProfilePersonalTokenComponent {
   readonly createName = signal('');
   readonly selectedScopes = signal<PersonalTokenScope[]>( [ 'issue:comment:write' ] );
   readonly expiresAt = signal<Date | null>(null);
+  readonly auditVisible = signal(false);
+  readonly auditLoaded = signal(false);
+  readonly auditLoading = signal(false);
+  readonly auditItems = signal<PersonalApiTokenAuditLogItem[]>([]);
+  readonly auditTotal = signal(0);
+  readonly auditPage = signal(1);
+  readonly auditPageSize = signal(20);
+  readonly auditTokenId = signal('');
+  readonly auditAction = signal('');
+  readonly auditProjectKey = signal('');
+  readonly auditDateFrom = signal<Date | null>(null);
+  readonly auditDateTo = signal<Date | null>(null);
 
   readonly scopeOptions: ScopeOption[] = [
     { value: 'issue:comment:write', label: '测试单评论', desc: '创建评论与 @ 提及' },
@@ -316,6 +544,12 @@ export class ProfilePersonalTokenComponent {
     { value: 'rd:transition:write', label: '研发项状态流转', desc: '开始、阻塞、恢复、完成' },
     { value: 'rd:edit:write', label: '研发项编辑', desc: '编辑标题、描述、计划时间等' },
     { value: 'rd:delete:write', label: '研发项删除', desc: '删除研发项' },
+  ];
+
+  readonly auditActionOptions = [
+    { value: 'doc.create', label: '文档创建' },
+    { value: 'doc.update', label: '文档编辑' },
+    { value: 'doc.publish', label: '文档发布' },
   ];
 
   constructor() {
@@ -415,6 +649,9 @@ export class ProfilePersonalTokenComponent {
       next: () => {
         this.message.success('Token 记录已删除');
         this.load();
+        if (this.auditVisible()) {
+          this.loadAuditLogs();
+        }
       },
       error: () => {
         this.message.error('Token 记录删除失败');
@@ -430,6 +667,104 @@ export class ProfilePersonalTokenComponent {
     return labels.join('、');
   }
 
+  toggleAuditLogs(): void {
+    const visible = !this.auditVisible();
+    this.auditVisible.set(visible);
+    if (visible && !this.auditLoaded()) {
+      this.loadAuditLogs();
+    }
+  }
+
+  loadAuditLogs(): void {
+    this.auditLoading.set(true);
+    this.profileApi
+      .listPersonalTokenAuditLogs({
+        page: this.auditPage(),
+        pageSize: this.auditPageSize(),
+        tokenId: this.auditTokenId().trim() || undefined,
+        action: this.auditAction().trim() || undefined,
+        projectKey: this.auditProjectKey().trim() || undefined,
+        dateFrom: this.toStartIso(this.auditDateFrom()),
+        dateTo: this.toEndIso(this.auditDateTo()),
+      })
+      .subscribe({
+        next: (result) => {
+          this.auditItems.set(result.items);
+          this.auditTotal.set(result.total);
+          this.auditPage.set(result.page);
+          this.auditPageSize.set(result.pageSize);
+          this.auditLoaded.set(true);
+          this.auditLoading.set(false);
+        },
+        error: () => {
+          this.auditLoading.set(false);
+          this.message.error('Token 使用记录加载失败');
+        },
+      });
+  }
+
+  searchAuditLogs(): void {
+    this.auditPage.set(1);
+    this.loadAuditLogs();
+  }
+
+  setAuditToken(value: string): void {
+    this.auditTokenId.set(value);
+    this.searchAuditLogs();
+  }
+
+  setAuditAction(value: string): void {
+    this.auditAction.set(value);
+    this.searchAuditLogs();
+  }
+
+  setAuditDateFrom(value: Date | null): void {
+    this.auditDateFrom.set(value);
+    this.searchAuditLogs();
+  }
+
+  setAuditDateTo(value: Date | null): void {
+    this.auditDateTo.set(value);
+    this.searchAuditLogs();
+  }
+
+  changeAuditPage(page: number): void {
+    this.auditPage.set(page);
+    this.loadAuditLogs();
+  }
+
+  changeAuditPageSize(pageSize: number): void {
+    this.auditPageSize.set(pageSize);
+    this.auditPage.set(1);
+    this.loadAuditLogs();
+  }
+
+  actionLabel(action: string): string {
+    return this.auditActionOptions.find((item) => item.value === action)?.label || action;
+  }
+
+  tokenDisplay(log: PersonalApiTokenAuditLogItem): string {
+    const name = log.tokenName?.trim() || '已删除 Token';
+    const prefix = log.tokenPrefix?.trim() || log.tokenId;
+    return `${name} · ${prefix}`;
+  }
+
+  metadataSummary(log: PersonalApiTokenAuditLogItem): string {
+    const metadata = log.metadata;
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+      return '无附加信息';
+    }
+    const value = metadata as Record<string, unknown>;
+    const parts = [
+      this.textPart('标题', value['title']),
+      this.textPart('分类', value['categoryId'] ?? value['category']),
+      this.textPart('状态', value['status']),
+      this.textPart('来源', value['source']),
+      this.textPart('Slug', value['slug']),
+    ].filter(Boolean);
+    return parts.join(' · ') || '无附加信息';
+  }
+
   copyRevealToken(): void {
     const token = this.revealToken().trim();
     if (!token) {
@@ -441,5 +776,31 @@ export class ProfilePersonalTokenComponent {
     } else {
       this.message.error('复制 Token 失败，请手动复制');
     }
+  }
+
+  private textPart(label: string, value: unknown): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    const text = Array.isArray(value) ? value.join(', ') : String(value);
+    return text.trim() ? `${label}: ${text}` : '';
+  }
+
+  private toStartIso(value: Date | null): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+    const date = new Date(value);
+    date.setHours(0, 0, 0, 0);
+    return date.toISOString();
+  }
+
+  private toEndIso(value: Date | null): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+    const date = new Date(value);
+    date.setHours(23, 59, 59, 999);
+    return date.toISOString();
   }
 }

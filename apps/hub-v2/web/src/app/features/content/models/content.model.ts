@@ -19,6 +19,8 @@ export interface AnnouncementEntity {
   publishAt: string | null;
   expireAt: string | null;
   createdBy: string | null;
+  deletedAt: string | null;
+  deletedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,6 +37,8 @@ export interface DocumentEntity {
   version: string | null;
   createdBy: string | null;
   publishAt: string | null;
+  deletedAt: string | null;
+  deletedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +55,8 @@ export interface ReleaseEntity {
   status: 'draft' | 'published' | 'archived';
   publishedAt: string | null;
   createdBy: string | null;
+  deletedAt: string | null;
+  deletedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }

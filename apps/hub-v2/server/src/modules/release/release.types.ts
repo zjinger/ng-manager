@@ -14,6 +14,8 @@ export interface ReleaseEntity {
   status: ReleaseStatus;
   publishedAt: string | null;
   createdBy: string | null;
+  deletedAt: string | null;
+  deletedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }

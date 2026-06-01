@@ -47,6 +47,8 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
       status: "draft",
       publishedAt: null,
       createdBy: ctx.accountId,
+      deletedAt: null,
+      deletedBy: null,
       createdAt: now,
       updatedAt: now
     };
@@ -177,6 +179,42 @@ export class ReleaseService implements ReleaseCommandContract, ReleaseQueryContr
     this.recordContentLog("archived", entity, ctx, "作废版本");
 
     return entity;
+  }
+
+  async deleteArchived(id: string, ctx: RequestContext): Promise<void> {
+    const current = this.requireById(id);
+    await this.requireProjectOrAdmin(current.projectId, ctx, "delete release");
+    if (current.status !== "archived") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "only archived releases can be deleted", 400);
+    }
+
+    const deletedAt = nowIso();
+    const updated = this.repo.update(id, {
+      deletedAt,
+      deletedBy: ctx.userId ?? ctx.accountId,
+      updatedAt: deletedAt
+    });
+
+    if (!updated) {
+      throw new AppError(ERROR_CODES.RELEASE_UPDATE_FAILED, "failed to delete release", 500);
+    }
+
+    await this.eventBus.emit({
+      type: "release.deleted",
+      scope: current.projectId ? "project" : "global",
+      projectId: current.projectId ?? undefined,
+      entityType: "release",
+      entityId: current.id,
+      action: "deleted",
+      actorId: ctx.accountId,
+      occurredAt: deletedAt,
+      payload: {
+        title: current.title,
+        version: current.version,
+        channel: current.channel,
+        status: current.status
+      }
+    });
   }
 
   async list(query: ListReleasesQuery, ctx: RequestContext): Promise<ReleaseListResult> {
