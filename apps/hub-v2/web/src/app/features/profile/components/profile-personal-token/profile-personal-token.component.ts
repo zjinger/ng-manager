@@ -49,7 +49,7 @@ type ScopeOption = {
     <app-panel-card title="开发访问令牌 (Personal Token)">
       <div class="token-header">
         <div>
-          <p class="token-hint">用于以你的身份调用 Hub v2 写接口。新建后只会展示一次完整 Token，请立即保存。</p>
+          <p class="token-hint">用于以你的身份调用协作平台写接口。新建后只会展示一次完整 Token，请立即保存。</p>
           @if (tokenLimitReached()) {
             <p class="token-limit-warning">最多创建 5 个 Token，请删除已撤销记录后再创建。</p>
           }
