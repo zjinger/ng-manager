@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
 import { NAV_ITEMS } from '../../navigation/nav.config';
+import { ForcePasswordChangeDialogComponent } from '../../auth/force-password-change-dialog.component';
 import { NavigationBadgeStore } from '../../navigation/navigation-badge.store';
 import { RealtimeSyncService } from '../../realtime/realtime-sync.service';
 import { ProjectContextStore } from '../../state/project-context.store';
@@ -17,7 +18,7 @@ import { TopbarComponent } from '../topbar/topbar.component';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent, GlobalSearchModalComponent],
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent, GlobalSearchModalComponent, ForcePasswordChangeDialogComponent],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.less',
 })

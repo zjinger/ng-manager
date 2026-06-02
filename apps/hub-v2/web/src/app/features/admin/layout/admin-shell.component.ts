@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, HostListener, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
+import { ForcePasswordChangeDialogComponent } from '@core/auth/force-password-change-dialog.component';
 import type { NavSection } from '@core/navigation/menu.types';
 import { UiStore } from '@core/state/ui.store';
 import { SidebarComponent } from '@core/layout/sidebar/sidebar.component';
@@ -48,7 +49,7 @@ const ADMIN_NAV: NavSection[] = [
 
 @Component({
   selector: 'app-admin-shell',
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent, GlobalSearchModalComponent],
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent, GlobalSearchModalComponent, ForcePasswordChangeDialogComponent],
   templateUrl: './admin-shell.component.html',
   styleUrl: '../../../core/layout/app-shell/app-shell.component.less',
   changeDetection: ChangeDetectionStrategy.OnPush,

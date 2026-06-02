@@ -39,6 +39,11 @@ export interface LoginInput {
   remember?: boolean;
 }
 
+export interface ChangePasswordInput {
+  oldPassword: string;
+  newPassword: string;
+}
+
 export interface LoginChallenge {
   nonce: string;
   expiresAt: string;

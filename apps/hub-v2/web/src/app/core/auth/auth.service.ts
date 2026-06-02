@@ -5,7 +5,7 @@ import { catchError, from, map, Observable, of, switchMap, tap, throwError } fro
 import { ApiClientService } from '../http/api-client.service';
 import { AuthStore } from './auth.store';
 import { encryptLoginPassword } from './login-crypto.util';
-import type { AuthUser, LoginChallenge, LoginInput } from './auth.types';
+import type { AuthUser, ChangePasswordInput, LoginChallenge, LoginInput } from './auth.types';
 import { ProjectContextStore } from '../state/project-context.store';
 
 @Injectable({ providedIn: 'root' })
@@ -54,6 +54,26 @@ export class AuthService {
 
   getCurrentUser(): Observable<AuthUser> {
     return this.api.get<AuthUser>('/auth/me');
+  }
+
+  changePassword(input: ChangePasswordInput): Observable<AuthUser> {
+    return this.api.get<LoginChallenge>('/auth/password/challenge').pipe(
+      switchMap((challenge) =>
+        from(Promise.all([
+          encryptLoginPassword(`${challenge.nonce}:${input.oldPassword}`, challenge.nonce),
+          encryptLoginPassword(`${challenge.nonce}:${input.newPassword}`, challenge.nonce),
+        ])).pipe(
+          switchMap(([oldEncrypted, newEncrypted]) =>
+            this.api.post<AuthUser, { nonce: string; oldCipherText: string; newCipherText: string }>('/auth/change-password', {
+              nonce: challenge.nonce,
+              oldCipherText: oldEncrypted.cipherText,
+              newCipherText: newEncrypted.cipherText,
+            })
+          )
+        )
+      ),
+      tap((user) => this.authStore.setCurrentUser(user))
+    );
   }
 
   initialize(): Observable<boolean> {

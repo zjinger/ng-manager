@@ -95,6 +95,9 @@ export class AuthService implements AuthCommandContract, AuthQueryContract {
     if (!verifyPassword(resolved.oldPassword, account.passwordHash)) {
       throw new AppError(ERROR_CODES.AUTH_PASSWORD_INVALID, "old password is invalid", 400);
     }
+    if (resolved.oldPassword === resolved.newPassword) {
+      throw new AppError(ERROR_CODES.AUTH_PASSWORD_UNCHANGED, "new password must be different from old password", 400);
+    }
 
     const updatedAt = nowIso();
     this.repo.updatePassword(account.id, hashPassword(resolved.newPassword), updatedAt);

@@ -89,6 +89,9 @@ const DEFAULT_FORM: PasswordFormValue = {
                   </nz-input-password>
                  
                   <span class="password-note">密码长度 8~32 位，建议同时包含字母和数字。</span>
+                  @if (form().newPassword && form().oldPassword && form().newPassword === form().oldPassword) {
+                    <span class="password-error">新密码不能与当前密码相同。</span>
+                  }
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -190,6 +193,7 @@ export class ProfilePasswordFormComponent {
     return (
       form.oldPassword.trim().length > 0 &&
       form.newPassword.trim().length >= 8 &&
+      form.newPassword !== form.oldPassword &&
       form.confirmPassword.trim().length > 0 &&
       form.newPassword === form.confirmPassword
     );
