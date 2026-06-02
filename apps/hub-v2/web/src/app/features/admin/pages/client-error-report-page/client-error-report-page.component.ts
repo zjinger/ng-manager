@@ -35,7 +35,7 @@ import { ClientErrorReportApiService } from '../../services/client-error-report-
     EmptyStateComponent,
   ],
   template: `
-    <app-page-header title="前端错误日志" subtitle="查看浏览器运行时、资源、HTTP 和 Chunk 加载异常。" />
+    <app-page-header title="客户端异常诊断" subtitle="查看浏览器运行时、资源、HTTP 和 Chunk 加载异常。" />
 
     <app-page-toolbar>
       <button toolbar-primary nz-button nzType="primary" (click)="load()">
@@ -79,9 +79,9 @@ import { ClientErrorReportApiService } from '../../services/client-error-report-
     </app-page-toolbar>
 
     @if (loading()) {
-      <app-loading-state text="正在加载前端错误日志…" />
+      <app-loading-state text="正在加载客户端异常诊断数据…" />
     } @else if (items().length === 0) {
-      <app-empty-state title="暂无前端错误日志" description="生产环境捕获到浏览器异常后会显示在这里" />
+      <app-empty-state title="暂无客户端异常记录" description="生产环境捕获到浏览器异常后会显示在这里" />
     } @else {
       <div class="error-table">
         <div class="error-table__head">
@@ -132,7 +132,7 @@ import { ClientErrorReportApiService } from '../../services/client-error-report-
     >
       <ng-template #drawerTitleTpl>
         <div class="drawer-title">
-          <strong>前端错误详情</strong>
+          <strong>客户端异常详情</strong>
           @if (selected(); as current) {
             <span>{{ current.fingerprint }}</span>
           }
@@ -352,7 +352,7 @@ export class ClientErrorReportPageComponent {
       },
       error: () => {
         this.loading.set(false);
-        this.message.error('加载前端错误日志失败');
+        this.message.error('加载客户端异常诊断数据失败');
       },
     });
   }

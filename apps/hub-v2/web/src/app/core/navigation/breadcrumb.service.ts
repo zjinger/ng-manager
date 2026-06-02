@@ -45,7 +45,7 @@ export class BreadcrumbService {
       return [{ label: '审计日志' }];
     }
     if (path.startsWith('/admin/client-error-reports')) {
-      return [{ label: '前端错误日志' }];
+      return [{ label: '客户端异常诊断' }];
     }
 
     if (path.startsWith('/admin/groups')) {

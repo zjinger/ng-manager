@@ -72,7 +72,7 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'client-error-reports',
         canActivate: [permissionGuard],
-        data: { title: '前端错误日志', icon: 'bug', permissions: ['admin.audit.view'] },
+        data: { title: '客户端异常诊断', icon: 'bug', permissions: ['admin.audit.view'] },
         loadComponent: () =>
           import('./pages/client-error-report-page/client-error-report-page.component').then((m) => m.ClientErrorReportPageComponent),
       },
