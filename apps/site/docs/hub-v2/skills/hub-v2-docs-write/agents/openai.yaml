@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hub V2 Docs Write"
+  short_description: "Create, update, and publish Hub V2 docs"
+  default_prompt: "Use $hub-v2-docs-write to create, update, or publish Hub V2 project documents."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hub V2 Docs Read"
+  short_description: "Read Hub V2 project docs with Project Token"
+  default_prompt: "Use $hub-v2-docs-read to list and read Hub V2 project documents."
