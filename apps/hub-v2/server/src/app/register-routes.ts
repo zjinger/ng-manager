@@ -52,6 +52,7 @@ import surveyPublicRoutes from "../modules/survey/survey-public.routes";
 import surveyRoutes from "../modules/survey/survey.routes";
 import reportPublicRoutes from "../modules/report-public/report-public.routes";
 import reimbursementRoutes from "../modules/reimbursement/reimbursement.routes";
+import errorReportRoutes from "../modules/error-report/error-report.routes";
 
 const NO_STORE_CACHE_CONTROL = "no-store, no-cache, must-revalidate, proxy-revalidate";
 const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -212,6 +213,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(reportPublicRoutes, { prefix: "/api/admin" });
   await app.register(searchRoutes, { prefix: "/api/admin" });
   await app.register(reimbursementRoutes, { prefix: "/api/admin" });
+  await app.register(errorReportRoutes, { prefix: "/api" });
   if (app.config.surveyEnabled) {
     await app.register(surveyRoutes, { prefix: "/api/admin" });
     await app.register(surveyPublicRoutes, { prefix: "/api/public" });

@@ -69,6 +69,13 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () =>
           import('./pages/audit-log-page/audit-log-page.component').then((m) => m.AuditLogPageComponent),
       },
+      {
+        path: 'client-error-reports',
+        canActivate: [permissionGuard],
+        data: { title: '前端错误日志', icon: 'bug', permissions: ['admin.audit.view'] },
+        loadComponent: () =>
+          import('./pages/client-error-report-page/client-error-report-page.component').then((m) => m.ClientErrorReportPageComponent),
+      },
       // {
       //   path: 'groups',
       //   data: { title: '用户组', icon: 'team' },

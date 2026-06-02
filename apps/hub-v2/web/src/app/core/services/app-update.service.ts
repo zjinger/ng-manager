@@ -11,7 +11,7 @@ export interface AppVersionInfo {
   buildId: string;
 }
 
-type UpdateSource = 'version' | 'asset';
+type UpdateSource = 'version' | 'asset' | 'chunk-error';
 
 export interface PendingUpdate {
   readonly key: string;
@@ -94,6 +94,17 @@ export class AppUpdateService {
     }
 
     window.location.reload();
+  }
+
+  notifyAssetUpdateFromError(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    this.pendingUpdateState.set({
+      key: `chunk-error:${Date.now()}`,
+      source: 'chunk-error',
+    });
   }
 
   private stop(): void {

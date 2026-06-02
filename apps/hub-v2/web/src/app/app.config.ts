@@ -8,6 +8,7 @@ import zh from '@angular/common/locales/zh';
 import { MARKED_OPTIONS, provideMarkdown } from 'ngx-markdown';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
+import { clientErrorReportInterceptor, provideClientErrorReporting } from './core/error-report';
 import { apiErrorInterceptor } from './core/http/api-error.interceptor';
 import { UiStore } from './core/state/ui.store';
 // const ngZorroConfig: NzConfig = {
@@ -25,10 +26,10 @@ registerLocaleData(zh);
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideBrowserGlobalErrorListeners(),
     provideZonelessChangeDetection(),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authInterceptor, apiErrorInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, apiErrorInterceptor, clientErrorReportInterceptor])),
+    provideClientErrorReporting(),
     provideMarkdown({
       markedOptions: {
         provide: MARKED_OPTIONS,

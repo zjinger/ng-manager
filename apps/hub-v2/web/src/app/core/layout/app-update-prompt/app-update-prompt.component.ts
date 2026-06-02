@@ -10,8 +10,8 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
     @if (appUpdate.updateAvailable()) {
       <section class="app-update-prompt" role="status" aria-live="polite">
         <div class="app-update-prompt__content">
-          <strong>应用已更新</strong>
-          <span>刷新后可使用最新版本。</span>
+          <strong>{{ title }}</strong>
+          <span>{{ description }}</span>
         </div>
         <div class="app-update-prompt__actions">
           <button type="button" class="app-update-prompt__button" (click)="appUpdate.deferUpdate()">
@@ -34,4 +34,14 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 })
 export class AppUpdatePromptComponent {
   protected readonly appUpdate = inject(AppUpdateService);
+
+  protected get title(): string {
+    return this.appUpdate.pendingUpdate()?.source === 'chunk-error' ? '应用资源已更新' : '应用已更新';
+  }
+
+  protected get description(): string {
+    return this.appUpdate.pendingUpdate()?.source === 'chunk-error'
+      ? '请刷新页面。'
+      : '刷新后可使用最新版本。';
+  }
 }

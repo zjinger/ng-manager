@@ -124,6 +124,9 @@ import { ReportPublicService } from "../modules/report-public/report-public.serv
 import type { ReimbursementCommandContract, ReimbursementQueryContract } from "../modules/reimbursement/reimbursement.contract";
 import { ReimbursementRepo } from "../modules/reimbursement/reimbursement.repo";
 import { ReimbursementService } from "../modules/reimbursement/reimbursement.service";
+import type { ErrorReportCommandContract, ErrorReportQueryContract } from "../modules/error-report/error-report.contract";
+import { ErrorReportRepo } from "../modules/error-report/error-report.repo";
+import { ErrorReportService } from "../modules/error-report/error-report.service";
 
 export type AppContainer = {
   healthQuery: HealthQueryService;
@@ -203,6 +206,8 @@ export type AppContainer = {
   surveyQuery: SurveyQueryContract;
   reimbursementCommand: ReimbursementCommandContract;
   reimbursementQuery: ReimbursementQueryContract;
+  errorReportCommand: ErrorReportCommandContract;
+  errorReportQuery: ErrorReportQueryContract;
 };
 
 type BuildContainerOptions = {
@@ -348,6 +353,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const searchService = new SearchService(new SearchRepo(db), projectAccess);
   const surveyService = new SurveyService(new SurveyRepo(db));
   const reimbursementService = new ReimbursementService(new ReimbursementRepo(db), eventBus);
+  const errorReportService = new ErrorReportService(new ErrorReportRepo(db));
 
   return {
     healthQuery: new HealthQueryService(config),
@@ -426,6 +432,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     surveyCommand: surveyService,
     surveyQuery: surveyService,
     reimbursementCommand: reimbursementService,
-    reimbursementQuery: reimbursementService
+    reimbursementQuery: reimbursementService,
+    errorReportCommand: errorReportService,
+    errorReportQuery: errorReportService
   };
 }
