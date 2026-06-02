@@ -27,6 +27,8 @@ function createDb() {
       publish_at TEXT,
       expire_at TEXT,
       created_by TEXT,
+      deleted_at TEXT,
+      deleted_by TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );

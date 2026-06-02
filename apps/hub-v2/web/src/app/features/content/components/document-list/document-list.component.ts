@@ -16,6 +16,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
         <div>文档</div>
         <div>分类</div>
         <div>版本</div>
+        <div>作者</div>
         <div>状态</div>
         <div>访问</div>
         <div>更新时间</div>
@@ -34,6 +35,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
             </div>
             <div class="content-cell">{{ item.category || '未分类' }}</div>
             <div class="content-cell">{{ item.version || '-' }}</div>
+            <div class="content-cell">{{ item.createdByName || item.createdBy || '-' }}</div>
             <div class="content-cell">
               <span
                 class="content-status-tag"
@@ -63,7 +65,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
       .content-table__head,
       .content-row {
         display: grid;
-        grid-template-columns: 2fr 1fr 0.8fr 0.8fr 0.5fr 0.9fr;
+        grid-template-columns: 2fr 1fr 0.7fr 0.9fr 0.8fr 0.5fr 0.9fr;
         gap: 16px;
         align-items: center;
       }

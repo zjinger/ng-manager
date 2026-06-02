@@ -7,6 +7,8 @@ import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { ok } from "../../shared/http/response";
 import {
   feedbackIdParamSchema,
+  documentIdParamSchema,
+  documentSlugParamSchema,
   issueAttachmentRawParamSchema,
   issueIdParamSchema,
   issueUploadRawParamSchema,
@@ -14,11 +16,12 @@ import {
   rdItemIdParamSchema,
   rdUploadRawParamSchema,
   tokenFeedbackListQuerySchema,
+  tokenDocumentListQuerySchema,
   tokenIssueListQuerySchema,
   tokenRdListQuerySchema
 } from "./api-token.schema";
 import type { TokenIssueListQuery } from "./api-token.types";
-import type { TokenRdListQuery, TokenFeedbackListQuery } from "./api-token.types";
+import type { TokenRdListQuery, TokenFeedbackListQuery, TokenDocumentListQuery } from "./api-token.types";
 
 export default async function apiTokenRoutes(app: FastifyInstance) {
   app.get("/projects/:projectKey/issues", async (request) => {
@@ -188,6 +191,25 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     const ctx = requireTokenAuth(request, "feedbacks:read");
     const params = feedbackIdParamSchema.parse(request.params);
     return ok(await app.container.apiTokenQuery.getFeedbackById(params.projectKey, params.feedbackId, ctx));
+  });
+
+  app.get("/projects/:projectKey/docs", async (request) => {
+    const ctx = requireTokenAuth(request, "docs:read");
+    const params = projectParamSchema.parse(request.params);
+    const query = tokenDocumentListQuerySchema.parse(request.query) as TokenDocumentListQuery;
+    return ok(await app.container.apiTokenQuery.listDocuments(params.projectKey, query, ctx));
+  });
+
+  app.get("/projects/:projectKey/docs/by-slug/:slug", async (request) => {
+    const ctx = requireTokenAuth(request, "docs:read");
+    const params = documentSlugParamSchema.parse(request.params);
+    return ok(await app.container.apiTokenQuery.getDocumentBySlug(params.projectKey, params.slug, ctx));
+  });
+
+  app.get("/projects/:projectKey/docs/:docId", async (request) => {
+    const ctx = requireTokenAuth(request, "docs:read");
+    const params = documentIdParamSchema.parse(request.params);
+    return ok(await app.container.apiTokenQuery.getDocumentById(params.projectKey, params.docId, ctx));
   });
 }
 

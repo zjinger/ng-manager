@@ -18,6 +18,8 @@ export interface DocumentCommandContract {
 export interface DocumentQueryContract {
   list(query: ListDocumentsQuery, ctx: RequestContext): Promise<DocumentListResult>;
   getById(id: string, ctx: RequestContext): Promise<DocumentEntity>;
+  getByProjectAndId(projectId: string, id: string, ctx: RequestContext): Promise<DocumentEntity>;
+  getByProjectAndSlug(projectId: string, slug: string, ctx: RequestContext): Promise<DocumentEntity>;
   listPublic(query: ListDocumentsQuery, ctx: RequestContext): Promise<DocumentListResult>;
   getPublicByProjectAndSlug(projectKey: string, slug: string): Promise<DocumentEntity>;
   listRecentPublishedForNotifications(projectIds: string[], limit: number, ctx: RequestContext): Promise<DocumentEntity[]>;

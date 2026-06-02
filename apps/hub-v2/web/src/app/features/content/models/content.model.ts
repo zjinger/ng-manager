@@ -32,10 +32,11 @@ export interface DocumentEntity {
   title: string;
   category: string;
   summary: string | null;
-  contentMd: string;
+  contentMd?: string;
   status: 'draft' | 'published' | 'archived';
   version: string | null;
   createdBy: string | null;
+  createdByName: string | null;
   publishAt: string | null;
   deletedAt: string | null;
   deletedBy: string | null;

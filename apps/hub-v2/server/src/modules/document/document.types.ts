@@ -13,12 +13,15 @@ export interface DocumentEntity {
   status: DocumentStatus;
   version: string | null;
   createdBy: string | null;
+  createdByName: string | null;
   publishAt: string | null;
   deletedAt: string | null;
   deletedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export type DocumentListItem = Omit<DocumentEntity, "contentMd">;
 
 export interface CreateDocumentInput {
   projectId?: string | null;
@@ -50,4 +53,4 @@ export interface ListDocumentsQuery {
   category?: string;
 }
 
-export type DocumentListResult = PageResult<DocumentEntity>;
+export type DocumentListResult = PageResult<DocumentListItem>;

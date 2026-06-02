@@ -6,6 +6,9 @@ import type {
   TokenFeedbackDetail,
   TokenFeedbackListQuery,
   TokenFeedbackListResult,
+  TokenDocumentDetail,
+  TokenDocumentListQuery,
+  TokenDocumentListResult,
   TokenIssueDetail,
   TokenIssueAttachmentsResult,
   TokenIssueBranchesResult,
@@ -51,4 +54,7 @@ export interface ApiTokenQueryContract {
   listRdProgressHistory(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdProgressHistoryResult>;
   listFeedbacks(projectKey: string, query: TokenFeedbackListQuery, ctx: RequestContext): Promise<TokenFeedbackListResult>;
   getFeedbackById(projectKey: string, feedbackId: string, ctx: RequestContext): Promise<TokenFeedbackDetail>;
+  listDocuments(projectKey: string, query: TokenDocumentListQuery, ctx: RequestContext): Promise<TokenDocumentListResult>;
+  getDocumentById(projectKey: string, docId: string, ctx: RequestContext): Promise<TokenDocumentDetail>;
+  getDocumentBySlug(projectKey: string, slug: string, ctx: RequestContext): Promise<TokenDocumentDetail>;
 }

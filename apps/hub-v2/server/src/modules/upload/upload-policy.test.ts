@@ -101,7 +101,7 @@ describe("upload policy", () => {
           policy,
           10 * 1024 * 1024
         ),
-      (error) => error instanceof AppError && error.message === "仅支持 JPG / PNG / PDF"
+      (error) => error instanceof AppError && error.message === "仅支持上传图片或 PDF 文件"
     );
   });
 });

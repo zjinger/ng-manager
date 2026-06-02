@@ -15,6 +15,7 @@ import type { IssueAttachmentEntity } from "../issue/attachment/issue-attachment
 import type { IssueBranchEntity } from "../issue/branch/issue-branch.types";
 import type { ProjectMemberEntity } from "../project/project.types";
 import type { RdStageEntity } from "../rd/rd.types";
+import type { DocumentEntity, DocumentListResult, ListDocumentsQuery } from "../document/document.types";
 
 export type ApiTokenScope = "issues:read" | "rd:read" | "feedbacks:read" | "docs:read";
 export type ApiTokenStatus = "active" | "revoked";
@@ -59,6 +60,7 @@ export type ListProjectApiTokensResult = {
 export type TokenIssueListQuery = Omit<ListIssuesQuery, "projectId">;
 export type TokenRdListQuery = Omit<ListRdItemsQuery, "projectId">;
 export type TokenFeedbackListQuery = Omit<ListFeedbacksQuery, "projectId" | "projectKey" | "projectKeys">;
+export type TokenDocumentListQuery = Omit<ListDocumentsQuery, "projectId"> & { categoryId?: string };
 
 export type TokenIssueListResult = IssueListResult;
 export type TokenIssueDetail = IssueEntity;
@@ -77,3 +79,5 @@ export type TokenRdProgressResult = { items: RdItemProgress[] };
 export type TokenRdProgressHistoryResult = { items: RdProgressHistory[] };
 export type TokenFeedbackListResult = FeedbackListResult;
 export type TokenFeedbackDetail = FeedbackEntity;
+export type TokenDocumentListResult = DocumentListResult;
+export type TokenDocumentDetail = DocumentEntity;

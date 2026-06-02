@@ -330,7 +330,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     issueBranchService,
     projectService,
     rdService,
-    feedbackService
+    feedbackService,
+    documentService
   );
   const sharedConfigRepo = new SharedConfigRepo(db);
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectAccess);

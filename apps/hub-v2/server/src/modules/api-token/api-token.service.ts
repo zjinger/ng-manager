@@ -5,6 +5,7 @@ import { AppError } from "../../shared/errors/app-error";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import type { FeedbackQueryContract } from "../feedback/feedback.contract";
+import type { DocumentQueryContract } from "../document/document.contract";
 import { AuthRepo } from "../auth/auth.repo";
 import type { IssueQueryContract } from "../issue/issue.contract";
 import type { IssueCommentQueryContract } from "../issue/comment/issue-comment.contract";
@@ -26,6 +27,9 @@ import type {
   TokenFeedbackDetail,
   TokenFeedbackListQuery,
   TokenFeedbackListResult,
+  TokenDocumentDetail,
+  TokenDocumentListQuery,
+  TokenDocumentListResult,
   TokenIssueDetail,
   TokenIssueAttachmentsResult,
   TokenIssueBranchesResult,
@@ -63,7 +67,8 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     private readonly issueBranchQuery: IssueBranchQueryContract,
     private readonly projectQuery: ProjectQueryContract,
     private readonly rdQuery: RdQueryContract,
-    private readonly feedbackQuery: FeedbackQueryContract
+    private readonly feedbackQuery: FeedbackQueryContract,
+    private readonly documentQuery: DocumentQueryContract
   ) {}
 
   async createProjectToken(input: CreateProjectApiTokenInput, ctx: RequestContext): Promise<CreateProjectApiTokenResult> {
@@ -322,6 +327,26 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
     return feedback;
   }
 
+  async listDocuments(
+    projectKey: string,
+    query: TokenDocumentListQuery,
+    ctx: RequestContext
+  ): Promise<TokenDocumentListResult> {
+    const project = this.assertTokenProject(projectKey, ctx);
+    const normalizedQuery = this.normalizeDocumentListQuery(query);
+    return this.documentQuery.list({ ...normalizedQuery, projectId: project.id }, ctx);
+  }
+
+  async getDocumentById(projectKey: string, docId: string, ctx: RequestContext): Promise<TokenDocumentDetail> {
+    const project = this.assertTokenProject(projectKey, ctx);
+    return this.documentQuery.getByProjectAndId(project.id, docId, ctx);
+  }
+
+  async getDocumentBySlug(projectKey: string, slug: string, ctx: RequestContext): Promise<TokenDocumentDetail> {
+    const project = this.assertTokenProject(projectKey, ctx);
+    return this.documentQuery.getByProjectAndSlug(project.id, slug, ctx);
+  }
+
   private requireProjectByKey(projectKey: string) {
     const normalizedProjectKey = projectKey.trim();
     const project = this.projectRepo.findByKey(normalizedProjectKey);
@@ -360,6 +385,18 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
 
   private isScope(scope: string): scope is ApiTokenScope {
     return scope === "issues:read" || scope === "rd:read" || scope === "feedbacks:read" || scope === "docs:read";
+  }
+
+  private normalizeDocumentListQuery(query: TokenDocumentListQuery): TokenDocumentListQuery {
+    const { categoryId, ...rest } = query;
+    const category = rest.category?.trim() || categoryId?.trim() || undefined;
+    const hasExplicitStatus = !!rest.status;
+    const hasExplicitStatusGroup = !!rest.statusGroup;
+    return {
+      ...rest,
+      category,
+      statusGroup: hasExplicitStatus || hasExplicitStatusGroup ? rest.statusGroup : "active"
+    };
   }
 
   private assertTokenProject(projectKey: string, ctx: RequestContext) {

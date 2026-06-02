@@ -40,6 +40,7 @@ import type {
 } from '../../models/content.model';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
 import { ProjectApiService } from '../../../projects/services/project-api.service';
+import { ContentApiService } from '../../services/content-api.service';
 import { ContentStore } from '../../store/content.store';
 
 type ContentQuickStatus = 'active' | 'draft' | 'published';
@@ -288,6 +289,7 @@ export class ContentManagementPageComponent {
   readonly store = inject(ContentStore);
   readonly projectContext = inject(ProjectContextStore);
   private readonly projectApi = inject(ProjectApiService);
+  private readonly contentApi = inject(ContentApiService);
   private readonly authStore = inject(AuthStore);
   private readonly modal = inject(NzModalService);
   private readonly message = inject(NzMessageService);
@@ -314,6 +316,7 @@ export class ContentManagementPageComponent {
   readonly detailDocument = signal<DocumentEntity | null>(null);
   readonly detailRelease = signal<ReleaseEntity | null>(null);
   readonly projectMembers = signal<ProjectMemberEntity[]>([]);
+  private readonly loadingDocumentDetailId = signal<string | null>(null);
   private readonly handledRouteDetailKey = signal<string | null>(null);
   private readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {
     initialValue: this.route.snapshot.queryParamMap.get('detail'),
@@ -541,11 +544,27 @@ export class ContentManagementPageComponent {
   }
 
   openDocumentDetail(item: DocumentEntity): void {
-    this.detailTab.set('documents');
-    this.detailAnnouncement.set(null);
-    this.detailDocument.set(item);
-    this.detailRelease.set(null);
-    this.detailDrawerOpen.set(true);
+    const documentId = item.id;
+    this.loadingDocumentDetailId.set(documentId);
+    this.contentApi.getDocumentById(documentId).subscribe({
+      next: (entity) => {
+        if (this.loadingDocumentDetailId() !== documentId) {
+          return;
+        }
+        this.detailTab.set('documents');
+        this.detailAnnouncement.set(null);
+        this.detailDocument.set(entity);
+        this.detailRelease.set(null);
+        this.detailDrawerOpen.set(true);
+        this.loadingDocumentDetailId.set(null);
+      },
+      error: () => {
+        if (this.loadingDocumentDetailId() === documentId) {
+          this.loadingDocumentDetailId.set(null);
+        }
+        this.message.error('文档详情加载失败');
+      },
+    });
   }
 
   openReleaseDetail(item: ReleaseEntity): void {
@@ -669,6 +688,7 @@ export class ContentManagementPageComponent {
     this.detailAnnouncement.set(null);
     this.detailDocument.set(null);
     this.detailRelease.set(null);
+    this.loadingDocumentDetailId.set(null);
     if (clearRouteDetailQuery && this.detailQuery()) {
       this.router.navigate([], {
         relativeTo: this.route,

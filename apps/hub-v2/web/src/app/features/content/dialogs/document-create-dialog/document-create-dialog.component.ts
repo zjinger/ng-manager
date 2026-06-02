@@ -205,7 +205,7 @@ export class DocumentCreateDialogComponent {
             title: value.title,
             category: value.category ?? '',
             summary: value.summary ?? '',
-            contentMd: value.contentMd,
+            contentMd: value.contentMd ?? '',
             version: value.version ?? '',
           });
         } else {

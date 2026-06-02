@@ -52,6 +52,7 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
       status: "draft",
       version: input.version?.trim() || null,
       createdBy: ctx.authType === "personal_token" ? ctx.userId ?? ctx.accountId : ctx.accountId,
+      createdByName: ctx.nickname?.trim() || null,
       publishAt: null,
       deletedAt: null,
       deletedBy: null,
@@ -236,6 +237,36 @@ export class DocumentService implements DocumentCommandContract, DocumentQueryCo
   async getById(id: string, ctx: RequestContext): Promise<DocumentEntity> {
     const entity = this.requireById(id);
     await this.requireProjectOrAdmin(entity.projectId, ctx, "get document");
+    return entity;
+  }
+
+  async getByProjectAndId(projectId: string, id: string, ctx: RequestContext): Promise<DocumentEntity> {
+    const normalizedProjectId = projectId.trim();
+    const normalizedId = id.trim();
+    if (!normalizedProjectId || !normalizedId) {
+      throw new AppError(ERROR_CODES.DOCUMENT_NOT_FOUND, "document not found", 404);
+    }
+
+    await this.requireProjectOrAdmin(normalizedProjectId, ctx, "get document");
+    const entity = this.repo.findByProjectAndId(normalizedProjectId, normalizedId);
+    if (!entity) {
+      throw new AppError(ERROR_CODES.DOCUMENT_NOT_FOUND, `document not found: ${id}`, 404);
+    }
+    return entity;
+  }
+
+  async getByProjectAndSlug(projectId: string, slug: string, ctx: RequestContext): Promise<DocumentEntity> {
+    const normalizedProjectId = projectId.trim();
+    const normalizedSlug = slug.trim();
+    if (!normalizedProjectId || !normalizedSlug) {
+      throw new AppError(ERROR_CODES.DOCUMENT_NOT_FOUND, "document not found", 404);
+    }
+
+    await this.requireProjectOrAdmin(normalizedProjectId, ctx, "get document");
+    const entity = this.repo.findByProjectAndSlug(normalizedProjectId, normalizedSlug);
+    if (!entity) {
+      throw new AppError(ERROR_CODES.DOCUMENT_NOT_FOUND, `document not found: ${slug}`, 404);
+    }
     return entity;
   }
 

@@ -175,7 +175,61 @@ Feedback：
 
 Docs：
 
-- 当前仅预留 `docs:read` scope；Project Token 文档读取接口暂未开放。
+- Project Token 文档读取接口已开放，使用 `docs:read` scope。
+- 现有可读取文档的路径分为两类：
+  - 管理端登录态：`GET /api/admin/documents`、`GET /api/admin/documents/:documentId`
+  - 公共发布态：`GET /api/public/documents`、`GET /api/public/documents/:projectKey/:slug`
+- 上述两类不等同于 Token 读取：
+  - 管理端接口依赖用户登录态，不适合 webapp 后端代理用 Project Token 调用
+  - 公共接口只面向已发布内容，不覆盖草稿、未发布内容，也不绑定 Project Token scope
+
+Project Token 文档读取接口：
+
+- `GET /api/token/projects/:projectKey/docs`
+- `GET /api/token/projects/:projectKey/docs/:docId`
+- `GET /api/token/projects/:projectKey/docs/by-slug/:slug`
+
+查询参数：
+
+| 参数 | 说明 |
+|---|---|
+| `page` / `pageSize` | 分页 |
+| `keyword` | 搜索标题、摘要、正文或 slug |
+| `category` / `categoryId` | 文档分类；`categoryId` 作为 `category` 兼容别名 |
+| `status` | 可选 `draft`、`published`、`archived` |
+| `statusGroup=active` | 默认查询草稿与已发布，不返回已归档 |
+
+详情返回字段：
+
+```json
+{
+  "id": "doc_xxx",
+  "projectId": "prj_xxx",
+  "slug": "api-token-integration",
+  "title": "Token API 接入说明",
+  "category": "integration",
+  "categoryId": "integration",
+  "summary": "文档摘要",
+  "contentMd": "# 文档正文",
+  "status": "published",
+  "version": null,
+  "createdBy": "usr_xxx",
+  "createdByName": "张三",
+  "publishAt": "2026-06-01T09:00:00.000Z",
+  "createdAt": "2026-06-01T08:00:00.000Z",
+  "updatedAt": "2026-06-01T09:00:00.000Z"
+}
+```
+
+列表接口返回同样的元信息字段，并包含 `createdByName` 供列表展示作者，但不返回 `contentMd`。需要正文时调用 `GET /api/token/projects/:projectKey/docs/:docId` 或 `GET /api/token/projects/:projectKey/docs/by-slug/:slug` 获取详情。
+
+权限与安全口径：
+
+- 必须使用 Project Token，且包含 `docs:read` scope
+- 只允许读取目标 `projectKey` 下的文档
+- 列表默认不返回已归档内容；读取已归档列表需显式传 `status=archived`
+- 默认列表允许读取 `draft/published`，用于 webapp 内部联动；仍受 Project Token 与项目边界控制
+- 读取接口当前不写入 Token 审计；若后续需要追踪读取行为，可单独开启 `doc.read` 审计
 
 ---
 
@@ -296,7 +350,7 @@ Docs：
 | Issue | 协作人管理 | `issue:participant:write` |
 | RD | 列表与详情 | `rd:read` |
 | Feedback | 列表与详情 | `feedbacks:read` |
-| Docs | 读取预留 | `docs:read` |
+| Docs | 文档读取（Project Token） | `docs:read` |
 | Docs | 创建文档 | `doc:create:write` |
 | Docs | 编辑文档 | `doc:update:write` |
 | Docs | 发布文档 | `doc:publish:write` |
@@ -485,4 +539,18 @@ curl -X PATCH "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DO
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DOC_ID>/publish" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"source\":\"cli\"}"
+```
+
+### 9.13 Project Token 读取文档
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs?page=1&pageSize=20&statusGroup=active" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/<DOC_ID>" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/by-slug/<DOC_SLUG>" -H "Authorization: Bearer <PROJECT_TOKEN>"
 ```

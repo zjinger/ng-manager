@@ -2,6 +2,7 @@ import { z } from "zod";
 import { listFeedbacksQuerySchema } from "../feedback/feedback.schema";
 import { listIssuesQuerySchema } from "../issue/issue.schema";
 import { listRdItemsQuerySchema } from "../rd/rd.schema";
+import { listDocumentsQuerySchema } from "../document/document.schema";
 
 export const projectParamSchema = z.object({
   projectKey: z.string().trim().min(1).max(80)
@@ -26,6 +27,9 @@ export const tokenRdListQuerySchema = listRdItemsQuerySchema.omit({ projectId: t
 export const tokenFeedbackListQuerySchema = listFeedbacksQuerySchema.omit({
   projectId: true,
   projectKey: true
+});
+export const tokenDocumentListQuerySchema = listDocumentsQuerySchema.omit({ projectId: true }).extend({
+  categoryId: z.string().trim().optional()
 });
 
 export const issueIdParamSchema = z.object({
@@ -59,4 +63,14 @@ export const rdUploadRawParamSchema = z.object({
 export const feedbackIdParamSchema = z.object({
   projectKey: z.string().trim().min(1).max(80),
   feedbackId: z.string().trim().min(1)
+});
+
+export const documentIdParamSchema = z.object({
+  projectKey: z.string().trim().min(1).max(80),
+  docId: z.string().trim().min(1)
+});
+
+export const documentSlugParamSchema = z.object({
+  projectKey: z.string().trim().min(1).max(80),
+  slug: z.string().trim().min(1)
 });

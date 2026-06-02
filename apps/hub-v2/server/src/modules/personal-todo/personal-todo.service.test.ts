@@ -279,7 +279,7 @@ describe("PersonalTodoService", () => {
           desc: "alpha",
           priority: "critical",
           status: "doing",
-          due: "2026-05-30",
+          due: "2000-01-01",
           folderId: folder.id,
           tagIds: [tag.id]
         },
@@ -290,7 +290,7 @@ describe("PersonalTodoService", () => {
           title: "B keyword target",
           priority: "high",
           status: "todo",
-          due: "2026-06-01",
+          due: "2999-12-31",
           folderId: null,
           tagIds: [tag.id]
         },
