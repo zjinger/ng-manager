@@ -11,6 +11,7 @@ from urllib.request import Request, urlopen
 
 DEFAULT_BASE_URL = "http://192.168.1.31:7008"
 CONFIG_ENV = "HUB_V2_DOCS_CONFIG"
+CLAUDE_SETTINGS_FILENAMES = ("settings.local.json", "settings.json")
 
 
 def load_json(path: Path) -> dict:
@@ -20,11 +21,126 @@ def load_json(path: Path) -> dict:
         return json.load(handle)
 
 
+def normalize_config(raw_config: dict) -> dict:
+    if not isinstance(raw_config, dict):
+        return {}
+
+    normalized: dict[str, str] = {}
+
+    def put(key: str, value: object) -> None:
+        if value is not None and str(value).strip():
+            normalized[key] = str(value).strip()
+
+    def merge_hub_config(value: object) -> None:
+        if not isinstance(value, dict):
+            return
+        key_pairs = [
+            ("base_url", "baseUrl"),
+            ("project_key", "projectKey"),
+            ("project_name", "projectName"),
+            ("project_token", "projectToken"),
+            ("personal_token", "personalToken"),
+            ("source", "source"),
+        ]
+        for snake_key, camel_key in key_pairs:
+            put(snake_key, value.get(snake_key))
+            put(snake_key, value.get(camel_key))
+
+    merge_hub_config(raw_config)
+    merge_hub_config(raw_config.get("hub_v2_docs"))
+    merge_hub_config(raw_config.get("hubV2Docs"))
+
+    env_config = raw_config.get("env")
+    if isinstance(env_config, dict):
+        env_key_map = {
+            "HUB_V2_BASE_URL": "base_url",
+            "HUB_V2_PROJECT_KEY": "project_key",
+            "HUB_V2_PROJECT_NAME": "project_name",
+            "HUB_V2_PROJECT_TOKEN": "project_token",
+            "HUB_V2_PERSONAL_TOKEN": "personal_token",
+            "HUB_V2_DOCS_SOURCE": "source",
+        }
+        for env_key, config_key in env_key_map.items():
+            put(config_key, env_config.get(env_key))
+
+    return normalized
+
+
+def normalize_project_config(raw_config: dict) -> dict:
+    if not isinstance(raw_config, dict):
+        return {}
+    normalized = normalize_config(raw_config)
+    for key in ("name", "alias", "id"):
+        value = raw_config.get(key)
+        if value is not None and str(value).strip():
+            normalized[key] = str(value).strip()
+    return normalized
+
+
+def normalize_projects(raw_config: dict) -> dict[str, dict]:
+    if not isinstance(raw_config, dict):
+        return {}
+
+    projects: dict[str, dict] = {}
+    raw_projects = raw_config.get("projects")
+    if isinstance(raw_projects, dict):
+        for name, value in raw_projects.items():
+            project = normalize_project_config(value)
+            project_name = project.get("name") or project.get("alias") or str(name).strip()
+            if project_name:
+                projects[project_name] = project
+    elif isinstance(raw_projects, list):
+        for value in raw_projects:
+            project = normalize_project_config(value)
+            project_name = project.get("name") or project.get("alias") or project.get("id")
+            if project_name:
+                projects[project_name] = project
+    return projects
+
+
+def merge_projects(*project_maps: dict[str, dict]) -> dict[str, dict]:
+    merged: dict[str, dict] = {}
+    for project_map in project_maps:
+        merged.update(project_map)
+    return merged
+
+
+def normalize_default_project(raw_config: dict) -> str | None:
+    if not isinstance(raw_config, dict):
+        return None
+    for key in ("default_project", "defaultProject", "project"):
+        value = raw_config.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return None
+
+
+def normalize_nested_default_project(raw_config: dict) -> str | None:
+    if not isinstance(raw_config, dict):
+        return None
+    return (
+        normalize_default_project(raw_config)
+        or normalize_default_project(raw_config.get("hub_v2_docs"))
+        or normalize_default_project(raw_config.get("hubV2Docs"))
+    )
+
+
+def claude_project_settings_paths() -> list[Path]:
+    paths: list[Path] = []
+    for directory in [Path.cwd(), *Path.cwd().parents]:
+        claude_dir = directory / ".claude"
+        for filename in CLAUDE_SETTINGS_FILENAMES:
+            paths.append(claude_dir / filename)
+    return paths
+
+
 def default_config_paths() -> list[Path]:
     home = Path.home()
     return [
         home / ".openclaw" / "hub-v2-docs.json",
         home / ".codex" / "hub-v2-docs.json",
+        *claude_project_settings_paths(),
+        home / ".claude" / "settings.json",
         home / ".hub-v2-docs.json",
     ]
 
@@ -38,7 +154,18 @@ def load_config(path_value: str | None) -> dict:
     else:
         paths.extend(default_config_paths())
     for path in paths:
-        config = load_json(path)
+        raw_config = load_json(path)
+        config = normalize_config(raw_config)
+        projects = merge_projects(
+            normalize_projects(raw_config),
+            normalize_projects(raw_config.get("hub_v2_docs")),
+            normalize_projects(raw_config.get("hubV2Docs")),
+        )
+        if projects:
+            config["projects"] = projects
+        default_project = normalize_nested_default_project(raw_config)
+        if default_project:
+            config["default_project"] = default_project
         if config:
             return config
     return {}
@@ -73,31 +200,91 @@ def require_value(name: str, value: str | None) -> str:
     return value
 
 
+def selected_project_config(args: argparse.Namespace, config: dict) -> dict:
+    projects = config.get("projects")
+    if not isinstance(projects, dict) or not projects:
+        return {}
+
+    selected = args.project or os.environ.get("HUB_V2_PROJECT") or config.get("default_project")
+    if selected:
+        selected = str(selected).strip()
+        project = projects.get(selected)
+        if project is None:
+            available = ", ".join(sorted(projects.keys()))
+            raise ValueError(f"project config not found: {selected}. Available projects: {available}")
+        return project
+
+    if len(projects) == 1:
+        return next(iter(projects.values()))
+
+    available = ", ".join(sorted(projects.keys()))
+    raise ValueError(f"multiple projects configured; pass --project or set default_project. Available projects: {available}")
+
+
+def resolve_from_config(config: dict, project_config: dict, snake_key: str, camel_key: str | None = None) -> str | None:
+    return config_get(project_config, snake_key, camel_key) or config_get(config, snake_key, camel_key)
+
+
 def resolve_context(args: argparse.Namespace, token_kind: str) -> dict:
     config = load_config(args.config)
+    project_config = {} if args.project_key else selected_project_config(args, config)
     base_url = require_value(
         "base_url",
-        resolve_value(args.base_url, "HUB_V2_BASE_URL", config, "base_url", "baseUrl", DEFAULT_BASE_URL),
+        args.base_url
+        or os.environ.get("HUB_V2_BASE_URL")
+        or resolve_from_config(config, project_config, "base_url", "baseUrl")
+        or DEFAULT_BASE_URL,
     ).rstrip("/")
     project_key = require_value(
         "project_key",
-        resolve_value(args.project_key, "HUB_V2_PROJECT_KEY", config, "project_key", "projectKey"),
+        args.project_key
+        or os.environ.get("HUB_V2_PROJECT_KEY")
+        or resolve_from_config(config, project_config, "project_key", "projectKey"),
     )
     if token_kind == "project":
-        token = resolve_value(args.token, "HUB_V2_PROJECT_TOKEN", config, "project_token", "projectToken")
+        token = (
+            args.token
+            or os.environ.get("HUB_V2_PROJECT_TOKEN")
+            or resolve_from_config(config, project_config, "project_token", "projectToken")
+        )
         token_name = "project_token"
     elif token_kind == "personal":
-        token = resolve_value(args.token, "HUB_V2_PERSONAL_TOKEN", config, "personal_token", "personalToken")
+        token = (
+            args.token
+            or os.environ.get("HUB_V2_PERSONAL_TOKEN")
+            or resolve_from_config(config, project_config, "personal_token", "personalToken")
+        )
         token_name = "personal_token"
     else:
         raise ValueError(f"unknown token kind: {token_kind}")
-    source = resolve_value(args.source, "HUB_V2_DOCS_SOURCE", config, "source", "source", "agent")
+    source = args.source or os.environ.get("HUB_V2_DOCS_SOURCE") or resolve_from_config(config, project_config, "source", "source") or "agent"
     return {
         "base_url": base_url,
         "project_key": project_key,
         "token": require_value(token_name, token),
         "source": source or "agent",
     }
+
+
+def list_configured_projects(args: argparse.Namespace) -> dict:
+    config = load_config(args.config)
+    projects = config.get("projects")
+    if not isinstance(projects, dict):
+        projects = {}
+    items = []
+    for name, project in sorted(projects.items()):
+        items.append(
+            {
+                "name": name,
+                "projectName": config_get(project, "project_name", "projectName"),
+                "projectKey": config_get(project, "project_key", "projectKey"),
+                "baseUrl": config_get(project, "base_url", "baseUrl") or config_get(config, "base_url", "baseUrl") or DEFAULT_BASE_URL,
+                "hasProjectToken": bool(config_get(project, "project_token", "projectToken") or config_get(config, "project_token", "projectToken")),
+                "hasPersonalToken": bool(config_get(project, "personal_token", "personalToken") or config_get(config, "personal_token", "personalToken")),
+                "isDefault": name == config.get("default_project"),
+            }
+        )
+    return {"code": "OK", "message": "configured projects", "data": {"items": items, "total": len(items)}}
 
 
 def request_json(url: str, token: str, method: str, body: dict | None = None) -> dict:
@@ -236,6 +423,7 @@ def publish_doc(args: argparse.Namespace) -> dict:
 
 def run(args: argparse.Namespace) -> int:
     handlers = {
+        "projects": list_configured_projects,
         "list": list_docs,
         "get": get_doc,
         "slug": slug_doc,
@@ -263,6 +451,7 @@ def run(args: argparse.Namespace) -> int:
 def add_common_root_args(root: argparse.ArgumentParser) -> None:
     root.add_argument("--config", help=f"Config JSON path. Defaults to {CONFIG_ENV} or user config paths.")
     root.add_argument("--base-url", help=f"Hub V2 base URL. Defaults to config/env or {DEFAULT_BASE_URL}.")
+    root.add_argument("--project", help="Configured project alias/name. Defaults to HUB_V2_PROJECT or config default_project.")
     root.add_argument("--project-key", help="Hub V2 projectKey. Defaults to config or HUB_V2_PROJECT_KEY.")
     root.add_argument("--token", help="Operation token. Reads expect Project Token; writes expect Personal Token.")
     root.add_argument("--source", help="Audit source metadata for write operations.")
@@ -285,6 +474,8 @@ def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description="Read and write Hub V2 project documents.")
     add_common_root_args(root)
     subparsers = root.add_subparsers(dest="command", required=True)
+
+    subparsers.add_parser("projects", help="List configured project aliases without exposing token values.")
 
     list_parser = subparsers.add_parser("list", help="List project documents with Project Token.")
     list_parser.add_argument("--page", type=int, default=1)
