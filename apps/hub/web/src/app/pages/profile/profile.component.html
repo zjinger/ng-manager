@@ -9,7 +9,8 @@
   @if (!loading()) {
     <div class="profile-layout">
       <nz-card class="overview-card">
-        <div class="overview-body" *ngIf="profile() as profile">
+        @if (profile(); as profile) {
+        <div class="overview-body">
           <div class="avatar-block">
             @if (avatarUrl()) {
               <img class="avatar-image" [src]="avatarUrl()!" alt="avatar" />
@@ -49,6 +50,7 @@
             (change)="onAvatarSelected($event)"
           />
         </div>
+        }
       </nz-card>
 
       <nz-card class="content-card">
@@ -113,7 +115,8 @@
           </nz-tab>
 
           <nz-tab nzTitle="头像设置">
-            <div class="avatar-tab" *ngIf="profile() as profile">
+            @if (profile(); as profile) {
+            <div class="avatar-tab">
               <div class="avatar-preview">
                 @if (avatarUrl()) {
                   <img class="avatar-image large" [src]="avatarUrl()!" alt="avatar" />
@@ -147,6 +150,7 @@
                 </div>
               </div>
             </div>
+            }
           </nz-tab>
 
           <nz-tab nzTitle="修改密码">

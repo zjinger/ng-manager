@@ -1,4 +1,4 @@
-import { Component, DestroyRef, HostListener, effect, inject, OnDestroy } from '@angular/core';
+import { Component, DestroyRef, effect, inject, OnDestroy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -21,6 +21,9 @@ import { TopbarComponent } from '../topbar/topbar.component';
   imports: [RouterOutlet, SidebarComponent, TopbarComponent, GlobalSearchModalComponent, ForcePasswordChangeDialogComponent],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.less',
+  host: {
+    '(window:keydown)': 'onWindowKeydown($event)'
+  },
 })
 export class AppShellComponent implements OnDestroy {
   readonly navItems = NAV_ITEMS;
@@ -73,7 +76,6 @@ export class AppShellComponent implements OnDestroy {
     this.realtimeSync.stop();
   }
 
-  @HostListener('window:keydown', ['$event'])
   onWindowKeydown(event: KeyboardEvent): void {
     if (!(event.ctrlKey || event.metaKey)) {
       return;

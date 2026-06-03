@@ -4,7 +4,6 @@ import {
   Component,
   ElementRef,
   EventEmitter,
-  HostListener,
   inject,
   Input,
   Output,
@@ -64,7 +63,9 @@ export interface TabContextMenuEvent {
   ],
   templateUrl: './request-tabs-bar.component.html',
   styleUrls: ['./request-tabs-bar.component.less'],
-  
+  host: {
+    '(window:keydown)': 'onKeyDown($event)'
+  }
 })
 export class RequestTabsBarComponent {
   private contextMenuService = inject(NzContextMenuService);
@@ -114,7 +115,6 @@ export class RequestTabsBarComponent {
    * Ctrl+W: 关闭当前 Tab
    * F2: 重命名当前 Tab
    */
-  @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
     // Ctrl+T: 新建 Tab
     if (event.ctrlKey && event.key === 't') {

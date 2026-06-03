@@ -1,7 +1,6 @@
 import {
   Component,
   DestroyRef,
-  HostListener,
   ViewChild,
   computed,
   inject,
@@ -54,7 +53,10 @@ interface PendingAttachmentFile {
   ],
   templateUrl: './issue-create.component.html',
   styleUrls: ['./issue-create.component.less'],
-  styles: [PAGE_SHELL_STYLES]
+  styles: [PAGE_SHELL_STYLES],
+  host: {
+    '(document:paste)': 'handlePaste($event)'
+  }
 })
 export class IssueCreatePageComponent {
   private readonly fb = inject(FormBuilder);
@@ -110,7 +112,6 @@ export class IssueCreatePageComponent {
     void this.initialize();
   }
 
-  @HostListener('document:paste', ['$event'])
   protected handlePaste(event: ClipboardEvent): void {
     const items = event.clipboardData?.items;
     if (!items?.length) {

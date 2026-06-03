@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 import { ForcePasswordChangeDialogComponent } from '@core/auth/force-password-change-dialog.component';
@@ -54,13 +54,15 @@ const ADMIN_NAV: NavSection[] = [
   templateUrl: './admin-shell.component.html',
   styleUrl: '../../../core/layout/app-shell/app-shell.component.less',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(window:keydown)': 'onWindowKeydown($event)'
+  },
 })
 export class AdminShellComponent {
   readonly navSections = ADMIN_NAV;
   readonly uiStore = inject(UiStore);
   private readonly globalSearchStore = inject(GlobalSearchStore);
 
-  @HostListener('window:keydown', ['$event'])
   onWindowKeydown(event: KeyboardEvent): void {
     if (!(event.ctrlKey || event.metaKey)) {
       return;

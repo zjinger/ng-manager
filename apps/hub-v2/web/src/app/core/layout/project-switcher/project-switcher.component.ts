@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
@@ -111,6 +111,9 @@ const SPEED = 50; // px/s
   `,
   styleUrls: ['./project-switcher.component.less'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:click)': 'onDocumentClick($event.target)'
+  },
 })
 export class ProjectSwitcherComponent {
   readonly projectContext = inject(ProjectContextStore);
@@ -231,7 +234,6 @@ export class ProjectSwitcherComponent {
     return normalized.slice(0, 3).toUpperCase();
   }
 
-  @HostListener('document:click', ['$event.target'])
   onDocumentClick(target: EventTarget | null): void {
     if (!(target instanceof HTMLElement)) {
       return;

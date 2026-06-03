@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { API_BASE_URL } from '@core/http';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -73,6 +73,9 @@ import { NzTooltipDirective } from "ng-zorro-antd/tooltip";
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:paste)': 'onDocumentPaste($event)'
+  },
 })
 export class IssueAttachmentsPanelComponent {
   private readonly message = inject(NzMessageService);
@@ -109,7 +112,6 @@ export class IssueAttachmentsPanelComponent {
     return new Subscription();
   };
 
-  @HostListener('document:paste', ['$event'])
   onDocumentPaste(event: ClipboardEvent): void {
     if (this.busy() || this.shouldIgnorePasteTarget()) {
       return;
