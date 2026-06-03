@@ -1,0 +1,27 @@
+{
+  "name": "NGM AI Handoff",
+  "identifier": "com.ng-manager.ai-handoff",
+  "version": "0.1.0",
+  "description": "Export Sketch artboards into AI-friendly handoff packages.",
+  "commands": [
+    {
+      "name": "Export Selected Artboard",
+      "identifier": "export-selected-artboard",
+      "script": "main.js",
+      "handler": "onExportSelectedArtboard"
+    },
+    {
+      "name": "Export Current Page",
+      "identifier": "export-current-page",
+      "script": "main.js",
+      "handler": "onExportCurrentPage"
+    }
+  ],
+  "menu": {
+    "title": "NGM AI Handoff",
+    "items": [
+      "export-selected-artboard",
+      "export-current-page"
+    ]
+  }
+}

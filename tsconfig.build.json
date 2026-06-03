@@ -22,6 +22,7 @@
     { "path": "packages/sprite" },
     { "path": "packages/bootstrap" },
     { "path": "packages/ais" },
+    { "path": "packages/design-handoff" },
     { "path": "packages/nginx" },
     { "path": "packages/server" },
     { "path": "packages/cli" },

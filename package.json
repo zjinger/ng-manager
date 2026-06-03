@@ -25,6 +25,7 @@
     "release:publish:pkg": "lerna publish from-package",
 
     "pack:all": "node scripts/pack-all.mjs",
+    "pack:sketch-plugin": "npm run pack:sketch -w @yinuo-ngm/design-handoff",
     "pack:list": "node scripts/pack-all.mjs --list",
     "publish:all": "npm run release:publish:pkg",
 
