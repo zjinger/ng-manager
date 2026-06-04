@@ -175,6 +175,8 @@ Write:
 
 ## Script Helper
 
+Prefer MCP tools named `sl_hub_v2.docs_*` when an SL Hub V2 MCP server is available. Use the script helper as a fallback when MCP tools are not configured in the current agent.
+
 Use `scripts/hub_v2_docs.py` for deterministic reads and writes.
 
 List docs using external config:

@@ -26,6 +26,7 @@
     { "path": "packages/nginx" },
     { "path": "packages/server" },
     { "path": "packages/cli" },
+    { "path": "packages/sl-hub-v2-mcp" },
     { "path": "packages/api" }
   ]
 }

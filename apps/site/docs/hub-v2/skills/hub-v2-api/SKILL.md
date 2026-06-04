@@ -40,6 +40,8 @@ OpenCode users may put the same `slHubV2` / `sl_hub_v2` object in project or use
 
 ## Script Helper
 
+Prefer MCP tools named `sl_hub_v2.issues_*`, `sl_hub_v2.rd_*`, `sl_hub_v2.me`, and `sl_hub_v2.capabilities` when an SL Hub V2 MCP server is available. Use the script helper as a fallback when MCP tools are not configured in the current agent.
+
 Use `scripts/hub_v2_api.py` for deterministic reads and writes.
 
 Examples:

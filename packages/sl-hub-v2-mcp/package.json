@@ -1,0 +1,23 @@
+{
+  "name": "@yinuo-ngm/sl-hub-v2-mcp",
+  "version": "0.1.0",
+  "description": "Local MCP server for SL Hub V2 docs, issues, and RD APIs.",
+  "author": "ZhangJing <892295834@qq.com>",
+  "bin": {
+    "sl-hub-v2-mcp": "lib/index.js"
+  },
+  "files": [
+    "lib"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "test": "npm run build && node --test test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^3.25.76"
+  }
+}
