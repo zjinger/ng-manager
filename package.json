@@ -27,6 +27,8 @@
     "pack:all": "node scripts/pack-all.mjs",
     "pack:sketch-plugin": "npm run pack:sketch -w @yinuo-ngm/design-handoff",
     "pack:list": "node scripts/pack-all.mjs --list",
+    "handoff:scan": "npm run handoff:scan -w @yinuo-ngm/design-handoff --",
+    "handoff:task": "npm run handoff:task -w @yinuo-ngm/design-handoff --",
     "publish:all": "npm run release:publish:pkg",
 
     "build:core": "tsc -b packages/core",

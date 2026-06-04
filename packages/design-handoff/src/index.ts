@@ -4,3 +4,6 @@ export * from "./validators";
 export * from "./prompt";
 export * from "./generator";
 export * from "./exporters";
+export * from "./scanner";
+export * from "./agent";
+export * from "./profile";

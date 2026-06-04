@@ -21,6 +21,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "handoff:scan": "node scripts/scan-handoff-packages.js",
+    "handoff:task": "node scripts/create-agent-task.js",
     "pack:sketch": "node scripts/pack-sketch-plugin.js",
     "test": "npm run build && node scripts/smoke-test.js"
   },
