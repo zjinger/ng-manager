@@ -15,13 +15,20 @@
       "identifier": "export-current-page",
       "script": "main.js",
       "handler": "onExportCurrentPage"
+    },
+    {
+      "name": "Settings...",
+      "identifier": "open-settings",
+      "script": "main.js",
+      "handler": "onOpenSettings"
     }
   ],
   "menu": {
     "title": "NGM AI Handoff",
     "items": [
       "export-selected-artboard",
-      "export-current-page"
+      "export-current-page",
+      "open-settings"
     ]
   }
 }

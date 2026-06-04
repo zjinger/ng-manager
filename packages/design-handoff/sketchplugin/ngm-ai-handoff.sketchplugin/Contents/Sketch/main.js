@@ -1,6 +1,7 @@
 var sketch = require("sketch");
 var UI = require("sketch/ui");
 var exporter = require("./exporter");
+var pluginSettings = require("./settings");
 
 var PLUGIN_VERSION = "0.1.0";
 
@@ -38,11 +39,13 @@ function getArtboardsFromCurrentPage(document) {
 
 function exportArtboards(document, artboards) {
   var exported = [];
+  var settings = pluginSettings.getSettings();
 
   artboards.forEach(function (artboard) {
     exported.push(
       exporter.exportArtboard(document, artboard, {
         pluginVersion: PLUGIN_VERSION,
+        settings: settings,
       }),
     );
   });
@@ -92,7 +95,16 @@ function onExportCurrentPage() {
   }
 }
 
+function onOpenSettings() {
+  try {
+    pluginSettings.configureSettings();
+  } catch (error) {
+    UI.alert("NGM AI Handoff settings failed", error && error.message ? error.message : String(error));
+  }
+}
+
 module.exports = {
   onExportSelectedArtboard: onExportSelectedArtboard,
   onExportCurrentPage: onExportCurrentPage,
+  onOpenSettings: onOpenSettings,
 };
