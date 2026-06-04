@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/auth/admin.guard';
 import { authGuard } from './core/auth/auth.guard';
-import { ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, permissionGuard, PROJECT_GOVERNANCE_PERMISSIONS, TASK_SHEET_PERMISSIONS } from './core/auth';
+import { ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, permissionGuard, PROJECT_GOVERNANCE_PERMISSIONS, SKILL_HUB_PERMISSIONS, TASK_SHEET_PERMISSIONS } from './core/auth';
 import { FEATURE_FLAGS } from './core/feature-flags';
 
 export const routes: Routes = [
@@ -113,7 +113,7 @@ export const routes: Routes = [
       {
         path: 'content',
         canActivate: [permissionGuard],
-        data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS, ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION] },
+        data: { permissions: [...PROJECT_GOVERNANCE_PERMISSIONS, ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, ...SKILL_HUB_PERMISSIONS] },
         loadChildren: () => import('./features/content/routes').then((m) => m.CONTENT_ROUTES),
       },
       // 项目路由

@@ -36,6 +36,7 @@ import releasePublicRoutes from "../modules/release/release-public.routes";
 import releaseRoutes from "../modules/release/release.routes";
 import sharedConfigPublicRoutes from "../modules/shared-config/shared-config-public.routes";
 import sharedConfigRoutes from "../modules/shared-config/shared-config.routes";
+import skillHubRoutes from "../modules/skill-hub/skill-hub.routes";
 import systemRbacRoutes from "../modules/system-rbac/system-rbac.routes";
 import projectTitleRoutes from "../modules/project-title/project-title.routes";
 import organizationTitleRoutes from "../modules/organization-title/organization-title.routes";
@@ -188,6 +189,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(rdRoutes, { prefix: "/api/admin" });
   await app.register(releaseRoutes, { prefix: "/api/admin" });
   await app.register(sharedConfigRoutes, { prefix: "/api/admin" });
+  await app.register(skillHubRoutes, { prefix: "/api/admin" });
   await app.register(systemRbacRoutes, { prefix: "/api/admin" });
   await app.register(projectTitleRoutes, { prefix: "/api/admin" });
   await app.register(organizationTitleRoutes, { prefix: "/api/admin" });

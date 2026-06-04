@@ -1,5 +1,5 @@
 import type { NavSection } from './menu.types';
-import { ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, PROJECT_GOVERNANCE_PERMISSIONS, TASK_SHEET_PERMISSIONS } from '../auth/permission.constants';
+import { ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, PROJECT_GOVERNANCE_PERMISSIONS, SKILL_HUB_PERMISSIONS, TASK_SHEET_PERMISSIONS } from '../auth/permission.constants';
 import { FEATURE_FLAGS } from '../feature-flags';
 
 export const NAV_ITEMS: NavSection[] = [
@@ -75,6 +75,14 @@ export const NAV_ITEMS: NavSection[] = [
         route: '/content',
         permissions: [...PROJECT_GOVERNANCE_PERMISSIONS],
       },
+      // {
+      //   key: 'skill-hub',
+      //   label: 'Skill Hub',
+      //   icon: 'tool',
+      //   route: '/content/skills',
+      //   exact: true,
+      //   permissions: [...SKILL_HUB_PERMISSIONS],
+      // },
       {
         key: 'global-announcements',
         label: '全局公告',

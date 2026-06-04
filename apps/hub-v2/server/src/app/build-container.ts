@@ -97,6 +97,9 @@ import { ReleaseService } from "../modules/release/release.service";
 import type { SharedConfigCommandContract, SharedConfigQueryContract } from "../modules/shared-config/shared-config.contract";
 import { SharedConfigRepo } from "../modules/shared-config/shared-config.repo";
 import { SharedConfigService } from "../modules/shared-config/shared-config.service";
+import type { SkillHubCommandContract, SkillHubQueryContract } from "../modules/skill-hub/skill-hub.contract";
+import { SkillHubRepo } from "../modules/skill-hub/skill-hub.repo";
+import { SkillHubService } from "../modules/skill-hub/skill-hub.service";
 import type { SystemRbacCommandContract, SystemRbacQueryContract } from "../modules/system-rbac/system-rbac.contract";
 import { SystemRbacRepo } from "../modules/system-rbac/system-rbac.repo";
 import { SystemRbacService } from "../modules/system-rbac/system-rbac.service";
@@ -185,6 +188,8 @@ export type AppContainer = {
   releaseQuery: ReleaseQueryContract;
   sharedConfigCommand: SharedConfigCommandContract;
   sharedConfigQuery: SharedConfigQueryContract;
+  skillHubCommand: SkillHubCommandContract;
+  skillHubQuery: SkillHubQueryContract;
   systemRbacCommand: SystemRbacCommandContract;
   systemRbacQuery: SystemRbacQueryContract;
   projectTitleCommand: ProjectTitleCommandContract;
@@ -335,6 +340,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   );
   const sharedConfigRepo = new SharedConfigRepo(db);
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectAccess);
+  const skillHubService = new SkillHubService(new SkillHubRepo(db));
   const systemRbacService = new SystemRbacService(systemRbacRepo, auditLogService);
   const systemSettingsRepo = new SystemSettingsRepo(db);
   const systemSettingsService = new SystemSettingsService(systemSettingsRepo, auditLogService);
@@ -413,6 +419,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     releaseQuery: releaseService,
     sharedConfigCommand: sharedConfigService,
     sharedConfigQuery: sharedConfigService,
+    skillHubCommand: skillHubService,
+    skillHubQuery: skillHubService,
     systemRbacCommand: systemRbacService,
     systemRbacQuery: systemRbacService,
     projectTitleCommand: projectTitleService,

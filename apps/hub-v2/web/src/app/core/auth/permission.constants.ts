@@ -19,6 +19,13 @@ export const PROJECT_GOVERNANCE_PERMISSIONS = [
 
 export const ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION = 'announcement.global.manage' as const;
 
+export const SKILL_HUB_PERMISSIONS = [
+  'skill.view',
+  'skill.create',
+  'skill.review',
+  'skill.manage',
+] as const;
+
 export const TASK_SHEET_PERMISSIONS = [
   'task_sheet.submit',
   'task_sheet.view.self',
