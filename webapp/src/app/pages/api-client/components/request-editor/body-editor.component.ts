@@ -81,7 +81,8 @@ import { uniqueId } from 'lodash';
     </div>
   `,
   styles: [`
-    .wrap{ display:flex; flex-direction:column; height:100%; min-height:260px; }
+    :host{display: block; height:100%;}
+    .wrap{ display:flex; flex-direction:column; height:100%; }
     .bar{
       display:flex; gap:10px; align-items:center;
       padding:8px 0; border-bottom:1px solid #f0f0f0;
@@ -89,7 +90,7 @@ import { uniqueId } from 'lodash';
     .mode{ width:140px; }
     .ctype{ flex:1 1 auto; }
     .main{ flex:1 1 auto; overflow:auto; padding-top:10px; }
-    .ta{ width:100%; height:100%; min-height:240px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; }
+    .ta{ width:100%; height:100%; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; }
     .empty{ padding:12px; opacity:.7; }
     .err{ margin-top:8px; color:#a8071a; font-size:12px; }
   `],

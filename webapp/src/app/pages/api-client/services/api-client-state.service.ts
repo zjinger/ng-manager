@@ -499,13 +499,13 @@ export class ApiClientStateService {
       return;
     }
 
-    // 新请求提示保存到集合
-    if (!req.collectionId) {
+    // 未保存过的新请求才提示选择集合
+    const tab = this.activeTab();
+    if (tab && !tab.requestId && !req.collectionId) {
       const nodes = this.nodes();
-      const { parentId } = await this.collectionModal.pickCollection({
-        nodes,
-      }) || {};
-      req.collectionId = parentId ?? null;
+      const result = await this.collectionModal.pickCollection({ nodes });
+      if (!result) return; // 用户取消，不继续保存
+      req.collectionId = result.parentId ?? null;
       this.tabStore.updateActiveRequest({ collectionId: req.collectionId });
     }
 

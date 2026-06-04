@@ -76,47 +76,41 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
         <nz-alert nzType="error" nzShowIcon [nzMessage]="error()"></nz-alert>
       } @else if (!response()) {
         <div class="empty">发送请求后在此查看响应</div>
-      } @else {
-        <nz-tabs class="tabs" [(nzSelectedIndex)]="tabIndex" [nzTabBarExtraContent]="extraTemplate">
-          <nz-tab nzTitle="Body" [nzForceRender]="true">
-            <div class="pane" #bodyPane>
-              <!-- @if (isJson()) {
-                <pre class="code">{{ prettyJson() }}</pre>
-              } @else {
-                <pre class="code">{{ response()?.bodyText }}</pre>
-              } -->
-              <app-response-body-viewer [response]="response()"></app-response-body-viewer>
-            </div>
-          </nz-tab>
-
-          <nz-tab nzTitle="Headers" [nzForceRender]="true">
-            <div class="pane" #headersPane>
-              <div class="hlist">
-                @for (k of headerKeys(); track k) {
-                  <div class="hrow">
-                    <div class="hk">{{ k }}</div>
-                    <div class="hv">{{ response()?.headers?.[k] }}</div>
-                  </div>
-                }
-              </div>
-            </div>
-          </nz-tab>
-
-          <nz-tab nzTitle="Raw" [nzForceRender]="true">
-            <div class="pane" #rawPane>
-              <!-- <pre class="code">{{ rawDump() }}</pre> -->
-              <app-json-viewer [json]="rawDump()" />
-            </div>
-          </nz-tab>
-        </nz-tabs>
-        <ng-template #extraTemplate>
-          <button nz-button nzType="text" nz-tooltip nzTooltipTitle="copy body" (click)="copyBody()">
-            <span nz-icon nzType="copy"></span>
-          </button>
-          <span class="sep"></span>
-          <app-text-search [searchContainer]="currentTabPane()"></app-text-search>
-        </ng-template>
       }
+
+      <nz-tabs class="tabs" [(nzSelectedIndex)]="tabIndex" [nzTabBarExtraContent]="extraTemplate" [hidden]="!response()">
+        <nz-tab nzTitle="Body" [nzForceRender]="true">
+          <div class="pane" #bodyPane>
+            <app-response-body-viewer [response]="response()"></app-response-body-viewer>
+          </div>
+        </nz-tab>
+
+        <nz-tab nzTitle="Headers" [nzForceRender]="true">
+          <div class="pane" #headersPane>
+            <div class="hlist">
+              @for (k of headerKeys(); track k) {
+                <div class="hrow">
+                  <div class="hk">{{ k }}</div>
+                  <div class="hv">{{ response()?.headers?.[k] }}</div>
+                </div>
+              }
+            </div>
+          </div>
+        </nz-tab>
+
+        <nz-tab nzTitle="Raw" [nzForceRender]="true">
+          <div class="pane" #rawPane>
+            <app-json-viewer [json]="rawDump()" />
+          </div>
+        </nz-tab>
+      </nz-tabs>
+      <ng-template #extraTemplate>
+        <button nz-button nzType="text" nz-tooltip nzTooltipTitle="copy body" (click)="copyBody()">
+          <span nz-icon nzType="copy"></span>
+        </button>
+        <span class="sep"></span>
+        <app-text-search [searchContainer]="currentTabPane()"></app-text-search>
+      </ng-template>
     </div>
   `,
   styles: [
@@ -155,7 +149,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
       }
 
       .loading {
-        padding: 16px;
+        padding: 64px;
       }
       .empty {
         padding: 16px;
@@ -269,6 +263,8 @@ export class ResponseViewerComponent implements OnChanges {
     if (changes['result']) {
       const r = changes['result'].currentValue as SendResponse | null;
       this.resultSig.set(r);
+      // 新响应到达时重置到 Body tab
+      if (r) this.tabIndex.set(0);
     }
   }
 

@@ -55,14 +55,16 @@ type PreviewKind = 'json' | 'image' | 'video' | 'audio' | 'pdf' | 'binary' | 'te
           <audio controls [src]="fileUrl()"></audio>
         }
         @case ('binary') {
-          <div class="binary-wrap">
-            <div class="meta">二进制文件不支持预览</div>
+          @if (response()?.bodyBase64) {
+            <div class="binary-wrap">
+              <div class="meta">二进制文件不支持预览</div>
 
-            <button nz-button class="download-btn" (click)="downloadFile()">
-              <nz-icon nzType="download"></nz-icon>
-              点击下载
-            </button>
-          </div>
+              <button nz-button class="download-btn" (click)="downloadFile()">
+                <nz-icon nzType="download"></nz-icon>
+                点击下载
+              </button>
+            </div>
+          }
         }
         @case ('html') {
           <app-markup-viewer [content]="response()?.bodyText ?? ''" />
@@ -107,7 +109,7 @@ type PreviewKind = 'json' | 'image' | 'video' | 'audio' | 'pdf' | 'binary' | 'te
       width: fit-content;
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ResponseBodyViewerComponent {
   readonly response = input<ApiResponseEntity | null>();
