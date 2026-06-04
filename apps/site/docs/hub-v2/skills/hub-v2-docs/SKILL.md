@@ -1,9 +1,9 @@
 ---
 name: hub-v2-docs
-description: Read and write Hub V2 project documents through REST APIs. Use when Codex, OpenClaw, or another agent needs to list project docs, fetch Markdown content by id or slug, create a draft doc, update doc title/content/slug/category/summary/version, publish a doc, generate safe curl commands, use external token/base_url config, or debug Hub V2 doc token errors such as TOKEN_SCOPE_FORBIDDEN, TOKEN_PROJECT_FORBIDDEN, PROJECT_ACCESS_DENIED, PROJECT_NOT_FOUND, DOCUMENT_SLUG_EXISTS, and DOCUMENT_NOT_FOUND.
+description: Read and write SL Hub V2 project documents through REST APIs. Use when Codex, OpenClaw, or another agent needs to list project docs, fetch Markdown content by id or slug, create a draft doc, update doc title/content/slug/category/summary/version, publish a doc, generate safe curl commands, use external token/base_url config, or debug SL Hub V2 doc token errors such as TOKEN_SCOPE_FORBIDDEN, TOKEN_PROJECT_FORBIDDEN, PROJECT_ACCESS_DENIED, PROJECT_NOT_FOUND, DOCUMENT_SLUG_EXISTS, and DOCUMENT_NOT_FOUND.
 ---
 
-# Hub V2 Docs
+# SL Hub V2 Docs
 
 ## Core Rules
 
@@ -14,8 +14,7 @@ description: Read and write Hub V2 project documents through REST APIs. Use when
   - Publish: `doc:publish:write`
 - Do not use Personal Token for reads unless the user explicitly asks to inspect write-side behavior.
 - Do not use Project Token for create, update, or publish.
-- Never print, log, commit, or paste full token values.
-- Treat `projectKey` as the Hub V2 project key in the URL path, not a local project id or project name.
+- Treat `projectKey` as the SL Hub V2 project key in the URL path, not a local project id or project name.
 - Default `base_url` is `http://192.168.1.31:7008`, but prefer external config when available.
 - Use English short-word slugs joined by hyphens, for example `project-api-guide`.
 
@@ -28,17 +27,22 @@ description: Read and write Hub V2 project documents through REST APIs. Use when
 
 ## External Config
 
-Use external config so the user does not need to provide `base_url` or tokens in every prompt.
+Use external config so the user does not need to provide `base_url` or tokens in every prompt. `$hub-v2-docs` and `$hub-v2-api` use the same SL Hub V2 config shape and should share one file.
 
 Supported config locations:
 
 1. `--config <path>` when using the script.
-2. `HUB_V2_DOCS_CONFIG` environment variable.
-3. `%USERPROFILE%\.openclaw\hub-v2-docs.json`
-4. `%USERPROFILE%\.codex\hub-v2-docs.json`
-5. Claude Code project settings: `<workspace>\.claude\settings.local.json`, then `<workspace>\.claude\settings.json`
-6. Claude Code user settings: `%USERPROFILE%\.claude\settings.json`
-7. `%USERPROFILE%\.hub-v2-docs.json`
+2. `SL_HUB_V2_CONFIG` environment variable.
+3. `%USERPROFILE%\.openclaw\sl-hub-v2.json`
+4. `%USERPROFILE%\.codex\sl-hub-v2.json`
+5. OpenCode merged config:
+   - User config: `%USERPROFILE%\.config\opencode\opencode.json` or `.jsonc`; on Windows also `%APPDATA%\opencode\opencode.json` or `.jsonc`.
+   - Custom config path from `OPENCODE_CONFIG`.
+   - Project config: `<workspace>\opencode.json` or `<workspace>\opencode.jsonc`.
+   - Inline config from `OPENCODE_CONFIG_CONTENT`.
+6. Claude Code project settings: `<workspace>\.claude\settings.local.json`, then `<workspace>\.claude\settings.json`
+7. Claude Code user settings: `%USERPROFILE%\.claude\settings.json`
+8. `%USERPROFILE%\.sl-hub-v2.json`
 
 Config file shape:
 
@@ -80,7 +84,7 @@ Multiple projects are supported:
 }
 ```
 
-Select a configured project with `--project demo` or `HUB_V2_PROJECT=demo`. If only one project is configured, it is selected automatically. If multiple projects are configured and no `default_project` is set, ask the user which project alias to use.
+Select a configured project with `--project demo` or `SL_HUB_V2_PROJECT=demo`. If only one project is configured, it is selected automatically. If multiple projects are configured and no `default_project` is set, ask the user which project alias to use.
 
 `project_name` / `projectName` is optional and used only as a human-readable display name when listing configured projects or describing choices to the user. The actual API path still uses `project_key` / `projectKey`.
 
@@ -89,12 +93,12 @@ Claude Code settings are also accepted through `env`:
 ```json
 {
   "env": {
-    "HUB_V2_BASE_URL": "http://192.168.1.31:7008",
-    "HUB_V2_PROJECT_KEY": "prj_xxx",
-    "HUB_V2_PROJECT_NAME": "示例项目",
-    "HUB_V2_PROJECT_TOKEN": "Project Token with docs:read",
-    "HUB_V2_PERSONAL_TOKEN": "Personal Token with doc write scopes",
-    "HUB_V2_DOCS_SOURCE": "claude-code"
+    "SL_HUB_V2_BASE_URL": "http://192.168.1.31:7008",
+    "SL_HUB_V2_PROJECT_KEY": "prj_xxx",
+    "SL_HUB_V2_PROJECT_NAME": "示例项目",
+    "SL_HUB_V2_PROJECT_TOKEN": "Project Token with docs:read",
+    "SL_HUB_V2_PERSONAL_TOKEN": "Personal Token with doc write scopes",
+    "SL_HUB_V2_SOURCE": "claude-code"
   }
 }
 ```
@@ -103,13 +107,33 @@ Claude Code settings may also use a dedicated object:
 
 ```json
 {
-  "hubV2Docs": {
+  "slHubV2": {
     "baseUrl": "http://192.168.1.31:7008",
     "projectKey": "prj_xxx",
     "projectName": "示例项目",
     "projectToken": "Project Token with docs:read",
     "personalToken": "Personal Token with doc write scopes",
     "source": "claude-code"
+  }
+}
+```
+
+OpenCode config may use the same dedicated object in `opencode.json` or `opencode.jsonc`:
+
+```json
+{
+  "slHubV2": {
+    "baseUrl": "http://192.168.1.31:7008",
+    "defaultProject": "demo",
+    "projects": {
+      "demo": {
+        "projectKey": "prj_demo",
+        "projectName": "演示项目",
+        "projectToken": "Project Token with docs:read",
+        "personalToken": "Personal Token with doc write scopes",
+        "source": "opencode"
+      }
+    }
   }
 }
 ```
@@ -123,12 +147,15 @@ Resolution priority:
 
 Environment variables:
 
-- `HUB_V2_BASE_URL`
-- `HUB_V2_PROJECT`
-- `HUB_V2_PROJECT_KEY`
-- `HUB_V2_PROJECT_TOKEN`
-- `HUB_V2_PERSONAL_TOKEN`
-- `HUB_V2_DOCS_CONFIG`
+- `SL_HUB_V2_BASE_URL`
+- `SL_HUB_V2_PROJECT`
+- `SL_HUB_V2_PROJECT_KEY`
+- `SL_HUB_V2_PROJECT_TOKEN`
+- `SL_HUB_V2_PERSONAL_TOKEN`
+- `SL_HUB_V2_CONFIG`
+- `SL_HUB_V2_SOURCE`
+- `OPENCODE_CONFIG`
+- `OPENCODE_CONFIG_CONTENT`
 
 ## Operations
 
@@ -200,7 +227,7 @@ python scripts/hub_v2_docs.py --project demo publish --doc-id doc_xxx
 4. If multiple projects are configured and no default is selected, run/list configured projects and ask the user which project alias to use.
 5. Ask for missing `projectKey`, `docId`, `slug`, title, or content only when not available in config or prompt.
 6. If generating commands, redact tokens as `<PROJECT_TOKEN>` or `<PERSONAL_TOKEN>`.
-7. If executing calls, never echo token values.
+7. Execute calls through the script helper when possible.
 
 ### Write Workflow (must follow in order)
 

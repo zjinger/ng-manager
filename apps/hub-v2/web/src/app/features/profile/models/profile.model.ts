@@ -47,8 +47,7 @@ export type PersonalTokenScope =
   | 'doc:update:write'
   | 'doc:publish:write'
   | 'rd:transition:write'
-  | 'rd:edit:write'
-  | 'rd:delete:write';
+  | 'rd:edit:write';
 
 export type PersonalTokenStatus = 'active' | 'revoked';
 

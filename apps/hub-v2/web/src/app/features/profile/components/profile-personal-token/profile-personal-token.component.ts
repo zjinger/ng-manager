@@ -569,7 +569,6 @@ export class ProfilePersonalTokenComponent {
     { value: 'doc:publish:write', label: '文档发布', desc: '通过 Token API 发布项目文档' },
     { value: 'rd:transition:write', label: '研发项状态流转', desc: '开始、阻塞、恢复、完成' },
     { value: 'rd:edit:write', label: '研发项编辑', desc: '编辑标题、描述、计划时间等' },
-    { value: 'rd:delete:write', label: '研发项删除', desc: '删除研发项' },
   ];
 
   readonly auditActionOptions = [
@@ -613,8 +612,7 @@ export class ProfilePersonalTokenComponent {
         'doc:update:write',
         'doc:publish:write',
         'rd:transition:write',
-        'rd:edit:write',
-        'rd:delete:write'
+        'rd:edit:write'
       ]);
     this.expiresAt.set(null);
     this.createOpen.set(true);

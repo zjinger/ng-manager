@@ -8,8 +8,7 @@ export type PersonalTokenScope =
   | "doc:update:write" // 文档编辑权限
   | "doc:publish:write" // 文档发布权限
   | "rd:transition:write" // 需求流转权限
-  | "rd:edit:write" // 需求编辑权限
-  | "rd:delete:write"; // 需求删除权限
+  | "rd:edit:write"; // 需求编辑权限
 
 export type PersonalTokenStatus = "active" | "revoked";
 
@@ -84,7 +83,6 @@ export interface PersonalProjectCapabilitiesResult {
     rd: {
       canTransition: boolean;
       canEdit: boolean;
-      canDelete: boolean;
     };
     docs: {
       canCreate: boolean;

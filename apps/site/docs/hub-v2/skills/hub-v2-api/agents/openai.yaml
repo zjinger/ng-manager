@@ -1,0 +1,4 @@
+interface:
+  display_name: "SL Hub V2 API"
+  short_description: "Operate SL Hub V2 Issue and RD APIs with tokens"
+  default_prompt: "Use $hub-v2-api to read or update SL Hub V2 issues and RD items."

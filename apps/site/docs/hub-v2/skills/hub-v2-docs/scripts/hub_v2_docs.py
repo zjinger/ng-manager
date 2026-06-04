@@ -10,15 +10,63 @@ from urllib.request import Request, urlopen
 
 
 DEFAULT_BASE_URL = "http://192.168.1.31:7008"
-CONFIG_ENV = "HUB_V2_DOCS_CONFIG"
+CONFIG_ENV = "SL_HUB_V2_CONFIG"
 CLAUDE_SETTINGS_FILENAMES = ("settings.local.json", "settings.json")
+OPENCODE_CONFIG_ENV = "OPENCODE_CONFIG"
+OPENCODE_CONFIG_CONTENT_ENV = "OPENCODE_CONFIG_CONTENT"
+OPENCODE_CONFIG_FILENAMES = ("opencode.json", "opencode.jsonc")
+
+
+def strip_json_comments(text: str) -> str:
+    output: list[str] = []
+    index = 0
+    in_string = False
+    escaped = False
+    while index < len(text):
+        char = text[index]
+        next_char = text[index + 1] if index + 1 < len(text) else ""
+        if in_string:
+            output.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            index += 1
+            continue
+        if char == '"':
+            in_string = True
+            output.append(char)
+            index += 1
+            continue
+        if char == "/" and next_char == "/":
+            index += 2
+            while index < len(text) and text[index] not in "\r\n":
+                index += 1
+            continue
+        if char == "/" and next_char == "*":
+            index += 2
+            while index + 1 < len(text) and not (text[index] == "*" and text[index + 1] == "/"):
+                index += 1
+            index += 2
+            continue
+        output.append(char)
+        index += 1
+    return "".join(output)
+
+
+def loads_json_or_jsonc(text: str) -> dict:
+    if not text.strip():
+        return {}
+    parsed = json.loads(strip_json_comments(text))
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def load_json(path: Path) -> dict:
     if not path.exists():
         return {}
-    with path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
+    return loads_json_or_jsonc(path.read_text(encoding="utf-8"))
 
 
 def normalize_config(raw_config: dict) -> dict:
@@ -47,18 +95,18 @@ def normalize_config(raw_config: dict) -> dict:
             put(snake_key, value.get(camel_key))
 
     merge_hub_config(raw_config)
-    merge_hub_config(raw_config.get("hub_v2_docs"))
-    merge_hub_config(raw_config.get("hubV2Docs"))
+    merge_hub_config(raw_config.get("sl_hub_v2"))
+    merge_hub_config(raw_config.get("slHubV2"))
 
     env_config = raw_config.get("env")
     if isinstance(env_config, dict):
         env_key_map = {
-            "HUB_V2_BASE_URL": "base_url",
-            "HUB_V2_PROJECT_KEY": "project_key",
-            "HUB_V2_PROJECT_NAME": "project_name",
-            "HUB_V2_PROJECT_TOKEN": "project_token",
-            "HUB_V2_PERSONAL_TOKEN": "personal_token",
-            "HUB_V2_DOCS_SOURCE": "source",
+            "SL_HUB_V2_BASE_URL": "base_url",
+            "SL_HUB_V2_PROJECT_KEY": "project_key",
+            "SL_HUB_V2_PROJECT_NAME": "project_name",
+            "SL_HUB_V2_PROJECT_TOKEN": "project_token",
+            "SL_HUB_V2_PERSONAL_TOKEN": "personal_token",
+            "SL_HUB_V2_SOURCE": "source",
         }
         for env_key, config_key in env_key_map.items():
             put(config_key, env_config.get(env_key))
@@ -120,9 +168,41 @@ def normalize_nested_default_project(raw_config: dict) -> str | None:
         return None
     return (
         normalize_default_project(raw_config)
-        or normalize_default_project(raw_config.get("hub_v2_docs"))
-        or normalize_default_project(raw_config.get("hubV2Docs"))
+        or normalize_default_project(raw_config.get("sl_hub_v2"))
+        or normalize_default_project(raw_config.get("slHubV2"))
     )
+
+
+def config_from_raw(raw_config: dict) -> dict:
+    config = normalize_config(raw_config)
+    projects = merge_projects(
+        normalize_projects(raw_config),
+        normalize_projects(raw_config.get("sl_hub_v2")),
+        normalize_projects(raw_config.get("slHubV2")),
+    )
+    if projects:
+        config["projects"] = projects
+    default_project = normalize_nested_default_project(raw_config)
+    if default_project:
+        config["default_project"] = default_project
+    return config
+
+
+def merge_configs(*configs: dict) -> dict:
+    merged: dict = {}
+    for config in configs:
+        if not config:
+            continue
+        projects = config.get("projects")
+        if isinstance(projects, dict):
+            merged_projects = merged.setdefault("projects", {})
+            for name, project in projects.items():
+                current_project = merged_projects.get(name, {})
+                merged_projects[name] = {**current_project, **project}
+        for key, value in config.items():
+            if key != "projects":
+                merged[key] = value
+    return merged
 
 
 def claude_project_settings_paths() -> list[Path]:
@@ -134,14 +214,51 @@ def claude_project_settings_paths() -> list[Path]:
     return paths
 
 
+def opencode_project_config_paths() -> list[Path]:
+    paths: list[Path] = []
+    for directory in [Path.cwd(), *Path.cwd().parents]:
+        for filename in OPENCODE_CONFIG_FILENAMES:
+            paths.append(directory / filename)
+        if (directory / ".git").exists():
+            break
+    return paths
+
+
+def opencode_user_config_paths() -> list[Path]:
+    paths: list[Path] = []
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        for filename in OPENCODE_CONFIG_FILENAMES:
+            paths.append(Path(appdata) / "opencode" / filename)
+    home = Path.home()
+    for filename in OPENCODE_CONFIG_FILENAMES:
+        paths.append(home / ".config" / "opencode" / filename)
+    return paths
+
+
+def load_opencode_config() -> dict:
+    configs: list[dict] = []
+    for path in opencode_user_config_paths():
+        configs.append(config_from_raw(load_json(path)))
+    if os.environ.get(OPENCODE_CONFIG_ENV):
+        configs.append(config_from_raw(load_json(Path(os.environ[OPENCODE_CONFIG_ENV]).expanduser())))
+    for path in opencode_project_config_paths():
+        if path.exists():
+            configs.append(config_from_raw(load_json(path)))
+            break
+    if os.environ.get(OPENCODE_CONFIG_CONTENT_ENV):
+        configs.append(config_from_raw(loads_json_or_jsonc(os.environ[OPENCODE_CONFIG_CONTENT_ENV])))
+    return merge_configs(*configs)
+
+
 def default_config_paths() -> list[Path]:
     home = Path.home()
     return [
-        home / ".openclaw" / "hub-v2-docs.json",
-        home / ".codex" / "hub-v2-docs.json",
+        home / ".openclaw" / "sl-hub-v2.json",
+        home / ".codex" / "sl-hub-v2.json",
         *claude_project_settings_paths(),
         home / ".claude" / "settings.json",
-        home / ".hub-v2-docs.json",
+        home / ".sl-hub-v2.json",
     ]
 
 
@@ -152,20 +269,17 @@ def load_config(path_value: str | None) -> dict:
     elif os.environ.get(CONFIG_ENV):
         paths.append(Path(os.environ[CONFIG_ENV]).expanduser())
     else:
-        paths.extend(default_config_paths())
+        default_paths = default_config_paths()
+        for path in default_paths[:2]:
+            config = config_from_raw(load_json(path))
+            if config:
+                return config
+        opencode_config = load_opencode_config()
+        if opencode_config:
+            return opencode_config
+        paths.extend(default_paths[2:])
     for path in paths:
-        raw_config = load_json(path)
-        config = normalize_config(raw_config)
-        projects = merge_projects(
-            normalize_projects(raw_config),
-            normalize_projects(raw_config.get("hub_v2_docs")),
-            normalize_projects(raw_config.get("hubV2Docs")),
-        )
-        if projects:
-            config["projects"] = projects
-        default_project = normalize_nested_default_project(raw_config)
-        if default_project:
-            config["default_project"] = default_project
+        config = config_from_raw(load_json(path))
         if config:
             return config
     return {}
@@ -205,7 +319,7 @@ def selected_project_config(args: argparse.Namespace, config: dict) -> dict:
     if not isinstance(projects, dict) or not projects:
         return {}
 
-    selected = args.project or os.environ.get("HUB_V2_PROJECT") or config.get("default_project")
+    selected = args.project or os.environ.get("SL_HUB_V2_PROJECT") or config.get("default_project")
     if selected:
         selected = str(selected).strip()
         project = projects.get(selected)
@@ -231,33 +345,38 @@ def resolve_context(args: argparse.Namespace, token_kind: str) -> dict:
     base_url = require_value(
         "base_url",
         args.base_url
-        or os.environ.get("HUB_V2_BASE_URL")
+        or os.environ.get("SL_HUB_V2_BASE_URL")
         or resolve_from_config(config, project_config, "base_url", "baseUrl")
         or DEFAULT_BASE_URL,
     ).rstrip("/")
     project_key = require_value(
         "project_key",
         args.project_key
-        or os.environ.get("HUB_V2_PROJECT_KEY")
+        or os.environ.get("SL_HUB_V2_PROJECT_KEY")
         or resolve_from_config(config, project_config, "project_key", "projectKey"),
     )
     if token_kind == "project":
         token = (
             args.token
-            or os.environ.get("HUB_V2_PROJECT_TOKEN")
+            or os.environ.get("SL_HUB_V2_PROJECT_TOKEN")
             or resolve_from_config(config, project_config, "project_token", "projectToken")
         )
         token_name = "project_token"
     elif token_kind == "personal":
         token = (
             args.token
-            or os.environ.get("HUB_V2_PERSONAL_TOKEN")
+            or os.environ.get("SL_HUB_V2_PERSONAL_TOKEN")
             or resolve_from_config(config, project_config, "personal_token", "personalToken")
         )
         token_name = "personal_token"
     else:
         raise ValueError(f"unknown token kind: {token_kind}")
-    source = args.source or os.environ.get("HUB_V2_DOCS_SOURCE") or resolve_from_config(config, project_config, "source", "source") or "agent"
+    source = (
+        args.source
+        or os.environ.get("SL_HUB_V2_SOURCE")
+        or resolve_from_config(config, project_config, "source", "source")
+        or "agent"
+    )
     return {
         "base_url": base_url,
         "project_key": project_key,
@@ -449,10 +568,10 @@ def run(args: argparse.Namespace) -> int:
 
 
 def add_common_root_args(root: argparse.ArgumentParser) -> None:
-    root.add_argument("--config", help=f"Config JSON path. Defaults to {CONFIG_ENV} or user config paths.")
-    root.add_argument("--base-url", help=f"Hub V2 base URL. Defaults to config/env or {DEFAULT_BASE_URL}.")
-    root.add_argument("--project", help="Configured project alias/name. Defaults to HUB_V2_PROJECT or config default_project.")
-    root.add_argument("--project-key", help="Hub V2 projectKey. Defaults to config or HUB_V2_PROJECT_KEY.")
+    root.add_argument("--config", help=f"Config JSON path. Defaults to {CONFIG_ENV}, OpenCode config, or user config paths.")
+    root.add_argument("--base-url", help=f"SL Hub V2 base URL. Defaults to config/env or {DEFAULT_BASE_URL}.")
+    root.add_argument("--project", help="Configured project alias/name. Defaults to SL_HUB_V2_PROJECT or config default_project.")
+    root.add_argument("--project-key", help="SL Hub V2 projectKey. Defaults to config or SL_HUB_V2_PROJECT_KEY.")
     root.add_argument("--token", help="Operation token. Reads expect Project Token; writes expect Personal Token.")
     root.add_argument("--source", help="Audit source metadata for write operations.")
     root.add_argument("--content-only", action="store_true", help="Print only data.contentMd for detail reads.")
@@ -471,11 +590,11 @@ def add_doc_fields(parser: argparse.ArgumentParser, require_title: bool) -> None
 
 
 def parser() -> argparse.ArgumentParser:
-    root = argparse.ArgumentParser(description="Read and write Hub V2 project documents.")
+    root = argparse.ArgumentParser(description="Read and write SL Hub V2 project documents.")
     add_common_root_args(root)
     subparsers = root.add_subparsers(dest="command", required=True)
 
-    subparsers.add_parser("projects", help="List configured project aliases without exposing token values.")
+    subparsers.add_parser("projects", help="List configured project aliases.")
 
     list_parser = subparsers.add_parser("list", help="List project documents with Project Token.")
     list_parser.add_argument("--page", type=int, default=1)

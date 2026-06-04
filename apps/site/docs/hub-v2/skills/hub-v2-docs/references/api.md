@@ -1,4 +1,4 @@
-# Hub V2 Docs API
+# SL Hub V2 Docs API
 
 ## Read API
 
@@ -173,7 +173,7 @@ Detail responses include:
 | Code | Meaning | Next step |
 |---|---|---|
 | `TOKEN_SCOPE_FORBIDDEN` | Token lacks required scope. | Use a token with the needed read/write scope. |
-| `PROJECT_NOT_FOUND` | `projectKey` does not exist. | Verify the Hub V2 project key. |
+| `PROJECT_NOT_FOUND` | `projectKey` does not exist. | Verify the SL Hub V2 project key. |
 | `TOKEN_PROJECT_FORBIDDEN` | Project Token belongs to another project. | Use the target project's Project Token. |
 | `PROJECT_ACCESS_DENIED` | Personal Token owner lacks project access. | Add owner to project or use correct user's token. |
 | `DOCUMENT_SLUG_EXISTS` | Same project already has the slug. | Choose a new slug or update existing document. |
@@ -185,5 +185,4 @@ Detail responses include:
 
 - Create, update, and publish write Personal Token audit logs.
 - Audit metadata includes non-sensitive fields such as title, categoryId, summary, tags, status, source, and slug.
-- Audit does not store raw token values.
 - Audit does not store full Markdown content.

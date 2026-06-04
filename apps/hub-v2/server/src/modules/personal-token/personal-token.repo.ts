@@ -1,6 +1,19 @@
 import type Database from "better-sqlite3";
 import type { PersonalApiTokenEntity, PersonalTokenScope, PersonalTokenStatus } from "./personal-token.types";
 
+const PERSONAL_TOKEN_SCOPES = new Set<string>([
+  "issue:comment:write",
+  "issue:transition:write",
+  "issue:assign:write",
+  "issue:branch:write",
+  "issue:participant:write",
+  "doc:create:write",
+  "doc:update:write",
+  "doc:publish:write",
+  "rd:transition:write",
+  "rd:edit:write"
+]);
+
 type PersonalApiTokenRow = {
   id: string;
   owner_user_id: string;
@@ -109,7 +122,7 @@ export class PersonalTokenRepo {
     try {
       const parsed = JSON.parse(row.scopes_json) as unknown;
       if (Array.isArray(parsed)) {
-        scopes = parsed.filter((item): item is PersonalTokenScope => typeof item === "string") as PersonalTokenScope[];
+        scopes = parsed.filter((item): item is PersonalTokenScope => typeof item === "string" && PERSONAL_TOKEN_SCOPES.has(item));
       }
     } catch {
       scopes = [];

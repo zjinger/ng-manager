@@ -14,8 +14,7 @@ export const createPersonalTokenSchema = z.object({
         "doc:update:write",
         "doc:publish:write",
         "rd:transition:write",
-        "rd:edit:write",
-        "rd:delete:write"
+        "rd:edit:write"
       ])
     )
     .min(1)

@@ -184,7 +184,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       tokenId: ctx.tokenId ?? ctx.accountId,
       userId,
       nickname: ctx.nickname ?? null,
-      scopes: (ctx.authScopes ?? []) as PersonalTokenScope[]
+      scopes: this.validScopesFromContext(ctx)
     };
   }
 
@@ -200,7 +200,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
     }
 
     const member = this.projectRepo.findMemberByProjectAndUserId(project.id, userId);
-    const scopeSet = new Set((ctx.authScopes ?? []) as PersonalTokenScope[]);
+    const scopeSet = new Set(this.validScopesFromContext(ctx));
 
     const issueCaps = {
       canComment: scopeSet.has("issue:comment:write"),
@@ -212,8 +212,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
 
     const rdCaps = {
       canTransition: scopeSet.has("rd:transition:write"),
-      canEdit: scopeSet.has("rd:edit:write"),
-      canDelete: scopeSet.has("rd:delete:write")
+      canEdit: scopeSet.has("rd:edit:write")
     };
 
     const docsCaps = {
@@ -232,8 +231,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       docsCaps.canUpdate ||
       docsCaps.canPublish ||
       rdCaps.canTransition ||
-      rdCaps.canEdit ||
-      rdCaps.canDelete;
+      rdCaps.canEdit;
 
     const isProjectMember = !!member;
     const writable = project.status === "active" && isProjectMember && hasWriteScope;
@@ -294,8 +292,11 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       scope === "doc:update:write" ||
       scope === "doc:publish:write" ||
       scope === "rd:transition:write" ||
-      scope === "rd:edit:write" ||
-      scope === "rd:delete:write"
+      scope === "rd:edit:write"
     );
+  }
+
+  private validScopesFromContext(ctx: RequestContext): PersonalTokenScope[] {
+    return (ctx.authScopes ?? []).filter((scope): scope is PersonalTokenScope => typeof scope === "string" && this.isScope(scope));
   }
 }
