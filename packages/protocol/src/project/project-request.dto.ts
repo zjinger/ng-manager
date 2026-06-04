@@ -1,3 +1,4 @@
+import type { NodeRuntimeConfigDto } from "../node-runtime";
 import type { ProjectAssetsDto } from "./project.dto";
 
 export interface CheckProjectRootRequestDto {
@@ -24,6 +25,7 @@ export interface UpdateProjectRequestDto {
     name?: string;
     env?: Record<string, string>;
     scripts?: Record<string, string>;
+    runtime?: NodeRuntimeConfigDto;
 }
 
 export interface SetProjectFavoriteRequestDto {

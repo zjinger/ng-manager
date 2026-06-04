@@ -9,6 +9,7 @@ import type { ProjectBootstrapService } from "@yinuo-ngm/bootstrap";
 import type { SpriteService } from "@yinuo-ngm/sprite";
 import type { SvnSyncService } from "@yinuo-ngm/svn";
 import type { TaskService } from "@yinuo-ngm/task";
+import type { NodeRuntimeService } from "@yinuo-ngm/node-runtime";
 import type { NodeVersionService } from "@yinuo-ngm/node-version";
 import type { IEventBus } from "@yinuo-ngm/event";
 import type { CoreEventMap } from "../infra/event/events";
@@ -73,6 +74,9 @@ export interface CoreApp {
 
     /* Node 版本管理 */
     nodeVersion: NodeVersionService;
+
+    /* 项目级 Node runtime 解析 */
+    nodeRuntime: NodeRuntimeService;
 
     /** Nginx 管理 */
     nginx: NginxApp;

@@ -1,6 +1,17 @@
 import { ErrorCode } from "@yinuo-ngm/errors";
 import { PackageManager, ProjectFramework, ProjectMeta } from "./project.meta";
 
+export type ProjectNodeRuntimeType = "system" | "managed" | "custom";
+export type ProjectNodeRuntimePackageManager = "npm" | "pnpm" | "yarn";
+
+export interface ProjectNodeRuntimeConfig {
+    type: ProjectNodeRuntimeType;
+    name?: string;
+    version?: string;
+    nodePath?: string;
+    packageManager?: ProjectNodeRuntimePackageManager;
+}
+
 export interface Project {
     id: string;
     name: string;
@@ -9,6 +20,8 @@ export interface Project {
     updatedAt: number;
     scripts?: Record<string, string>;
     packageManager?: PackageManager;
+    runtime?: ProjectNodeRuntimeConfig;
+    nodeVersion?: string;
     framework?: ProjectFramework;
     env?: Record<string, string>;
     isFavorite?: boolean;

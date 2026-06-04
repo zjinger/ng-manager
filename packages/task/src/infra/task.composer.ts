@@ -1,6 +1,7 @@
 import type { ProjectService } from '@yinuo-ngm/project';
 import type { ProcessService } from '@yinuo-ngm/process';
 import type { NodeVersionService } from '@yinuo-ngm/node-version';
+import type { NodeRuntimeService } from '@yinuo-ngm/node-runtime';
 import type { IEventBus } from '@yinuo-ngm/event';
 import type { TaskService } from '../task.service';
 import { TaskServiceImpl } from '../task.service.impl';
@@ -15,6 +16,7 @@ export function createTaskDomain(opts: {
     taskLogStore: ILogStore;
     events: IEventBus<any>;
     nodeVersionService: NodeVersionService;
+    nodeRuntimeService: NodeRuntimeService;
     reportStore?: TaskAnalyzeReportStore;
 }): TaskService {
     return new TaskServiceImpl(
@@ -24,6 +26,7 @@ export function createTaskDomain(opts: {
         opts.taskLogStore,
         opts.events as IEventBus<TaskEventMap>,
         opts.nodeVersionService,
+        opts.nodeRuntimeService,
         undefined,
         opts.reportStore
     );

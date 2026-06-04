@@ -6,6 +6,7 @@ export { createDepsDomain } from "./deps.composer";
 export { createFsDomain } from "./fs.composer";
 export { createInfra } from "./infra.composer";
 export { createNginxDomain, savePersistedNginxPath, clearPersistedNginxPath } from "./nginx.composer";
+export { createNodeRuntimeDomain } from "./node-runtime.composer";
 export { createNodeVersionDomain } from "./node-version.composer";
 export { createSpriteDomain } from "./sprite.composer";
 export { createSvnDomain } from "./svn.composer";

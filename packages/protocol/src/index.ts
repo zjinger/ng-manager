@@ -8,6 +8,7 @@ export * from "./common";
 export * from "./event";
 export * from "./task";
 export * from "./project";
+export * from "./node-runtime";
 export * from "./nginx";
 export * from "./config";
 export * from "./deps";

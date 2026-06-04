@@ -8,6 +8,7 @@ import {
     createFsDomain,
     createInfra,
     createNginxDomain,
+    createNodeRuntimeDomain,
     createNodeVersionDomain,
     createSpriteDomain,
     createSvnDomain,
@@ -41,6 +42,7 @@ export async function createCoreApp(
         migrateIfNeeded: false,
     });
     const nodeVersion = createNodeVersionDomain(infra.sysLog);
+    const nodeRuntime = createNodeRuntimeDomain({ dataDir: infra.dataDir });
     const task = createTaskDomain({
         project,
         processService: infra.processService,
@@ -48,6 +50,7 @@ export async function createCoreApp(
         taskStreamLogStore: infra.taskStreamLogStore,
         events: infra.events,
         nodeVersion,
+        nodeRuntime,
         db: storage.db,
     });
     const bootstrap = createBootstrapDomain({
@@ -115,6 +118,7 @@ export async function createCoreApp(
         sprite,
         svnSync,
         nodeVersion,
+        nodeRuntime,
         nginx: nginxHandle.service,
         apiClient: apiClientHandle.service,
         async dispose() {

@@ -4,7 +4,9 @@ import type { IEventBus } from '@yinuo-ngm/event';
 import type { ProcHandle, SpawnedProcess } from '@yinuo-ngm/process';
 import type { LogStreamType, SystemLogLevel, TaskOutputPayload } from '@yinuo-ngm/protocol';
 import type { ProcessService } from '@yinuo-ngm/process';
+import type { NodeRuntimeConfig, NodeRuntimePackageManager, NodeRuntimeService } from '@yinuo-ngm/node-runtime';
 import type { ProjectService } from '@yinuo-ngm/project';
+import type { Project } from '@yinuo-ngm/project';
 import type { NodeVersionService } from '@yinuo-ngm/node-version';
 import { genSpecsFromScripts } from './infra/generators/genSpecsFromScripts';
 import { TaskAnalyzerService } from './analyzer/task-analyzer.service';
@@ -44,6 +46,7 @@ export class TaskServiceImpl implements TaskService {
         private taskStreamLog: ILogStore,
         private events: IEventBus<TaskEventMap>,
         private nodeVersionService: NodeVersionService,
+        private nodeRuntimeService: NodeRuntimeService,
         analyzerService?: TaskAnalyzerService,
         reportStore?: TaskAnalyzeReportStore
     ) {
@@ -79,52 +82,40 @@ export class TaskServiceImpl implements TaskService {
         this.trackRun(taskId, runId);
 
         const prepared = await this.prepareLaunchSpec(spec, runId);
-        const launchSpec = prepared.spec;
+        let launchSpec = prepared.spec;
         this.analyzeHintsByRunId.set(runId, prepared.analyzeHints);
         const cmdStr = `${launchSpec.command}${(launchSpec.args?.length ? " " + launchSpec.args.join(" ") : "")}`;
         const text = `[Task] ${spec.projectRoot}: ${cmdStr} started`;
         this.appendSysLog(runId, text, 'info');
 
-        let targetVersion: string | null = null;
-        if (spec.projectRoot) {
-            try {
-                const requirement = await this.nodeVersionService.detectProjectRequirement(spec.projectRoot);
-                if (requirement.voltaConfig) {
-                    this.appendSysLog(runId, `[Node] 项目配置了 Volta (node@${requirement.voltaConfig})，由 Volta 自动切换`, 'info');
-                    const manager = this.nodeVersionService.getManager();
-                    if (manager === 'volta' || manager === 'nvm+volta') {
-                        try {
-                            await this.nodeVersionService.switchVersion(`node@${requirement.voltaConfig}`, runId);
-                        } catch (e: any) {
-                            this.appendSysLog(runId, `[Node] Volta 配置失败: ${e?.message ?? String(e)}，继续运行`, 'warn');
-                        }
-                    } else {
-                        this.appendSysLog(runId, `[Node] 未安装 Volta，无法使用项目配置的 Volta 版本`, 'warn');
-                    }
-                } else if (requirement.requiredVersion) {
-                    if (!requirement.isMatch && requirement.satisfiedBy) {
-                        targetVersion = requirement.satisfiedBy;
-                        this.appendSysLog(runId, `[Node] 全局切换到 Node ${targetVersion}（项目要求 ${requirement.requiredVersion}）`, 'info');
-                    } else if (requirement.isMatch) {
-                        // this.appendSysLog(runId, `[Node] 当前版本 ${requirement.satisfiedBy} 已满足要求 ${requirement.requiredVersion}`, 'info');
-                    } else {
-                        this.appendSysLog(runId, `[Node] 警告: 项目要求 ${requirement.requiredVersion}，未找到匹配的已安装版本`, 'warn');
-                    }
-                }
-            } catch (e: any) {
-                this.appendSysLog(runId, `[Node] 检测版本要求失败: ${e?.message ?? String(e)}`, 'warn');
-            }
-        }
-
         let p: SpawnedProcess;
         try {
-            if (targetVersion) {
-                try {
-                    await this.nodeVersionService.switchVersion(targetVersion, runId);
-                } catch (e: any) {
-                    this.appendSysLog(runId, `[Node] 切换版本失败: ${e?.message ?? String(e)}，继续运行`, 'warn');
-                }
-            }
+            const project = await this.projectService.get(spec.projectId);
+            const runtimeConfig = this.resolveProjectRuntimeConfig(project);
+            const runtime = await this.nodeRuntimeService.resolveRuntime(runtimeConfig);
+            const commandLine = this.buildLaunchCommandLine(launchSpec.command!, launchSpec.args ?? []);
+            const resolvedCommand = this.nodeRuntimeService.resolveCommand(commandLine, runtime, {
+                cwd: launchSpec.cwd,
+                env: launchSpec.env,
+            });
+            launchSpec = {
+                ...launchSpec,
+                command: resolvedCommand.command,
+                args: resolvedCommand.args,
+                cwd: resolvedCommand.cwd ?? launchSpec.cwd,
+                env: resolvedCommand.env,
+                shell: resolvedCommand.shell,
+            };
+            this.appendSysLog(
+                runId,
+                `[NodeRuntime] ${runtime.type} Node ${runtime.version} (${runtime.nodePath})`,
+                'info'
+            );
+            this.appendSysLog(
+                runId,
+                `[NodeRuntime] launch: ${launchSpec.command}${launchSpec.args?.length ? " " + launchSpec.args.join(" ") : ""}`,
+                'info'
+            );
 
             p = await this.proc.spawn(launchSpec.command!, launchSpec.args ?? [], {
                 cwd: launchSpec.cwd!,
@@ -371,6 +362,37 @@ export class TaskServiceImpl implements TaskService {
         if (arr.length === 0) this.runIdsByTaskId.delete(taskId);
         else this.runIdsByTaskId.set(taskId, arr);
         return null;
+    }
+
+    private buildLaunchCommandLine(command: string, args: string[]): string {
+        return [command, ...args].filter(Boolean).join(" ").trim();
+    }
+
+    private normalizeNodeRuntimePackageManager(project: Project): NodeRuntimePackageManager {
+        if (project.runtime?.packageManager) return project.runtime.packageManager;
+        if (project.packageManager === "pnpm" || project.packageManager === "yarn") return project.packageManager;
+        return "npm";
+    }
+
+    private resolveProjectRuntimeConfig(project: Project): NodeRuntimeConfig {
+        const packageManager = this.normalizeNodeRuntimePackageManager(project);
+        if (project.runtime) {
+            return {
+                ...project.runtime,
+                packageManager: project.runtime.packageManager ?? packageManager,
+            };
+        }
+        if (project.nodeVersion) {
+            return {
+                type: "managed",
+                version: project.nodeVersion,
+                packageManager,
+            };
+        }
+        return {
+            type: "system",
+            packageManager,
+        };
     }
 
     async getReportByRunId(runId: string) {

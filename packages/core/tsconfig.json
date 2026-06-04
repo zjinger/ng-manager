@@ -15,6 +15,7 @@
     { "path": "../event" },
     { "path": "../logger" },
     { "path": "../node-version" },
+    { "path": "../node-runtime" },
     { "path": "../task" },
     { "path": "../sprite" },
     { "path": "../bootstrap" },

@@ -13,6 +13,7 @@ import type {
     RenameProjectRequestDto,
     SetProjectFavoriteRequestDto,
     SetProjectLastOpenedRequestDto,
+    UpdateProjectRuntimeRequestDto,
     UpdateProjectAssetsRequestDto,
     UpdateProjectRequestDto,
 } from "@yinuo-ngm/protocol";
@@ -57,6 +58,8 @@ function toProjectDto(project: Project): ProjectDto {
         updatedAt: project.updatedAt,
         scripts: project.scripts,
         packageManager: project.packageManager,
+        runtime: project.runtime,
+        nodeVersion: project.nodeVersion,
         framework: project.framework,
         env: project.env,
         isFavorite: project.isFavorite,
@@ -133,6 +136,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
                 ...(body.name !== undefined ? { name: body.name } : {}),
                 ...(body.env !== undefined ? { env: body.env } : {}),
                 ...(body.scripts !== undefined ? { scripts: body.scripts } : {}),
+                ...(body.runtime !== undefined ? { runtime: body.runtime } : {}),
             });
             return toProjectDto(updated);
         } catch (err) {
@@ -150,6 +154,34 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         const { id } = req.params as { id: string };
         const project = await fastify.core.project.get(id);
         return toProjectDto(project);
+    });
+
+    async function updateProjectRuntime(projectId: string, body: Partial<UpdateProjectRuntimeRequestDto>) {
+        const updated = await fastify.core.project.update(projectId, {
+            runtime: body.runtime,
+        });
+        return toProjectDto(updated);
+    }
+
+    fastify.patch("/:id/runtime", async (req) => {
+        const { id } = req.params as { id: string };
+        const body = req.body as Partial<UpdateProjectRuntimeRequestDto>;
+        return updateProjectRuntime(id, body);
+    });
+
+    fastify.post("/:id/runtime", async (req) => {
+        const { id } = req.params as { id: string };
+        const body = req.body as Partial<UpdateProjectRuntimeRequestDto>;
+        return updateProjectRuntime(id, body);
+    });
+
+    fastify.post("/:id/runtime/test", async (req) => {
+        const { id } = req.params as { id: string };
+        const project = await fastify.core.project.get(id);
+        const runtimeConfig = project.runtime ?? (project.nodeVersion
+            ? { type: "managed" as const, version: project.nodeVersion, packageManager: project.packageManager === "pnpm" || project.packageManager === "yarn" ? project.packageManager : "npm" }
+            : { type: "system" as const, packageManager: project.packageManager === "pnpm" || project.packageManager === "yarn" ? project.packageManager : "npm" });
+        return await fastify.core.nodeRuntime.testRuntime(runtimeConfig);
     });
 
     /**

@@ -5,6 +5,7 @@ import {
     type TaskAnalyzeResult,
 } from '@yinuo-ngm/task';
 import type { NodeVersionService } from '@yinuo-ngm/node-version';
+import type { NodeRuntimeService } from '@yinuo-ngm/node-runtime';
 import type { ProcessService } from '@yinuo-ngm/process';
 import type { ProjectService } from '@yinuo-ngm/project';
 import type { TaskService } from '@yinuo-ngm/task';
@@ -48,6 +49,7 @@ export function createTaskDomain(opts: {
     taskStreamLogStore: ILogStore;
     events: IEventBus<CoreEventMap>;
     nodeVersion: NodeVersionService;
+    nodeRuntime: NodeRuntimeService;
     db?: SqliteDatabase;
 }): TaskService {
     const reportStore = opts.db
@@ -60,6 +62,7 @@ export function createTaskDomain(opts: {
         opts.taskStreamLogStore,
         opts.events,
         opts.nodeVersion,
+        opts.nodeRuntime,
         undefined,
         reportStore
     );

@@ -6,6 +6,14 @@ export type {
     NodeVersionInfo,
     ProjectNodeRequirement,
 } from "@yinuo-ngm/node-version";
+export type {
+    NodeRuntimeConfig,
+    NodeRuntimeRecord,
+    NodeRuntimeService,
+    NodeRuntimeTestResult,
+    ResolvedNodeRuntime,
+    ResolvedRuntimeCommand,
+} from "@yinuo-ngm/node-runtime";
 
 export { Events } from './infra/event'
 

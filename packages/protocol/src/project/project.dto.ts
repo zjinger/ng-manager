@@ -1,3 +1,5 @@
+import type { NodeRuntimeConfigDto } from "../node-runtime";
+
 export type ProjectFrameworkDto =
     | "angular"
     | "vue"
@@ -30,6 +32,8 @@ export interface ProjectDto {
     updatedAt: number;
     scripts?: Record<string, string>;
     packageManager?: PackageManagerDto;
+    runtime?: NodeRuntimeConfigDto;
+    nodeVersion?: string;
     framework?: ProjectFrameworkDto;
     env?: Record<string, string>;
     isFavorite?: boolean;
