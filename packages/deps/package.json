@@ -26,5 +26,6 @@
     "@yinuo-ngm/process": "^0.1.3",
     "@yinuo-ngm/project": "^0.1.3",
     "@yinuo-ngm/storage": "^0.1.6"
-  }
+  },
+  "gitHead": "f64135f6db80de6928bc0b83c29c26e408e9fcfb"
 }

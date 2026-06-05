@@ -29,5 +29,6 @@
     "execa": "^9.0.0",
     "get-port": "^7.0.0",
     "open": "^10.0.0"
-  }
+  },
+  "gitHead": "f64135f6db80de6928bc0b83c29c26e408e9fcfb"
 }

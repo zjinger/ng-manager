@@ -19,5 +19,6 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "zod": "^3.25.76"
-  }
+  },
+  "gitHead": "f64135f6db80de6928bc0b83c29c26e408e9fcfb"
 }

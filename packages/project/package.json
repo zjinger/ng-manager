@@ -29,5 +29,6 @@
     "@yinuo-ngm/errors": "^1.0.2",
     "@yinuo-ngm/shared": "^0.1.2",
     "@yinuo-ngm/storage": "^0.1.6"
-  }
+  },
+  "gitHead": "f64135f6db80de6928bc0b83c29c26e408e9fcfb"
 }

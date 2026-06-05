@@ -27,5 +27,6 @@
     "@yinuo-ngm/process": "^0.1.3",
     "@yinuo-ngm/protocol": "^0.1.3",
     "@yinuo-ngm/shared": "^0.1.2"
-  }
+  },
+  "gitHead": "f64135f6db80de6928bc0b83c29c26e408e9fcfb"
 }
