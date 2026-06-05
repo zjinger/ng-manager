@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/sl-hub-v2-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local MCP server for SL Hub V2 docs, issues, and RD APIs.",
   "author": "ZhangJing <892295834@qq.com>",
   "bin": {

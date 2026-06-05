@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/bootstrap",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Project bootstrap service - scaffolding and project initialization",
   "author": "ZhangJing <892295834@qq.com>",
   "main": "lib/index.js",
@@ -29,11 +29,11 @@
   "dependencies": {
     "@yinuo-ngm/errors": "^1.0.2",
     "@yinuo-ngm/event": "^0.1.1",
-    "@yinuo-ngm/logger": "^0.1.2",
+    "@yinuo-ngm/logger": "^0.1.3",
     "@yinuo-ngm/process": "^0.1.3",
-    "@yinuo-ngm/project": "^0.1.2",
-    "@yinuo-ngm/protocol": "^0.1.2",
+    "@yinuo-ngm/project": "^0.1.3",
+    "@yinuo-ngm/protocol": "^0.1.3",
     "@yinuo-ngm/shared": "^0.1.2",
-    "@yinuo-ngm/task": "^0.1.3"
+    "@yinuo-ngm/task": "^0.1.4"
   }
 }

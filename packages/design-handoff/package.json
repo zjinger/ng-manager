@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/design-handoff",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI-friendly design handoff parser and Sketch plugin for ng-manager",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
