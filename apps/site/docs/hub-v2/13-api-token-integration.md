@@ -158,6 +158,7 @@ RD：
 - `GET /api/token/projects/:projectKey/rd-items/:itemId`
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/logs`
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/stage-history`（研发阶段历史）
+- `GET /api/token/projects/:projectKey/rd-items/:itemId/stage-tasks`（当前研发项阶段任务与负责人进度）
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/progress`（成员进度）
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/progress/history`（成员进度历史）
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/uploads/:uploadId/raw`（RD 描述中的 Markdown 图片展示）
@@ -354,6 +355,7 @@ Docs：
 | Docs | 创建文档 | `doc:create:write` |
 | Docs | 编辑文档 | `doc:update:write` |
 | Docs | 发布文档 | `doc:publish:write` |
+| RD | 更新自己的阶段任务进度 | `rd:progress:write` |
 | RD | 状态流转与进度 | `rd:transition:write` |
 | RD | 编辑基础信息 | `rd:edit:write` |
 
@@ -395,7 +397,9 @@ RD 状态流转如下：
 
 补充规则：
 
-- 成员进度平均值用于计算 RD 主进度；当主进度到 `100%` 时，状态进入 `done`
+- 当前阶段存在阶段任务时，RD 主进度按“阶段任务 × 负责人”的进度平均值计算；无有效阶段任务时，才回退到成员进度平均值。
+- Personal Token 更新个人进度时，如当前阶段存在有效阶段任务，必须传 `stageTaskId`，且该任务必须分配给当前 token 用户。
+- 当 RD 主进度到 `100%` 时，状态进入 `done`
 - `done` 后由验证人决定：`accept`（当前阶段完成）或 `close`（中途关闭/结项关闭）
 - 仅 `accepted` 状态允许 `advance-stage`，推进后进入下一阶段并重置阶段成员进度
 
@@ -503,6 +507,10 @@ curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/rd-items/<ITE
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/progress/history" -H "Authorization: Bearer <PROJECT_TOKEN>"
 ```
 
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/stage-tasks" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
+
 ### 9.8 Project Token 读取 RD Markdown 图片
 
 ```bash
@@ -516,11 +524,11 @@ curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/
 ```
 
 ```bash
-curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/advance-stage" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"stageId\":\"<NEXT_STAGE_ID>\",\"memberIds\":[\"u_001\",\"u_002\"],\"description\":\"阶段目标说明\",\"planStartAt\":\"2026-04-20\",\"planEndAt\":\"2026-04-25\"}"
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/advance-stage" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"stageId\":\"<NEXT_STAGE_ID>\",\"memberIds\":[\"u_001\",\"u_002\"],\"description\":\"阶段目标说明\",\"planStartAt\":\"2026-04-20\",\"planEndAt\":\"2026-04-25\",\"stageTasks\":[{\"ownerId\":\"u_001\",\"title\":\"后端接口开发\"},{\"ownerId\":\"u_002\",\"title\":\"前端页面开发\"}]}"
 ```
 
 ```bash
-curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/progress" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"progress\":40,\"note\":\"完成核心模块联调\"}"
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/progress" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"stageTaskId\":\"<STAGE_TASK_ID>\",\"progress\":40,\"note\":\"完成核心模块联调\"}"
 ```
 
 ### 9.10 Personal Token 创建文档

@@ -200,6 +200,7 @@ describe("PersonalTokenService.getProjectCapabilities", () => {
     const caps = service.getProjectCapabilities("project-key", ctx);
 
     assert.deepEqual(caps.scopes.rd, {
+      canUpdateProgress: false,
       canTransition: false,
       canEdit: false
     });
@@ -217,6 +218,7 @@ describe("PersonalTokenService.getProjectCapabilities", () => {
     const caps = service.getProjectCapabilities("project-key", ctx);
 
     assert.deepEqual(caps.scopes.rd, {
+      canUpdateProgress: false,
       canTransition: false,
       canEdit: true
     });

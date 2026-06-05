@@ -149,6 +149,12 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     return ok(await app.container.apiTokenQuery.listRdStageHistory(params.projectKey, params.itemId, ctx));
   });
 
+  app.get("/projects/:projectKey/rd-items/:itemId/stage-tasks", async (request) => {
+    const ctx = requireTokenAuth(request, "rd:read");
+    const params = rdItemIdParamSchema.parse(request.params);
+    return ok(await app.container.apiTokenQuery.listRdStageTasks(params.projectKey, params.itemId, ctx));
+  });
+
   app.get("/projects/:projectKey/rd-items/:itemId/progress", async (request) => {
     const ctx = requireTokenAuth(request, "rd:read");
     const params = rdItemIdParamSchema.parse(request.params);

@@ -75,7 +75,7 @@ export default async function personalTokenRdRoutes(app: FastifyInstance) {
   });
 
   app.post("/projects/:projectKey/rd-items/:itemId/progress", async (request) => {
-    const ctx = requirePersonalTokenAuth(request, "rd:transition:write");
+    const ctx = requirePersonalTokenAuth(request, ["rd:progress:write", "rd:transition:write"]);
     const params = personalRdItemIdParamSchema.parse(request.params);
     await assertRdProjectAccess(app, params.projectKey, params.itemId, ctx);
     const body = updateRdItemProgressSchema.parse(request.body);

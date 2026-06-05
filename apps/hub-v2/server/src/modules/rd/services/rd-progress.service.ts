@@ -65,6 +65,8 @@ export class RdProgressService {
       if (!stageTaskOwner || stageTaskOwner.status === "cancelled") {
         throw new AppError(ERROR_CODES.RD_PROGRESS_FORBIDDEN, "update rd stage task owner progress forbidden", 403);
       }
+    } else if (this.listCurrentStageActiveTasks(item).length > 0) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "stageTaskId is required when current stage has stage tasks", 400);
     }
     const oldProgress = stageTaskOwner?.progress ?? existing?.progress ?? 0;
     const progressChanged = oldProgress !== input.progress || currentNote !== nextNote;

@@ -6,7 +6,8 @@ import type {
   RdItemProgress,
   RdLogEntity,
   RdProgressHistory,
-  RdStageHistoryEntry
+  RdStageHistoryEntry,
+  RdStageTaskEntity
 } from "../rd/rd.types";
 import type { FeedbackEntity, FeedbackListResult, ListFeedbacksQuery } from "../feedback/feedback.types";
 import type { IssueCommentEntity } from "../issue/comment/issue-comment.types";
@@ -75,6 +76,7 @@ export type TokenRdDetail = RdItemEntity;
 export type TokenRdStagesResult = { items: RdStageEntity[] };
 export type TokenRdLogsResult = { items: RdLogEntity[] };
 export type TokenRdStageHistoryResult = { items: RdStageHistoryEntry[] };
+export type TokenRdStageTasksResult = { items: RdStageTaskEntity[] };
 export type TokenRdProgressResult = { items: RdItemProgress[] };
 export type TokenRdProgressHistoryResult = { items: RdProgressHistory[] };
 export type TokenFeedbackListResult = FeedbackListResult;

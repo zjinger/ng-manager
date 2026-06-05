@@ -102,8 +102,20 @@ export class RdStageFlowService {
       }
     }
 
+    const selectedTemplateTasks = input.stageTasks === undefined
+      ? await this.resolveStageTaskTemplateSelections(
+          current.projectId,
+          targetStage.id,
+          input.stageTaskTemplates ?? []
+        )
+      : [];
     const selectedInitialStageTasks = input.stageTasks === undefined
-      ? []
+      ? await this.resolveBaselineStageTasks(
+          current.projectId,
+          targetStage,
+          nextMembersRef.memberIds,
+          new Set(selectedTemplateTasks.map((task) => task.ownerId).filter((ownerId): ownerId is string => !!ownerId))
+        )
       : await this.resolveInitialStageTasks(
           current.projectId,
           targetStage.id,
@@ -112,13 +124,6 @@ export class RdStageFlowService {
           nextPlanStartAt,
           nextPlanEndAt
         );
-    const selectedTemplateTasks = input.stageTasks === undefined
-      ? await this.resolveStageTaskTemplateSelections(
-          current.projectId,
-          targetStage.id,
-          input.stageTaskTemplates ?? []
-        )
-      : [];
 
     const fromStageName = currentStage?.name || "未归类";
     const currentMemberNames = await this.member.resolveMemberNamesFallback(current.projectId, current.memberIds);
@@ -432,6 +437,31 @@ export class RdStageFlowService {
     const existingOwnerIds = new Set(result.map((task) => task.ownerId).filter((ownerId): ownerId is string => !!ownerId));
     for (const memberId of memberIds) {
       if (existingOwnerIds.has(memberId)) {
+        continue;
+      }
+      const owner = await this.resolveStageTaskOwners(projectId, undefined, memberId, null);
+      result.push({
+        stageKey: resolveRdStageKey(targetStage),
+        title: `${targetStage.name}阶段任务`,
+        description: null,
+        ownerId: owner.ownerId,
+        ownerName: owner.ownerName,
+        plannedStartAt: null,
+        plannedEndAt: null
+      });
+    }
+    return result;
+  }
+
+  private async resolveBaselineStageTasks(
+    projectId: string,
+    targetStage: RdStageEntity,
+    memberIds: string[],
+    excludedOwnerIds: Set<string>
+  ): Promise<ResolvedInitialStageTask[]> {
+    const result: ResolvedInitialStageTask[] = [];
+    for (const memberId of memberIds) {
+      if (excludedOwnerIds.has(memberId)) {
         continue;
       }
       const owner = await this.resolveStageTaskOwners(projectId, undefined, memberId, null);

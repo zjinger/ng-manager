@@ -46,6 +46,7 @@ import type {
   TokenRdProgressHistoryResult,
   TokenRdProgressResult,
   TokenRdStageHistoryResult,
+  TokenRdStageTasksResult,
   TokenRdStagesResult,
   VerifyApiTokenResult
 } from "./api-token.types";
@@ -284,6 +285,11 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
   async listRdStageHistory(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdStageHistoryResult> {
     const item = await this.requireTokenRdItem(projectKey, itemId, ctx);
     return { items: await this.rdQuery.listStageHistory(item.id, ctx) };
+  }
+
+  async listRdStageTasks(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdStageTasksResult> {
+    const item = await this.requireTokenRdItem(projectKey, itemId, ctx);
+    return { items: await this.rdQuery.listStageTasks(item.id, ctx) };
   }
 
   async listRdProgress(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdProgressResult> {
