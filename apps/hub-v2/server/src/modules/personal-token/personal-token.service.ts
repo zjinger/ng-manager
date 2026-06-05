@@ -211,7 +211,9 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
     };
 
     const rdCaps = {
+      canCreateRdItem: scopeSet.has("rd:create:write"),
       canUpdateProgress: scopeSet.has("rd:progress:write") || scopeSet.has("rd:transition:write"),
+      canCreateRdStageTask: scopeSet.has("rd:stage-task:write"),
       canTransition: scopeSet.has("rd:transition:write"),
       canEdit: scopeSet.has("rd:edit:write")
     };
@@ -231,7 +233,9 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       docsCaps.canCreate ||
       docsCaps.canUpdate ||
       docsCaps.canPublish ||
+      rdCaps.canCreateRdItem ||
       rdCaps.canUpdateProgress ||
+      rdCaps.canCreateRdStageTask ||
       rdCaps.canTransition ||
       rdCaps.canEdit;
 
@@ -293,7 +297,9 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       scope === "doc:create:write" ||
       scope === "doc:update:write" ||
       scope === "doc:publish:write" ||
+      scope === "rd:create:write" ||
       scope === "rd:progress:write" ||
+      scope === "rd:stage-task:write" ||
       scope === "rd:transition:write" ||
       scope === "rd:edit:write"
     );

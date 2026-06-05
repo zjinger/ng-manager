@@ -169,6 +169,7 @@ RD：
 - RD Markdown 图片能力与 Issue 一致，`uploadId` 对应 `uploads.id`
 - 不要求存在 `issue_attachment` 记录，但要求该 `uploadId` 已被当前 RD 描述引用，且上传分类为 `markdown`
 - 研发项关闭后保留历史关联测试单；已关闭研发项不允许新增/改绑测试单关联
+- Project Token 的 RD 能力保持只读；研发项创建、阶段任务创建和流程写入均使用 Personal Token
 
 Feedback：
 - `GET /api/token/projects/:projectKey/feedbacks`
@@ -256,6 +257,7 @@ Issue：
 
 RD：
 
+- `POST /api/personal/projects/:projectKey/rd-items`
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/start`
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/block`
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/resume`
@@ -265,6 +267,7 @@ RD：
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/close`
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/advance-stage`
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/progress`
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/stage-tasks`
 - `PATCH /api/personal/projects/:projectKey/rd-items/:itemId`
 
 Docs：
@@ -355,7 +358,9 @@ Docs：
 | Docs | 创建文档 | `doc:create:write` |
 | Docs | 编辑文档 | `doc:update:write` |
 | Docs | 发布文档 | `doc:publish:write` |
+| RD | 创建研发项 | `rd:create:write` |
 | RD | 更新自己的阶段任务进度 | `rd:progress:write` |
+| RD | 新增当前阶段任务 | `rd:stage-task:write` |
 | RD | 状态流转与进度 | `rd:transition:write` |
 | RD | 编辑基础信息 | `rd:edit:write` |
 
@@ -531,25 +536,39 @@ curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/progress" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"stageTaskId\":\"<STAGE_TASK_ID>\",\"progress\":40,\"note\":\"完成核心模块联调\"}"
 ```
 
-### 9.10 Personal Token 创建文档
+### 9.10 Personal Token 创建 RD 与当前阶段任务
+
+创建研发项时，`projectId` 由 URL 中的 `projectKey` 决定，不能从请求体覆盖。
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"登录功能开发\",\"stageId\":\"<STAGE_ID>\",\"type\":\"feature_dev\",\"priority\":\"medium\",\"memberIds\":[\"u_001\",\"u_002\"],\"verifierId\":\"u_003\",\"planStartAt\":\"2026-06-01\",\"planEndAt\":\"2026-06-05\",\"stageTasks\":[{\"ownerId\":\"u_001\",\"title\":\"后端接口开发\"},{\"ownerId\":\"u_002\",\"title\":\"前端页面开发\"}]}"
+```
+
+新增阶段任务时，阶段由研发项当前阶段决定，不接收 `stageKey`；`ownerIds` 必须是当前项目成员。
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/stage-tasks" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"补充回归验证\",\"description\":\"补充登录异常场景验证。\",\"ownerIds\":[\"u_001\",\"u_002\"],\"plannedStartAt\":\"2026-06-03\",\"plannedEndAt\":\"2026-06-04\"}"
+```
+
+### 9.11 Personal Token 创建文档
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"自动生成文档\",\"content\":\"# 自动生成文档\\n\\n这是由脚本创建的文档。\",\"categoryId\":\"automation\",\"summary\":\"自动化创建的文档\",\"tags\":[\"auto\",\"hub-v2\"],\"status\":\"draft\",\"source\":\"cli\"}"
 ```
 
-### 9.11 Personal Token 编辑文档
+### 9.12 Personal Token 编辑文档
 
 ```bash
 curl -X PATCH "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DOC_ID>" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"更新后的文档标题\",\"content\":\"# 更新后的文档正文\",\"slug\":\"updated-doc-slug\",\"categoryId\":\"automation\",\"summary\":\"更新后的文档摘要\",\"tags\":[\"auto\",\"hub-v2\"],\"source\":\"cli\"}"
 ```
 
-### 9.12 Personal Token 发布文档
+### 9.13 Personal Token 发布文档
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DOC_ID>/publish" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"source\":\"cli\"}"
 ```
 
-### 9.13 Project Token 读取文档
+### 9.14 Project Token 读取文档
 
 ```bash
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs?page=1&pageSize=20&statusGroup=active" -H "Authorization: Bearer <PROJECT_TOKEN>"

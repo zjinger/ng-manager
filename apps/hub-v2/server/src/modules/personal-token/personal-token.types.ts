@@ -7,7 +7,9 @@ export type PersonalTokenScope =
   | "doc:create:write" // 文档创建权限
   | "doc:update:write" // 文档编辑权限
   | "doc:publish:write" // 文档发布权限
+  | "rd:create:write" // 研发项创建权限
   | "rd:progress:write" // 研发任务进度权限
+  | "rd:stage-task:write" // 研发阶段任务创建权限
   | "rd:transition:write" // 需求流转权限
   | "rd:edit:write"; // 需求编辑权限
 
@@ -82,7 +84,9 @@ export interface PersonalProjectCapabilitiesResult {
       canManageParticipants: boolean;
     };
     rd: {
+      canCreateRdItem: boolean;
       canUpdateProgress: boolean;
+      canCreateRdStageTask: boolean;
       canTransition: boolean;
       canEdit: boolean;
     };

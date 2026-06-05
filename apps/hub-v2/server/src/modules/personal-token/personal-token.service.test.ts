@@ -200,7 +200,9 @@ describe("PersonalTokenService.getProjectCapabilities", () => {
     const caps = service.getProjectCapabilities("project-key", ctx);
 
     assert.deepEqual(caps.scopes.rd, {
+      canCreateRdItem: false,
       canUpdateProgress: false,
+      canCreateRdStageTask: false,
       canTransition: false,
       canEdit: false
     });
@@ -218,9 +220,29 @@ describe("PersonalTokenService.getProjectCapabilities", () => {
     const caps = service.getProjectCapabilities("project-key", ctx);
 
     assert.deepEqual(caps.scopes.rd, {
+      canCreateRdItem: false,
       canUpdateProgress: false,
+      canCreateRdStageTask: false,
       canTransition: false,
       canEdit: true
+    });
+    assert.equal(caps.writable, true);
+    assert.equal(caps.readOnlyReason, null);
+  });
+
+  it("exposes rd create and stage task write capabilities independently", () => {
+    const { service, db } = createServiceWithDb();
+    seedProject(db, "usr_1");
+
+    const ctx = createPersonalTokenContext("usr_1", ["rd:create:write", "rd:stage-task:write"]);
+    const caps = service.getProjectCapabilities("project-key", ctx);
+
+    assert.deepEqual(caps.scopes.rd, {
+      canCreateRdItem: true,
+      canUpdateProgress: false,
+      canCreateRdStageTask: true,
+      canTransition: false,
+      canEdit: false
     });
     assert.equal(caps.writable, true);
     assert.equal(caps.readOnlyReason, null);

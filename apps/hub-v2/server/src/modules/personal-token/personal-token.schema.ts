@@ -1,4 +1,19 @@
 import { z } from "zod";
+import { createRdItemSchema } from "../rd/rd.schema";
+
+export const createPersonalRdItemSchema = createRdItemSchema.omit({ projectId: true }).strict();
+
+export const createPersonalRdStageTaskSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(2000).nullable().optional(),
+    ownerIds: z.array(z.string().trim().min(1)).min(1),
+    plannedStartAt: z.string().trim().nullable().optional(),
+    plannedEndAt: z.string().trim().nullable().optional(),
+    sortOrder: z.coerce.number().int().optional(),
+    remark: z.string().trim().max(1000).nullable().optional()
+  })
+  .strict();
 
 export const createPersonalTokenSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -13,7 +28,9 @@ export const createPersonalTokenSchema = z.object({
         "doc:create:write",
         "doc:update:write",
         "doc:publish:write",
+        "rd:create:write",
         "rd:progress:write",
+        "rd:stage-task:write",
         "rd:transition:write",
         "rd:edit:write"
       ])
