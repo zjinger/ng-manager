@@ -3,6 +3,7 @@ import type { ToolContext } from "../context/tool-context";
 import type { ToolRiskLevel } from "../policy/tool-policy";
 import type { ToolResult } from "../utils/result";
 import { gitTools } from "./git.tools";
+import { hubV2Tools } from "./hub-v2";
 import { logTools } from "./log.tools";
 import { projectTools } from "./project.tools";
 import { proxyTools } from "./proxy.tools";
@@ -25,5 +26,6 @@ export function allTools(): McpToolDefinition[] {
     ...gitTools(),
     ...runtimeTools(),
     ...proxyTools(),
+    ...hubV2Tools(),
   ];
 }

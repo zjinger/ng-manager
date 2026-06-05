@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const { createStartUi } = require("../lib/commands/ui.js");
 const { createStopCmd } = require("../lib/commands/stop.js");
 const { createStatusCmd, formatStatusLines } = require("../lib/commands/status.js");
+const { createMcpCmd } = require("../lib/commands/mcp.js");
 
 test("startUi opens the browser and waits for a child process it started", async () => {
     const calls = [];
@@ -24,7 +25,7 @@ test("startUi opens the browser and waits for a child process it started", async
         },
     });
 
-    await startUi({});
+    await startUi({ foreground: true });
 
     assert.deepEqual(calls, [
         "log:🚀  Preparing local UI ...",
@@ -91,4 +92,17 @@ test("formatStatusLines returns a single line when no lock exists", () => {
         }),
         ["ngm-server: not running"]
     );
+});
+
+test("mcp command starts the unified MCP server", async () => {
+    const calls = [];
+    const mcpCmd = createMcpCmd({
+        startServer: async () => {
+            calls.push("start");
+        },
+    });
+
+    await mcpCmd();
+
+    assert.deepEqual(calls, ["start"]);
 });

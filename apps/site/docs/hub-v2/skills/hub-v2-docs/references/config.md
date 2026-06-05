@@ -1,219 +1,64 @@
-# SL Hub V2 Shared Token Config
+# Hub V2 MCP Config
 
-Use one shared config file for `$hub-v2-docs` and `$hub-v2-api`.
-
-Recommended path:
-
-```text
-%USERPROFILE%\.sl-hub-v2.json
-```
-
-The same file supplies `base_url`, `project_key`, Project Token, and Personal Token for both document operations and Issue/RD API operations.
-
-## MCP Server Setup
-
-Use the published npm package when configuring agent clients.
-
-Codex:
+Use one unified ng-manager MCP server:
 
 ```toml
-[mcp_servers.slHubV2]
-command = "npx.cmd"
-args = ["-y", "@yinuo-ngm/sl-hub-v2-mcp@0.1.2"]
+[mcp_servers.ngManager]
+command = "ngm"
+args = ["mcp"]
 ```
 
-OpenCode:
+The MCP server reads Hub V2 access settings from environment variables or local config. Prefer the new `HUB_V2_` prefix:
+
+```text
+HUB_V2_BASE_URL=http://127.0.0.1:7001
+HUB_V2_PROJECT_KEY=demo
+HUB_V2_PROJECT_TOKEN=project-token-for-reads
+HUB_V2_PERSONAL_TOKEN=personal-token-for-writes
+```
+
+Compatibility prefixes are accepted for migration:
+
+```text
+SL_HUB_V2_*
+NGM_HUB_V2_*
+```
+
+Local config files may use top-level keys or dedicated objects named `hubV2`, `slHubV2`, or `sl_hub_v2`.
+
+Single project:
 
 ```json
 {
-  "mcp": {
-    "sl-hub-v2": {
-      "type": "local",
-      "command": ["npx", "-y", "@yinuo-ngm/sl-hub-v2-mcp@0.1.2"],
-      "enabled": true
-    }
-  }
+  "base_url": "http://127.0.0.1:7001",
+  "project_key": "demo",
+  "project_name": "Demo",
+  "project_token": "project-token-for-reads",
+  "personal_token": "personal-token-for-writes",
+  "source": "agent"
 }
 ```
 
-Claude Code:
-
-```bash
-claude mcp add --transport stdio --scope user sl-hub-v2 -- npx -y @yinuo-ngm/sl-hub-v2-mcp@0.1.2
-```
-
-`cwd` is optional. Set it only when the MCP server should discover project-local `opencode.json`, `opencode.jsonc`, or `.claude/settings*.json`.
-
-## Single Project
+Multiple projects:
 
 ```json
 {
-  "base_url": "http://192.168.1.31:7008",
-  "project_key": "prj_xxxxxxxxxxxxxxxxxxxxxxxx",
-  "project_name": "示例项目",
-  "project_token": "ngm_ptk_xxx",
-  "personal_token": "ngm_uptk_xxx",
-  "source": "openclaw"
-}
-```
-
-Use Project Token for reads and Personal Token for writes.
-
-## Multiple Projects
-
-```json
-{
-  "base_url": "http://192.168.1.31:7008",
+  "base_url": "http://127.0.0.1:7001",
   "default_project": "demo",
   "projects": {
     "demo": {
-      "project_key": "prj_demo",
-      "project_name": "演示项目",
-      "project_token": "ngm_ptk_demo",
-      "personal_token": "ngm_uptk_demo",
-      "source": "openclaw"
+      "project_key": "demo",
+      "project_name": "Demo",
+      "project_token": "project-token-for-reads",
+      "personal_token": "personal-token-for-writes"
     }
   }
 }
 ```
 
-Select a project:
+Security rules:
 
-```bash
-python scripts/hub_v2_docs.py --project demo list
-```
-
-## Claude Code Settings
-
-Use `env` when you want Claude Code to inject values:
-
-```json
-{
-  "env": {
-    "SL_HUB_V2_BASE_URL": "http://192.168.1.31:7008",
-    "SL_HUB_V2_PROJECT_KEY": "prj_xxxxxxxxxxxxxxxxxxxxxxxx",
-    "SL_HUB_V2_PROJECT_NAME": "示例项目",
-    "SL_HUB_V2_PROJECT_TOKEN": "ngm_ptk_xxx",
-    "SL_HUB_V2_PERSONAL_TOKEN": "ngm_uptk_xxx",
-    "SL_HUB_V2_SOURCE": "claude-code"
-  }
-}
-```
-
-Dedicated object form is also accepted:
-
-```json
-{
-  "slHubV2": {
-    "baseUrl": "http://192.168.1.31:7008",
-    "defaultProject": "demo",
-    "projects": {
-      "demo": {
-        "projectKey": "prj_demo",
-        "projectName": "演示项目",
-        "projectToken": "ngm_ptk_demo",
-        "personalToken": "ngm_uptk_demo",
-        "source": "claude-code"
-      }
-    }
-  }
-}
-```
-
-`sl_hub_v2` with snake case keys is also supported.
-
-## OpenCode Settings
-
-OpenCode users can keep using the shared `%USERPROFILE%\.sl-hub-v2.json` file, or place the same dedicated object in project/user OpenCode config.
-
-Project config:
-
-```text
-<workspace>\opencode.json
-<workspace>\opencode.jsonc
-```
-
-User config:
-
-```text
-%USERPROFILE%\.config\opencode\opencode.json
-%USERPROFILE%\.config\opencode\opencode.jsonc
-%APPDATA%\opencode\opencode.json
-%APPDATA%\opencode\opencode.jsonc
-```
-
-OpenCode config example:
-
-```json
-{
-  "slHubV2": {
-    "baseUrl": "http://192.168.1.31:7008",
-    "defaultProject": "demo",
-    "projects": {
-      "demo": {
-        "projectKey": "prj_demo",
-        "projectName": "演示项目",
-        "projectToken": "ngm_ptk_demo",
-        "personalToken": "ngm_uptk_demo",
-        "source": "opencode"
-      }
-    }
-  }
-}
-```
-
-The scripts also accept `OPENCODE_CONFIG=<path>` and `OPENCODE_CONFIG_CONTENT=<json-or-jsonc>`. OpenCode sources are merged in this order: user config, custom config, nearest project config, then inline content.
-
-## Config Search Order
-
-1. `--config <path>`
-2. `SL_HUB_V2_CONFIG`
-3. `%USERPROFILE%\.openclaw\sl-hub-v2.json`
-4. `%USERPROFILE%\.codex\sl-hub-v2.json`
-5. OpenCode merged config:
-   - `%APPDATA%\opencode\opencode.json` or `.jsonc`
-   - `%USERPROFILE%\.config\opencode\opencode.json` or `.jsonc`
-   - `OPENCODE_CONFIG`
-   - `<workspace>\opencode.json` or `<workspace>\opencode.jsonc`, walking up to the git root.
-   - `OPENCODE_CONFIG_CONTENT`
-6. `<workspace>\.claude\settings.local.json`
-7. `<workspace>\.claude\settings.json`
-8. `%USERPROFILE%\.claude\settings.json`
-9. `%USERPROFILE%\.sl-hub-v2.json`
-
-## Environment Variables
-
-Environment variables override config file values:
-
-```text
-SL_HUB_V2_CONFIG
-SL_HUB_V2_BASE_URL
-SL_HUB_V2_PROJECT
-SL_HUB_V2_PROJECT_KEY
-SL_HUB_V2_PROJECT_NAME
-SL_HUB_V2_PROJECT_TOKEN
-SL_HUB_V2_PERSONAL_TOKEN
-SL_HUB_V2_SOURCE
-OPENCODE_CONFIG
-OPENCODE_CONFIG_CONTENT
-```
-
-## Config Keys
-
-Snake case and camel case are both supported:
-
-| Snake case | Camel case | Purpose |
-|---|---|---|
-| `base_url` | `baseUrl` | SL Hub V2 host |
-| `project_key` | `projectKey` | SL Hub V2 project key |
-| `project_name` | `projectName` | Optional human-readable project display name |
-| `project_token` | `projectToken` | Project Token for reads |
-| `personal_token` | `personalToken` | Personal Token for writes |
-| `source` | `source` | Audit source metadata |
-
-Multi-project keys:
-
-| Snake case | Camel case | Purpose |
-|---|---|---|
-| `default_project` | `defaultProject` | Default project alias |
-| `projects` | `projects` | Map or list of project configs |
+- Never place tokens in skill files.
+- Never pass tokens as MCP tool arguments.
+- Do not print full token values in logs or replies.
+- Use Project Token for document reads.

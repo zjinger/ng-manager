@@ -1,67 +1,67 @@
 ---
 name: hub-v2-api
-description: Use SL Hub V2 MCP tools to read and operate Issue and RD workflows. Trigger when Codex, OpenCode, Claude Code, OpenClaw, or another agent needs to list or inspect test issues, comments, logs, participants, attachments, issue branches, project members, RD stages, RD items, RD logs, RD progress, transition Issue or RD status, add Issue comments, assign or claim issues, manage issue collaborators or branches, advance RD stages, update RD progress, edit RD basic fields, inspect personal token identity/capabilities, or debug SL Hub V2 token scope errors.
+description: Use ng-manager Hub V2 MCP tools to read Issue and RD workflows, inspect project configuration, and perform explicitly confirmed Hub V2 write operations when the unified ngm mcp server exposes them.
 ---
 
-# SL Hub V2 API
+# Hub V2 API Skill
 
 ## Primary Tooling
 
-Prefer the SL Hub V2 MCP server when available. Use these MCP tools first:
+Use the unified ng-manager MCP server started by `ngm mcp`. This skill is only an Agent usage guide; it must not perform direct Hub V2 HTTP requests, store tokens, or duplicate the Hub V2 API schema.
 
-- Project/config: `sl_hub_v2.projects_list`
-- Identity/permissions: `sl_hub_v2.me`, `sl_hub_v2.capabilities`
-- Issues: `sl_hub_v2.issues_list`, `sl_hub_v2.issues_get`, `sl_hub_v2.issues_related`, `sl_hub_v2.issues_comment`, `sl_hub_v2.issues_assign`, `sl_hub_v2.issues_transition`, `sl_hub_v2.issues_branch`, `sl_hub_v2.issues_participant`
-- RD: `sl_hub_v2.rd_stages`, `sl_hub_v2.rd_list`, `sl_hub_v2.rd_get`, `sl_hub_v2.rd_related`, `sl_hub_v2.rd_transition`, `sl_hub_v2.rd_advance_stage`, `sl_hub_v2.rd_update_progress`, `sl_hub_v2.rd_update`
+Use these MCP tools first:
 
-Use `scripts/hub_v2_api.py` only when MCP tools are not configured in the current agent.
+- Project/config: `hub_v2_projects_list`, `hub_v2_projects_get`
+- Issues: `hub_v2_issues_list`, `hub_v2_issues_get`, `hub_v2_issues_create`, `hub_v2_issues_comment`
+- RD read: `hub_v2_rd_list`, `hub_v2_rd_get`, `hub_v2_rd_stage_tasks_list`
+- RD write: `hub_v2_rd_create`, `hub_v2_rd_advance_stage`, `hub_v2_rd_stage_tasks_create`, `hub_v2_rd_update_progress`
+- Markdown images: `hub_v2_upload_markdown_image`
+
+`hub_v2_issues_update` remains reserved until the Hub V2 server exposes a matching Personal Token update route. If a tool returns not implemented, report that limitation instead of guessing an endpoint.
 
 ## Project Selection
 
-- If the user names a project alias such as `hubv2` or `ais`, pass it as `project`.
-- If the user says "current project", use `sl_hub_v2.projects_list` and choose the configured default.
+- If the user names a configured project alias, pass it as `project`.
+- If the user gives a Hub V2 project key, pass it as `projectKey`.
+- If the user says "current project", call `hub_v2_projects_list` and use the default or only configured project.
 - If multiple projects exist and no default is clear, ask for the project alias.
-- Treat `projectKey` as the SL Hub V2 API project key, not a local workspace id or display name.
 
 ## Read Workflow
 
-- Read operations should run directly with Project Token-backed tools.
-- Use `issues_get` / `rd_get` before making recommendations about a specific item.
-- Use `issues_related` or `rd_related` when comments, logs, progress, or history may affect the answer.
-- For "unfinished Issue" queries, treat `verified` as completed. Unless the user gives a different definition, filter unfinished Issues by excluding `verified` and `closed`.
+- Read operations use Project Token-backed MCP tools.
+- Use `hub_v2_issues_get` or `hub_v2_rd_get` before making recommendations about a specific item.
+- For unfinished Issue queries, treat `verified` and `closed` as completed unless the user defines a different status boundary.
+- When RD context matters, use `hub_v2_rd_get`; use `hub_v2_rd_stage_tasks_list` when stage-task assignment or per-task progress may affect the answer.
+- For RD-associated Issues, use `hub_v2_issues_list` with `rdItemId`.
 
 ## Write Workflow
 
-- Issue comments may be executed directly when the user gives both a clear `issueId` and comment content.
-- Issue/RD status transitions and RD stage advance must preview first. Call the MCP tool without `confirm`, report the preview, then execute with `confirm: true` only after the user confirms.
-- `rd_update_progress` with `progress: 100` must also preview first.
-- For ambiguous writes, read detail and capabilities before previewing the write.
+- Write tools use Personal Token and are disabled unless the MCP server policy allows write tools.
+- Never ask the user to paste tokens into chat or tool arguments.
+- For Issue create, Issue comment, RD create, stage advance, stage-task create, progress update, status changes, or any operation that alters workflow state, preview first when the tool supports preview, then execute only after explicit user confirmation.
+- For Markdown images, first call `hub_v2_upload_markdown_image` with either `filePath` or `contentBase64 + fileName`, then insert the returned `markdown` into the target `description` or `content`.
+- For Issue creation with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_create` with the returned Markdown in `description`.
+- For Issue comments with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_comment` with the returned Markdown in `content`.
+- For RD creation or stage-task descriptions with images, call `hub_v2_upload_markdown_image`, then insert the returned Markdown into `hub_v2_rd_create.description` or `hub_v2_rd_stage_tasks_create.description`.
+- When creating an RD item, include `stageTasks` or `stageTaskTemplates` only when the user explicitly provides initial current-stage tasks or asks to create them from templates.
+- When advancing an RD stage, include `stageTasks` or `stageTaskTemplates` if the next stage should start with assigned tasks.
+- When updating RD progress and the RD has active stage tasks, pass `stageTaskId`; otherwise tell the user to choose a stage task first.
+- If a write tool is blocked by policy, tell the user which MCP policy flag is blocking it and do not retry through direct HTTP.
 
-## Common Requests
+## Error Handling
 
-- "我是谁": `sl_hub_v2.me`
-- "我能做什么": `sl_hub_v2.capabilities`
-- "查看未完成 issue": `sl_hub_v2.issues_list` with status excluding `verified` and `closed`
-- "查看某个测试单": find/list if needed, then `sl_hub_v2.issues_get`; load `comments`/`logs` when context matters
-- "开始处理测试单": preview `sl_hub_v2.issues_transition` with `action: "start"`, then wait for confirmation
-- "查看研发项": `sl_hub_v2.rd_list` or `sl_hub_v2.rd_get`
-- "推进研发项阶段": preview `sl_hub_v2.rd_advance_stage`, then wait for confirmation
+- `TOKEN_SCOPE_FORBIDDEN`: explain which scope is missing and whether Project Token or Personal Token is involved.
+- Issue create requires `issue:create:write`; Issue comments require `issue:comment:write`.
+- Markdown image upload requires at least one relevant business write scope such as `issue:create:write`, `issue:comment:write`, `rd:create:write`, `rd:stage-task:write`, `rd:transition:write`, or `rd:edit:write`.
+- RD create requires `rd:create:write`; stage-task create requires `rd:stage-task:write`; progress update requires `rd:progress:write` or `rd:transition:write`.
+- `TOKEN_PROJECT_FORBIDDEN` or `PROJECT_NOT_FOUND`: verify the configured project alias or project key.
+- `PROJECT_ACCESS_DENIED`: explain that the Personal Token owner needs project access.
+- `TOKEN_RATE_LIMITED`: back off and suggest retrying later.
+- Validation errors: summarize the invalid field and ask for the missing business input.
 
-## Configuration
+## Reply Rules
 
-The MCP server and fallback script share the same SL Hub V2 config. Prefer `%USERPROFILE%\.sl-hub-v2.json` or `SL_HUB_V2_CONFIG`.
-
-Recommended Codex MCP config for the published package:
-
-```toml
-[mcp_servers.slHubV2]
-command = "npx.cmd"
-args = ["-y", "@yinuo-ngm/sl-hub-v2-mcp@0.1.2"]
-```
-
-Read `references/config.md` when setting up Codex/OpenCode/Claude Code config or diagnosing missing `base_url`, `project_key`, or credentials.
-
-## References
-
-- Read `references/api.md` only when exact endpoint mapping, request body fields, status transitions, or error details are needed.
-- Read `references/config.md` for config file shapes, search order, and MCP client examples.
+- Summarize data in the user's language.
+- Include ids, issue numbers, RD titles, statuses, and next actions when relevant.
+- Do not reveal token values, Authorization headers, or local config file contents.
+- For writes, state whether the operation was previewed, blocked, executed, or unavailable.

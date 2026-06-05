@@ -6,6 +6,7 @@ import { statusCmd } from "../commands/status";
 import { stopCmd } from "../commands/stop";
 import { restartCmd } from "../commands/restart";
 import { logsCmd } from "../commands/logs";
+import { mcpCmd } from "../commands/mcp";
 const program = new Command();
 const { version } = require("../../package.json") as { version: string };
 
@@ -64,5 +65,10 @@ program
     .option("--data-dir <dir>", "data directory")
     .action(logsCmd);
 
+/** mcp */
+program
+    .command("mcp")
+    .description("start ng-manager MCP stdio server")
+    .action(mcpCmd);
 
 program.parse();

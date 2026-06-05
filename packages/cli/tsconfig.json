@@ -5,6 +5,7 @@
     "outDir": "lib"
   },
   "references": [
+    { "path": "../mcp-server" },
     { "path": "../process" },
     { "path": "../runtime" },
     { "path": "../server" }

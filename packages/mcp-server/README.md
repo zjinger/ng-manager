@@ -34,13 +34,14 @@ execute   blocked
 dangerous blocked
 ```
 
-This MVP only registers read tools. It does not implement arbitrary shell execution, task start/stop/restart, git pull/checkout/commit/reset, proxy reload, runtime install/remove, file deletion, or system environment mutation.
+Write tools are registered only for scoped Hub V2 Personal Token workflows that require explicit tool confirmation when implemented. The server does not implement arbitrary shell execution, task start/stop/restart, git pull/checkout/commit/reset, proxy reload, runtime install/remove, file deletion, or system environment mutation.
 
 ## Environment
 
 ```text
 NGM_DATA_DIR                 ng-manager data directory. Defaults to ~/.ng-manager.
 NGM_WORKSPACE_ROOT           Optional workspace hint. Defaults to process.cwd().
+NGM_MCP_UPLOAD_ROOT          Optional extra root for Hub V2 markdown image uploads.
 NGM_MCP_ALLOW_WRITE          Future policy flag for write tools. Defaults to false.
 NGM_MCP_ALLOW_EXECUTE        Future policy flag for execute tools. Defaults to false.
 NGM_MCP_ALLOW_DANGEROUS      Future policy flag for dangerous tools. Defaults to false.
@@ -62,6 +63,12 @@ Direct workspace commands:
 npm run dev -w @yinuo-ngm/mcp-server
 npm run build -w @yinuo-ngm/mcp-server
 npm run start -w @yinuo-ngm/mcp-server
+```
+
+CLI entrypoint:
+
+```bash
+ngm mcp
 ```
 
 The server uses stdio transport only. It does not listen on an HTTP port, and stdout is reserved for the MCP protocol.
@@ -160,6 +167,31 @@ ngm.proxy.validate
 ```
 
 In this package, "proxy" means ng-manager's current Nginx/proxy management domain, not the operating system global proxy.
+
+Hub V2:
+
+```text
+hub_v2_projects_list
+hub_v2_projects_get
+hub_v2_docs_list
+hub_v2_docs_get
+hub_v2_docs_get_by_slug
+hub_v2_issues_list
+hub_v2_issues_get
+hub_v2_issues_create
+hub_v2_issues_comment
+hub_v2_issues_update
+hub_v2_upload_markdown_image
+hub_v2_rd_list
+hub_v2_rd_get
+hub_v2_rd_stage_tasks_list
+hub_v2_rd_create
+hub_v2_rd_advance_stage
+hub_v2_rd_stage_tasks_create
+hub_v2_rd_update_progress
+```
+
+Hub V2 reads use Project Token configuration and writes use Personal Token configuration. `hub_v2_upload_markdown_image` uploads image files for Markdown bodies and returns a snippet that can be inserted into RD descriptions, RD stage-task descriptions, Issue descriptions, or Issue comments before calling the matching create/comment tool. Prefer `HUB_V2_BASE_URL`, `HUB_V2_PROJECT_KEY`, `HUB_V2_PROJECT_TOKEN`, and `HUB_V2_PERSONAL_TOKEN`; legacy `SL_HUB_V2_*` and `NGM_HUB_V2_*` prefixes are accepted during migration.
 
 ## Result Shape
 

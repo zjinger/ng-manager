@@ -1,69 +1,52 @@
 ---
 name: hub-v2-docs
-description: Use SL Hub V2 MCP tools to read and write project documents. Trigger when Codex, OpenCode, Claude Code, OpenClaw, or another agent needs to list project docs, fetch Markdown content by id or slug, create a draft doc, update doc title/content/slug/category/summary/version/tags, publish a doc after confirmation, use shared SL Hub V2 token config, or debug SL Hub V2 doc token errors such as TOKEN_SCOPE_FORBIDDEN, TOKEN_PROJECT_FORBIDDEN, PROJECT_ACCESS_DENIED, PROJECT_NOT_FOUND, DOCUMENT_SLUG_EXISTS, and DOCUMENT_NOT_FOUND.
+description: Use ng-manager Hub V2 MCP tools to list and read Hub V2 project documents, and to guide future document write operations through the unified ngm mcp server without direct REST calls.
 ---
 
-# SL Hub V2 Docs
+# Hub V2 Docs Skill
 
 ## Primary Tooling
 
-Prefer the SL Hub V2 MCP server when available. Use these MCP tools first:
+Use the unified ng-manager MCP server started by `ngm mcp`. This skill is only an Agent usage guide; it must not perform direct Hub V2 HTTP requests, store tokens, or duplicate the Hub V2 API schema.
 
-- Project/config: `sl_hub_v2.projects_list`
-- List docs: `sl_hub_v2.docs_list`
-- Read by id: `sl_hub_v2.docs_get`
-- Read by slug: `sl_hub_v2.docs_get_by_slug`
-- Create draft: `sl_hub_v2.docs_create_draft`
-- Update doc: `sl_hub_v2.docs_update`
-- Publish doc: `sl_hub_v2.docs_publish`
+Use these MCP tools first:
 
-Use `scripts/hub_v2_docs.py` only when MCP tools are not configured in the current agent.
+- Project/config: `hub_v2_projects_list`, `hub_v2_projects_get`
+- List docs: `hub_v2_docs_list`
+- Read by id: `hub_v2_docs_get`
+- Read by slug: `hub_v2_docs_get_by_slug`
+
+Legacy Python helpers in this directory are migration-only artifacts and are not the normal Agent workflow.
 
 ## Project Selection
 
-- If the user names a project alias such as `hubv2` or `ais`, pass it as `project`.
-- If the user says "current project", use `sl_hub_v2.projects_list` and choose the configured default.
+- If the user names a configured project alias, pass it as `project`.
+- If the user gives a Hub V2 project key, pass it as `projectKey`.
+- If the user says "current project", call `hub_v2_projects_list` and use the default or only configured project.
 - If multiple projects exist and no default is clear, ask for the project alias.
-- Treat `projectKey` as the SL Hub V2 API project key, not a local workspace id or display name.
 
 ## Read Workflow
 
-- Read/list operations should run directly with Project Token-backed tools.
-- `docs_list` does not include full Markdown body; use `docs_get` or `docs_get_by_slug` for document content.
-- Use `contentOnly: true` for slug reads when the user only wants Markdown content.
+- List/read operations use Project Token-backed MCP tools.
+- `hub_v2_docs_list` is for discovery and metadata; use `hub_v2_docs_get` or `hub_v2_docs_get_by_slug` when Markdown content is needed.
+- Use `contentOnly: true` for slug reads when the user only wants the Markdown body.
+- For slug-like user input, try `hub_v2_docs_get_by_slug`; otherwise list/search first and then read by id.
 
-## Write Workflow
+## Write Boundary
 
-- Use English short-word slugs joined by hyphens, for example `project-api-guide`.
-- Before creating, check for an existing `slug` with `docs_list` or `docs_get_by_slug`.
-- Always create with `docs_create_draft`; do not publish as part of creation.
-- After creating a draft, report id, slug, title, and status, then ask "草稿已创建，是否发布？"
-- Publish only after confirmation. `docs_publish` previews when `confirm` is omitted; execute with `confirm: true` only after the user confirms.
-- For updates, read the current doc first when version, slug, or existing content may matter.
+- Current unified MCP rollout prioritizes read tools. Do not create, update, publish, or archive documents through direct HTTP from this skill.
+- If future document write tools are added, they must use Personal Token, be marked as write tools, and require explicit confirmation before publish-style operations.
+- Never ask the user to paste tokens into chat or tool arguments.
 
-## Common Requests
+## Error Handling
 
-- "查询项目中有多少文档": `sl_hub_v2.docs_list`
-- "总共哪些文档": `sl_hub_v2.docs_list` with a sufficient `pageSize`
-- "看某个文档": use `docs_get_by_slug` for slug-like values, otherwise list/search then `docs_get`
-- "创建文档": check slug duplicate, then `docs_create_draft`
-- "发布文档": preview `docs_publish`, then wait for confirmation
+- `TOKEN_SCOPE_FORBIDDEN`: explain that the Project Token needs `docs:read` for read operations.
+- `TOKEN_PROJECT_FORBIDDEN` or `PROJECT_NOT_FOUND`: verify the configured project alias or project key.
+- `DOCUMENT_NOT_FOUND`: list docs again or ask for a more precise id or slug.
+- `TOKEN_RATE_LIMITED`: back off and suggest retrying later.
 
-## Configuration
+## Reply Rules
 
-The MCP server and fallback script share the same SL Hub V2 config. Prefer `%USERPROFILE%\.sl-hub-v2.json` or `SL_HUB_V2_CONFIG`.
-
-Recommended Codex MCP config for the published package:
-
-```toml
-[mcp_servers.slHubV2]
-command = "npx.cmd"
-args = ["-y", "@yinuo-ngm/sl-hub-v2-mcp@0.1.2"]
-```
-
-Read `references/config.md` when setting up Codex/OpenCode/Claude Code config or diagnosing missing `base_url`, `project_key`, or credentials.
-
-## References
-
-- Read `references/api.md` only when exact endpoint mapping, request body fields, response fields, or error handling are needed.
-- Read `references/config.md` for config file shapes, search order, and MCP client examples.
+- Summarize document lists with title, slug, status, updated time, and id.
+- When returning Markdown content, preserve headings and code blocks.
+- Do not reveal token values, Authorization headers, or local config file contents.

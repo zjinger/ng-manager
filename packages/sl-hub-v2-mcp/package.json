@@ -1,7 +1,7 @@
 {
   "name": "@yinuo-ngm/sl-hub-v2-mcp",
   "version": "0.1.2",
-  "description": "Local MCP server for SL Hub V2 docs, issues, and RD APIs.",
+  "description": "Deprecated migration package. Use ngm mcp from the unified ng-manager MCP server.",
   "author": "ZhangJing <892295834@qq.com>",
   "bin": {
     "sl-hub-v2-mcp": "lib/index.js"

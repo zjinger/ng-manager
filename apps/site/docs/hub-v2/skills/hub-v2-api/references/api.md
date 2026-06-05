@@ -1,141 +1,57 @@
-# SL Hub V2 Issue/RD Token API
+# Hub V2 API MCP Tool Reference
 
-## Scopes
+This reference describes Agent-facing MCP tools, not Hub V2 REST endpoints.
 
-Project Token read scopes:
+## Read Tools
 
-- `issues:read`: Issue list/detail/logs/comments/participants/attachments/branches/project members and Issue/RD associations.
-- `rd:read`: RD stages, RD list/detail/logs/stage history/progress/progress history.
+- `hub_v2_projects_list`: list configured project aliases without token values.
+- `hub_v2_projects_get`: read one configured project summary without token values.
+- `hub_v2_issues_list`: list issues using Project Token.
+- `hub_v2_issues_get`: read one issue using Project Token.
+- `hub_v2_rd_list`: list RD items using Project Token.
+- `hub_v2_rd_get`: read one RD item using Project Token.
+- `hub_v2_rd_stage_tasks_list`: list current RD stage tasks using Project Token.
 
-Personal Token write scopes:
+## Write Tools
 
-- `issue:comment:write`: create Issue comments.
-- `issue:transition:write`: `start`, `wait-update`, `resolve`, `verify`, `reopen`, `close`.
-- `issue:assign:write`: `assign`, `claim`.
-- `issue:branch:write`: create/start/complete Issue branches.
-- `issue:participant:write`: add/remove participants.
-- `rd:transition:write`: `start`, `block`, `resume`, `complete`, `accept`, `reopen`, `close`, `advance-stage`, `progress`.
-- `rd:edit:write`: update RD basic fields.
+- `hub_v2_upload_markdown_image`: upload a Markdown inline image using Personal Token and return a Markdown snippet. Use it before RD/Issue/comment write tools when content includes local or base64 images.
+- `hub_v2_issues_create`: preview or create an Issue using Personal Token with `issue:create:write`; `description` may include Markdown returned by `hub_v2_upload_markdown_image`.
+- `hub_v2_issues_comment`: preview or add an Issue comment using Personal Token with `issue:comment:write`; `content` may include Markdown returned by `hub_v2_upload_markdown_image`.
+- `hub_v2_rd_create`: preview or create an RD item using Personal Token with `rd:create:write`.
+- `hub_v2_rd_advance_stage`: preview or execute RD stage advance using Personal Token with `rd:transition:write`; supports `stageTasks` and `stageTaskTemplates`.
+- `hub_v2_rd_stage_tasks_create`: preview or create a task on the RD current stage using Personal Token with `rd:stage-task:write`.
+- `hub_v2_rd_update_progress`: preview or update RD progress using Personal Token with `rd:progress:write` or `rd:transition:write`; pass `stageTaskId` when active stage tasks exist.
+- `hub_v2_issues_update`: reserved until Hub V2 exposes a matching Personal Token route.
 
-## Personal Token Introspection
+Write tools are disabled by default MCP policy. When enabled, workflow-state writes must be previewed first when the tool supports preview, then executed only after explicit user confirmation.
 
-- `GET /api/personal/me`
-- `GET /api/personal/projects/:projectKey/capabilities`
+## Markdown Image Workflow
 
-Capabilities returns current token identity, project membership, active project status, and write capability booleans. The RD capability shape has only `canTransition` and `canEdit`.
+1. Use `hub_v2_upload_markdown_image` with `filePath` or `contentBase64 + fileName`.
+2. Insert the returned `markdown` into the target text field.
+3. Preview the target write tool.
+4. Execute the target write with `confirm: true` only after user confirmation.
 
-## Issue Read Endpoints
+Supported target fields:
 
-All require Project Token with `issues:read`.
+- `hub_v2_issues_create.description`
+- `hub_v2_issues_comment.content`
+- `hub_v2_rd_create.description`
+- `hub_v2_rd_stage_tasks_create.description`
 
-- `GET /api/token/projects/:projectKey/issues`
-- `GET /api/token/projects/:projectKey/issues/:issueId`
-- `GET /api/token/projects/:projectKey/issues/:issueId/logs`
-- `GET /api/token/projects/:projectKey/issues/:issueId/comments`
-- `GET /api/token/projects/:projectKey/issues/:issueId/participants`
-- `GET /api/token/projects/:projectKey/issues/:issueId/attachments`
-- `GET /api/token/projects/:projectKey/issues/:issueId/branches`
-- `GET /api/token/projects/:projectKey/issues/:issueId/attachments/:attachmentId/raw`
-- `GET /api/token/projects/:projectKey/issues/:issueId/uploads/:uploadId/raw`
-- `GET /api/token/projects/:projectKey/members`
+## Token Use
 
-Issue list query supports `page`, `pageSize`, `keyword`, `rdItemId`, `status`, `types`, `type`, `priority`, `reporterIds`, `assigneeIds`, `moduleCodes`, `versionCodes`, `environmentCodes`, `includeAssigneeParticipants`, `sortBy`, `sortOrder`, `assigneeId`, and `verifierId`.
+- Project Token is for read tools.
+- Personal Token is for write tools.
+- Tool arguments must not include token values.
 
-## Issue Write Endpoints
+## Common Errors
 
-All use Personal Token.
-
-- `POST /api/personal/projects/:projectKey/issues/:issueId/comments`
-  - Scope: `issue:comment:write`
-  - Body: `{ "content": string, "mentions"?: string[] }`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/assign`
-  - Scope: `issue:assign:write`
-  - Body: `{ "assigneeId": string }`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/claim`
-  - Scope: `issue:assign:write`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/branches`
-  - Scope: `issue:branch:write`
-  - Body: `{ "ownerUserId": string, "title": string }`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/branches/start-mine`
-  - Scope: `issue:branch:write`
-  - Body: `{ "title": string }`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/branches/:branchId/start`
-  - Scope: `issue:branch:write`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/branches/:branchId/complete`
-  - Scope: `issue:branch:write`
-  - Body: `{ "summary"?: string }`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/start`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/wait-update`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/resolve`
-  - Body: `{ "resolutionSummary"?: string }`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/verify`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/reopen`
-  - Body: `{ "remark"?: string }`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/close`
-  - Body: `{ "reason"?: string, "remark"?: string }`
-- `POST /api/personal/projects/:projectKey/issues/:issueId/participants`
-  - Scope: `issue:participant:write`
-  - Body: `{ "userId": string, "taskTitle"?: string }`
-- `DELETE /api/personal/projects/:projectKey/issues/:issueId/participants/:participantId`
-  - Scope: `issue:participant:write`
-
-Issue transition state machine:
-
-- `claim`: `open|reopened|in_progress|pending_update -> same status`
-- `assign`: `open|in_progress|pending_update|reopened -> same status`
-- `start`: `open|reopened|pending_update -> in_progress`
-- `wait_update`: `in_progress|reopened -> pending_update`
-- `resolve`: `in_progress|pending_update|reopened -> resolved`
-- `verify`: `resolved -> verified`
-- `reopen`: `resolved|verified|closed -> reopened`
-- `close`: `open|in_progress|pending_update|resolved|verified|reopened -> closed`
-
-## RD Read Endpoints
-
-All require Project Token with `rd:read`.
-
-- `GET /api/token/projects/:projectKey/rd-stages`
-- `GET /api/token/projects/:projectKey/rd-items`
-- `GET /api/token/projects/:projectKey/rd-items/:itemId`
-- `GET /api/token/projects/:projectKey/rd-items/:itemId/logs`
-- `GET /api/token/projects/:projectKey/rd-items/:itemId/stage-history`
-- `GET /api/token/projects/:projectKey/rd-items/:itemId/progress`
-- `GET /api/token/projects/:projectKey/rd-items/:itemId/progress/history`
-- `GET /api/token/projects/:projectKey/rd-items/:itemId/uploads/:uploadId/raw`
-- `GET /api/token/projects/:projectKey/issues?rdItemId=:itemId`
-
-RD list query supports `page`, `pageSize`, `stageId`, `stageIds`, `status`, `type`, `priority`, `assigneeIds`, `assigneeId`, `keyword`, `sortBy`, and `sortOrder`.
-
-## RD Write Endpoints
-
-All use Personal Token.
-
-- `POST /api/personal/projects/:projectKey/rd-items/:itemId/start`
-- `POST /api/personal/projects/:projectKey/rd-items/:itemId/block`
-  - Body: `{ "blockerReason"?: string }`
-- `POST /api/personal/projects/:projectKey/rd-items/:itemId/resume`
-- `POST /api/personal/projects/:projectKey/rd-items/:itemId/complete`
-  - Body: `{ "reason"?: string }`
-- `POST /api/personal/projects/:projectKey/rd-items/:itemId/accept`
-- `POST /api/personal/projects/:projectKey/rd-items/:itemId/reopen`
-- `POST /api/personal/projects/:projectKey/rd-items/:itemId/close`
-  - Body: `{ "reason"?: string }`
-- `POST /api/personal/projects/:projectKey/rd-items/:itemId/advance-stage`
-  - Body: `{ "stageId": string, "memberIds"?: string[], "description"?: string, "planStartAt"?: string, "planEndAt"?: string, "stageTasks"?: object[], "stageTaskTemplates"?: object[] }`
-- `POST /api/personal/projects/:projectKey/rd-items/:itemId/progress`
-  - Body: `{ "progress": number, "note"?: string, "blockReason"?: string, "resolveBlockId"?: string, "stageTaskId"?: string }`
-- `PATCH /api/personal/projects/:projectKey/rd-items/:itemId`
-  - Body: `{ "version": number, "title"?: string, "description"?: string|null, "stageId"?: string|null, "type"?: string, "priority"?: string, "memberIds"?: string[], "verifierId"?: string|null, "planStartAt"?: string|null, "planEndAt"?: string|null, "stageDescription"?: string|null }`
-
-RD transition state machine:
-
-- `todo -> doing`
-- `doing -> blocked`
-- `blocked -> doing`
-- `doing -> done`
-- `done -> accepted`
-- `todo|doing|blocked|done|accepted -> closed`
-- `closed -> todo`
-- `accepted -> todo` after `advance-stage`
-
-Only `accepted` status allows `advance-stage`.
+| Code | Agent response |
+|---|---|
+| `TOKEN_SCOPE_FORBIDDEN` | Explain the missing scope and token type. |
+| `TOKEN_PROJECT_FORBIDDEN` | Verify the selected project alias or project key. |
+| `PROJECT_NOT_FOUND` | Ask for a valid configured project. |
+| `PROJECT_ACCESS_DENIED` | Explain that the Personal Token owner lacks project access. |
+| `TOKEN_RATE_LIMITED` | Back off and retry later. |
+| `VALIDATION_ERROR` | Ask for the missing or invalid field. |
