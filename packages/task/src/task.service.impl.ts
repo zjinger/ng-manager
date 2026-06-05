@@ -91,7 +91,7 @@ export class TaskServiceImpl implements TaskService {
         let p: SpawnedProcess;
         try {
             const project = await this.projectService.get(spec.projectId);
-            const runtimeConfig = this.resolveProjectRuntimeConfig(project);
+            const runtimeConfig = await this.resolveProjectRuntimeConfig(project, runId);
             const runtime = await this.nodeRuntimeService.resolveRuntime(runtimeConfig);
             const commandLine = this.buildLaunchCommandLine(launchSpec.command!, launchSpec.args ?? []);
             const resolvedCommand = this.nodeRuntimeService.resolveCommand(commandLine, runtime, {
@@ -374,7 +374,7 @@ export class TaskServiceImpl implements TaskService {
         return "npm";
     }
 
-    private resolveProjectRuntimeConfig(project: Project): NodeRuntimeConfig {
+    private async resolveProjectRuntimeConfig(project: Project, runId?: string): Promise<NodeRuntimeConfig> {
         const packageManager = this.normalizeNodeRuntimePackageManager(project);
         if (project.runtime) {
             return {
@@ -388,6 +388,32 @@ export class TaskServiceImpl implements TaskService {
                 version: project.nodeVersion,
                 packageManager,
             };
+        }
+        if (project.root) {
+            try {
+                const requirement = await this.nodeVersionService.detectProjectRequirement(project.root);
+                if (requirement.satisfiedBy) {
+                    this.appendSysLog(
+                        runId ?? "",
+                        `[NodeRuntime] auto-detected project Node requirement ${requirement.requiredVersion ?? requirement.voltaConfig ?? "-"}, using ${requirement.satisfiedBy}`,
+                        'info'
+                    );
+                    return {
+                        type: "managed",
+                        version: requirement.satisfiedBy,
+                        packageManager,
+                    };
+                }
+                if (requirement.requiredVersion || requirement.voltaConfig) {
+                    this.appendSysLog(
+                        runId ?? "",
+                        `[NodeRuntime] project requires Node ${requirement.requiredVersion ?? requirement.voltaConfig}, but no installed runtime matched; falling back to system Node`,
+                        'warn'
+                    );
+                }
+            } catch (e: any) {
+                this.appendSysLog(runId ?? "", `[NodeRuntime] detect project Node requirement failed: ${e?.message ?? String(e)}`, 'warn');
+            }
         }
         return {
             type: "system",
