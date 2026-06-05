@@ -14,6 +14,9 @@
 
     "dev": "lerna run dev --stream --parallel",
     "dev:server": "tsx watch packages/server/src/index.ts",
+    "mcp:dev": "npm run dev -w @yinuo-ngm/mcp-server",
+    "mcp:build": "npm run build -w @yinuo-ngm/mcp-server",
+    "mcp:start": "npm run start -w @yinuo-ngm/mcp-server",
 
     "clean:server-www": "rimraf packages/server/www",
     "prepare:server-www": "npm run clean:server-www && cd webapp && npm run web:build",

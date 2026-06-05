@@ -1,0 +1,40 @@
+{
+  "name": "@yinuo-ngm/mcp-server",
+  "version": "0.1.0",
+  "description": "Local MCP stdio server for ng-manager core capabilities.",
+  "author": "ZhangJing <892295834@qq.com>",
+  "license": "ISC",
+  "bin": {
+    "ngm-mcp-server": "lib/index.js"
+  },
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -b tsconfig.json",
+    "start": "node lib/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@yinuo-ngm/core": "^0.1.13",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

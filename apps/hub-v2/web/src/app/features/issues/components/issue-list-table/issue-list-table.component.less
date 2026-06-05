@@ -1,3 +1,13 @@
+:host {
+    display: block;
+    min-width: 0;
+}
+
+.issue-list-table {
+    display: block;
+    min-width: 1080px;
+}
+
 .issue-table__head,
 .issue-row {
     display: grid;
@@ -8,6 +18,9 @@
 }
 
 .issue-table__head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     padding: 10px 16px;
     font-size: 12px;
     font-weight: 700;
@@ -316,6 +329,7 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
+    min-width: 0;
 }
 
 .issue-card {
@@ -448,6 +462,10 @@
 }
 
 @media (max-width: 960px) {
+    .issue-list-table {
+        min-width: 0;
+    }
+
     .issue-table__head {
         display: none;
     }
