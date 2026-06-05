@@ -212,6 +212,25 @@ describe("PersonalTokenService.getProjectCapabilities", () => {
     assert.equal(caps.readOnlyReason, "scope_missing");
   });
 
+  it("exposes issue create as an independent writable capability", () => {
+    const { service, db } = createServiceWithDb();
+    seedProject(db, "usr_1");
+
+    const ctx = createPersonalTokenContext("usr_1", ["issue:create:write"]);
+    const caps = service.getProjectCapabilities("project-key", ctx);
+
+    assert.deepEqual(caps.scopes.issue, {
+      canCreate: true,
+      canComment: false,
+      canTransition: false,
+      canAssign: false,
+      canManageBranches: false,
+      canManageParticipants: false
+    });
+    assert.equal(caps.writable, true);
+    assert.equal(caps.readOnlyReason, null);
+  });
+
   it("keeps rd edit as a writable capability", () => {
     const { service, db } = createServiceWithDb();
     seedProject(db, "usr_1");

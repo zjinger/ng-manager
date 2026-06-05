@@ -8,12 +8,23 @@ import { completeIssueBranchSchema, createIssueBranchSchema, startOwnIssueBranch
 import { createIssueCommentSchema } from "../issue/comment/issue-comment.schema";
 import { addIssueParticipantSchema } from "../issue/participant/issue-participant.schema";
 import {
+  createPersonalIssueSchema,
   personalIssueBranchParamSchema,
   personalIssueIdParamSchema,
-  personalIssueParticipantParamSchema
+  personalIssueParticipantParamSchema,
+  personalProjectParamSchema
 } from "./personal-token.schema";
 
 export default async function personalTokenIssueRoutes(app: FastifyInstance) {
+  app.post("/projects/:projectKey/issues", async (request, reply) => {
+    const ctx = requirePersonalTokenAuth(request, "issue:create:write");
+    const params = personalProjectParamSchema.parse(request.params);
+    const projectId = app.container.personalTokenQuery.resolveProjectId(params.projectKey);
+    const body = createPersonalIssueSchema.parse(request.body);
+    const entity = await app.container.issueCommand.create({ ...body, projectId }, ctx);
+    return reply.status(201).send(ok(entity, "issue created"));
+  });
+
   app.post("/projects/:projectKey/issues/:issueId/comments", async (request, reply) => {
     const ctx = requirePersonalTokenAuth(request, "issue:comment:write");
     const params = personalIssueIdParamSchema.parse(request.params);

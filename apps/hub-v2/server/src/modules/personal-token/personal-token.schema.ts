@@ -1,5 +1,8 @@
 import { z } from "zod";
+import { createIssueSchema } from "../issue/issue.schema";
 import { createRdItemSchema } from "../rd/rd.schema";
+
+export const createPersonalIssueSchema = createIssueSchema.omit({ projectId: true }).strict();
 
 export const createPersonalRdItemSchema = createRdItemSchema.omit({ projectId: true }).strict();
 
@@ -20,6 +23,7 @@ export const createPersonalTokenSchema = z.object({
   scopes: z
     .array(
       z.enum([
+        "issue:create:write",
         "issue:comment:write",
         "issue:transition:write",
         "issue:assign:write",

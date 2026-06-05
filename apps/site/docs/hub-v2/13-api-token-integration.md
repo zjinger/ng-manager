@@ -239,6 +239,7 @@ Project Token 文档读取接口：
 
 Issue：
 
+- `POST /api/personal/projects/:projectKey/issues`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/comments`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/assign`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/claim`
@@ -347,6 +348,7 @@ Docs：
 | 模块 | 操作 | Scope |
 |---|---|---|
 | Issue | 列表与详情 | `issues:read` |
+| Issue | 创建测试单 | `issue:create:write` |
 | Issue | 评论 | `issue:comment:write` |
 | Issue | 状态流转 | `issue:transition:write` |
 | Issue | 指派与认领 | `issue:assign:write` |
@@ -492,7 +494,15 @@ curl -X GET "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/capabiliti
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/branches" -H "Authorization: Bearer <PROJECT_TOKEN>"
 ```
 
-### 9.6 Personal Token 开始协作
+### 9.6 Personal Token 创建 Issue 与开始协作
+
+创建 Issue 时，`projectId` 由 URL 中的 `projectKey` 决定，不能从请求体覆盖。
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"登录异常测试\",\"description\":\"复现登录接口异常。\",\"type\":\"bug\",\"priority\":\"medium\",\"assigneeId\":\"u_001\",\"verifierId\":\"u_002\",\"rdItemId\":\"<RD_ITEM_ID>\",\"moduleCode\":\"auth\",\"versionCode\":\"v1\",\"environmentCode\":\"test\"}"
+```
+
+Issue 协作分支仍使用 `issue:branch:write` scope。
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/branches/start-mine" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"协作分支标题\"}"

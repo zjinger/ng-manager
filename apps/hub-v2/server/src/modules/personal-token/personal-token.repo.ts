@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import type { PersonalApiTokenEntity, PersonalTokenScope, PersonalTokenStatus } from "./personal-token.types";
 
 const PERSONAL_TOKEN_SCOPES = new Set<string>([
+  "issue:create:write",
   "issue:comment:write",
   "issue:transition:write",
   "issue:assign:write",
