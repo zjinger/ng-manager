@@ -37,81 +37,73 @@ import { IssueListStore } from '../../store/issue-list.store';
   ],
   providers: [IssueListStore],
   template: `
-    <section class="issue-list-page">
-      <div class="issue-list-page__controls">
-        <app-page-header title="测试跟踪" [subtitle]="subtitle()" />
-        <app-issue-filter-bar
-          [query]="store.query()"
-          [members]="members()"
-          [currentUserId]="currentUserId() || ''"
-          [modules]="modules()"
-          [versions]="versions()"
-          [environments]="environments()"
-          [viewMode]="viewMode()"
-          [canCreate]="projectContext.currentProjectIsActive()"
-          (submit)="onFilterSubmit($event)"
-          (reset)="resetFilters()"
-          (create)="createOpen.set(true)"
-          (viewModeChange)="viewMode.set($event)"
-        />
-        <!-- <div class="issue-batch-actions">
-          <div class="issue-batch-actions__summary">
-            已选择 <strong>{{ selectedIssueIds().length }}</strong> 项
-          </div>
-          <button
-            nz-button
-            nzType="primary"
-            [disabled]="selectedIssueIds().length === 0 || batchResolving()"
-            [nzLoading]="batchResolving()"
-            (click)="batchResolveSelected()"
-          >
-            批量标记已解决
-          </button>
-          <button nz-button [disabled]="selectedIssueIds().length === 0 || batchResolving()" (click)="clearSelection()">
-            取消选择
-          </button>
-        </div> -->
-        <app-active-filters-bar [tags]="activeFilterBarTags()" (remove)="onActiveFilterRemove($event)" (clear)="resetFilters()" />
+    <app-page-header title="测试跟踪" [subtitle]="subtitle()" />
+    <app-issue-filter-bar
+      [query]="store.query()"
+      [members]="members()"
+      [currentUserId]="currentUserId() || ''"
+      [modules]="modules()"
+      [versions]="versions()"
+      [environments]="environments()"
+      [viewMode]="viewMode()"
+      [canCreate]="projectContext.currentProjectIsActive()"
+      (submit)="onFilterSubmit($event)"
+      (reset)="resetFilters()"
+      (create)="createOpen.set(true)"
+      (viewModeChange)="viewMode.set($event)"
+    />
+    <!-- <div class="issue-batch-actions">
+      <div class="issue-batch-actions__summary">
+        已选择 <strong>{{ selectedIssueIds().length }}</strong> 项
       </div>
-
-      <app-list-state
-        class="issue-list-page__state"
-        [loading]="store.loading()"
-        [empty]="store.items().length === 0"
-        loadingText="正在加载测试跟踪列表…"
-        emptyTitle="当前筛选条件下没有测试跟踪"
+      <button
+        nz-button
+        nzType="primary"
+        [disabled]="selectedIssueIds().length === 0 || batchResolving()"
+        [nzLoading]="batchResolving()"
+        (click)="batchResolveSelected()"
       >
-        <div class="issue-list-page__results">
-          <app-issue-list-table
-            [items]="store.items()"
-            [viewMode]="viewMode()"
-            [activeIssueId]="selectedIssueId()"
-            [selectedIds]="selectedIssueIds()"
-            [page]="store.page()"
-            [pageSize]="store.pageSize()"
-            (open)="openDetail($event)"
-            (selectionChange)="onSelectionChange($event)"
-          />
-        </div>
+        批量标记已解决
+      </button>
+      <button nz-button [disabled]="selectedIssueIds().length === 0 || batchResolving()" (click)="clearSelection()">
+        取消选择
+      </button>
+    </div> -->
+    <app-active-filters-bar [tags]="activeFilterBarTags()" (remove)="onActiveFilterRemove($event)" (clear)="resetFilters()" />
+    <app-list-state
+      [loading]="store.loading()"
+      [empty]="store.items().length === 0"
+      loadingText="正在加载测试跟踪列表…"
+      emptyTitle="当前筛选条件下没有测试跟踪"
+    >
+      <app-issue-list-table
+        [items]="store.items()"
+        [viewMode]="viewMode()"
+        [activeIssueId]="selectedIssueId()"
+        [selectedIds]="selectedIssueIds()"
+        [page]="store.page()"
+        [pageSize]="store.pageSize()"
+        (open)="openDetail($event)"
+        (selectionChange)="onSelectionChange($event)"
+      />
 
-        @if (store.total() > 0) {
-          <div class="issue-pagination">
-            <nz-pagination
-              [nzTotal]="store.total()"
-              [nzPageIndex]="store.page()"
-              [nzPageSize]="store.pageSize()"
-              [nzPageSizeOptions]="[10, 20, 50, 100]"
-              [nzShowSizeChanger]="true"
-              [nzShowQuickJumper]="true"
-              [nzShowTotal]="totalTpl"
-              (nzPageIndexChange)="onPageIndexChange($event)"
-              (nzPageSizeChange)="onPageSizeChange($event)"
-            ></nz-pagination>
-            <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
-          </div>
-        }
-      </app-list-state>
-    </section>
+      @if (store.total() > 0) {
+        <div class="issue-pagination">
+          <nz-pagination
+            [nzTotal]="store.total()"
+            [nzPageIndex]="store.page()"
+            [nzPageSize]="store.pageSize()"
+            [nzPageSizeOptions]="[10, 20, 50, 100]"
+            [nzShowSizeChanger]="true"
+            [nzShowQuickJumper]="true"
+            [nzShowTotal]="totalTpl"
+            (nzPageIndexChange)="onPageIndexChange($event)"
+            (nzPageSizeChange)="onPageSizeChange($event)"
+          ></nz-pagination>
+          <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
+        </div>
+      }
+    </app-list-state>
 
     <app-issue-create-dialog
       [open]="createOpen()"
@@ -138,38 +130,10 @@ import { IssueListStore } from '../../store/issue-list.store';
   `,
   styles: [
     `
-      :host {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        min-height: 0;
-      }
-      .issue-list-page {
-        display: flex;
-        flex: 1 1 auto;
-        flex-direction: column;
-        min-height: 0;
-      }
-      .issue-list-page__controls {
-        flex: 0 0 auto;
-      }
-      .issue-list-page__state {
-        display: flex;
-        flex: 1 1 auto;
-        flex-direction: column;
-        min-height: 0;
-      }
-      .issue-list-page__results {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow: auto;
-        scrollbar-gutter: stable;
-      }
       .issue-pagination {
         display: flex;
-        flex: 0 0 auto;
         justify-content: flex-end;
-        padding: 12px 0 0;
+        padding: 16px 0 4px;
       }
       .issue-batch-actions {
         display: flex;
@@ -184,19 +148,6 @@ import { IssueListStore } from '../../store/issue-list.store';
       }
       .issue-batch-actions__summary strong {
         color: var(--text-primary);
-      }
-      @media (max-width: 960px) {
-        :host {
-          height: auto;
-          min-height: 100%;
-        }
-        .issue-list-page,
-        .issue-list-page__state {
-          min-height: 0;
-        }
-        .issue-list-page__results {
-          overflow: visible;
-        }
       }
     `,
   ],
