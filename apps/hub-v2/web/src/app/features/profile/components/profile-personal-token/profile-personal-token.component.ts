@@ -25,6 +25,12 @@ type ScopeOption = {
   desc: string;
 };
 
+type ScopeGroup = {
+  title: string;
+  desc: string;
+  options: ScopeOption[];
+};
+
 @Component({
   selector: 'app-profile-personal-token',
   standalone: true,
@@ -236,18 +242,28 @@ type ScopeOption = {
 
           <label>权限范围</label>
           <div class="scope-list">
-            @for (scope of scopeOptions; track scope.value) {
-              <label
-                nz-checkbox
-                class="scope-item"
-                [ngModel]="selectedScopes().includes(scope.value)"
-                (ngModelChange)="toggleScope(scope.value, $event)"
-              >
-                <div class="scope-item__text">
-                  <strong>{{ scope.label }}</strong>
-                  <span>{{ scope.desc }}</span>
+            @for (group of scopeGroups; track group.title) {
+              <section class="scope-group">
+                <div class="scope-group__header">
+                  <strong>{{ group.title }}</strong>
+                  <span>{{ group.desc }}</span>
                 </div>
-              </label>
+                <div class="scope-group__items">
+                  @for (scope of group.options; track scope.value) {
+                    <label
+                      nz-checkbox
+                      class="scope-item"
+                      [ngModel]="selectedScopes().includes(scope.value)"
+                      (ngModelChange)="toggleScope(scope.value, $event)"
+                    >
+                      <div class="scope-item__text">
+                        <strong>{{ scope.label }}</strong>
+                        <span>{{ scope.desc }}</span>
+                      </div>
+                    </label>
+                  }
+                </div>
+              </section>
             }
           </div>
 
@@ -358,10 +374,34 @@ type ScopeOption = {
       }
       .scope-list {
         display: grid;
-        gap: 8px;
+        gap: 12px;
         max-height: none;
         overflow: visible;
         padding: 0;
+      }
+      .scope-group {
+        border: 1px solid var(--border-color-soft);
+        border-radius: 10px;
+        background: var(--bg-subtle);
+        padding: 10px 12px;
+      }
+      .scope-group__header {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .scope-group__header > strong {
+        color: var(--text-heading);
+        font-size: 13px;
+      }
+      .scope-group__header > span {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .scope-group__items {
+        display: grid;
+        gap: 6px;
       }
       .scope-item {
         display: flex;
@@ -558,18 +598,41 @@ export class ProfilePersonalTokenComponent {
   readonly auditDateFrom = signal<Date | null>(null);
   readonly auditDateTo = signal<Date | null>(null);
 
-  readonly scopeOptions: ScopeOption[] = [
-    { value: 'issue:comment:write', label: '测试单评论', desc: '创建评论与 @ 提及' },
-    { value: 'issue:transition:write', label: '测试单状态流转', desc: '开始、解决、验证、关闭等' },
-    { value: 'issue:assign:write', label: '测试单指派', desc: '指派/转派负责人' },
-    { value: 'issue:branch:write', label: '测试单协作分支', desc: '创建/删除测试单关联的协作分支' },
-    { value: 'issue:participant:write', label: '测试单协作人', desc: '添加或移除协作人' },
-    { value: 'doc:create:write', label: '文档创建', desc: '通过 Token API 新建项目文档' },
-    { value: 'doc:update:write', label: '文档编辑', desc: '通过 Token API 编辑项目文档内容' },
-    { value: 'doc:publish:write', label: '文档发布', desc: '通过 Token API 发布项目文档' },
-    { value: 'rd:transition:write', label: '研发项状态流转', desc: '开始、阻塞、恢复、完成' },
-    { value: 'rd:edit:write', label: '研发项编辑', desc: '编辑标题、描述、计划时间等' },
+  readonly scopeGroups: ScopeGroup[] = [
+    {
+      title: '测试单',
+      desc: '创建、评论、流转与协作分支',
+      options: [
+        { value: 'issue:create:write', label: '测试单创建', desc: '新建测试单并设置负责人、验证人' },
+        { value: 'issue:comment:write', label: '测试单评论', desc: '创建评论与 @ 提及' },
+        { value: 'issue:transition:write', label: '测试单状态流转', desc: '开始、解决、验证、关闭等' },
+        { value: 'issue:assign:write', label: '测试单指派', desc: '指派或转派负责人' },
+        { value: 'issue:branch:write', label: '测试单协作分支', desc: '创建、启动、完成协作分支' },
+        { value: 'issue:participant:write', label: '测试单协作人', desc: '添加或移除协作人' },
+      ],
+    },
+    {
+      title: '研发项',
+      desc: '创建、阶段任务、个人进度与状态流转',
+      options: [
+        { value: 'rd:create:write', label: '研发项创建', desc: '新建研发项并配置初始阶段任务' },
+        { value: 'rd:stage-task:write', label: '研发阶段任务', desc: '为当前阶段新增任务' },
+        { value: 'rd:progress:write', label: '研发进度更新', desc: '更新自己的阶段任务进度' },
+        { value: 'rd:transition:write', label: '研发项状态流转', desc: '开始、阻塞、恢复、完成与推进' },
+        { value: 'rd:edit:write', label: '研发项编辑', desc: '编辑标题、描述、计划时间等' },
+      ],
+    },
+    {
+      title: '文档',
+      desc: '项目文档创建、编辑与发布',
+      options: [
+        { value: 'doc:create:write', label: '文档创建', desc: '新建项目文档' },
+        { value: 'doc:update:write', label: '文档编辑', desc: '编辑项目文档内容' },
+        { value: 'doc:publish:write', label: '文档发布', desc: '发布项目文档' },
+      ],
+    },
   ];
+  readonly scopeOptions: ScopeOption[] = this.scopeGroups.flatMap((group) => group.options);
 
   readonly auditActionOptions = [
     { value: 'doc.create', label: '文档创建' },
@@ -603,16 +666,20 @@ export class ProfilePersonalTokenComponent {
     this.createName.set('');
     this.selectedScopes.set(
       [
+        'issue:create:write',
         'issue:comment:write',
         'issue:transition:write',
         'issue:assign:write',
         'issue:branch:write',
         'issue:participant:write',
+        'rd:create:write',
+        'rd:stage-task:write',
+        'rd:progress:write',
+        'rd:transition:write',
+        'rd:edit:write',
         'doc:create:write',
         'doc:update:write',
-        'doc:publish:write',
-        'rd:transition:write',
-        'rd:edit:write'
+        'doc:publish:write'
       ]);
     this.expiresAt.set(null);
     this.createOpen.set(true);

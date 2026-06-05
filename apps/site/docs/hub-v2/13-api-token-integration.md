@@ -1,6 +1,6 @@
 # 13 Hub V2 Token 体系与 webapp 读写接入方案
 
-最后更新：2026-06-01
+最后更新：2026-06-05
 
 ## 1. 背景与目标
 
@@ -277,6 +277,47 @@ Docs：
 - `PATCH /api/personal/projects/:projectKey/docs/:docId`
 - `POST /api/personal/projects/:projectKey/docs/:docId/publish`
 
+Markdown 图片上传：
+
+- `POST /api/personal/projects/:projectKey/uploads/markdown`
+
+说明：
+
+- 该接口仅用于 Markdown 正文内联图片，不是通用附件管理接口
+- 必须使用 Personal Token
+- 不新增独立 upload scope，上传权限由业务写 scope 派生；任一满足即可：
+  - `issue:create:write`
+  - `issue:comment:write`
+  - `rd:create:write`
+  - `rd:stage-task:write`
+  - `rd:transition:write`
+  - `rd:edit:write`
+- 仅允许图片，沿用 markdown image upload policy
+- 上传先落库为 `bucket=temp`、`category=markdown`
+- 返回的 `markdown` 可直接插入 Issue 描述、Issue 评论、RD 描述或 RD 阶段任务描述
+- 后续创建/评论/更新服务会根据 Markdown 中的 `/api/admin/uploads/:uploadId/raw` 引用，将 temp 上传转移到对应业务 bucket
+
+返回示例：
+
+```json
+{
+  "code": "OK",
+  "message": "markdown image uploaded",
+  "data": {
+    "uploadId": "upl_xxx",
+    "markdown": "![image.png](/api/admin/uploads/upl_xxx/raw)",
+    "upload": {
+      "id": "upl_xxx",
+      "bucket": "temp",
+      "category": "markdown",
+      "originalName": "image.png",
+      "mimeType": "image/png",
+      "fileSize": 12345
+    }
+  }
+}
+```
+
 创建请求体：
 
 ```json
@@ -350,6 +391,7 @@ Docs：
 | Issue | 列表与详情 | `issues:read` |
 | Issue | 创建测试单 | `issue:create:write` |
 | Issue | 评论 | `issue:comment:write` |
+| Issue/RD | Markdown 图片上传 | 由目标业务写 scope 派生 |
 | Issue | 状态流转 | `issue:transition:write` |
 | Issue | 指派与认领 | `issue:assign:write` |
 | Issue | 协作分支管理 | `issue:branch:write` |
@@ -590,4 +632,17 @@ curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/<DOC_ID>
 
 ```bash
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/by-slug/<DOC_SLUG>" -H "Authorization: Bearer <PROJECT_TOKEN>"
+```
+
+### 9.15 Personal Token 上传 Markdown 图片
+
+上传接口使用 multipart form-data，字段：
+
+- `file`：图片文件
+- `alt`：可选，返回 Markdown 的图片替代文本
+
+返回的 `data.markdown` 可以插入 Issue 描述、Issue 评论、RD 描述或 RD 阶段任务描述。
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/uploads/markdown" -H "Authorization: Bearer <PERSONAL_TOKEN>" -F "file=@screenshot.png;type=image/png" -F "alt=登录异常截图"
 ```

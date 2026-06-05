@@ -173,6 +173,7 @@ describe("personal token issue routes", () => {
   it("keeps issue branch creation behind issue:branch:write", async () => {
     const ctx = await createTestApp();
     const issue = await createIssueWithToken(ctx);
+    seedIssueParticipant(ctx, issue.id);
     const token = await createPersonalToken(ctx, ["issue:branch:write"]);
 
     const response = await ctx.app.inject({
@@ -394,6 +395,18 @@ async function createIssueWithToken(ctx: TestApp): Promise<{ id: string }> {
   });
   assert.equal(response.statusCode, 201);
   return response.json().data;
+}
+
+function seedIssueParticipant(ctx: TestApp, issueId: string): void {
+  const now = new Date().toISOString();
+  ctx.db
+    .prepare(
+      `
+        INSERT INTO issue_participants (id, issue_id, user_id, user_name, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `
+    )
+    .run(`ispt_${issueId}`, issueId, ctx.admin.userId, ctx.admin.nickname, now);
 }
 
 function countRows(db: Database.Database, tableName: string): number {
