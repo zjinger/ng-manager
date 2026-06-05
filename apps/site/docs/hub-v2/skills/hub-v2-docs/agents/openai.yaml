@@ -1,4 +1,4 @@
 interface:
   display_name: "SL Hub V2 Docs"
-  short_description: "Read and write SL Hub V2 docs with tokens"
-  default_prompt: "Use $hub-v2-docs to read or write SL Hub V2 project documents."
+  short_description: "Read and write SL Hub V2 docs through MCP"
+  default_prompt: "Use $hub-v2-docs to work with SL Hub V2 project documents through MCP tools."

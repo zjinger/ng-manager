@@ -1,76 +1,67 @@
 ---
 name: hub-v2-api
-description: Read and operate SL Hub V2 Issue and RD APIs through Project Token and Personal Token. Use when Codex, OpenClaw, or another agent needs to list or inspect test issues, comments, logs, participants, attachments, issue branches, project members, RD stages, RD items, RD logs, RD progress, transition Issue or RD status, add Issue comments, assign or claim issues, manage issue collaborators or branches, advance RD stages, update RD progress, edit RD basic fields, inspect personal token identity/capabilities, or debug SL Hub V2 token scope errors for issues:read, rd:read, issue:comment:write, issue:transition:write, issue:assign:write, issue:branch:write, issue:participant:write, rd:transition:write, and rd:edit:write.
+description: Use SL Hub V2 MCP tools to read and operate Issue and RD workflows. Trigger when Codex, OpenCode, Claude Code, OpenClaw, or another agent needs to list or inspect test issues, comments, logs, participants, attachments, issue branches, project members, RD stages, RD items, RD logs, RD progress, transition Issue or RD status, add Issue comments, assign or claim issues, manage issue collaborators or branches, advance RD stages, update RD progress, edit RD basic fields, inspect personal token identity/capabilities, or debug SL Hub V2 token scope errors.
 ---
 
 # SL Hub V2 API
 
-## Core Rules
+## Primary Tooling
 
-- Use Project Token for reads:
-  - Issue reads require `issues:read`.
-  - RD reads require `rd:read`.
-- Use Personal Token for writes:
-  - Issue comments require `issue:comment:write`.
-  - Issue status transitions require `issue:transition:write`.
-  - Issue assign/claim requires `issue:assign:write`.
-  - Issue branch operations require `issue:branch:write`.
-  - Issue participant operations require `issue:participant:write`.
-  - RD transitions, stage advance, and progress require `rd:transition:write`.
-  - RD basic edits require `rd:edit:write`.
-- Treat `projectKey` as the SL Hub V2 project key in the API path.
-- Default `base_url` is `http://192.168.1.31:7008`, but prefer external config.
+Prefer the SL Hub V2 MCP server when available. Use these MCP tools first:
 
-## Write Safety
+- Project/config: `sl_hub_v2.projects_list`
+- Identity/permissions: `sl_hub_v2.me`, `sl_hub_v2.capabilities`
+- Issues: `sl_hub_v2.issues_list`, `sl_hub_v2.issues_get`, `sl_hub_v2.issues_related`, `sl_hub_v2.issues_comment`, `sl_hub_v2.issues_assign`, `sl_hub_v2.issues_transition`, `sl_hub_v2.issues_branch`, `sl_hub_v2.issues_participant`
+- RD: `sl_hub_v2.rd_stages`, `sl_hub_v2.rd_list`, `sl_hub_v2.rd_get`, `sl_hub_v2.rd_related`, `sl_hub_v2.rd_transition`, `sl_hub_v2.rd_advance_stage`, `sl_hub_v2.rd_update_progress`, `sl_hub_v2.rd_update`
 
-- Issue comments may be executed directly when the user gives a clear `issueId` and comment content.
-- Issue/RD status transitions and RD stage advance require explicit confirmation:
-  - Use the script without `--confirm` first to preview the method, path, body, and required scope.
-  - Only add `--confirm` after the user confirms the target action.
-- `rd progress-update --progress 100` also requires `--confirm` because it can complete the RD item.
-- For ambiguous writes, read the resource detail and personal capabilities first.
+Use `scripts/hub_v2_api.py` only when MCP tools are not configured in the current agent.
 
-## External Config
+## Project Selection
 
-Use the same external config shape as `$hub-v2-docs` so the user does not need to repeat connection details in each prompt. Prefer one shared config file: `%USERPROFILE%\.sl-hub-v2.json`. Read `references/config.md` when setting up config or diagnosing missing `base_url`, `project_key`, or credentials.
+- If the user names a project alias such as `hubv2` or `ais`, pass it as `project`.
+- If the user says "current project", use `sl_hub_v2.projects_list` and choose the configured default.
+- If multiple projects exist and no default is clear, ask for the project alias.
+- Treat `projectKey` as the SL Hub V2 API project key, not a local workspace id or display name.
 
-Supported config keys: `base_url`, `project_key`, `project_name`, `project_token`, `personal_token`, `source`, `projects`, and `default_project`. CamelCase variants are also accepted.
+## Read Workflow
 
-OpenCode users may put the same `slHubV2` / `sl_hub_v2` object in project or user `opencode.json` / `opencode.jsonc`, or provide it through `OPENCODE_CONFIG` / `OPENCODE_CONFIG_CONTENT`.
+- Read operations should run directly with Project Token-backed tools.
+- Use `issues_get` / `rd_get` before making recommendations about a specific item.
+- Use `issues_related` or `rd_related` when comments, logs, progress, or history may affect the answer.
+- For "unfinished Issue" queries, treat `verified` as completed. Unless the user gives a different definition, filter unfinished Issues by excluding `verified` and `closed`.
 
-## Script Helper
+## Write Workflow
 
-Prefer MCP tools named `sl_hub_v2.issues_*`, `sl_hub_v2.rd_*`, `sl_hub_v2.me`, and `sl_hub_v2.capabilities` when an SL Hub V2 MCP server is available. Use the script helper as a fallback when MCP tools are not configured in the current agent.
+- Issue comments may be executed directly when the user gives both a clear `issueId` and comment content.
+- Issue/RD status transitions and RD stage advance must preview first. Call the MCP tool without `confirm`, report the preview, then execute with `confirm: true` only after the user confirms.
+- `rd_update_progress` with `progress: 100` must also preview first.
+- For ambiguous writes, read detail and capabilities before previewing the write.
 
-Use `scripts/hub_v2_api.py` for deterministic reads and writes.
+## Common Requests
 
-Examples:
+- "我是谁": `sl_hub_v2.me`
+- "我能做什么": `sl_hub_v2.capabilities`
+- "查看未完成 issue": `sl_hub_v2.issues_list` with status excluding `verified` and `closed`
+- "查看某个测试单": find/list if needed, then `sl_hub_v2.issues_get`; load `comments`/`logs` when context matters
+- "开始处理测试单": preview `sl_hub_v2.issues_transition` with `action: "start"`, then wait for confirmation
+- "查看研发项": `sl_hub_v2.rd_list` or `sl_hub_v2.rd_get`
+- "推进研发项阶段": preview `sl_hub_v2.rd_advance_stage`, then wait for confirmation
 
-```bash
-python scripts/hub_v2_api.py projects
-python scripts/hub_v2_api.py capabilities
-python scripts/hub_v2_api.py issue list --page 1 --page-size 20
-python scripts/hub_v2_api.py issue comments --issue-id iss_xxx
-python scripts/hub_v2_api.py issue comment --issue-id iss_xxx --content "测试评论"
-python scripts/hub_v2_api.py issue resolve --issue-id iss_xxx --resolution-summary "已修复"
-python scripts/hub_v2_api.py issue resolve --issue-id iss_xxx --resolution-summary "已修复" --confirm
-python scripts/hub_v2_api.py rd list --page 1 --page-size 20
-python scripts/hub_v2_api.py rd progress --item-id rd_xxx
-python scripts/hub_v2_api.py rd progress-update --item-id rd_xxx --progress 40 --note "联调中"
-python scripts/hub_v2_api.py rd advance-stage --item-id rd_xxx --stage-id stg_xxx --member-id usr_xxx
-python scripts/hub_v2_api.py rd advance-stage --item-id rd_xxx --stage-id stg_xxx --member-id usr_xxx --confirm
+## Configuration
+
+The MCP server and fallback script share the same SL Hub V2 config. Prefer `%USERPROFILE%\.sl-hub-v2.json` or `SL_HUB_V2_CONFIG`.
+
+Recommended Codex MCP config for the published package:
+
+```toml
+[mcp_servers.slHubV2]
+command = "npx.cmd"
+args = ["-y", "@yinuo-ngm/sl-hub-v2-mcp@0.1.2"]
 ```
 
-## Agent Workflow
-
-1. Determine whether the user wants read or write.
-2. For reads, use Project Token commands.
-3. For writes, inspect `capabilities` first when the user's permission or project membership is uncertain.
-4. For transition/advance actions, run the command without `--confirm`, report the preview, and wait for user confirmation.
-5. For direct comments, execute only when the issue id and content are explicit.
-6. If exact endpoints, request bodies, status rules, or errors are needed, read `references/api.md`.
+Read `references/config.md` when setting up Codex/OpenCode/Claude Code config or diagnosing missing `base_url`, `project_key`, or credentials.
 
 ## References
 
-- Read `references/api.md` for endpoint, scope, request body, and status transition details.
-- Read `references/config.md` for config file shapes and resolution order.
+- Read `references/api.md` only when exact endpoint mapping, request body fields, status transitions, or error details are needed.
+- Read `references/config.md` for config file shapes, search order, and MCP client examples.

@@ -10,6 +10,40 @@ Recommended path:
 
 The same file supplies `base_url`, `project_key`, Project Token, and Personal Token for both document operations and Issue/RD API operations.
 
+## MCP Server Setup
+
+Use the published npm package when configuring agent clients.
+
+Codex:
+
+```toml
+[mcp_servers.slHubV2]
+command = "npx.cmd"
+args = ["-y", "@yinuo-ngm/sl-hub-v2-mcp@0.1.2"]
+```
+
+OpenCode:
+
+```json
+{
+  "mcp": {
+    "sl-hub-v2": {
+      "type": "local",
+      "command": ["npx", "-y", "@yinuo-ngm/sl-hub-v2-mcp@0.1.2"],
+      "enabled": true
+    }
+  }
+}
+```
+
+Claude Code:
+
+```bash
+claude mcp add --transport stdio --scope user sl-hub-v2 -- npx -y @yinuo-ngm/sl-hub-v2-mcp@0.1.2
+```
+
+`cwd` is optional. Set it only when the MCP server should discover project-local `opencode.json`, `opencode.jsonc`, or `.claude/settings*.json`.
+
 ## Single Project
 
 ```json
