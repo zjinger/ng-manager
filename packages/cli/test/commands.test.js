@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const { createStartUi } = require("../lib/commands/ui.js");
 const { createStopCmd } = require("../lib/commands/stop.js");
 const { createStatusCmd, formatStatusLines } = require("../lib/commands/status.js");
-const { createMcpCmd } = require("../lib/commands/mcp.js");
+const { createMcpCmd, createMcpDoctorCmd } = require("../lib/commands/mcp.js");
 
 test("startUi opens the browser and waits for a child process it started", async () => {
     const calls = [];
@@ -105,4 +105,17 @@ test("mcp command starts the unified MCP server", async () => {
     await mcpCmd();
 
     assert.deepEqual(calls, ["start"]);
+});
+
+test("mcp doctor command runs MCP diagnostics", async () => {
+    const calls = [];
+    const mcpDoctorCmd = createMcpDoctorCmd({
+        doctor: async () => {
+            calls.push("doctor");
+        },
+    });
+
+    await mcpDoctorCmd();
+
+    assert.deepEqual(calls, ["doctor"]);
 });

@@ -1,7 +1,11 @@
-import { main as startMcpServer } from "@yinuo-ngm/mcp-server";
+import { doctor as runMcpDoctor, main as startMcpServer } from "@yinuo-ngm/mcp-server";
 
 export type McpCommandDeps = {
     startServer(): Promise<void>;
+};
+
+export type McpDoctorCommandDeps = {
+    doctor(): Promise<void>;
 };
 
 export function createMcpCmd(deps: McpCommandDeps = { startServer: startMcpServer }) {
@@ -10,4 +14,11 @@ export function createMcpCmd(deps: McpCommandDeps = { startServer: startMcpServe
     };
 }
 
+export function createMcpDoctorCmd(deps: McpDoctorCommandDeps = { doctor: runMcpDoctor }) {
+    return async function mcpDoctorCmd(): Promise<void> {
+        await deps.doctor();
+    };
+}
+
 export const mcpCmd = createMcpCmd();
+export const mcpDoctorCmd = createMcpDoctorCmd();

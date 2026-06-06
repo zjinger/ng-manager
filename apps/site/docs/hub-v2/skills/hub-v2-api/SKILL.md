@@ -9,6 +9,10 @@ description: Use ng-manager Hub V2 MCP tools to read Issue and RD workflows, ins
 
 Use the unified ng-manager MCP server started by `ngm mcp`. This skill is only an Agent usage guide; it must not perform direct Hub V2 HTTP requests, store tokens, or duplicate the Hub V2 API schema.
 
+If the user asks whether the local MCP configuration is ready, or if a tool reports missing Hub V2 config/token values, tell the user to run `ngm mcp doctor`. Do not diagnose by asking for token values in chat.
+
+Deprecated Python helpers in this directory are migration stubs and are not a normal Agent workflow.
+
 Use these MCP tools first:
 
 - Project/config: `hub_v2_projects_list`, `hub_v2_projects_get`
@@ -23,6 +27,7 @@ Use these MCP tools first:
 - If the user gives a Hub V2 project key, pass it as `projectKey`.
 - If the user says "current project", call `hub_v2_projects_list` and use the default or only configured project.
 - If multiple projects exist and no default is clear, ask for the project alias.
+- Do not assume legacy config files or old env prefixes exist; the MCP server reads `~/.ng-manager/agent-connections.json`, `HUB_V2_CONFIG`, and `HUB_V2_*` overrides.
 
 ## Read Workflow
 
@@ -56,6 +61,7 @@ Use these MCP tools first:
 - `TOKEN_PROJECT_FORBIDDEN` or `PROJECT_NOT_FOUND`: verify the configured project alias or project key.
 - `PROJECT_ACCESS_DENIED`: explain that the Personal Token owner needs project access.
 - `TOKEN_RATE_LIMITED`: back off and suggest retrying later.
+- Missing config/token errors such as `HUB_V2_PROJECT_TOKEN is required`: ask the user to check `ngm mcp doctor` and local MCP configuration, not to paste token values.
 - Validation errors: summarize the invalid field and ask for the missing business input.
 
 ## Reply Rules

@@ -25,7 +25,7 @@
     "inspect": "npm run build && mcp-inspector node lib/index.js",
     "inspect:dev": "mcp-inspector tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -b tsconfig.json",
+    "build": "rimraf lib tsconfig.tsbuildinfo && tsc -b tsconfig.json",
     "test": "npm run build && node --test test",
     "start": "node lib/index.js"
   },

@@ -1,4 +1,4 @@
 interface:
-  display_name: "SL Hub V2 API"
-  short_description: "Operate SL Hub V2 Issue and RD workflows through MCP"
-  default_prompt: "Use $hub-v2-api to work with SL Hub V2 issues and RD items through MCP tools."
+  display_name: "Hub V2 API"
+  short_description: "Operate Hub V2 Issue and RD workflows through ng-manager MCP"
+  default_prompt: "Use $hub-v2-api to work with Hub V2 issues and RD items through ng-manager MCP tools."

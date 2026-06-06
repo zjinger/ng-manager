@@ -1,6 +1,6 @@
 import type { McpToolDefinition } from "../index";
 import { compact, compactUndefined, HubV2Client } from "./client";
-import { resolveHubV2Context } from "./config";
+import { resolveHubV2Context } from "./config/index";
 import { issueCommentSchema, issueCreateSchema, issueGetSchema, issuesListSchema, issueUpdateSchema } from "./schemas";
 import { fail, ok } from "../../utils/result";
 

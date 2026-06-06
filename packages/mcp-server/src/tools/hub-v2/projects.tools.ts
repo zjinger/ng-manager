@@ -1,5 +1,5 @@
 import type { McpToolDefinition } from "../index";
-import { getConfiguredProject, listConfiguredProjects } from "./config";
+import { getConfiguredProject, listConfiguredProjects } from "./config/index";
 import { projectSelectorSchema } from "./schemas";
 import { ok } from "../../utils/result";
 

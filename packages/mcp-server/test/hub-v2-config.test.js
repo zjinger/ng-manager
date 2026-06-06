@@ -10,7 +10,7 @@ const {
   listConfiguredProjects,
   normalizeConfig,
   resolveHubV2Context,
-} = require("../lib/tools/hub-v2/config.js");
+} = require("../lib/tools/hub-v2/config/index.js");
 
 const ENV_KEYS = [
   "HUB_V2_BASE_URL",

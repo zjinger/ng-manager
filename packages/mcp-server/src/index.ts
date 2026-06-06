@@ -4,6 +4,8 @@ import { createToolContext } from "./context/create-tool-context";
 import { createMcpServer } from "./create-mcp-server";
 import { errorMessage } from "./utils/errors";
 
+export { createDoctorReport, doctor } from "./doctor";
+
 export async function main(): Promise<void> {
   const context = await createToolContext();
   const server = createMcpServer(context);

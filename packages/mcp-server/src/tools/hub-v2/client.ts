@@ -1,4 +1,4 @@
-import type { HubV2ResolvedContext } from "./config";
+import type { HubV2ResolvedContext } from "./config/index";
 import { toHubV2HttpError } from "./errors";
 
 export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";

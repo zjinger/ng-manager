@@ -79,6 +79,18 @@ ngm mcp
 
 The server uses stdio transport only. It does not listen on an HTTP port, and stdout is reserved for the MCP protocol.
 
+## Diagnostics
+
+`ngm mcp` is a stdio MCP server. Running it directly does not print a banner or prompt. This is expected because stdout is reserved for MCP protocol messages.
+
+Use doctor for static diagnostics:
+
+```bash
+ngm mcp doctor
+```
+
+`doctor` checks runtime info, config paths, Hub V2 static config, policy flags, and registered tool counts. It does not call Hub V2 APIs, does not execute MCP tool handlers, and never prints token values.
+
 ## MCP Client Configuration
 
 Built output:

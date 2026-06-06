@@ -8,57 +8,66 @@ command = "ngm"
 args = ["mcp"]
 ```
 
-The MCP server reads Hub V2 access settings from environment variables or local config. Prefer the new `HUB_V2_` prefix:
+For local diagnostics:
 
-```text
-HUB_V2_BASE_URL=http://127.0.0.1:7001
-HUB_V2_PROJECT_KEY=demo
-HUB_V2_PROJECT_TOKEN=project-token-for-reads
-HUB_V2_PERSONAL_TOKEN=personal-token-for-writes
+```bash
+ngm mcp doctor
 ```
 
-Compatibility prefixes are accepted for migration:
+The MCP server reads Hub V2 access settings from MCP-side configuration only. Tool arguments must not include token values.
+
+Configuration priority:
 
 ```text
-SL_HUB_V2_*
-NGM_HUB_V2_*
+tool args project/projectKey
+HUB_V2_* environment variables
+HUB_V2_CONFIG explicit config path
+~/.ng-manager/agent-connections.json
 ```
 
-Local config files may use top-level keys or dedicated objects named `hubV2`, `slHubV2`, or `sl_hub_v2`.
-
-Single project:
+Persistent local config:
 
 ```json
 {
-  "base_url": "http://127.0.0.1:7001",
-  "project_key": "demo",
-  "project_name": "Demo",
-  "project_token": "project-token-for-reads",
-  "personal_token": "personal-token-for-writes",
-  "source": "agent"
-}
-```
-
-Multiple projects:
-
-```json
-{
-  "base_url": "http://127.0.0.1:7001",
-  "default_project": "demo",
-  "projects": {
-    "demo": {
-      "project_key": "demo",
-      "project_name": "Demo",
-      "project_token": "project-token-for-reads",
-      "personal_token": "personal-token-for-writes"
+  "version": 1,
+  "hubV2": {
+    "defaultProject": "demo",
+    "projects": {
+      "demo": {
+        "baseUrl": "http://127.0.0.1:7001",
+        "projectKey": "demo",
+        "projectToken": "project-token-for-reads",
+        "personalToken": "personal-token-for-writes",
+        "source": "agent"
+      }
     }
   }
 }
 ```
 
+Temporary override variables:
+
+```text
+HUB_V2_PROJECT=demo
+HUB_V2_BASE_URL=http://127.0.0.1:7001
+HUB_V2_PROJECT_KEY=demo
+HUB_V2_PROJECT_TOKEN=project-token-for-reads
+HUB_V2_PERSONAL_TOKEN=personal-token-for-writes
+HUB_V2_SOURCE=agent
+HUB_V2_CONFIG=C:/Users/you/.ng-manager/agent-connections.json
+```
+
+Project selection:
+
+- Use `project` for configured aliases in `hubV2.projects`.
+- Use `projectKey` only when the user explicitly gives the Hub V2 project key.
+- If multiple projects exist and no `defaultProject` is configured, ask for a project alias.
+
 Security rules:
 
 - Never place tokens in skill files.
+- Never ask the user to paste tokens into chat.
 - Never pass tokens as MCP tool arguments.
 - Do not print full token values in logs or replies.
-- Use Project Token for document reads.
+- Use Project Token for document read tools.
+- Treat `~/.ng-manager/agent-connections.json` as a local secret file.

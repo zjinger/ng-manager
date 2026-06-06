@@ -2,7 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { McpToolDefinition } from "../index";
 import { HubV2Client } from "./client";
-import { resolveHubV2Context } from "./config";
+import { resolveHubV2Context } from "./config/index";
 import { markdownImageUploadSchema } from "./schemas";
 import { ok } from "../../utils/result";
 

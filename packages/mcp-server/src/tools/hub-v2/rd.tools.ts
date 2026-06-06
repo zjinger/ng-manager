@@ -1,6 +1,6 @@
 import type { McpToolDefinition } from "../index";
 import { compact, HubV2Client } from "./client";
-import { resolveHubV2Context } from "./config";
+import { resolveHubV2Context } from "./config/index";
 import {
   rdAdvanceStageSchema,
   rdCreateSchema,
