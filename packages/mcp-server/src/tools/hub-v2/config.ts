@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "fs";
 import { homedir } from "os";
-import { dirname, join, resolve } from "path";
+import { join, resolve } from "path";
 
 export type HubV2ProjectConfig = {
   name?: string;
@@ -135,13 +135,12 @@ function mergeHubObject(target: Record<string, unknown>, value: unknown): void {
 
 function mergeEnvObject(target: Record<string, unknown>, value: unknown): void {
   const env = asRecord(value);
-  putIfValue(target, "base_url", getString(env, "HUB_V2_BASE_URL", "SL_HUB_V2_BASE_URL", "NGM_HUB_V2_BASE_URL"));
-  putIfValue(target, "project_key", getString(env, "HUB_V2_PROJECT_KEY", "SL_HUB_V2_PROJECT_KEY", "NGM_HUB_V2_PROJECT_KEY"));
-  putIfValue(target, "project_name", getString(env, "HUB_V2_PROJECT_NAME", "SL_HUB_V2_PROJECT_NAME", "NGM_HUB_V2_PROJECT_NAME"));
-  putIfValue(target, "project_token", getString(env, "HUB_V2_PROJECT_TOKEN", "SL_HUB_V2_PROJECT_TOKEN", "NGM_HUB_V2_PROJECT_TOKEN", "NGM_HUB_V2_TOKEN"));
-  putIfValue(target, "personal_token", getString(env, "HUB_V2_PERSONAL_TOKEN", "SL_HUB_V2_PERSONAL_TOKEN", "NGM_HUB_V2_PERSONAL_TOKEN"));
-  putIfValue(target, "source", getString(env, "HUB_V2_SOURCE", "SL_HUB_V2_SOURCE", "NGM_HUB_V2_SOURCE"));
-  putIfValue(target, "default_project", getString(env, "HUB_V2_PROJECT", "SL_HUB_V2_PROJECT", "NGM_HUB_V2_PROJECT"));
+  putIfValue(target, "base_url", getString(env, "HUB_V2_BASE_URL"));
+  putIfValue(target, "project_key", getString(env, "HUB_V2_PROJECT_KEY"));
+  putIfValue(target, "project_token", getString(env, "HUB_V2_PROJECT_TOKEN"));
+  putIfValue(target, "personal_token", getString(env, "HUB_V2_PERSONAL_TOKEN"));
+  putIfValue(target, "source", getString(env, "HUB_V2_SOURCE"));
+  putIfValue(target, "default_project", getString(env, "HUB_V2_PROJECT"));
 }
 
 function normalizeProject(raw: unknown): HubV2ProjectConfig {
@@ -194,15 +193,11 @@ export function normalizeConfig(rawValue: unknown): HubV2Config {
   const normalized: Record<string, unknown> = {};
   mergeHubObject(normalized, raw);
   mergeHubObject(normalized, raw.hubV2);
-  mergeHubObject(normalized, raw.slHubV2);
-  mergeHubObject(normalized, raw.sl_hub_v2);
   mergeEnvObject(normalized, raw.env);
 
   const projects = mergeProjects(
     normalizeProjects(raw),
-    normalizeProjects(asRecord(raw.hubV2)),
-    normalizeProjects(asRecord(raw.slHubV2)),
-    normalizeProjects(asRecord(raw.sl_hub_v2))
+    normalizeProjects(asRecord(raw.hubV2))
   );
   if (Object.keys(projects).length) {
     normalized.projects = projects;
@@ -211,55 +206,14 @@ export function normalizeConfig(rawValue: unknown): HubV2Config {
 }
 
 function configSearchPaths(): string[] {
-  const home = homedir();
-  const envConfig = envValue("HUB_V2_CONFIG", "SL_HUB_V2_CONFIG", "NGM_HUB_V2_CONFIG");
+  const envConfig = envValue("HUB_V2_CONFIG");
   if (envConfig) {
     return [resolve(envConfig)];
   }
-  return [
-    join(home, ".ng-manager", "agent-connections.json"),
-    join(home, ".ng-manager", "hub-v2.json"),
-    join(home, ".sl-hub-v2.json"),
-    join(home, ".codex", "sl-hub-v2.json"),
-    join(home, ".openclaw", "sl-hub-v2.json"),
-    ...opencodeUserConfigPaths(),
-    ...(process.env.OPENCODE_CONFIG ? [resolve(process.env.OPENCODE_CONFIG)] : []),
-    ...opencodeProjectConfigPaths(),
-    ...claudeProjectSettingsPaths(),
-  ];
-}
-
-function parentPaths(): string[] {
-  const paths: string[] = [];
-  let current = resolve(process.cwd());
-  while (true) {
-    paths.push(current);
-    const parent = dirname(current);
-    if (parent === current) {
-      return paths;
-    }
-    current = parent;
-  }
-}
-
-function claudeProjectSettingsPaths(): string[] {
-  const paths: string[] = [];
-  for (const directory of parentPaths()) {
-    paths.push(join(directory, ".claude", "settings.local.json"));
-    paths.push(join(directory, ".claude", "settings.json"));
-  }
-  paths.push(join(homedir(), ".claude", "settings.json"));
-  return paths;
+  return [join(homedir(), ".ng-manager", "agent-connections.json")];
 }
 
 export function loadConfig(pathValue?: string): HubV2Config {
-  const explicitConfig = envValue("HUB_V2_CONFIG", "SL_HUB_V2_CONFIG", "NGM_HUB_V2_CONFIG");
-  if (!pathValue && !explicitConfig && process.env.OPENCODE_CONFIG_CONTENT) {
-    const config = normalizeConfig(parseJsonObject(process.env.OPENCODE_CONFIG_CONTENT));
-    if (Object.keys(config).length) {
-      return config;
-    }
-  }
   const paths = pathValue ? [resolve(pathValue)] : configSearchPaths();
   for (const path of paths) {
     const config = normalizeConfig(loadJsonFile(path));
@@ -270,43 +224,14 @@ export function loadConfig(pathValue?: string): HubV2Config {
   return {};
 }
 
-function opencodeUserConfigPaths(): string[] {
-  const paths: string[] = [];
-  const filenames = ["opencode.json", "opencode.jsonc"];
-  if (process.env.APPDATA) {
-    for (const filename of filenames) {
-      paths.push(join(process.env.APPDATA, "opencode", filename));
-    }
-  }
-  for (const filename of filenames) {
-    paths.push(join(homedir(), ".config", "opencode", filename));
-  }
-  return paths;
-}
-
-function opencodeProjectConfigPaths(): string[] {
-  const paths: string[] = [];
-  for (const directory of parentPaths()) {
-    paths.push(join(directory, "opencode.json"));
-    paths.push(join(directory, "opencode.jsonc"));
-    if (existsSync(join(directory, ".git"))) {
-      break;
-    }
-  }
-  return paths;
-}
-
 function selectedProjectConfig(config: HubV2Config, options: HubV2ResolveOptions): HubV2ProjectConfig {
-  if (options.projectKey) {
-    return {};
-  }
   const projects = config.projects ?? {};
   const entries = Object.entries(projects);
   if (!entries.length) {
     return {};
   }
 
-  const selected = options.project ?? envValue("HUB_V2_PROJECT", "SL_HUB_V2_PROJECT", "NGM_HUB_V2_PROJECT") ?? config.default_project;
+  const selected = options.project ?? envValue("HUB_V2_PROJECT") ?? config.default_project;
   if (selected) {
     const project = projects[selected];
     if (!project) {
@@ -328,21 +253,21 @@ export function resolveHubV2Context(options: HubV2ResolveOptions, tokenKind: Tok
   const config = loadConfig(pathValue);
   const projectConfig = selectedProjectConfig(config, options);
   const baseUrl = (
-    envValue("HUB_V2_BASE_URL", "SL_HUB_V2_BASE_URL", "NGM_HUB_V2_BASE_URL") ??
+    envValue("HUB_V2_BASE_URL") ??
     configValue(config, projectConfig, "base_url")
   )?.replace(/\/+$/, "");
   const projectKey =
     options.projectKey ??
-    envValue("HUB_V2_PROJECT_KEY", "SL_HUB_V2_PROJECT_KEY", "NGM_HUB_V2_PROJECT_KEY") ??
+    envValue("HUB_V2_PROJECT_KEY") ??
     configValue(config, projectConfig, "project_key");
   const projectToken =
-    envValue("HUB_V2_PROJECT_TOKEN", "SL_HUB_V2_PROJECT_TOKEN", "NGM_HUB_V2_PROJECT_TOKEN", "NGM_HUB_V2_TOKEN") ??
+    envValue("HUB_V2_PROJECT_TOKEN") ??
     configValue(config, projectConfig, "project_token");
   const personalToken =
-    envValue("HUB_V2_PERSONAL_TOKEN", "SL_HUB_V2_PERSONAL_TOKEN", "NGM_HUB_V2_PERSONAL_TOKEN") ??
+    envValue("HUB_V2_PERSONAL_TOKEN") ??
     configValue(config, projectConfig, "personal_token");
   const source =
-    envValue("HUB_V2_SOURCE", "SL_HUB_V2_SOURCE", "NGM_HUB_V2_SOURCE") ??
+    envValue("HUB_V2_SOURCE") ??
     configValue(config, projectConfig, "source") ??
     "ngm-mcp";
 
@@ -373,17 +298,17 @@ function projectSummary(name: string, config: HubV2Config, project: HubV2Project
 
 export function listConfiguredProjects(project?: string, pathValue?: string): Record<string, unknown> {
   const config = loadConfig(pathValue);
-  const envProjectKey = envValue("HUB_V2_PROJECT_KEY", "SL_HUB_V2_PROJECT_KEY", "NGM_HUB_V2_PROJECT_KEY") ?? config.project_key;
+  const envProjectKey = envValue("HUB_V2_PROJECT_KEY") ?? config.project_key;
   let items: Array<Record<string, unknown>>;
   if (envProjectKey) {
     items = [
       {
-        name: envValue("HUB_V2_PROJECT", "SL_HUB_V2_PROJECT", "NGM_HUB_V2_PROJECT") ?? config.default_project ?? "default",
+        name: envValue("HUB_V2_PROJECT") ?? config.default_project ?? "default",
         projectName: config.project_name,
         projectKey: envProjectKey,
-        baseUrl: envValue("HUB_V2_BASE_URL", "SL_HUB_V2_BASE_URL", "NGM_HUB_V2_BASE_URL") ?? config.base_url,
-        hasProjectToken: Boolean(envValue("HUB_V2_PROJECT_TOKEN", "SL_HUB_V2_PROJECT_TOKEN", "NGM_HUB_V2_PROJECT_TOKEN", "NGM_HUB_V2_TOKEN") ?? config.project_token),
-        hasPersonalToken: Boolean(envValue("HUB_V2_PERSONAL_TOKEN", "SL_HUB_V2_PERSONAL_TOKEN", "NGM_HUB_V2_PERSONAL_TOKEN") ?? config.personal_token),
+        baseUrl: envValue("HUB_V2_BASE_URL") ?? config.base_url,
+        hasProjectToken: Boolean(envValue("HUB_V2_PROJECT_TOKEN") ?? config.project_token),
+        hasPersonalToken: Boolean(envValue("HUB_V2_PERSONAL_TOKEN") ?? config.personal_token),
         isDefault: true,
       },
     ];
@@ -403,7 +328,7 @@ export function listConfiguredProjects(project?: string, pathValue?: string): Re
 
 export function getConfiguredProject(options: HubV2ResolveOptions, pathValue?: string): Record<string, unknown> {
   const config = loadConfig(pathValue);
-  const selected = options.project ?? options.projectKey ?? envValue("HUB_V2_PROJECT", "SL_HUB_V2_PROJECT", "NGM_HUB_V2_PROJECT") ?? config.default_project;
+  const selected = options.project ?? options.projectKey ?? envValue("HUB_V2_PROJECT") ?? config.default_project;
   if (selected) {
     const projects = listConfiguredProjects(selected, pathValue).items as Array<Record<string, unknown>>;
     if (projects.length === 1) {

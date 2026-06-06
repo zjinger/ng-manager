@@ -22,6 +22,8 @@
     "node": ">=18"
   },
   "scripts": {
+    "inspect": "npm run build && mcp-inspector node lib/index.js",
+    "inspect:dev": "mcp-inspector tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "build": "tsc -b tsconfig.json",
     "test": "npm run build && node --test test",
@@ -33,6 +35,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.15.0",
     "tsx": "^4.21.0"
   },
   "publishConfig": {
