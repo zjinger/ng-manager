@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "ng": "ng",
+    "prebuild": "node ../scripts/generate-upload-policies.mjs",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",

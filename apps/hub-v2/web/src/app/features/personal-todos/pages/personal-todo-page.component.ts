@@ -312,7 +312,7 @@ export class PersonalTodoPageComponent {
             this.message.success('待办已更新');
             this.closeDialog();
           },
-          error: () => this.message.error('待办更新失败'),
+          error: (error: unknown) => this.message.error(this.resolveSaveErrorMessage(error, '待办更新失败')),
         });
     } else {
       this.store
@@ -323,9 +323,35 @@ export class PersonalTodoPageComponent {
             this.message.success('待办创建成功');
             this.closeDialog();
           },
-          error: () => this.message.error('待办创建失败'),
+          error: (error: unknown) => this.message.error(this.resolveSaveErrorMessage(error, '待办创建失败')),
         });
     }
+  }
+
+  private resolveSaveErrorMessage(error: unknown, fallback: string): string {
+    const message = this.extractErrorMessage(error);
+    if (!message) {
+      return `${fallback}，请检查描述中的图片是否已上传成功后重试`;
+    }
+    return `${fallback}：${message}`;
+  }
+
+  private extractErrorMessage(error: unknown): string | null {
+    if (!error || typeof error !== 'object') {
+      return null;
+    }
+
+    const response = 'error' in error ? (error as { error?: unknown }).error : null;
+    if (response && typeof response === 'object' && 'message' in response) {
+      const message = (response as { message?: unknown }).message;
+      return typeof message === 'string' && message.trim() ? message.trim() : null;
+    }
+
+    if ('message' in error) {
+      const message = (error as { message?: unknown }).message;
+      return typeof message === 'string' && message.trim() ? message.trim() : null;
+    }
+    return null;
   }
 
   toggleDone(todo: Todo): void {

@@ -5,6 +5,7 @@ import { requireTokenAuth } from "../../shared/auth/require-token-auth";
 import { AppError } from "../../shared/errors/app-error";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { ok } from "../../shared/http/response";
+import { isUploadReferenced } from "../../shared/uploads/upload-markdown";
 import {
   feedbackIdParamSchema,
   documentIdParamSchema,
@@ -235,29 +236,6 @@ function resolveUploadFilePath(storagePath: string, fileName: string, uploadDir:
   }
 
   return null;
-}
-
-function isUploadReferenced(contents: Array<string | null | undefined>, uploadId: string): boolean {
-  const normalizedUploadId = uploadId.trim();
-  if (!normalizedUploadId) {
-    return false;
-  }
-
-  for (const content of contents) {
-    if (!content) {
-      continue;
-    }
-    const pattern = /\/api\/admin\/uploads\/([a-zA-Z0-9_-]+)\/raw/g;
-    let match = pattern.exec(content);
-    while (match) {
-      if ((match[1] ?? "").trim() === normalizedUploadId) {
-        return true;
-      }
-      match = pattern.exec(content);
-    }
-  }
-
-  return false;
 }
 
 function buildInlineDisposition(fileName: string): string {

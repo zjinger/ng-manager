@@ -8,6 +8,7 @@ import type { PromoteMarkdownUploadsInput, UploadCommandContract, UploadQueryCon
 import type { CreateUploadInput, UploadEntity } from "./upload.types";
 import fs from "node:fs";
 import path from "node:path";
+import { extractUploadIdsFromMarkdown } from "../../shared/uploads/upload-markdown";
 
 export class UploadService implements UploadCommandContract, UploadQueryContract {
   constructor(
@@ -56,7 +57,7 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
       return;
     }
 
-    const uploadIds = this.extractUploadIdsFromMarkdown(input.content);
+    const uploadIds = extractUploadIdsFromMarkdown(input.content);
     const uniqueIds = Array.from(new Set(uploadIds.map((item) => item.trim()).filter(Boolean)));
     if (uniqueIds.length === 0) {
       return;
@@ -140,21 +141,4 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
     fs.unlinkSync(sourcePath);
   }
 
-  private extractUploadIdsFromMarkdown(content: string | null | undefined): string[] {
-    if (!content) {
-      return [];
-    }
-
-    const ids = new Set<string>();
-    const pattern = /\/api\/admin\/uploads\/([a-zA-Z0-9_-]+)\/raw/g;
-    let match = pattern.exec(content);
-    while (match) {
-      const id = match[1]?.trim();
-      if (id) {
-        ids.add(id);
-      }
-      match = pattern.exec(content);
-    }
-    return Array.from(ids);
-  }
 }

@@ -1,0 +1,137 @@
+{
+  "maxSizeUnit": 1048576,
+  "extensions": {
+    "image": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"],
+    "inlineVideo": [".mp4", ".webm", ".mov", ".m4v"],
+    "video": [".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v", ".flv", ".wmv"],
+    "taskSheetAttachment": [".doc", ".docx", ".pdf", ".jpg", ".jpeg", ".png"]
+  },
+  "targets": {
+    "markdownImage": {
+      "bucket": "temp",
+      "category": "markdown",
+      "visibility": "private",
+      "accept": ["image/*"],
+      "maxSizeMb": 10,
+      "allowedMimePrefixes": ["image/"],
+      "allowedExtensions": "$image",
+      "invalidTypeMessage": "仅支持图片文件",
+      "sizeLimitMessage": "图片大小不能超过 10MB"
+    },
+    "commentImage": {
+      "bucket": "temp",
+      "category": "comment",
+      "visibility": "private",
+      "accept": ["image/*"],
+      "maxSizeMb": 10,
+      "allowedMimePrefixes": ["image/"],
+      "allowedExtensions": "$image",
+      "invalidTypeMessage": "仅支持图片文件",
+      "sizeLimitMessage": "评论图片不能超过 10MB"
+    },
+    "profileAvatar": {
+      "bucket": "avatars",
+      "category": "avatar",
+      "visibility": "private",
+      "accept": ["image/*"],
+      "maxSizeMb": 10,
+      "allowedMimePrefixes": ["image/"],
+      "allowedExtensions": "$image",
+      "invalidTypeMessage": "仅支持图片文件",
+      "sizeLimitMessage": "头像图片不能超过 10MB"
+    },
+    "projectAvatar": {
+      "bucket": "project-avatars",
+      "category": "project_avatar",
+      "visibility": "private",
+      "accept": ["image/*"],
+      "maxSizeMb": 10,
+      "allowedMimePrefixes": ["image/"],
+      "allowedExtensions": "$image",
+      "invalidTypeMessage": "仅支持图片文件",
+      "sizeLimitMessage": "图片大小不能超过 10MB"
+    },
+    "issueAttachment": {
+      "bucket": "issues",
+      "category": "attachment",
+      "visibility": "private",
+      "accept": ["image/*", "video/*", "$image", "$video"],
+      "maxSizeMb": 10,
+      "allowedMimePrefixes": ["image/", "video/"],
+      "allowedExtensions": ["$image", "$video"],
+      "invalidTypeMessage": "仅支持上传图片或视频文件",
+      "sizeLimitMessage": "单个文件最大 10MB"
+    },
+    "reimbursementAttachment": {
+      "bucket": "reimbursements",
+      "category": "attachment",
+      "visibility": "private",
+      "accept": ["image/*", "application/pdf", ".jpg", ".jpeg", ".png", ".pdf"],
+      "maxSizeMb": 10,
+      "allowedMimeTypes": ["image/jpeg", "image/png", "image/jpg", "application/pdf"],
+      "allowedExtensions": [".jpg", ".jpeg", ".png", ".pdf"],
+      "invalidTypeMessage": "仅支持上传图片或 PDF 文件",
+      "sizeLimitMessage": "单个文件最大 10MB"
+    },
+    "taskSheetAttachment": {
+      "bucket": "task-sheets",
+      "category": "attachment",
+      "visibility": "private",
+      "accept": [
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/jpg",
+        "$taskSheetAttachment"
+      ],
+      "maxSizeMb": 10,
+      "allowedMimeTypes": [
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/jpg"
+      ],
+      "allowedExtensions": "$taskSheetAttachment",
+      "invalidTypeMessage": "仅支持 Word / PDF / JPG / PNG 文件",
+      "sizeLimitMessage": "单个文件最大 10MB"
+    },
+    "taskSheetWordImport": {
+      "bucket": "task-sheets",
+      "category": "word_import",
+      "visibility": "private",
+      "accept": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"],
+      "maxSizeMb": 10,
+      "allowedMimeTypes": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+      "allowedExtensions": [".docx"],
+      "invalidTypeMessage": "仅支持 .docx 任务单文件",
+      "sizeLimitMessage": "单个文件最大 10MB"
+    }
+  },
+  "serverPolicyRules": [
+    { "target": "profileAvatar", "bucket": "avatars" },
+    { "target": "projectAvatar", "bucket": "project-avatars" },
+    { "target": "commentImage", "category": "comment" },
+    { "target": "markdownImage", "categoryPrefix": "markdown" },
+    { "target": "issueAttachment", "bucket": "issues", "category": "attachment" },
+    { "target": "reimbursementAttachment", "bucket": "reimbursements", "category": "attachment" },
+    { "target": "taskSheetAttachment", "bucket": "task-sheets", "category": "attachment" },
+    { "target": "taskSheetWordImport", "bucket": "task-sheets", "category": "word_import" }
+  ],
+  "allowedBuckets": [
+    "avatars",
+    "documents",
+    "issues",
+    "misc",
+    "personal-todos",
+    "project-avatars",
+    "rd",
+    "reimbursements",
+    "skills",
+    "task-sheets",
+    "temp"
+  ]
+}

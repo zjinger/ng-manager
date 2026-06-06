@@ -3,8 +3,9 @@
   "version": "2.4.3",
   "private": true,
   "scripts": {
-    "build:web": "npm --prefix ./web run build",
-    "build:server": "npm --prefix ./server run build",
+    "generate:upload-policies": "node ./scripts/generate-upload-policies.mjs",
+    "build:web": "npm run generate:upload-policies && npm --prefix ./web run build",
+    "build:server": "npm run generate:upload-policies && npm --prefix ./server run build",
     "copy": "node ./scripts/copy.js",
     "build": "node ./scripts/build-all.js",
     "package": "node ./scripts/package-release.js",

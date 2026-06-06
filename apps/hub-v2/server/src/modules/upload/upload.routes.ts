@@ -4,7 +4,7 @@ import path from "node:path";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
 import { saveMultipartFile } from "../../shared/storage/file-storage";
-import { assertUploadAllowed, resolveUploadPolicy } from "./upload-policy";
+import { assertUploadAllowed, isAllowedUploadBucket, resolveUploadPolicy } from "./upload-policy";
 
 function getFieldValue(field: unknown): string | undefined {
   if (!field) {
@@ -78,6 +78,12 @@ export default async function uploadRoutes(app: FastifyInstance) {
     const visibility = getFieldValue(file.fields.visibility);
     const normalizedBucket = normalizeBucket(bucket, category);
     const normalizedCategory = sanitizePathSegment(category, "general");
+    if (!isAllowedUploadBucket(normalizedBucket)) {
+      return reply.status(400).send({
+        code: "BAD_REQUEST",
+        message: `unsupported upload bucket: ${normalizedBucket}`
+      });
+    }
     const uploadPolicy = resolveUploadPolicy(normalizedBucket, normalizedCategory);
     const targetDir =
       normalizedBucket === "issues" && entityType === "issue" && entityId

@@ -1,8 +1,7 @@
 import path from "node:path";
 import { AppError } from "../../shared/errors/app-error";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
-
-const MB = 1024 * 1024;
+import { ALLOWED_UPLOAD_BUCKETS, GENERATED_UPLOAD_POLICIES, SERVER_UPLOAD_POLICY_RULES } from "./generated-upload-policies";
 
 export interface UploadPolicy {
   maxSizeBytes: number;
@@ -13,120 +12,34 @@ export interface UploadPolicy {
   sizeLimitMessage: string;
 }
 
-// 图片格式
-const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'] as const;
-const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.flv', '.wmv'] as const;
-const WORD_EXTENSIONS = ['.doc', '.docx'] as const;
-const PDF_EXTENSIONS = ['.pdf'] as const;
-const EXCEL_EXTENSIONS = ['.xls', '.xlsx'] as const;
-
 // 通用上传策略
 const GENERIC_UPLOAD_POLICY: UploadPolicy = {
-  maxSizeBytes: 10 * MB,
+  maxSizeBytes: 10 * 1024 * 1024,
   sizeLimitMessage: "单个文件最大 10MB"
 };
-
-// markdown 图片上传策略，限制为图片文件且大小不超过 10MB
-const MARKDOWN_IMAGE_POLICY: UploadPolicy = {
-  maxSizeBytes: 10 * MB,
-  allowedMimePrefixes: ["image/"],
-  allowedExtensions: IMAGE_EXTENSIONS,
-  invalidTypeMessage: "仅支持图片文件",
-  sizeLimitMessage: "图片大小不能超过 10MB"
-};
-
-const COMMENT_IMAGE_POLICY: UploadPolicy = {
-  maxSizeBytes: 10 * MB,
-  allowedMimePrefixes: ["image/"],
-  allowedExtensions: IMAGE_EXTENSIONS,
-  invalidTypeMessage: "仅支持图片文件",
-  sizeLimitMessage: "评论图片不能超过 10MB"
-};
-
-// 头像上传策略，限制为图片文件且大小不超过 10MB
-const AVATAR_POLICY: UploadPolicy = {
-  maxSizeBytes: 10 * MB,
-  allowedMimePrefixes: ["image/"],
-  allowedExtensions: IMAGE_EXTENSIONS,
-  invalidTypeMessage: "仅支持图片文件",
-  sizeLimitMessage: "图片大小不能超过 10MB"
-};
-
-// 项目头像上传策略，限制为图片文件且大小不超过 10MB
-const PROFILE_AVATAR_POLICY: UploadPolicy = {
-  ...AVATAR_POLICY,
-  sizeLimitMessage: "头像图片不能超过 10MB"
-};
-
-// 测试单附件上传策略，限制为图片或视频文件且大小不超过 10MB
-const ISSUE_ATTACHMENT_POLICY: UploadPolicy = {
-  maxSizeBytes: 10 * MB,
-  allowedMimePrefixes: ["image/", "video/"],
-  allowedExtensions: [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS],
-  invalidTypeMessage: "仅支持上传图片或视频文件",
-  sizeLimitMessage: "单个文件最大 10MB"
-};
-
-// 报销单附件上传策略，限制为 JPG/PNG/PDF 文件且大小不超过 10MB
-const REIMBURSEMENT_ATTACHMENT_POLICY: UploadPolicy = {
-  maxSizeBytes: 10 * MB,
-  allowedMimeTypes: ["image/jpeg", "image/png", "image/jpg", "application/pdf"],
-  allowedExtensions: [".jpg", ".jpeg", ".png", ...PDF_EXTENSIONS],
-  invalidTypeMessage: "仅支持上传图片或 PDF 文件",
-  sizeLimitMessage: "单个文件最大 10MB"
-};
-
-// 任务单附件上传策略，限制为 IMAGE/WORD/PDF 文件且大小不超过 10MB
-const TASK_SHEET_ATTACHMENT_POLICY: UploadPolicy = {
-  maxSizeBytes: 10 * MB,
-  allowedMimeTypes: [
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/pdf",
-    "image/"
-  ],
-  allowedExtensions: [...WORD_EXTENSIONS, ...PDF_EXTENSIONS, ...IMAGE_EXTENSIONS],
-  invalidTypeMessage: "仅支持 Word / PDF / JPG / PNG",
-  sizeLimitMessage: "单个文件最大 10MB"
-};
-
-const TASK_SHEET_WORD_IMPORT_POLICY: UploadPolicy = {
-  maxSizeBytes: 10 * MB,
-  allowedMimeTypes: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
-  allowedExtensions: [".docx"],
-  invalidTypeMessage: "仅支持 .docx 任务单文件",
-  sizeLimitMessage: "单个文件最大 10MB"
-};
+const ALLOWED_BUCKET_SET = new Set<string>(ALLOWED_UPLOAD_BUCKETS);
 
 /**
  * 根据上传的 bucket 和 category 决定使用哪个上传策略
  */
 export function resolveUploadPolicy(bucket: string, category: string): UploadPolicy {
-  if (bucket === "avatars") {
-    return PROFILE_AVATAR_POLICY;
-  }
-  if (bucket === "project-avatars") {
-    return AVATAR_POLICY;
-  }
-  if (category === "comment") {
-    return COMMENT_IMAGE_POLICY;
-  }
-  if (category.startsWith("markdown")) {
-    return MARKDOWN_IMAGE_POLICY;
-  }
-  if (bucket === "issues" && category === "attachment") {
-    return ISSUE_ATTACHMENT_POLICY;
-  }
-  if (bucket === "reimbursements" && category === "attachment") {
-    return REIMBURSEMENT_ATTACHMENT_POLICY;
-  }
-  if (bucket === "task-sheets" && category === "attachment") {
-    return TASK_SHEET_ATTACHMENT_POLICY;
-  }
-  if (bucket === "task-sheets" && category === "word_import") {
-    return TASK_SHEET_WORD_IMPORT_POLICY;
+  for (const rule of SERVER_UPLOAD_POLICY_RULES) {
+    if ("bucket" in rule && rule.bucket !== bucket) {
+      continue;
+    }
+    if ("category" in rule && rule.category !== category) {
+      continue;
+    }
+    if ("categoryPrefix" in rule && !category.startsWith(rule.categoryPrefix)) {
+      continue;
+    }
+    return GENERATED_UPLOAD_POLICIES[rule.target];
   }
   return GENERIC_UPLOAD_POLICY;
+}
+
+export function isAllowedUploadBucket(bucket: string): boolean {
+  return ALLOWED_BUCKET_SET.has(bucket);
 }
 
 export function assertUploadAllowed(
