@@ -5,6 +5,37 @@ description: Use ng-manager Hub V2 MCP tools to list and read Hub V2 project doc
 
 # Hub V2 Docs Skill
 
+## Boundary with NGM Local Skills
+
+This skill is only for Hub V2 project documents and collaboration platform data.
+
+Use this skill for:
+
+- Hub V2 project documents
+- document discovery
+- document Markdown reads
+- Project Token document API
+
+Do not use this skill for local ng-manager engineering control or workspace-context tasks such as:
+
+- starting or stopping local projects
+- reading or running `package.json` scripts
+- Node runtime selection
+- Nginx proxy management
+- local API debugging
+- CodeGraph
+- workspace or monorepo analysis
+- packages/* capability analysis
+- MCP Server local tools
+
+For those tasks, use NGM local skills:
+
+- `ngm-router`
+- `ngm-project`
+- `ngm-runtime`
+- `ngm-nginx`
+- `ngm-workspace`
+
 ## Primary Tooling
 
 Use the unified ng-manager MCP server started by `ngm mcp`. This skill is only an Agent usage guide; it must not perform direct Hub V2 HTTP requests, store tokens, or duplicate the Hub V2 API schema.

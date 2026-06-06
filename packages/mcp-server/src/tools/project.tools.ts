@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolContext } from "../context/tool-context";
 import { ok } from "../utils/result";
 import type { McpToolDefinition } from "./index";
+import { readWorkspacePackageJson } from "./workspace.tools";
 
 export const projectLocatorSchema = z.object({
   projectId: z.string().trim().min(1).optional(),
@@ -11,6 +12,13 @@ export const projectLocatorSchema = z.object({
 }).strict();
 
 type ProjectLocator = z.infer<typeof projectLocatorSchema>;
+
+const projectFindSchema = z.object({
+  query: z.string().trim().min(1).optional(),
+  framework: z.string().trim().min(1).optional(),
+  packageManager: z.enum(["npm", "pnpm", "yarn"]).optional(),
+  projectPath: z.string().trim().min(1).optional(),
+}).strict();
 
 export async function resolveProject(context: ToolContext, locator: ProjectLocator): Promise<Project> {
   if (locator.projectId) {
@@ -81,6 +89,38 @@ export function projectTools(): McpToolDefinition[] {
       },
     },
     {
+      name: "ngm.project.find",
+      description: "Find ng-manager local projects by name, path, framework, package manager, or repository URL.",
+      riskLevel: "read",
+      inputSchema: projectFindSchema,
+      async handler(args, context) {
+        const projects = await context.services.core.project.list();
+        const query = args.query?.toLowerCase();
+        const requestedPath = args.projectPath ? normalizeFsPath(args.projectPath) : "";
+        const matched = projects.filter((project) => {
+          if (args.packageManager && project.packageManager !== args.packageManager) return false;
+          if (args.framework && String(project.framework ?? "").toLowerCase() !== args.framework.toLowerCase()) return false;
+          if (requestedPath && !normalizeFsPath(project.root).includes(requestedPath)) return false;
+          if (!query) return true;
+
+          const text = [
+            project.id,
+            project.name,
+            project.root,
+            project.framework,
+            project.packageManager,
+            project.repoUrl,
+            project.repoPageUrl,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return text.includes(query);
+        });
+        return ok("ngm.project.find", matched.map(toProjectSummary));
+      },
+    },
+    {
       name: "ngm.project.get",
       description: "Get one ng-manager project by projectId or projectPath.",
       riskLevel: "read",
@@ -98,6 +138,27 @@ export function projectTools(): McpToolDefinition[] {
       async handler(args, context) {
         const project = await resolveProject(context, args);
         return ok("ngm.project.getScripts", toProjectScripts(project));
+      },
+    },
+    {
+      name: "ngm.project.readPackageJson",
+      description: "Read package.json metadata for one registered ng-manager local project without running scripts.",
+      riskLevel: "read",
+      inputSchema: projectLocatorSchema,
+      async handler(args, context) {
+        const project = await resolveProject(context, args);
+        const packageJson = await readWorkspacePackageJson(context.workspaceRoot, project.root);
+        return ok("ngm.project.readPackageJson", {
+          project: {
+            id: project.id,
+            name: project.name,
+            root: project.root,
+            packageManager: project.packageManager,
+            runtime: project.runtime,
+            nodeVersion: project.nodeVersion,
+          },
+          packageJson,
+        });
       },
     },
   ];

@@ -2,13 +2,16 @@ import type { z } from "zod";
 import type { ToolContext } from "../context/tool-context";
 import type { ToolRiskLevel } from "../policy/tool-policy";
 import type { ToolResult } from "../utils/result";
+import { capabilityTools } from "./capability.tools";
 import { gitTools } from "./git.tools";
 import { hubV2Tools } from "./hub-v2";
 import { logTools } from "./log.tools";
+import { nginxTools } from "./nginx.tools";
 import { projectTools } from "./project.tools";
 import { proxyTools } from "./proxy.tools";
 import { runtimeTools } from "./runtime.tools";
 import { taskTools } from "./task.tools";
+import { workspaceTools } from "./workspace.tools";
 
 export type McpToolDefinition<TSchema extends z.AnyZodObject = z.AnyZodObject> = {
   name: string;
@@ -22,11 +25,14 @@ export type McpToolDefinition<TSchema extends z.AnyZodObject = z.AnyZodObject> =
 
 export function allTools(): McpToolDefinition[] {
   return [
+    ...capabilityTools(),
+    ...workspaceTools(),
     ...projectTools(),
     ...taskTools(),
     ...logTools(),
     ...gitTools(),
     ...runtimeTools(),
+    ...nginxTools(),
     ...proxyTools(),
     ...hubV2Tools(),
   ];

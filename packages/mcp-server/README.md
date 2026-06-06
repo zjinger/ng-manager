@@ -154,12 +154,31 @@ Use `~/.ng-manager/agent-connections.json` for persistent local configuration, a
 
 ## Tools
 
+Discovery:
+
+```text
+ngm.capabilities
+ngm.routeTask
+```
+
+Workspace:
+
+```text
+ngm.workspace.summary
+ngm.workspace.listPackages
+ngm.workspace.getPackage
+ngm.workspace.mcpTools
+ngm.workspace.capabilityMap
+```
+
 Project:
 
 ```text
 ngm.project.list
+ngm.project.find
 ngm.project.get
 ngm.project.getScripts
+ngm.project.readPackageJson
 ```
 
 Task:
@@ -188,8 +207,22 @@ The Git tools are registered in this MVP but return a clear "not implemented in 
 Runtime:
 
 ```text
+ngm.runtime.current
 ngm.runtime.list
 ngm.runtime.resolveForProject
+ngm.runtime.detectRequirement
+```
+
+Nginx:
+
+```text
+ngm.nginx.status
+ngm.nginx.servers.list
+ngm.nginx.server.get
+ngm.nginx.upstreams.list
+ngm.nginx.config.validate
+ngm.nginx.config.getMain
+ngm.nginx.logs.tail
 ```
 
 Proxy:

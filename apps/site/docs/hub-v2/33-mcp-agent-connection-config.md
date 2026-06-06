@@ -1,6 +1,6 @@
 # 33 MCP 与 Agent Connection 配置收口方案
 
-最后更新：2026-06-06
+最后更新：2026-06-07
 
 本文档记录 ng-manager 统一 MCP Server 与 Hub V2 Token 配置的最终落地口径。目标是让 AI Agent 通过 `ngm mcp` 使用 Hub V2 能力，同时让 MCP Server 可以独立读取本地 Agent Connection 配置，不依赖 `packages/server`、SQLite 或 Hub V2 管理端登录态。
 
@@ -11,6 +11,7 @@
 - ng-manager 只保留一个 MCP Server：`packages/mcp-server`
 - 用户启动入口统一为：`ngm mcp`
 - MCP transport 当前只支持 stdio
+- NGM 本地能力通过只读 MCP tools 暴露 workspace、project、runtime、Nginx 等诊断入口
 - Hub V2 MCP tools 通过 Hub V2 Token HTTP API 调用真实业务服务
 - Hub V2 Token 持久配置只读取：`~/.ng-manager/agent-connections.json`
 - 启动级 override 只保留少量 `HUB_V2_*` 环境变量
@@ -26,6 +27,17 @@ AI Agent / MCP Client
   -> HubV2Client
   -> Hub V2 Token HTTP API
   -> Hub V2 Server
+```
+
+NGM 本地只读能力链路：
+
+```text
+AI Agent / MCP Client
+  -> ngm mcp
+  -> packages/mcp-server
+  -> ToolContext.services
+  -> packages/core
+  -> packages/project / packages/task / packages/node-runtime / packages/node-version / packages/nginx
 ```
 
 职责边界：
@@ -66,6 +78,14 @@ HUB_V2_CONFIG explicit config path
 当前只支持以下环境变量：
 
 ```text
+NGM_DATA_DIR
+NGM_WORKSPACE_ROOT
+NGM_MCP_UPLOAD_ROOT
+NGM_MCP_MAX_UPLOAD_BYTES
+NGM_MCP_MAX_RESULT_CHARS
+NGM_MCP_ALLOW_WRITE
+NGM_MCP_ALLOW_EXECUTE
+NGM_MCP_ALLOW_DANGEROUS
 HUB_V2_PROJECT
 HUB_V2_BASE_URL
 HUB_V2_PROJECT_KEY
@@ -73,12 +93,13 @@ HUB_V2_PROJECT_TOKEN
 HUB_V2_PERSONAL_TOKEN
 HUB_V2_SOURCE
 HUB_V2_CONFIG
-NGM_MCP_ALLOW_WRITE
 ```
 
 示例：
 
 ```bash
+NGM_DATA_DIR=C:/Users/you/.ng-manager
+NGM_WORKSPACE_ROOT=D:/ng-manager
 HUB_V2_BASE_URL=http://127.0.0.1:7001
 HUB_V2_PROJECT_KEY=ng-manager
 HUB_V2_PROJECT_TOKEN=project-token-for-reads
@@ -92,11 +113,33 @@ HUB_V2_SOURCE=agent
 NGM_MCP_ALLOW_WRITE=true
 ```
 
-该变量只控制 MCP Server 是否允许执行已确认的写工具，不提供 Hub V2 业务权限。真实写操作仍必须同时满足：
+执行和高危工具 policy：
+
+```bash
+NGM_MCP_ALLOW_EXECUTE=true
+NGM_MCP_ALLOW_DANGEROUS=true
+```
+
+当前 MCP Server 默认只开放 read 工具。`NGM_MCP_ALLOW_EXECUTE` 和 `NGM_MCP_ALLOW_DANGEROUS` 是 policy 预留开关，用于未来显式标记为 execute 或 dangerous 的工具；当前不会因为设置这些变量而获得任意 shell、Nginx reload、项目启动/停止或 runtime 安装能力。
+
+这些变量只控制 MCP Server policy 是否放行对应 risk level，不提供 Hub V2 业务权限。真实写操作仍必须同时满足：
 
 - tool call 传入 `confirm=true`
 - 已配置 `HUB_V2_PERSONAL_TOKEN` 或 `agent-connections.json` 中的 `personalToken`
 - Personal Token 拥有对应 Hub V2 scope，例如 `issue:create:write`、`issue:update:write`、`issue:comment:write`、`rd:create:write`、`rd:transition:write`
+
+其他 NGM MCP 环境变量：
+
+| 变量 | 默认值 | 用途 |
+| --- | --- | --- |
+| `NGM_DATA_DIR` | `~/.ng-manager` | ng-manager 本地数据目录 |
+| `NGM_WORKSPACE_ROOT` | `process.cwd()` | MCP Server 的本地 workspace hint，也用于限制部分文件读取/上传根目录 |
+| `NGM_MCP_UPLOAD_ROOT` | 未设置 | Hub V2 Markdown 图片上传额外允许根目录 |
+| `NGM_MCP_MAX_UPLOAD_BYTES` | `5242880` | Markdown 图片上传最大字节数 |
+| `NGM_MCP_MAX_RESULT_CHARS` | `120000` | MCP text result 最大字符数，超出会截断 |
+| `NGM_MCP_ALLOW_WRITE` | `false` | 是否允许已确认的 write 工具执行 |
+| `NGM_MCP_ALLOW_EXECUTE` | `false` | 是否允许 execute 工具执行；当前本地执行类工具未开放 |
+| `NGM_MCP_ALLOW_DANGEROUS` | `false` | 是否允许 dangerous 工具执行；当前高危工具未开放 |
 
 不再支持：
 
@@ -210,6 +253,15 @@ execute   blocked
 dangerous blocked
 ```
 
+`packages/mcp-server/src/policy/tool-policy.ts` 中的 policy 环境变量对应关系：
+
+| risk level | 默认 | 环境变量 |
+| --- | --- | --- |
+| `read` | allowed | 无需环境变量 |
+| `write` | blocked | `NGM_MCP_ALLOW_WRITE=true` |
+| `execute` | blocked | `NGM_MCP_ALLOW_EXECUTE=true` |
+| `dangerous` | blocked | `NGM_MCP_ALLOW_DANGEROUS=true` |
+
 写工具执行规则：
 
 - `confirm` 缺省或 `confirm=false`：只返回 preview
@@ -235,16 +287,112 @@ MCP Client 配置示例：
       "command": "ngm",
       "args": ["mcp"],
       "env": {
-        "NGM_MCP_ALLOW_WRITE": "true"
+        "NGM_DATA_DIR": "C:/Users/you/.ng-manager",
+        "NGM_WORKSPACE_ROOT": "D:/ng-manager",
+        "NGM_MCP_ALLOW_WRITE": "true",
+        "NGM_MCP_ALLOW_EXECUTE": "false",
+        "NGM_MCP_ALLOW_DANGEROUS": "false"
       }
     }
   }
 }
 ```
 
-`ngm mcp doctor` 可用于检查当前 MCP Server 进程能看到的 policy 状态。若写操作返回 `write tools are disabled`，说明当前启动该 MCP Server 的环境中没有设置 `NGM_MCP_ALLOW_WRITE=true`，或 MCP Client 修改配置后尚未重启 server。
+`ngm mcp doctor` 可用于检查当前 MCP Server 进程能看到的 policy 状态。若写操作返回 `write tools are disabled`，说明当前启动该 MCP Server 的环境中没有设置 `NGM_MCP_ALLOW_WRITE=true`，或 MCP Client 修改配置后尚未重启 server。execute/dangerous 同理分别由 `NGM_MCP_ALLOW_EXECUTE`、`NGM_MCP_ALLOW_DANGEROUS` 控制。
 
-## 8. 当前 Hub V2 MCP 工具
+## 8. 当前 MCP 工具
+
+### 8.1 NGM 本地只读工具
+
+发现与路由：
+
+```text
+ngm.capabilities
+ngm.routeTask
+```
+
+Workspace：
+
+```text
+ngm.workspace.summary
+ngm.workspace.listPackages
+ngm.workspace.getPackage
+ngm.workspace.mcpTools
+ngm.workspace.capabilityMap
+```
+
+Project：
+
+```text
+ngm.project.list
+ngm.project.find
+ngm.project.get
+ngm.project.getScripts
+ngm.project.readPackageJson
+```
+
+Task：
+
+```text
+ngm.task.list
+ngm.task.getStatus
+```
+
+Log：
+
+```text
+ngm.log.tail
+ngm.log.search
+```
+
+Git：
+
+```text
+ngm.git.status
+ngm.git.diff
+```
+
+Runtime：
+
+```text
+ngm.runtime.current
+ngm.runtime.list
+ngm.runtime.resolveForProject
+ngm.runtime.detectRequirement
+```
+
+Nginx：
+
+```text
+ngm.nginx.status
+ngm.nginx.servers.list
+ngm.nginx.server.get
+ngm.nginx.upstreams.list
+ngm.nginx.config.validate
+ngm.nginx.config.getMain
+ngm.nginx.logs.tail
+```
+
+兼容 Proxy：
+
+```text
+ngm.proxy.list
+ngm.proxy.validate
+```
+
+当前 NGM 本地工具只做读取、发现、路由和诊断，不开放：
+
+```text
+运行 package.json scripts
+启动/停止/重启本地项目
+安装/卸载/切换 Node 版本
+修改项目 runtime binding
+启动/停止/reload Nginx
+写入 Nginx 配置或代理规则
+任意 shell 执行
+```
+
+### 8.2 Hub V2 工具
 
 项目配置：
 
