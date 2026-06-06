@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/mcp-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local MCP stdio server for ng-manager core capabilities.",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "@yinuo-ngm/core": "^0.1.14",
+    "@yinuo-ngm/core": "^0.1.15",
     "zod": "^3.25.76"
   },
   "devDependencies": {

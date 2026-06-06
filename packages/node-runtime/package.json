@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/node-runtime",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Project-level Node runtime resolution for ng-manager",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
