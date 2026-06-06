@@ -12,6 +12,7 @@ import { assertUploadAllowed, resolveUploadPolicy } from "../upload/upload-polic
 
 const MARKDOWN_UPLOAD_SCOPES: PersonalTokenScope[] = [
   "issue:create:write",
+  "issue:update:write",
   "issue:comment:write",
   "rd:create:write",
   "rd:stage-task:write",

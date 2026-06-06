@@ -39,6 +39,7 @@ export interface ProfileActivityRecord {
 
 export type PersonalTokenScope =
   | 'issue:create:write'
+  | 'issue:update:write'
   | 'issue:comment:write'
   | 'issue:transition:write'
   | 'issue:assign:write'

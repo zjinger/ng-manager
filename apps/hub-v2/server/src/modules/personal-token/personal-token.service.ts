@@ -204,6 +204,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
 
     const issueCaps = {
       canCreate: scopeSet.has("issue:create:write"),
+      canUpdate: scopeSet.has("issue:update:write"),
       canComment: scopeSet.has("issue:comment:write"),
       canTransition: scopeSet.has("issue:transition:write"),
       canAssign: scopeSet.has("issue:assign:write"),
@@ -227,6 +228,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
 
     const hasWriteScope =
       issueCaps.canCreate ||
+      issueCaps.canUpdate ||
       issueCaps.canComment ||
       issueCaps.canTransition ||
       issueCaps.canAssign ||
@@ -293,6 +295,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
     return (
       scope === "issue:comment:write" ||
       scope === "issue:create:write" ||
+      scope === "issue:update:write" ||
       scope === "issue:transition:write" ||
       scope === "issue:assign:write" ||
       scope === "issue:branch:write" ||

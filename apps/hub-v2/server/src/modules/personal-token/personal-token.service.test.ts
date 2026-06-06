@@ -221,6 +221,27 @@ describe("PersonalTokenService.getProjectCapabilities", () => {
 
     assert.deepEqual(caps.scopes.issue, {
       canCreate: true,
+      canUpdate: false,
+      canComment: false,
+      canTransition: false,
+      canAssign: false,
+      canManageBranches: false,
+      canManageParticipants: false
+    });
+    assert.equal(caps.writable, true);
+    assert.equal(caps.readOnlyReason, null);
+  });
+
+  it("exposes issue update as an independent writable capability", () => {
+    const { service, db } = createServiceWithDb();
+    seedProject(db, "usr_1");
+
+    const ctx = createPersonalTokenContext("usr_1", ["issue:update:write"]);
+    const caps = service.getProjectCapabilities("project-key", ctx);
+
+    assert.deepEqual(caps.scopes.issue, {
+      canCreate: false,
+      canUpdate: true,
       canComment: false,
       canTransition: false,
       canAssign: false,

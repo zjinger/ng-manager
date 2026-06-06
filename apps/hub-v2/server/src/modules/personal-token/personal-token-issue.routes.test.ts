@@ -110,6 +110,47 @@ describe("personal token issue routes", () => {
     assert.equal(countRows(ctx.db, "issues"), 0);
   });
 
+  it("rejects updating issue without issue:update:write", async () => {
+    const ctx = await createTestApp();
+    const issue = await createIssueWithToken(ctx);
+    const token = await createPersonalToken(ctx, ["issue:create:write"]);
+
+    const response = await ctx.app.inject({
+      method: "PATCH",
+      url: `/api/personal/projects/${ctx.project.key}/issues/${issue.id}`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        title: "Token 更新测试单"
+      }
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().code, "TOKEN_SCOPE_FORBIDDEN");
+  });
+
+  it("updates issue basic fields with issue:update:write", async () => {
+    const ctx = await createTestApp();
+    const issue = await createIssueWithToken(ctx);
+    const token = await createPersonalToken(ctx, ["issue:update:write"]);
+
+    const response = await ctx.app.inject({
+      method: "PATCH",
+      url: `/api/personal/projects/${ctx.project.key}/issues/${issue.id}`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        title: "Token 更新测试单",
+        description: "通过个人 token 更新",
+        priority: "high"
+      }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const updated = response.json().data;
+    assert.equal(updated.title, "Token 更新测试单");
+    assert.equal(updated.description, "通过个人 token 更新");
+    assert.equal(updated.priority, "high");
+  });
+
   it("rejects non-project assignee or verifier", async () => {
     const ctx = await createTestApp();
     const token = await createPersonalToken(ctx, ["issue:create:write"]);

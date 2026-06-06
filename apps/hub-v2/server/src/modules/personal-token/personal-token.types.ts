@@ -1,5 +1,6 @@
 export type PersonalTokenScope =
   | "issue:create:write" // Issue 创建权限
+  | "issue:update:write" // Issue 编辑权限
   | "issue:comment:write" // 评论权限
   | "issue:transition:write" // 流转权限
   | "issue:assign:write" // 分配权限
@@ -79,6 +80,7 @@ export interface PersonalProjectCapabilitiesResult {
     all: PersonalTokenScope[];
     issue: {
       canCreate: boolean;
+      canUpdate: boolean;
       canComment: boolean;
       canTransition: boolean;
       canAssign: boolean;

@@ -604,6 +604,7 @@ export class ProfilePersonalTokenComponent {
       desc: '创建、评论、流转与协作分支',
       options: [
         { value: 'issue:create:write', label: '测试单创建', desc: '新建测试单并设置负责人、验证人' },
+        { value: 'issue:update:write', label: '测试单编辑', desc: '编辑标题、描述、优先级等' },
         { value: 'issue:comment:write', label: '测试单评论', desc: '创建评论与 @ 提及' },
         { value: 'issue:transition:write', label: '测试单状态流转', desc: '开始、解决、验证、关闭等' },
         { value: 'issue:assign:write', label: '测试单指派', desc: '指派或转派负责人' },
@@ -667,6 +668,7 @@ export class ProfilePersonalTokenComponent {
     this.selectedScopes.set(
       [
         'issue:create:write',
+        'issue:update:write',
         'issue:comment:write',
         'issue:transition:write',
         'issue:assign:write',

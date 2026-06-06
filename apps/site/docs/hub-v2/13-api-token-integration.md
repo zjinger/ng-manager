@@ -240,6 +240,7 @@ Project Token 文档读取接口：
 Issue：
 
 - `POST /api/personal/projects/:projectKey/issues`
+- `PATCH /api/personal/projects/:projectKey/issues/:issueId`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/comments`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/assign`
 - `POST /api/personal/projects/:projectKey/issues/:issueId/claim`
@@ -287,6 +288,7 @@ Markdown 图片上传：
 - 必须使用 Personal Token
 - 不新增独立 upload scope，上传权限由业务写 scope 派生；任一满足即可：
   - `issue:create:write`
+  - `issue:update:write`
   - `issue:comment:write`
   - `rd:create:write`
   - `rd:stage-task:write`
@@ -390,6 +392,7 @@ Markdown 图片上传：
 |---|---|---|
 | Issue | 列表与详情 | `issues:read` |
 | Issue | 创建测试单 | `issue:create:write` |
+| Issue | 编辑测试单 | `issue:update:write` |
 | Issue | 评论 | `issue:comment:write` |
 | Issue/RD | Markdown 图片上传 | 由目标业务写 scope 派生 |
 | Issue | 状态流转 | `issue:transition:write` |
@@ -542,6 +545,12 @@ curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/issues/<ISSUE
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"登录异常测试\",\"description\":\"复现登录接口异常。\",\"type\":\"bug\",\"priority\":\"medium\",\"assigneeId\":\"u_001\",\"verifierId\":\"u_002\",\"rdItemId\":\"<RD_ITEM_ID>\",\"moduleCode\":\"auth\",\"versionCode\":\"v1\",\"environmentCode\":\"test\"}"
+```
+
+编辑 Issue 时使用 `issue:update:write` scope。
+
+```bash
+curl -X PATCH "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues/<ISSUE_ID>" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"登录异常测试补充\",\"description\":\"补充复现步骤。\",\"priority\":\"high\"}"
 ```
 
 Issue 协作分支仍使用 `issue:branch:write` scope。

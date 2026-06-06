@@ -9,6 +9,7 @@ import { createIssueCommentSchema } from "../issue/comment/issue-comment.schema"
 import { addIssueParticipantSchema } from "../issue/participant/issue-participant.schema";
 import {
   createPersonalIssueSchema,
+  updatePersonalIssueSchema,
   personalIssueBranchParamSchema,
   personalIssueIdParamSchema,
   personalIssueParticipantParamSchema,
@@ -23,6 +24,14 @@ export default async function personalTokenIssueRoutes(app: FastifyInstance) {
     const body = createPersonalIssueSchema.parse(request.body);
     const entity = await app.container.issueCommand.create({ ...body, projectId }, ctx);
     return reply.status(201).send(ok(entity, "issue created"));
+  });
+
+  app.patch("/projects/:projectKey/issues/:issueId", async (request) => {
+    const ctx = requirePersonalTokenAuth(request, "issue:update:write");
+    const params = personalIssueIdParamSchema.parse(request.params);
+    await assertIssueProjectAccess(app, params.projectKey, params.issueId, ctx);
+    const body = updatePersonalIssueSchema.parse(request.body);
+    return ok(await app.container.issueCommand.update(params.issueId, body, ctx), "issue updated");
   });
 
   app.post("/projects/:projectKey/issues/:issueId/comments", async (request, reply) => {

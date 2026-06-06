@@ -3,6 +3,7 @@ import type { PersonalApiTokenEntity, PersonalTokenScope, PersonalTokenStatus } 
 
 const PERSONAL_TOKEN_SCOPES = new Set<string>([
   "issue:create:write",
+  "issue:update:write",
   "issue:comment:write",
   "issue:transition:write",
   "issue:assign:write",
