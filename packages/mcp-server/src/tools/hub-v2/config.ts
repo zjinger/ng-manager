@@ -217,6 +217,7 @@ function configSearchPaths(): string[] {
     return [resolve(envConfig)];
   }
   return [
+    join(home, ".ng-manager", "agent-connections.json"),
     join(home, ".ng-manager", "hub-v2.json"),
     join(home, ".sl-hub-v2.json"),
     join(home, ".codex", "sl-hub-v2.json"),

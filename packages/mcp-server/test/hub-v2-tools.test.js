@@ -98,6 +98,7 @@ test("registers Hub V2 tools with the unified names only", () => {
   assert.ok(names.includes("hub_v2_issues_list"));
   assert.ok(names.includes("hub_v2_issues_create"));
   assert.ok(names.includes("hub_v2_issues_comment"));
+  assert.ok(names.includes("hub_v2_issues_update"));
   assert.ok(names.includes("hub_v2_upload_markdown_image"));
   assert.ok(names.includes("hub_v2_rd_create"));
   assert.ok(names.includes("hub_v2_rd_stage_tasks_list"));
@@ -166,6 +167,23 @@ test("registered write tools preview when write policy is disabled and block con
   });
 });
 
+test("hub_v2_issues_update previews instead of policy blocking by default", async () => {
+  await withCleanEnv(async () => {
+    delete process.env.NGM_MCP_ALLOW_WRITE;
+
+    const result = await callRegisteredTool("hub_v2_issues_update", {
+      issueId: "iss_1",
+      title: "Updated title",
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.data.code, "PREVIEW");
+    assert.equal(result.data.data.method, "PATCH");
+    assert.equal(result.data.data.path, "/issues/iss_1");
+    assert.equal(result.data.data.requiredScope, "issue:update:write");
+  });
+});
+
 test("registered write tools execute confirmed writes only when write policy is enabled", async () => {
   await withCleanEnv(async () => {
     process.env.NGM_MCP_ALLOW_WRITE = "true";
@@ -223,6 +241,36 @@ test("hub_v2_issues_comment previews and executes with Personal Token", async ()
   });
 });
 
+test("hub_v2_issues_update executes with Personal Token when confirmed and allowed", async () => {
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "iss_1", title: "Updated title" } }), { status: 200 });
+    };
+
+    const result = await issueTool("hub_v2_issues_update").handler({
+      issueId: "iss 1",
+      title: "Updated title",
+      description: null,
+      confirm: true,
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/issues/iss%201");
+    assert.equal(calls[0].init.method, "PATCH");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
+    assert.deepEqual(JSON.parse(calls[0].init.body), {
+      title: "Updated title",
+      description: null,
+    });
+  });
+});
+
 test("hub_v2_upload_markdown_image uploads base64 with Personal Token", async () => {
   await withCleanEnv(async () => {
     process.env.HUB_V2_BASE_URL = "http://hub.test";
@@ -245,7 +293,7 @@ test("hub_v2_upload_markdown_image uploads base64 with Personal Token", async ()
     };
 
     const result = await uploadTool("hub_v2_upload_markdown_image").handler({
-      contentBase64: Buffer.from("png").toString("base64"),
+      contentBase64: `data:image/png;base64,${Buffer.from("png").toString("base64")}`,
       fileName: "shot.png",
       mimeType: "image/png",
       alt: "登录异常截图",
@@ -276,8 +324,35 @@ test("hub_v2_upload_markdown_image previews by default without reading or upload
 
     assert.equal(result.ok, true);
     assert.equal(result.data.code, "PREVIEW");
-    assert.equal(result.data.data.input.filePath, "Z:/does/not/exist.png");
+    assert.equal(result.data.data.input.filePath, undefined);
+    assert.equal(result.data.data.input.hasFilePath, true);
     assert.equal(fetchCalled, false);
+  });
+});
+
+test("hub_v2_upload_markdown_image rejects invalid base64", async () => {
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+
+    await assert.rejects(
+      () => uploadTool("hub_v2_upload_markdown_image").handler({
+        contentBase64: "not base64!",
+        fileName: "shot.png",
+        confirm: true,
+      }, {}),
+      /not a valid base64 string/
+    );
+
+    await assert.rejects(
+      () => uploadTool("hub_v2_upload_markdown_image").handler({
+        contentBase64: "data:image/png;base64,   ",
+        fileName: "shot.png",
+        confirm: true,
+      }, {}),
+      /contentBase64 is empty/
+    );
   });
 });
 
@@ -450,15 +525,28 @@ test("registered Hub V2 HTTP errors keep status and code", async () => {
 
 test("toMcpTextResult truncates oversized results", async () => {
   await withCleanEnv(async () => {
-    process.env.NGM_MCP_MAX_RESULT_CHARS = "1000";
+    process.env.NGM_MCP_MAX_RESULT_CHARS = "240";
 
     const result = toMcpTextResult(ok("large_tool", { text: "x".repeat(5000) }));
     const parsed = JSON.parse(result.content[0].text);
 
     assert.equal(parsed.ok, true);
     assert.equal(parsed.truncated, true);
-    assert.equal(parsed.data.originalLength > 1000, true);
-    assert.equal(result.content[0].text.length <= 1000, true);
+    assert.equal(parsed.data.originalLength > 240, true);
+    assert.equal(result.content[0].text.length <= 240, true);
+  });
+});
+
+test("toMcpTextResult keeps minimal JSON under a tiny result limit", async () => {
+  await withCleanEnv(async () => {
+    process.env.NGM_MCP_MAX_RESULT_CHARS = "80";
+
+    const result = toMcpTextResult(ok("large_tool", { text: "x".repeat(5000) }));
+    const parsed = JSON.parse(result.content[0].text);
+
+    assert.equal(parsed.ok, false);
+    assert.equal(parsed.truncated, true);
+    assert.equal(result.content[0].text.length <= 80, true);
   });
 });
 

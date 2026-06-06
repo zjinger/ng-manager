@@ -67,8 +67,17 @@ export const issueCommentSchema = projectSelectorSchema.extend({
   confirm: z.boolean().optional(),
 }).strict();
 
-export const issueUpdateReservedSchema = projectSelectorSchema.extend({
+export const issueUpdateSchema = projectSelectorSchema.extend({
   issueId: z.string().trim().min(1),
+  title: z.string().trim().optional(),
+  description: z.string().nullable().optional(),
+  type: issueTypeSchema.optional(),
+  priority: issuePrioritySchema.optional(),
+  rdItemId: z.string().trim().nullable().optional(),
+  moduleCode: z.string().trim().nullable().optional(),
+  versionCode: z.string().trim().nullable().optional(),
+  environmentCode: z.string().trim().nullable().optional(),
+  confirm: z.boolean().optional(),
 }).strict();
 
 export const markdownImageUploadSchema = projectSelectorSchema.extend({

@@ -24,14 +24,14 @@ export function hubV2UploadTools(): McpToolDefinition[] {
             data: {
               method: "POST",
               path,
-              requiredScope: "issue:create:write or issue:comment:write or rd:create:write or rd:stage-task:write or rd:transition:write or rd:edit:write",
+              requiredScope: "issue:create:write or issue:update:write or issue:comment:write or rd:create:write or rd:stage-task:write or rd:transition:write or rd:edit:write",
               maxBytes: maxUploadBytes(),
               input: {
                 mode: args.filePath ? "filePath" : "contentBase64",
-                filePath: args.filePath,
                 fileName: args.fileName,
                 mimeType: args.mimeType,
                 alt: args.alt,
+                hasFilePath: Boolean(args.filePath),
                 hasContentBase64: Boolean(args.contentBase64),
               },
             },
@@ -82,10 +82,9 @@ function resolveUploadFile(args: {
   if (!args.contentBase64 || !fileName) {
     throw new Error("contentBase64 and fileName are required");
   }
-  const estimatedBytes = estimateBase64Bytes(args.contentBase64);
-  assertUploadSize(estimatedBytes);
+  const content = decodeBase64Content(args.contentBase64);
   return {
-    content: Buffer.from(args.contentBase64, "base64"),
+    content,
     fileName,
     mimeType: args.mimeType ?? inferMimeType(fileName),
   };
@@ -103,13 +102,24 @@ function assertUploadSize(fileSize: number): void {
   }
 }
 
-function estimateBase64Bytes(value: string): number {
+function decodeBase64Content(value: string): Buffer {
   const normalized = value.trim().replace(/^data:[^,]+,/, "").replace(/\s+/g, "");
   if (!normalized) {
-    return 0;
+    throw new Error("contentBase64 is empty");
   }
-  const padding = normalized.endsWith("==") ? 2 : normalized.endsWith("=") ? 1 : 0;
-  return Math.floor((normalized.length * 3) / 4) - padding;
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized) || normalized.length % 4 !== 0) {
+    throw new Error("contentBase64 is not a valid base64 string");
+  }
+  const firstPaddingIndex = normalized.indexOf("=");
+  if (firstPaddingIndex !== -1 && !/^={1,2}$/.test(normalized.slice(firstPaddingIndex))) {
+    throw new Error("contentBase64 is not a valid base64 string");
+  }
+  const content = Buffer.from(normalized, "base64");
+  if (content.byteLength === 0) {
+    throw new Error("contentBase64 is empty");
+  }
+  assertUploadSize(content.byteLength);
+  return content;
 }
 
 function assertAllowedFilePath(filePath: string): void {

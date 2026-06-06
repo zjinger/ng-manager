@@ -48,12 +48,16 @@ export function toMcpTextResult(result: ToolResult): {
     };
   }
 
-  const truncatedText = JSON.stringify(buildTruncatedResult(result, text, maxChars), null, 2);
+  const truncatedText = stringifyWithinLimit(
+    (preview) => buildTruncatedResult(result, text.length, preview),
+    text,
+    maxChars
+  );
   return {
     content: [
       {
         type: "text",
-        text: truncatedText.length <= maxChars ? truncatedText : truncateJsonText(truncatedText, maxChars),
+        text: truncatedText,
       },
     ],
   };
@@ -64,16 +68,14 @@ function maxResultChars(): number {
   return Number.isFinite(value) && value > 0 ? value : 120000;
 }
 
-function buildTruncatedResult(result: ToolResult, text: string, maxChars: number): ToolResult<Record<string, unknown>> {
-  const previewLength = Math.max(0, maxChars - 1000);
-  const preview = text.slice(0, previewLength);
+function buildTruncatedResult(result: ToolResult, originalLength: number, preview: string): ToolResult<Record<string, unknown>> {
   if (result.ok) {
     return {
       ok: true,
       tool: result.tool,
       truncated: true,
       data: {
-        originalLength: text.length,
+        originalLength,
         preview,
       },
     };
@@ -86,26 +88,61 @@ function buildTruncatedResult(result: ToolResult, text: string, maxChars: number
     status: result.status,
     truncated: true,
     detail: {
-      originalLength: text.length,
+      originalLength,
       preview,
     },
   };
 }
 
-function truncateJsonText(text: string, maxChars: number): string {
-  const safeMax = Math.max(200, maxChars);
-  return JSON.stringify(
-    {
-      ok: false,
-      tool: "mcp",
-      error: "MCP result exceeded NGM_MCP_MAX_RESULT_CHARS and could not be serialized within the limit",
-      truncated: true,
-      detail: {
-        originalLength: text.length,
-        preview: text.slice(0, Math.max(0, safeMax - 300)),
-      },
+function stringifyWithinLimit(
+  build: (preview: string) => ToolResult<Record<string, unknown>>,
+  sourceText: string,
+  maxChars: number
+): string {
+  let previewLength = Math.min(sourceText.length, Math.max(0, maxChars - 1000));
+  while (previewLength >= 0) {
+    const text = JSON.stringify(build(sourceText.slice(0, previewLength)), null, 2);
+    if (text.length <= maxChars) {
+      return text;
+    }
+    if (previewLength === 0) {
+      break;
+    }
+    previewLength = Math.max(0, Math.floor(previewLength / 2));
+  }
+  return minimalTruncatedJson(maxChars);
+}
+
+function minimalTruncatedJson(maxChars: number): string {
+  const buildWithDetail = (error: string) => JSON.stringify({
+    ok: false,
+    tool: "mcp",
+    error,
+    truncated: true,
+    detail: {
+      originalLength: null,
     },
-    null,
-    2
-  );
+  });
+  let error = "MCP result exceeded NGM_MCP_MAX_RESULT_CHARS";
+  let text = buildWithDetail(error);
+  while (text.length > maxChars && error.length > 0) {
+    error = error.slice(0, -1);
+    text = buildWithDetail(error);
+  }
+  if (text.length <= maxChars) {
+    return text;
+  }
+  const buildMinimal = (minimalError: string) => JSON.stringify({
+    ok: false,
+    tool: "mcp",
+    error: minimalError,
+    truncated: true,
+  });
+  error = "MCP result truncated";
+  text = buildMinimal(error);
+  while (text.length > maxChars && error.length > 0) {
+    error = error.slice(0, -1);
+    text = buildMinimal(error);
+  }
+  return text.length <= maxChars ? text : "{}";
 }

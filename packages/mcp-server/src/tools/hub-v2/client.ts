@@ -14,12 +14,17 @@ export class HubV2Client {
     return this.queryUrl("api/personal", suffix, query);
   }
 
-  async request<T = unknown>(method: HttpMethod, url: string, body?: Record<string, unknown>): Promise<T> {
+  async request<T = unknown>(
+    method: HttpMethod,
+    url: string,
+    body?: Record<string, unknown>,
+    options: { preserveNull?: boolean } = {}
+  ): Promise<T> {
     const headers: Record<string, string> = { Authorization: `Bearer ${this.context.token}` };
     const init: RequestInit = { method, headers };
     if (body !== undefined) {
       headers["Content-Type"] = "application/json";
-      init.body = JSON.stringify(compact(body));
+      init.body = JSON.stringify(options.preserveNull ? compactUndefined(body) : compact(body));
     }
 
     const response = await fetch(url, init);
@@ -59,6 +64,16 @@ export function compact(values: Record<string, unknown>): Record<string, unknown
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(values)) {
     if (value !== undefined && value !== null && !(Array.isArray(value) && value.length === 0)) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+export function compactUndefined(values: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && !(Array.isArray(value) && value.length === 0)) {
       result[key] = value;
     }
   }

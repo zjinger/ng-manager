@@ -16,13 +16,12 @@ This reference describes Agent-facing MCP tools, not Hub V2 REST endpoints.
 
 - `hub_v2_upload_markdown_image`: upload a Markdown inline image using Personal Token and return a Markdown snippet. Use it before RD/Issue/comment write tools when content includes local or base64 images.
 - `hub_v2_issues_create`: preview or create an Issue using Personal Token with `issue:create:write`; `description` may include Markdown returned by `hub_v2_upload_markdown_image`.
+- `hub_v2_issues_update`: preview or update Issue basic fields using Personal Token with `issue:update:write`; `description` may include Markdown returned by `hub_v2_upload_markdown_image`.
 - `hub_v2_issues_comment`: preview or add an Issue comment using Personal Token with `issue:comment:write`; `content` may include Markdown returned by `hub_v2_upload_markdown_image`.
 - `hub_v2_rd_create`: preview or create an RD item using Personal Token with `rd:create:write`.
 - `hub_v2_rd_advance_stage`: preview or execute RD stage advance using Personal Token with `rd:transition:write`; supports `stageTasks` and `stageTaskTemplates`.
 - `hub_v2_rd_stage_tasks_create`: preview or create a task on the RD current stage using Personal Token with `rd:stage-task:write`.
 - `hub_v2_rd_update_progress`: preview or update RD progress using Personal Token with `rd:progress:write` or `rd:transition:write`; pass `stageTaskId` when active stage tasks exist.
-- `hub_v2_issues_update`: reserved until Hub V2 exposes a matching Personal Token route.
-
 Write tools are disabled by default MCP policy. When enabled, workflow-state writes must be previewed first when the tool supports preview, then executed only after explicit user confirmation.
 
 ## Markdown Image Workflow
@@ -35,6 +34,7 @@ Write tools are disabled by default MCP policy. When enabled, workflow-state wri
 Supported target fields:
 
 - `hub_v2_issues_create.description`
+- `hub_v2_issues_update.description`
 - `hub_v2_issues_comment.content`
 - `hub_v2_rd_create.description`
 - `hub_v2_rd_stage_tasks_create.description`

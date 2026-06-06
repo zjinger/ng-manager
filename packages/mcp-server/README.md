@@ -125,6 +125,67 @@ Development:
 }
 ```
 
+## Hub V2 Agent Connection Config
+
+Hub V2 tools read token configuration from MCP server configuration only. Tool schemas do not accept token arguments.
+
+Configuration priority:
+
+```text
+tool args project/projectKey
+HUB_V2_* environment variables
+HUB_V2_CONFIG / NGM_HUB_V2_CONFIG / SL_HUB_V2_CONFIG explicit config path
+~/.ng-manager/agent-connections.json
+legacy Hub V2 config files
+```
+
+Environment variables are the preferred override for CI, local debugging, and MCP client injection:
+
+```bash
+HUB_V2_BASE_URL=http://127.0.0.1:7001
+HUB_V2_PROJECT_KEY=demo
+HUB_V2_PROJECT_TOKEN=project-token-for-reads
+HUB_V2_PERSONAL_TOKEN=personal-token-for-writes
+```
+
+For persistent local configuration, use `~/.ng-manager/agent-connections.json`:
+
+```json
+{
+  "version": 1,
+  "hubV2": {
+    "defaultProject": "ng-manager",
+    "projects": {
+      "ng-manager": {
+        "baseUrl": "http://127.0.0.1:7001",
+        "projectKey": "ng-manager",
+        "projectToken": "xxx",
+        "personalToken": "yyy",
+        "source": "ng-manager-ui"
+      }
+    }
+  }
+}
+```
+
+Legacy files such as `~/.ng-manager/hub-v2.json`, `~/.sl-hub-v2.json`, `~/.codex/sl-hub-v2.json`, `~/.openclaw/sl-hub-v2.json`, and Claude/OpenCode shaped objects remain supported during migration.
+
+Security rules:
+
+```text
+Do not commit token config files.
+Do not pass tokens in MCP tool arguments.
+Do not print full tokens in logs, summaries, API responses, or Agent replies.
+Use Project Token for Hub V2 read tools.
+Use Personal Token only for confirmed write tools.
+```
+
+Launch with:
+
+```bash
+ngm mcp
+```
+
 ## Tools
 
 Project:
@@ -197,7 +258,8 @@ hub_v2_rd_stage_tasks_create
 hub_v2_rd_update_progress
 ```
 
-Hub V2 reads use Project Token configuration and writes use Personal Token configuration. `hub_v2_upload_markdown_image` uploads image files for Markdown bodies and returns a snippet that can be inserted into RD descriptions, RD stage-task descriptions, Issue descriptions, or Issue comments before calling the matching create/comment tool. Prefer `HUB_V2_BASE_URL`, `HUB_V2_PROJECT_KEY`, `HUB_V2_PROJECT_TOKEN`, and `HUB_V2_PERSONAL_TOKEN`; legacy `SL_HUB_V2_*` and `NGM_HUB_V2_*` prefixes are accepted during migration.
+Hub V2 reads use Project Token configuration and writes use Personal Token configuration. `hub_v2_upload_markdown_image` uploads image files for Markdown bodies and returns a snippet that can be inserted into RD descriptions, RD stage-task descriptions, Issue descriptions, or Issue comments before calling the matching create/comment tool. Prefer `HUB_V2_*` environment variables for temporary overrides and `~/.ng-manager/agent-connections.json` for persistent local configuration; legacy `SL_HUB_V2_*`, `NGM_HUB_V2_*`, and old config files are accepted during migration.
+
 
 ## Result Shape
 

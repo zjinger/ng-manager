@@ -1,7 +1,7 @@
 import type { McpToolDefinition } from "../index";
-import { compact, HubV2Client } from "./client";
+import { compact, compactUndefined, HubV2Client } from "./client";
 import { resolveHubV2Context } from "./config";
-import { issueCommentSchema, issueCreateSchema, issueGetSchema, issuesListSchema, issueUpdateReservedSchema } from "./schemas";
+import { issueCommentSchema, issueCreateSchema, issueGetSchema, issuesListSchema, issueUpdateSchema } from "./schemas";
 import { fail, ok } from "../../utils/result";
 
 export function hubV2IssuesTools(): McpToolDefinition[] {
@@ -114,11 +114,42 @@ export function hubV2IssuesTools(): McpToolDefinition[] {
     },
     {
       name: "hub_v2_issues_update",
-      description: "Reserved Hub V2 issue update tool. Hub V2 Personal Token route is not available yet.",
+      description: "Preview or update Hub V2 issue basic fields with Personal Token.",
       riskLevel: "write",
-      inputSchema: issueUpdateReservedSchema,
-      handler() {
-        return fail("hub_v2_issues_update", "Hub V2 Personal Token issue update route is not implemented");
+      inputSchema: issueUpdateSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        const path = `/issues/${encodeURIComponent(args.issueId)}`;
+        const body = compactUndefined({
+          title: args.title,
+          description: args.description,
+          type: args.type,
+          priority: args.priority,
+          rdItemId: args.rdItemId,
+          moduleCode: args.moduleCode,
+          versionCode: args.versionCode,
+          environmentCode: args.environmentCode,
+        });
+        if (Object.keys(body).length === 0) {
+          return fail("hub_v2_issues_update", "at least one issue field is required");
+        }
+        if (!args.confirm) {
+          return ok("hub_v2_issues_update", {
+            code: "PREVIEW",
+            message: "set confirm=true to execute this write operation",
+            data: {
+              method: "PATCH",
+              path,
+              requiredScope: "issue:update:write",
+              body,
+            },
+          });
+        }
+        const ctx = resolveHubV2Context(args, "personal");
+        const client = new HubV2Client(ctx);
+        const data = await client.request("PATCH", client.personalUrl(path), body, { preserveNull: true });
+        return ok("hub_v2_issues_update", data);
       },
     },
   ];

@@ -12,12 +12,10 @@ Use the unified ng-manager MCP server started by `ngm mcp`. This skill is only a
 Use these MCP tools first:
 
 - Project/config: `hub_v2_projects_list`, `hub_v2_projects_get`
-- Issues: `hub_v2_issues_list`, `hub_v2_issues_get`, `hub_v2_issues_create`, `hub_v2_issues_comment`
+- Issues: `hub_v2_issues_list`, `hub_v2_issues_get`, `hub_v2_issues_create`, `hub_v2_issues_update`, `hub_v2_issues_comment`
 - RD read: `hub_v2_rd_list`, `hub_v2_rd_get`, `hub_v2_rd_stage_tasks_list`
 - RD write: `hub_v2_rd_create`, `hub_v2_rd_advance_stage`, `hub_v2_rd_stage_tasks_create`, `hub_v2_rd_update_progress`
 - Markdown images: `hub_v2_upload_markdown_image`
-
-`hub_v2_issues_update` remains reserved until the Hub V2 server exposes a matching Personal Token update route. If a tool returns not implemented, report that limitation instead of guessing an endpoint.
 
 ## Project Selection
 
@@ -38,9 +36,10 @@ Use these MCP tools first:
 
 - Write tools use Personal Token and are disabled unless the MCP server policy allows write tools.
 - Never ask the user to paste tokens into chat or tool arguments.
-- For Issue create, Issue comment, RD create, stage advance, stage-task create, progress update, status changes, or any operation that alters workflow state, preview first when the tool supports preview, then execute only after explicit user confirmation.
+- For Issue create, Issue update, Issue comment, RD create, stage advance, stage-task create, progress update, status changes, or any operation that alters workflow state, preview first when the tool supports preview, then execute only after explicit user confirmation.
 - For Markdown images, first call `hub_v2_upload_markdown_image` with either `filePath` or `contentBase64 + fileName`, then insert the returned `markdown` into the target `description` or `content`.
 - For Issue creation with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_create` with the returned Markdown in `description`.
+- For Issue description updates with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_update` with the returned Markdown in `description`.
 - For Issue comments with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_comment` with the returned Markdown in `content`.
 - For RD creation or stage-task descriptions with images, call `hub_v2_upload_markdown_image`, then insert the returned Markdown into `hub_v2_rd_create.description` or `hub_v2_rd_stage_tasks_create.description`.
 - When creating an RD item, include `stageTasks` or `stageTaskTemplates` only when the user explicitly provides initial current-stage tasks or asks to create them from templates.
@@ -51,8 +50,8 @@ Use these MCP tools first:
 ## Error Handling
 
 - `TOKEN_SCOPE_FORBIDDEN`: explain which scope is missing and whether Project Token or Personal Token is involved.
-- Issue create requires `issue:create:write`; Issue comments require `issue:comment:write`.
-- Markdown image upload requires at least one relevant business write scope such as `issue:create:write`, `issue:comment:write`, `rd:create:write`, `rd:stage-task:write`, `rd:transition:write`, or `rd:edit:write`.
+- Issue create requires `issue:create:write`; Issue update requires `issue:update:write`; Issue comments require `issue:comment:write`.
+- Markdown image upload requires at least one relevant business write scope such as `issue:create:write`, `issue:update:write`, `issue:comment:write`, `rd:create:write`, `rd:stage-task:write`, `rd:transition:write`, or `rd:edit:write`.
 - RD create requires `rd:create:write`; stage-task create requires `rd:stage-task:write`; progress update requires `rd:progress:write` or `rd:transition:write`.
 - `TOKEN_PROJECT_FORBIDDEN` or `PROJECT_NOT_FOUND`: verify the configured project alias or project key.
 - `PROJECT_ACCESS_DENIED`: explain that the Personal Token owner needs project access.
