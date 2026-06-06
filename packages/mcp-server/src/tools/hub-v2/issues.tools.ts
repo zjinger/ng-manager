@@ -1,7 +1,7 @@
 import type { McpToolDefinition } from "../index";
 import { compact, compactUndefined, HubV2Client } from "./client";
 import { resolveHubV2Context } from "./config/index";
-import { issueCommentSchema, issueCreateSchema, issueGetSchema, issuesListSchema, issueUpdateSchema } from "./schemas";
+import { issueAssignSchema, issueCommentSchema, issueCreateSchema, issueGetSchema, issuesListSchema, issueUpdateSchema } from "./schemas";
 import { fail, ok } from "../../utils/result";
 
 export function hubV2IssuesTools(): McpToolDefinition[] {
@@ -110,6 +110,34 @@ export function hubV2IssuesTools(): McpToolDefinition[] {
         const client = new HubV2Client(ctx);
         const data = await client.request("POST", client.personalUrl(path), body);
         return ok("hub_v2_issues_comment", data);
+      },
+    },
+    {
+      name: "hub_v2_issues_assign",
+      description: "Preview or assign a Hub V2 issue assignee with Personal Token.",
+      riskLevel: "write",
+      inputSchema: issueAssignSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        const path = `/issues/${encodeURIComponent(args.issueId)}/assign`;
+        const body = { assigneeId: args.assigneeId };
+        if (!args.confirm) {
+          return ok("hub_v2_issues_assign", {
+            code: "PREVIEW",
+            message: "set confirm=true to execute this write operation",
+            data: {
+              method: "POST",
+              path,
+              requiredScope: "issue:assign:write",
+              body,
+            },
+          });
+        }
+        const ctx = resolveHubV2Context(args, "personal");
+        const client = new HubV2Client(ctx);
+        const data = await client.request("POST", client.personalUrl(path), body);
+        return ok("hub_v2_issues_assign", data);
       },
     },
     {

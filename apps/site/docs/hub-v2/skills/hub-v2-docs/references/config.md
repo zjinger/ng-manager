@@ -57,6 +57,14 @@ HUB_V2_SOURCE=agent
 HUB_V2_CONFIG=C:/Users/you/.ng-manager/agent-connections.json
 ```
 
+Write policy variable:
+
+```text
+NGM_MCP_ALLOW_WRITE=true
+```
+
+Current document tools are read-first. This variable only affects confirmed write tools exposed by the same MCP server. Setting it does not replace `confirm: true` or Hub V2 Personal Token scope checks.
+
 Project selection:
 
 - Use `project` for configured aliases in `hubV2.projects`.

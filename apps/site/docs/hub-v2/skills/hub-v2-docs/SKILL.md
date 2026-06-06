@@ -18,8 +18,6 @@ Use these MCP tools first:
 - Read by id: `hub_v2_docs_get`
 - Read by slug: `hub_v2_docs_get_by_slug`
 
-Deprecated Python helpers in this directory are migration stubs and are not a normal Agent workflow.
-
 ## Project Selection
 
 - If the user names a configured project alias, pass it as `project`.

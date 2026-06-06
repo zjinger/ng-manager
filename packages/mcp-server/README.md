@@ -206,6 +206,7 @@ Hub V2:
 ```text
 hub_v2_projects_list
 hub_v2_projects_get
+hub_v2_project_members_list
 hub_v2_docs_list
 hub_v2_docs_get
 hub_v2_docs_get_by_slug
@@ -213,6 +214,7 @@ hub_v2_issues_list
 hub_v2_issues_get
 hub_v2_issues_create
 hub_v2_issues_comment
+hub_v2_issues_assign
 hub_v2_issues_update
 hub_v2_upload_markdown_image
 hub_v2_rd_list

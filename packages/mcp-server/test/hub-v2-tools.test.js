@@ -6,6 +6,7 @@ const test = require("node:test");
 
 const { hubV2DocsTools } = require("../lib/tools/hub-v2/docs.tools.js");
 const { hubV2IssuesTools } = require("../lib/tools/hub-v2/issues.tools.js");
+const { hubV2ProjectsTools } = require("../lib/tools/hub-v2/projects.tools.js");
 const { hubV2RdTools } = require("../lib/tools/hub-v2/rd.tools.js");
 const { hubV2UploadTools } = require("../lib/tools/hub-v2/upload.tools.js");
 const { allTools } = require("../lib/tools/index.js");
@@ -66,6 +67,12 @@ function issueTool(name) {
   return tool;
 }
 
+function projectTool(name) {
+  const tool = hubV2ProjectsTools().find((item) => item.name === name);
+  assert.ok(tool, `tool ${name} should exist`);
+  return tool;
+}
+
 function uploadTool(name) {
   const tool = hubV2UploadTools().find((item) => item.name === name);
   assert.ok(tool, `tool ${name} should exist`);
@@ -96,9 +103,11 @@ test("registers Hub V2 tools with the unified names only", () => {
   assert.ok(names.includes("hub_v2_docs_get"));
   assert.ok(names.includes("hub_v2_docs_get_by_slug"));
   assert.ok(names.includes("hub_v2_projects_list"));
+  assert.ok(names.includes("hub_v2_project_members_list"));
   assert.ok(names.includes("hub_v2_issues_list"));
   assert.ok(names.includes("hub_v2_issues_create"));
   assert.ok(names.includes("hub_v2_issues_comment"));
+  assert.ok(names.includes("hub_v2_issues_assign"));
   assert.ok(names.includes("hub_v2_issues_update"));
   assert.ok(names.includes("hub_v2_upload_markdown_image"));
   assert.ok(names.includes("hub_v2_rd_create"));
@@ -106,6 +115,44 @@ test("registers Hub V2 tools with the unified names only", () => {
   assert.ok(names.includes("hub_v2_rd_stage_tasks_create"));
   assert.ok(names.includes("hub_v2_rd_update_progress"));
   assert.equal(names.some((name) => name.startsWith("sl_hub_v2.")), false);
+});
+
+test("hub_v2_project_members_list uses Project Token", async () => {
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(
+        JSON.stringify({
+          code: "OK",
+          data: {
+            items: [
+              {
+                id: "pm_1",
+                userId: "usr_1",
+                displayName: "王雯",
+                roleCode: "qa",
+                isOwner: false,
+              },
+            ],
+          },
+        }),
+        { status: 200 }
+      );
+    };
+
+    const result = await projectTool("hub_v2_project_members_list").handler({}, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/token/projects/demo/members");
+    assert.equal(calls[0].init.method, "GET");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer project-secret");
+    assert.equal(JSON.stringify(calls[0]).includes("personal-secret"), false);
+  });
 });
 
 test("hub_v2_issues_create previews and executes with Personal Token", async () => {
@@ -144,6 +191,42 @@ test("hub_v2_issues_create previews and executes with Personal Token", async () 
     assert.equal(calls[0].init.method, "POST");
     assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
     assert.equal(JSON.stringify(calls[0].init.body).includes("project-secret"), false);
+  });
+});
+
+test("hub_v2_issues_assign previews and executes with Personal Token", async () => {
+  const preview = await issueTool("hub_v2_issues_assign").handler({
+    issueId: "iss_1",
+    assigneeId: "usr_1",
+  }, {});
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.data.code, "PREVIEW");
+  assert.equal(preview.data.data.requiredScope, "issue:assign:write");
+  assert.deepEqual(preview.data.data.body, { assigneeId: "usr_1" });
+
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "iss_1", assigneeId: "usr_1" } }), { status: 200 });
+    };
+
+    const result = await issueTool("hub_v2_issues_assign").handler({
+      issueId: "iss 1",
+      assigneeId: "usr_1",
+      confirm: true,
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/issues/iss%201/assign");
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
+    assert.deepEqual(JSON.parse(calls[0].init.body), { assigneeId: "usr_1" });
   });
 });
 

@@ -1,6 +1,7 @@
 import type { McpToolDefinition } from "../index";
-import { getConfiguredProject, listConfiguredProjects } from "./config/index";
-import { projectSelectorSchema } from "./schemas";
+import { HubV2Client } from "./client";
+import { getConfiguredProject, listConfiguredProjects, resolveHubV2Context } from "./config/index";
+import { projectMembersListSchema, projectSelectorSchema } from "./schemas";
 import { ok } from "../../utils/result";
 
 export function hubV2ProjectsTools(): McpToolDefinition[] {
@@ -21,6 +22,18 @@ export function hubV2ProjectsTools(): McpToolDefinition[] {
       inputSchema: projectSelectorSchema,
       handler(args) {
         return ok("hub_v2_projects_get", getConfiguredProject(args));
+      },
+    },
+    {
+      name: "hub_v2_project_members_list",
+      description: "List Hub V2 project members with Project Token for assignment and mention candidates.",
+      riskLevel: "read",
+      inputSchema: projectMembersListSchema,
+      async handler(args) {
+        const ctx = resolveHubV2Context(args, "project");
+        const client = new HubV2Client(ctx);
+        const data = await client.request("GET", client.tokenUrl("/members"));
+        return ok("hub_v2_project_members_list", data);
       },
     },
   ];

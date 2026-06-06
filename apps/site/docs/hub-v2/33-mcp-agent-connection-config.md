@@ -73,6 +73,7 @@ HUB_V2_PROJECT_TOKEN
 HUB_V2_PERSONAL_TOKEN
 HUB_V2_SOURCE
 HUB_V2_CONFIG
+NGM_MCP_ALLOW_WRITE
 ```
 
 示例：
@@ -84,6 +85,18 @@ HUB_V2_PROJECT_TOKEN=project-token-for-reads
 HUB_V2_PERSONAL_TOKEN=personal-token-for-writes
 HUB_V2_SOURCE=agent
 ```
+
+写工具 policy：
+
+```bash
+NGM_MCP_ALLOW_WRITE=true
+```
+
+该变量只控制 MCP Server 是否允许执行已确认的写工具，不提供 Hub V2 业务权限。真实写操作仍必须同时满足：
+
+- tool call 传入 `confirm=true`
+- 已配置 `HUB_V2_PERSONAL_TOKEN` 或 `agent-connections.json` 中的 `personalToken`
+- Personal Token 拥有对应 Hub V2 scope，例如 `issue:create:write`、`issue:update:write`、`issue:comment:write`、`rd:create:write`、`rd:transition:write`
 
 不再支持：
 
@@ -205,6 +218,32 @@ dangerous blocked
 
 这保证 Agent 可以先生成可审核的操作预览，只有用户确认且 MCP policy 放行时才执行写操作。
 
+本地临时启用写工具：
+
+```powershell
+$env:NGM_MCP_ALLOW_WRITE = "true"
+ngm mcp doctor
+ngm mcp
+```
+
+MCP Client 配置示例：
+
+```json
+{
+  "mcpServers": {
+    "ng-manager": {
+      "command": "ngm",
+      "args": ["mcp"],
+      "env": {
+        "NGM_MCP_ALLOW_WRITE": "true"
+      }
+    }
+  }
+}
+```
+
+`ngm mcp doctor` 可用于检查当前 MCP Server 进程能看到的 policy 状态。若写操作返回 `write tools are disabled`，说明当前启动该 MCP Server 的环境中没有设置 `NGM_MCP_ALLOW_WRITE=true`，或 MCP Client 修改配置后尚未重启 server。
+
 ## 8. 当前 Hub V2 MCP 工具
 
 项目配置：
@@ -212,6 +251,7 @@ dangerous blocked
 ```text
 hub_v2_projects_list
 hub_v2_projects_get
+hub_v2_project_members_list
 ```
 
 文档：
@@ -229,6 +269,7 @@ hub_v2_issues_list
 hub_v2_issues_get
 hub_v2_issues_create
 hub_v2_issues_comment
+hub_v2_issues_assign
 hub_v2_issues_update
 ```
 

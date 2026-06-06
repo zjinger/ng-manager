@@ -5,6 +5,8 @@ export const projectSelectorSchema = z.object({
   projectKey: z.string().trim().min(1).optional(),
 }).strict();
 
+export const projectMembersListSchema = projectSelectorSchema;
+
 export const pagingSchema = z.object({
   page: z.number().int().min(1).optional(),
   pageSize: z.number().int().min(1).max(200).optional(),
@@ -64,6 +66,12 @@ export const issueCommentSchema = projectSelectorSchema.extend({
   issueId: z.string().trim().min(1),
   content: z.string().min(1),
   mentions: z.array(z.string().trim().min(1)).optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const issueAssignSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  assigneeId: z.string().trim().min(1),
   confirm: z.boolean().optional(),
 }).strict();
 
