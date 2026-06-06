@@ -2,30 +2,45 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ToolContext } from "./context/tool-context";
 import { assertToolPolicy } from "./policy/assert-tool-policy";
 import { createDefaultToolPolicy } from "./policy/tool-policy";
-import { allTools } from "./tools";
+import { allTools, type McpToolDefinition } from "./tools";
 import { errorMessage, errorMetadata } from "./utils/errors";
 import { fail, toMcpTextResult } from "./utils/result";
 
-type RegisterToolFn = (
+type McpToolHandler = (args: unknown) => Promise<ReturnType<typeof toMcpTextResult>>;
+type RegisterToolCompat = (
   name: string,
   config: {
     description?: string;
-    inputSchema?: unknown;
+    inputSchema?: McpToolDefinition["inputSchema"];
   },
   cb: (args: unknown) => Promise<ReturnType<typeof toMcpTextResult>>
-) => void;
+) => unknown;
+type RegisterToolServerCompat = {
+  registerTool: RegisterToolCompat;
+};
+
+function registerMcpTool(server: Pick<McpServer, "registerTool">, tool: McpToolDefinition, handler: McpToolHandler): void {
+  // Keep the MCP SDK compatibility boundary here. The SDK registerTool generic
+  // type is intentionally broad and can over-expand with dynamically composed
+  // Zod schemas, so registerTools() should not cast or bind it directly.
+  const compatibleServer = server as unknown as RegisterToolServerCompat;
+  compatibleServer.registerTool(
+    tool.name,
+    {
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+    },
+    async (args) => handler(args)
+  );
+}
 
 export function registerTools(server: McpServer, context: ToolContext): void {
   const policy = createDefaultToolPolicy();
-  const registerTool = server.registerTool.bind(server) as RegisterToolFn;
 
   for (const tool of allTools()) {
-    registerTool(
-      tool.name,
-      {
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-      },
+    registerMcpTool(
+      server,
+      tool,
       async (args) => {
         try {
           const parsed = tool.inputSchema.parse(args);
