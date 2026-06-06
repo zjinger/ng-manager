@@ -3,7 +3,7 @@ import type { ToolContext } from "./context/tool-context";
 import { assertToolPolicy } from "./policy/assert-tool-policy";
 import { createDefaultToolPolicy } from "./policy/tool-policy";
 import { allTools } from "./tools";
-import { errorMessage } from "./utils/errors";
+import { errorMessage, errorMetadata } from "./utils/errors";
 import { fail, toMcpTextResult } from "./utils/result";
 
 type RegisterToolFn = (
@@ -28,12 +28,16 @@ export function registerTools(server: McpServer, context: ToolContext): void {
       },
       async (args) => {
         try {
-          assertToolPolicy(policy, tool.name, tool.riskLevel);
           const parsed = tool.inputSchema.parse(args);
+          const confirmed = tool.isConfirmed?.(parsed) ?? true;
+          const isAllowedPreview = tool.allowPreviewWhenBlocked === true && !confirmed;
+          if (!isAllowedPreview) {
+            assertToolPolicy(policy, tool.name, tool.riskLevel);
+          }
           const result = await tool.handler(parsed, context);
           return toMcpTextResult(result);
         } catch (error) {
-          return toMcpTextResult(fail(tool.name, errorMessage(error)));
+          return toMcpTextResult(fail(tool.name, errorMessage(error), errorMetadata(error)));
         }
       }
     );

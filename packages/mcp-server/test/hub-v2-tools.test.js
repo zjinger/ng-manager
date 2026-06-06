@@ -9,6 +9,8 @@ const { hubV2IssuesTools } = require("../lib/tools/hub-v2/issues.tools.js");
 const { hubV2RdTools } = require("../lib/tools/hub-v2/rd.tools.js");
 const { hubV2UploadTools } = require("../lib/tools/hub-v2/upload.tools.js");
 const { allTools } = require("../lib/tools/index.js");
+const { registerTools } = require("../lib/register-tools.js");
+const { toMcpTextResult, ok } = require("../lib/utils/result.js");
 
 const ENV_KEYS = [
   "HUB_V2_BASE_URL",
@@ -17,6 +19,9 @@ const ENV_KEYS = [
   "HUB_V2_PERSONAL_TOKEN",
   "NGM_WORKSPACE_ROOT",
   "NGM_MCP_UPLOAD_ROOT",
+  "NGM_MCP_ALLOW_WRITE",
+  "NGM_MCP_MAX_UPLOAD_BYTES",
+  "NGM_MCP_MAX_RESULT_CHARS",
 ];
 
 function withCleanEnv(fn) {
@@ -64,6 +69,23 @@ function uploadTool(name) {
   const tool = hubV2UploadTools().find((item) => item.name === name);
   assert.ok(tool, `tool ${name} should exist`);
   return tool;
+}
+
+function registeredTool(name) {
+  const callbacks = new Map();
+  registerTools({
+    registerTool(toolName, _config, cb) {
+      callbacks.set(toolName, cb);
+    },
+  }, {});
+  const callback = callbacks.get(name);
+  assert.ok(callback, `registered tool ${name} should exist`);
+  return callback;
+}
+
+async function callRegisteredTool(name, args) {
+  const result = await registeredTool(name)(args);
+  return JSON.parse(result.content[0].text);
 }
 
 test("registers Hub V2 tools with the unified names only", () => {
@@ -120,6 +142,50 @@ test("hub_v2_issues_create previews and executes with Personal Token", async () 
     assert.equal(calls[0].init.method, "POST");
     assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
     assert.equal(JSON.stringify(calls[0].init.body).includes("project-secret"), false);
+  });
+});
+
+test("registered write tools preview when write policy is disabled and block confirmed writes", async () => {
+  await withCleanEnv(async () => {
+    delete process.env.NGM_MCP_ALLOW_WRITE;
+
+    const preview = await callRegisteredTool("hub_v2_issues_create", {
+      title: "Preview issue",
+    });
+
+    assert.equal(preview.ok, true);
+    assert.equal(preview.data.code, "PREVIEW");
+
+    const blocked = await callRegisteredTool("hub_v2_issues_create", {
+      title: "Confirmed issue",
+      confirm: true,
+    });
+
+    assert.equal(blocked.ok, false);
+    assert.match(blocked.error, /blocked by policy/);
+  });
+});
+
+test("registered write tools execute confirmed writes only when write policy is enabled", async () => {
+  await withCleanEnv(async () => {
+    process.env.NGM_MCP_ALLOW_WRITE = "true";
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "iss_1" } }), { status: 201 });
+    };
+
+    const result = await callRegisteredTool("hub_v2_issues_create", {
+      title: "Confirmed issue",
+      confirm: true,
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/issues");
   });
 });
 
@@ -183,6 +249,7 @@ test("hub_v2_upload_markdown_image uploads base64 with Personal Token", async ()
       fileName: "shot.png",
       mimeType: "image/png",
       alt: "登录异常截图",
+      confirm: true,
     }, {});
 
     assert.equal(result.ok, true);
@@ -191,6 +258,66 @@ test("hub_v2_upload_markdown_image uploads base64 with Personal Token", async ()
     assert.equal(calls[0].init.method, "POST");
     assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
     assert.ok(calls[0].init.body instanceof FormData);
+  });
+});
+
+test("hub_v2_upload_markdown_image previews by default without reading or uploading", async () => {
+  await withCleanEnv(async () => {
+    let fetchCalled = false;
+    global.fetch = async () => {
+      fetchCalled = true;
+      return new Response(JSON.stringify({ code: "OK" }), { status: 200 });
+    };
+
+    const result = await uploadTool("hub_v2_upload_markdown_image").handler({
+      filePath: "Z:/does/not/exist.png",
+      alt: "missing",
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(result.data.code, "PREVIEW");
+    assert.equal(result.data.data.input.filePath, "Z:/does/not/exist.png");
+    assert.equal(fetchCalled, false);
+  });
+});
+
+test("hub_v2_upload_markdown_image rejects contentBase64 over the upload limit", async () => {
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    process.env.NGM_MCP_MAX_UPLOAD_BYTES = "2";
+
+    await assert.rejects(
+      () => uploadTool("hub_v2_upload_markdown_image").handler({
+        contentBase64: Buffer.from("png").toString("base64"),
+        fileName: "shot.png",
+        confirm: true,
+      }, {}),
+      /too large/
+    );
+  });
+});
+
+test("hub_v2_upload_markdown_image rejects filePath over the upload limit", async () => {
+  await withCleanEnv(async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ngm-mcp-upload-limit-"));
+    try {
+      process.env.HUB_V2_BASE_URL = "http://hub.test";
+      process.env.HUB_V2_PROJECT_KEY = "demo";
+      process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+      process.env.NGM_WORKSPACE_ROOT = tempDir;
+      process.env.NGM_MCP_MAX_UPLOAD_BYTES = "2";
+      const filePath = path.join(tempDir, "shot.png");
+      fs.writeFileSync(filePath, "png");
+
+      await assert.rejects(
+        () => uploadTool("hub_v2_upload_markdown_image").handler({ filePath, confirm: true }, {}),
+        /too large/
+      );
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -208,8 +335,8 @@ test("hub_v2_upload_markdown_image rejects filePath outside allowed roots", asyn
       fs.writeFileSync(outsideFile, "png");
 
       await assert.rejects(
-        () => uploadTool("hub_v2_upload_markdown_image").handler({ filePath: outsideFile }, {}),
-        /filePath must be under/
+      () => uploadTool("hub_v2_upload_markdown_image").handler({ filePath: outsideFile, confirm: true }, {}),
+      /filePath must be under/
       );
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
@@ -264,6 +391,26 @@ test("hub_v2_docs_get and get_by_slug map ids and slugs", async () => {
   });
 });
 
+test("hub_v2_docs_get_by_slug contentOnly supports nested item content and fails when content is absent", async () => {
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    global.fetch = async () =>
+      new Response(JSON.stringify({ code: "OK", data: { item: { contentMd: "# Nested" } } }), { status: 200 });
+
+    const nestedResult = await docsTool("hub_v2_docs_get_by_slug").handler({ slug: "nested", contentOnly: true }, {});
+    assert.equal(nestedResult.ok, true);
+    assert.equal(nestedResult.data, "# Nested");
+
+    global.fetch = async () =>
+      new Response(JSON.stringify({ code: "OK", data: { title: "No content" } }), { status: 200 });
+    const missingResult = await docsTool("hub_v2_docs_get_by_slug").handler({ slug: "missing", contentOnly: true }, {});
+    assert.equal(missingResult.ok, false);
+    assert.equal(missingResult.code, "DOCUMENT_CONTENT_NOT_FOUND");
+  });
+});
+
 test("HTTP errors are converted without leaking tokens", async () => {
   await withCleanEnv(async () => {
     process.env.HUB_V2_BASE_URL = "http://hub.test";
@@ -280,6 +427,38 @@ test("HTTP errors are converted without leaking tokens", async () => {
         return true;
       }
     );
+  });
+});
+
+test("registered Hub V2 HTTP errors keep status and code", async () => {
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret-value";
+    global.fetch = async () =>
+      new Response(JSON.stringify({ code: "DOCUMENT_NOT_FOUND", message: "missing", detail: { docId: "doc_1" } }), { status: 404, statusText: "Not Found" });
+
+    const result = await callRegisteredTool("hub_v2_docs_get", { docId: "doc_1" });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 404);
+    assert.equal(result.code, "DOCUMENT_NOT_FOUND");
+    assert.deepEqual(result.detail, { docId: "doc_1" });
+    assert.equal(JSON.stringify(result).includes("project-secret-value"), false);
+  });
+});
+
+test("toMcpTextResult truncates oversized results", async () => {
+  await withCleanEnv(async () => {
+    process.env.NGM_MCP_MAX_RESULT_CHARS = "1000";
+
+    const result = toMcpTextResult(ok("large_tool", { text: "x".repeat(5000) }));
+    const parsed = JSON.parse(result.content[0].text);
+
+    assert.equal(parsed.ok, true);
+    assert.equal(parsed.truncated, true);
+    assert.equal(parsed.data.originalLength > 1000, true);
+    assert.equal(result.content[0].text.length <= 1000, true);
   });
 });
 

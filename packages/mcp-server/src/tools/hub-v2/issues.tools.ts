@@ -47,6 +47,8 @@ export function hubV2IssuesTools(): McpToolDefinition[] {
       description: "Preview or create a Hub V2 issue with Personal Token.",
       riskLevel: "write",
       inputSchema: issueCreateSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
       async handler(args) {
         const path = "/issues";
         const body = compact({
@@ -84,6 +86,8 @@ export function hubV2IssuesTools(): McpToolDefinition[] {
       description: "Preview or add a Hub V2 issue comment with Personal Token.",
       riskLevel: "write",
       inputSchema: issueCommentSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
       async handler(args) {
         const path = `/issues/${encodeURIComponent(args.issueId)}/comments`;
         const body = compact({

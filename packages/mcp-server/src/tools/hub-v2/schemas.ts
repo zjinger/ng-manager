@@ -77,6 +77,7 @@ export const markdownImageUploadSchema = projectSelectorSchema.extend({
   fileName: z.string().trim().min(1).optional(),
   mimeType: z.string().trim().min(1).optional(),
   alt: z.string().trim().min(1).optional(),
+  confirm: z.boolean().optional(),
 }).strict();
 
 export const rdListSchema = projectSelectorSchema.extend({

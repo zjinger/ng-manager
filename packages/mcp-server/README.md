@@ -12,7 +12,11 @@ The intended boundary is:
 MCP client -> packages/mcp-server -> ToolContext.services -> packages/core
 ```
 
-MCP tools must not call the local Fastify HTTP API. HTTP routes, Electron IPC, CLI commands, and MCP tools should all adapt the same core services.
+For ng-manager local capabilities, MCP tools should prefer `packages/core`. HTTP routes, Electron IPC, CLI commands, and MCP tools should adapt the same local core services instead of duplicating business logic or calling the local Fastify API.
+
+Hub V2 tools are the exception: they may call the Hub V2 Token HTTP API because that API is the integration contract Hub V2 exposes to AI Agents and other external clients. Those tools must keep token handling inside configuration/client layers and must not accept token values as tool arguments.
+
+The MCP server must not provide arbitrary shell execution, mutate system environment settings, or remotely execute client-side commands.
 
 ## Safety
 
@@ -34,7 +38,7 @@ execute   blocked
 dangerous blocked
 ```
 
-Write tools are registered only for scoped Hub V2 Personal Token workflows that require explicit tool confirmation when implemented. The server does not implement arbitrary shell execution, task start/stop/restart, git pull/checkout/commit/reset, proxy reload, runtime install/remove, file deletion, or system environment mutation.
+Write tools are registered only for scoped Hub V2 Personal Token workflows that require explicit tool confirmation when implemented. The server does not implement arbitrary shell execution, task start/stop/restart, git pull/checkout/commit/reset, proxy reload, runtime install/remove, file deletion, system environment mutation, or remote client command execution.
 
 ## Environment
 
@@ -42,9 +46,11 @@ Write tools are registered only for scoped Hub V2 Personal Token workflows that 
 NGM_DATA_DIR                 ng-manager data directory. Defaults to ~/.ng-manager.
 NGM_WORKSPACE_ROOT           Optional workspace hint. Defaults to process.cwd().
 NGM_MCP_UPLOAD_ROOT          Optional extra root for Hub V2 markdown image uploads.
-NGM_MCP_ALLOW_WRITE          Future policy flag for write tools. Defaults to false.
-NGM_MCP_ALLOW_EXECUTE        Future policy flag for execute tools. Defaults to false.
-NGM_MCP_ALLOW_DANGEROUS      Future policy flag for dangerous tools. Defaults to false.
+NGM_MCP_MAX_UPLOAD_BYTES     Max Hub V2 markdown image upload bytes. Defaults to 5242880.
+NGM_MCP_MAX_RESULT_CHARS     Max MCP text result characters. Defaults to 120000.
+NGM_MCP_ALLOW_WRITE          Enables confirmed write tools. Defaults to false.
+NGM_MCP_ALLOW_EXECUTE        Enables execute tools. Defaults to false.
+NGM_MCP_ALLOW_DANGEROUS      Enables dangerous tools. Defaults to false.
 ```
 
 ## Commands

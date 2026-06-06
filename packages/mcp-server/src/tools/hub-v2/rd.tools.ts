@@ -67,6 +67,8 @@ export function hubV2RdTools(): McpToolDefinition[] {
       description: "Preview or create a Hub V2 RD item with Personal Token.",
       riskLevel: "write",
       inputSchema: rdCreateSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
       async handler(args) {
         const path = "/rd-items";
         const body = compact({
@@ -105,6 +107,8 @@ export function hubV2RdTools(): McpToolDefinition[] {
       description: "Preview or execute Hub V2 RD stage advance with Personal Token.",
       riskLevel: "write",
       inputSchema: rdAdvanceStageSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
       async handler(args) {
         const path = `/rd-items/${encodeURIComponent(args.itemId)}/advance-stage`;
         const body = compact({
@@ -139,6 +143,8 @@ export function hubV2RdTools(): McpToolDefinition[] {
       description: "Preview or create a Hub V2 RD stage task on the current stage with Personal Token.",
       riskLevel: "write",
       inputSchema: rdStageTaskCreateSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
       async handler(args) {
         const path = `/rd-items/${encodeURIComponent(args.itemId)}/stage-tasks`;
         const body = compact({
@@ -173,6 +179,8 @@ export function hubV2RdTools(): McpToolDefinition[] {
       description: "Preview or update Hub V2 RD progress with Personal Token.",
       riskLevel: "write",
       inputSchema: rdUpdateProgressSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
       async handler(args) {
         const path = `/rd-items/${encodeURIComponent(args.itemId)}/progress`;
         const body = compact({

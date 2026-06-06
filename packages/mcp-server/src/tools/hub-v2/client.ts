@@ -1,5 +1,5 @@
 import type { HubV2ResolvedContext } from "./config";
-import { formatHubV2HttpError } from "./errors";
+import { toHubV2HttpError } from "./errors";
 
 export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
@@ -26,7 +26,7 @@ export class HubV2Client {
     const text = await response.text();
     const parsed = parseResponseBody(text);
     if (!response.ok) {
-      throw new Error(formatHubV2HttpError(response.status, response.statusText, parsed));
+      throw toHubV2HttpError(response.status, response.statusText, parsed);
     }
     return (parsed ?? { code: "OK", data: null }) as T;
   }
@@ -40,7 +40,7 @@ export class HubV2Client {
     const text = await response.text();
     const parsed = parseResponseBody(text);
     if (!response.ok) {
-      throw new Error(formatHubV2HttpError(response.status, response.statusText, parsed));
+      throw toHubV2HttpError(response.status, response.statusText, parsed);
     }
     return (parsed ?? { code: "OK", data: null }) as T;
   }

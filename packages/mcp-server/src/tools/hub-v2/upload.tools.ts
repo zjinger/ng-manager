@@ -13,7 +13,30 @@ export function hubV2UploadTools(): McpToolDefinition[] {
       description: "Upload a local or base64 image with Personal Token and return Markdown for Hub V2 content.",
       riskLevel: "write",
       inputSchema: markdownImageUploadSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
       async handler(args) {
+        const path = "/uploads/markdown";
+        if (!args.confirm) {
+          return ok("hub_v2_upload_markdown_image", {
+            code: "PREVIEW",
+            message: "set confirm=true to upload this image",
+            data: {
+              method: "POST",
+              path,
+              requiredScope: "issue:create:write or issue:comment:write or rd:create:write or rd:stage-task:write or rd:transition:write or rd:edit:write",
+              maxBytes: maxUploadBytes(),
+              input: {
+                mode: args.filePath ? "filePath" : "contentBase64",
+                filePath: args.filePath,
+                fileName: args.fileName,
+                mimeType: args.mimeType,
+                alt: args.alt,
+                hasContentBase64: Boolean(args.contentBase64),
+              },
+            },
+          });
+        }
         const ctx = resolveHubV2Context(args, "personal");
         const client = new HubV2Client(ctx);
         const file = resolveUploadFile(args);
@@ -46,6 +69,8 @@ function resolveUploadFile(args: {
     if (!existsSync(resolvedPath) || !statSync(resolvedPath).isFile()) {
       throw new Error(`upload file not found: ${resolvedPath}`);
     }
+    const fileSize = statSync(resolvedPath).size;
+    assertUploadSize(fileSize);
     return {
       content: readFileSync(resolvedPath),
       fileName: path.basename(resolvedPath),
@@ -57,11 +82,34 @@ function resolveUploadFile(args: {
   if (!args.contentBase64 || !fileName) {
     throw new Error("contentBase64 and fileName are required");
   }
+  const estimatedBytes = estimateBase64Bytes(args.contentBase64);
+  assertUploadSize(estimatedBytes);
   return {
     content: Buffer.from(args.contentBase64, "base64"),
     fileName,
     mimeType: args.mimeType ?? inferMimeType(fileName),
   };
+}
+
+function maxUploadBytes(): number {
+  const value = Number.parseInt(String(process.env.NGM_MCP_MAX_UPLOAD_BYTES ?? ""), 10);
+  return Number.isFinite(value) && value > 0 ? value : 5 * 1024 * 1024;
+}
+
+function assertUploadSize(fileSize: number): void {
+  const maxBytes = maxUploadBytes();
+  if (fileSize > maxBytes) {
+    throw new Error(`upload image is too large: ${fileSize} bytes exceeds NGM_MCP_MAX_UPLOAD_BYTES=${maxBytes}`);
+  }
+}
+
+function estimateBase64Bytes(value: string): number {
+  const normalized = value.trim().replace(/^data:[^,]+,/, "").replace(/\s+/g, "");
+  if (!normalized) {
+    return 0;
+  }
+  const padding = normalized.endsWith("==") ? 2 : normalized.endsWith("=") ? 1 : 0;
+  return Math.floor((normalized.length * 3) / 4) - padding;
 }
 
 function assertAllowedFilePath(filePath: string): void {

@@ -2,7 +2,7 @@ import type { McpToolDefinition } from "../index";
 import { HubV2Client } from "./client";
 import { resolveHubV2Context } from "./config";
 import { docsGetBySlugSchema, docsGetSchema, docsListSchema } from "./schemas";
-import { ok } from "../../utils/result";
+import { fail, ok } from "../../utils/result";
 
 export function hubV2DocsTools(): McpToolDefinition[] {
   return [
@@ -52,10 +52,33 @@ export function hubV2DocsTools(): McpToolDefinition[] {
         const client = new HubV2Client(ctx);
         const payload = await client.request<Record<string, unknown>>("GET", client.tokenUrl(`/docs/by-slug/${encodeURIComponent(args.slug)}`));
         if (args.contentOnly) {
-          return ok("hub_v2_docs_get_by_slug", (payload.data as Record<string, unknown> | undefined)?.contentMd ?? null);
+          const content = extractDocumentContent(payload);
+          if (typeof content === "string") {
+            return ok("hub_v2_docs_get_by_slug", content);
+          }
+          return fail("hub_v2_docs_get_by_slug", "Hub V2 document response did not include data.contentMd or data.item.contentMd", {
+            code: "DOCUMENT_CONTENT_NOT_FOUND",
+            detail: {
+              slug: args.slug,
+              responseKeys: Object.keys(payload),
+            },
+          });
         }
         return ok("hub_v2_docs_get_by_slug", payload);
       },
     },
   ];
+}
+
+function extractDocumentContent(payload: Record<string, unknown>): string | undefined {
+  const data = payload.data && typeof payload.data === "object" && !Array.isArray(payload.data)
+    ? (payload.data as Record<string, unknown>)
+    : undefined;
+  if (typeof data?.contentMd === "string") {
+    return data.contentMd;
+  }
+  const item = data?.item && typeof data.item === "object" && !Array.isArray(data.item)
+    ? (data.item as Record<string, unknown>)
+    : undefined;
+  return typeof item?.contentMd === "string" ? item.contentMd : undefined;
 }
