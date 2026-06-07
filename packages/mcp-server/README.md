@@ -179,6 +179,13 @@ ngm.project.find
 ngm.project.get
 ngm.project.getScripts
 ngm.project.readPackageJson
+ngm_project_run_script
+ngm_project_stop
+ngm_project_list_tasks
+ngm_project_task_status
+ngm_project_task_logs
+ngm_project_port_check
+ngm_project_health_check
 ```
 
 Task:
@@ -211,6 +218,7 @@ ngm.runtime.current
 ngm.runtime.list
 ngm.runtime.resolveForProject
 ngm.runtime.detectRequirement
+ngm_runtime_set_for_project
 ```
 
 Nginx:
@@ -223,6 +231,8 @@ ngm.nginx.upstreams.list
 ngm.nginx.config.validate
 ngm.nginx.config.getMain
 ngm.nginx.logs.tail
+ngm_nginx_reload
+ngm_nginx_proxy_save
 ```
 
 Proxy:
@@ -233,6 +243,22 @@ ngm.proxy.validate
 ```
 
 In this package, "proxy" means ng-manager's current Nginx/proxy management domain, not the operating system global proxy.
+
+Controlled local tools:
+
+```text
+ngm_project_run_script       execute, preview by default, local server control plane, confirm=true + NGM_MCP_ALLOW_EXECUTE=true to run
+ngm_project_stop             execute, preview by default, local server control plane when available, confirm=true + NGM_MCP_ALLOW_EXECUTE=true to stop
+ngm_runtime_set_for_project  write, preview by default, local server control plane, confirm=true + NGM_MCP_ALLOW_WRITE=true to save
+ngm_nginx_reload             execute, validates config first, confirm=true + NGM_MCP_ALLOW_EXECUTE=true to reload
+ngm_nginx_proxy_save         write, preview by default, confirm=true + NGM_MCP_ALLOW_WRITE=true to save
+```
+
+These tools do not accept arbitrary shell commands, arbitrary PIDs, arbitrary file paths, or system-level Node/Nginx mutations. They adapt existing ng-manager core services and return structured operation status (`preview`, `executed`, `blocked`, or `failed`).
+
+`ngm_project_run_script` executes through the currently running local ng-manager server discovered from the runtime lock file or `NGM_MCP_SERVER_URL` / `NGM_SERVER_URL`. This keeps MCP-started task runtime state in the same in-memory task service and WebSocket event stream used by the UI. The tool returns a short launch observation (`launch.status`, `launch.message`, and `launch.runtime`) after starting; long-running dev servers are reported as `running` or `ready`, while early exits are reported as `failed`, `success`, or `stopped`.
+
+Project observation tools (`ngm_project_list_tasks`, `ngm_project_task_status`, `ngm_project_task_logs`) also read the shared local server task runtime instead of creating a second task state center inside the MCP process. If the local server is not running, they return structured `unavailable` results and suggest starting `ngm server` or `ngm ui`; they do not auto-start the server. `ngm_project_task_logs` enforces tail/character limits and redacts token/password/secret/authorization-like values. `ngm_project_port_check` checks one local TCP endpoint only, and `ngm_project_health_check` is limited to local HTTP/HTTPS URLs or URLs detected from managed task runtime.
 
 Hub V2:
 

@@ -41,18 +41,11 @@ Use `hub-v2-api` or `hub-v2-docs` for those tasks.
 When available, prefer MCP tools with names like:
 
 ```text
-ngm_runtime_list
-ngm_runtime_get
-ngm_runtime_detect
-ngm_runtime_resolve_for_project
+ngm.runtime.current
+ngm.runtime.list
+ngm.runtime.detectRequirement
+ngm.runtime.resolveForProject
 ngm_runtime_set_for_project
-ngm_node_version_list
-ngm_node_version_bind
-node_runtime_list
-node_runtime_resolve
-node_runtime_set
-node_version_list
-node_version_bind
 ```
 
 If exact tool names differ, choose tools whose descriptions mention:
@@ -89,7 +82,10 @@ Before changing:
 1. Show current binding
 2. Show target binding
 3. Explain impact
-4. Apply change only after clear user intent
+4. Preview `ngm_runtime_set_for_project`
+5. Apply with `confirm: true` only after clear user intent, MCP write policy, and an available local ng-manager server
+
+Confirmed runtime binding changes require MCP write policy, such as `NGM_MCP_ALLOW_WRITE=true`, in the MCP server environment, and should write through the active local ng-manager server control plane so WebApp, CLI, and MCP observe the same project runtime state.
 
 ## Runtime Principles
 
@@ -103,7 +99,8 @@ Before changing:
 
 ## Safety Rules
 
-- Do not install or modify Node runtimes unless explicitly requested.
-- Do not change project runtime binding unless explicitly requested.
+- Do not install, uninstall, or switch Node runtimes from this skill.
+- Do not modify system PATH, nvm config, or shell profile.
+- Do not change project runtime binding unless explicitly requested, previewed, and confirmed.
 - Do not expose sensitive local environment values.
 - Prefer read-only runtime inspection first.

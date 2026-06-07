@@ -120,7 +120,7 @@ NGM_MCP_ALLOW_EXECUTE=true
 NGM_MCP_ALLOW_DANGEROUS=true
 ```
 
-当前 MCP Server 默认只开放 read 工具。`NGM_MCP_ALLOW_EXECUTE` 和 `NGM_MCP_ALLOW_DANGEROUS` 是 policy 预留开关，用于未来显式标记为 execute 或 dangerous 的工具；当前不会因为设置这些变量而获得任意 shell、Nginx reload、项目启动/停止或 runtime 安装能力。
+当前 MCP Server 默认允许 read 工具。write、execute、dangerous 默认阻断。部分 NGM 本地工具已经提供受控写入/执行能力，但默认只返回 preview；只有 `confirm=true` 且对应 policy 环境变量放行时才执行真实操作。即使启用 execute，也不会获得任意 shell、任意 PID kill、任意文件写入或系统级 Node/Nginx 修改能力。
 
 这些变量只控制 MCP Server policy 是否放行对应 risk level，不提供 Hub V2 业务权限。真实写操作仍必须同时满足：
 
@@ -138,7 +138,7 @@ NGM_MCP_ALLOW_DANGEROUS=true
 | `NGM_MCP_MAX_UPLOAD_BYTES` | `5242880` | Markdown 图片上传最大字节数 |
 | `NGM_MCP_MAX_RESULT_CHARS` | `120000` | MCP text result 最大字符数，超出会截断 |
 | `NGM_MCP_ALLOW_WRITE` | `false` | 是否允许已确认的 write 工具执行 |
-| `NGM_MCP_ALLOW_EXECUTE` | `false` | 是否允许 execute 工具执行；当前本地执行类工具未开放 |
+| `NGM_MCP_ALLOW_EXECUTE` | `false` | 是否允许已确认的 execute 工具执行 |
 | `NGM_MCP_ALLOW_DANGEROUS` | `false` | 是否允许 dangerous 工具执行；当前高危工具未开放 |
 
 不再支持：
@@ -262,18 +262,21 @@ dangerous blocked
 | `execute` | blocked | `NGM_MCP_ALLOW_EXECUTE=true` |
 | `dangerous` | blocked | `NGM_MCP_ALLOW_DANGEROUS=true` |
 
-写工具执行规则：
+受控工具执行规则：
 
 - `confirm` 缺省或 `confirm=false`：只返回 preview
 - `confirm=true` 且 `NGM_MCP_ALLOW_WRITE=false`：返回 policy blocked
 - `confirm=true` 且 `NGM_MCP_ALLOW_WRITE=true`：执行真实写请求
+- `confirm=true` 且 `NGM_MCP_ALLOW_EXECUTE=false`：返回 policy blocked
+- `confirm=true` 且 `NGM_MCP_ALLOW_EXECUTE=true`：执行真实受控执行请求
 
-这保证 Agent 可以先生成可审核的操作预览，只有用户确认且 MCP policy 放行时才执行写操作。
+这保证 Agent 可以先生成可审核的操作预览，只有用户确认且 MCP policy 放行时才执行写入或执行操作。
 
-本地临时启用写工具：
+本地临时启用写入和执行工具：
 
 ```powershell
 $env:NGM_MCP_ALLOW_WRITE = "true"
+$env:NGM_MCP_ALLOW_EXECUTE = "true"
 ngm mcp doctor
 ngm mcp
 ```
@@ -290,7 +293,7 @@ MCP Client 配置示例：
         "NGM_DATA_DIR": "C:/Users/you/.ng-manager",
         "NGM_WORKSPACE_ROOT": "D:/ng-manager",
         "NGM_MCP_ALLOW_WRITE": "true",
-        "NGM_MCP_ALLOW_EXECUTE": "false",
+        "NGM_MCP_ALLOW_EXECUTE": "true",
         "NGM_MCP_ALLOW_DANGEROUS": "false"
       }
     }
@@ -302,7 +305,7 @@ MCP Client 配置示例：
 
 ## 8. 当前 MCP 工具
 
-### 8.1 NGM 本地只读工具
+### 8.1 NGM 本地工具
 
 发现与路由：
 
@@ -329,6 +332,13 @@ ngm.project.find
 ngm.project.get
 ngm.project.getScripts
 ngm.project.readPackageJson
+ngm_project_run_script
+ngm_project_stop
+ngm_project_list_tasks
+ngm_project_task_status
+ngm_project_task_logs
+ngm_project_port_check
+ngm_project_health_check
 ```
 
 Task：
@@ -359,6 +369,7 @@ ngm.runtime.current
 ngm.runtime.list
 ngm.runtime.resolveForProject
 ngm.runtime.detectRequirement
+ngm_runtime_set_for_project
 ```
 
 Nginx：
@@ -371,6 +382,8 @@ ngm.nginx.upstreams.list
 ngm.nginx.config.validate
 ngm.nginx.config.getMain
 ngm.nginx.logs.tail
+ngm_nginx_reload
+ngm_nginx_proxy_save
 ```
 
 兼容 Proxy：
@@ -380,16 +393,39 @@ ngm.proxy.list
 ngm.proxy.validate
 ```
 
-当前 NGM 本地工具只做读取、发现、路由和诊断，不开放：
+受控本地工具：
+
+| 工具 | risk | 默认行为 | 确认执行条件 |
+| --- | --- | --- | --- |
+| `ngm_project_run_script` | execute | 预览 package.json script 启动计划；确认后通过本地 ng-manager server 启动并返回 `launch.status` | `confirm=true` + `NGM_MCP_ALLOW_EXECUTE=true` |
+| `ngm_project_stop` | execute | 预览将停止的受管 task；确认后优先通过本地 ng-manager server 停止 | `confirm=true` + `NGM_MCP_ALLOW_EXECUTE=true` |
+| `ngm_runtime_set_for_project` | write | 预览 runtime binding diff；确认后通过本地 ng-manager server 写入 | `confirm=true` + `NGM_MCP_ALLOW_WRITE=true` + local server available |
+| `ngm_nginx_reload` | execute | 校验 Nginx config 并预览 reload | `confirm=true` + `NGM_MCP_ALLOW_EXECUTE=true` |
+| `ngm_nginx_proxy_save` | write | 预览代理 server block 写入 | `confirm=true` + `NGM_MCP_ALLOW_WRITE=true` |
+
+项目脚本执行使用当前本地 ng-manager server 作为控制面，server 地址来自 `packages/runtime` 维护的 lock 文件，也可通过 `NGM_MCP_SERVER_URL` 或 `NGM_SERVER_URL` 显式指定。这样 MCP 启动的 task 会进入 UI 使用的同一套 task runtime 和 WebSocket 事件流。启动工具返回的 `launch.status` 用于区分 `ready`、`running`、`failed`、`success`、`stopped` 或 `unknown`，Agent 不应只根据进程创建结果宣称启动成功。
+
+项目运行观测工具：
+
+| 工具 | risk | 用途 | 边界 |
+| --- | --- | --- | --- |
+| `ngm_project_list_tasks` | read | 列出本地 server 共享 task runtime 中的受管任务 | server 未启动时返回 `unavailable`，不自动启动 |
+| `ngm_project_task_status` | read | 查看单个 task 的运行态、PID 存在性、退出码和错误摘要 | 只读共享 task runtime |
+| `ngm_project_task_logs` | read | 读取受管 task/run 的有限日志 tail | 限制行数/字符数并脱敏 token/password/secret/authorization |
+| `ngm_project_port_check` | read | 检查单个本地 host/port 是否监听 | 不执行 shell，不扫描端口范围 |
+| `ngm_project_health_check` | read | 检查本地 HTTP/HTTPS URL 是否可访问 | 只支持本地 URL 或 task runtime 推导 URL，短超时，小响应预览 |
+
+这些观测工具不创建第二套 task 状态中心。涉及 taskId、PID、日志、进程生命周期的查询必须优先依赖已运行的 `packages/server`；如果 server 未启动，应提示先运行 `ngm server` 或 `ngm ui`。
+
+当前仍不开放：
 
 ```text
-运行 package.json scripts
-启动/停止/重启本地项目
 安装/卸载/切换 Node 版本
-修改项目 runtime binding
-启动/停止/reload Nginx
-写入 Nginx 配置或代理规则
+启动/停止 Nginx
 任意 shell 执行
+任意 PID kill
+任意文件路径写入
+系统 PATH、nvm 配置或 shell profile 修改
 ```
 
 ### 8.2 Hub V2 工具

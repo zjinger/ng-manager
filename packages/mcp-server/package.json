@@ -32,6 +32,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@yinuo-ngm/core": "^0.1.15",
+    "@yinuo-ngm/runtime": "^0.1.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {

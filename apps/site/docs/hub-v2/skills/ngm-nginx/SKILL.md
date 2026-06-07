@@ -40,18 +40,17 @@ Use `hub-v2-api` or `hub-v2-docs` for those tasks.
 When available, prefer MCP tools with names like:
 
 ```text
-ngm_nginx_status
-ngm_nginx_start
-ngm_nginx_stop
+ngm.nginx.status
+ngm.nginx.servers.list
+ngm.nginx.server.get
+ngm.nginx.upstreams.list
+ngm.nginx.config.validate
+ngm.nginx.config.getMain
+ngm.nginx.logs.tail
 ngm_nginx_reload
-ngm_nginx_proxy_list
-ngm_nginx_proxy_get
 ngm_nginx_proxy_save
-nginx_status
-nginx_start
-nginx_stop
-nginx_reload
-nginx_proxy_list
+ngm.proxy.list
+ngm.proxy.validate
 ```
 
 If exact tool names differ, choose tools whose descriptions mention:
@@ -74,7 +73,8 @@ local service
 3. Check target local service port
 4. Check whether the local project process is running
 5. Validate Nginx config if supported
-6. Reload Nginx only when explicitly requested or after a config change requested by the user
+6. Preview `ngm_nginx_reload` only when reload is explicitly requested
+7. Execute reload only after config validation, user confirmation, and MCP execute policy
 
 ### Modify proxy configuration
 
@@ -83,12 +83,18 @@ Before modifying:
 1. Show existing proxy rule
 2. Show intended new rule
 3. Explain impacted ports and target services
-4. Write config only when user explicitly asks
+4. Preview `ngm_nginx_proxy_save`
+5. Write config only after explicit confirmation and MCP write policy
+6. Do not reload by default; reload only when explicitly requested
+
+Confirmed reload requires `NGM_MCP_ALLOW_EXECUTE=true`. Confirmed proxy save requires `NGM_MCP_ALLOW_WRITE=true`.
 
 ## Safety Rules
 
-- Do not start, stop, or reload Nginx unless explicitly requested.
-- Do not overwrite Nginx config without user intent.
+- Do not start or stop Nginx through current MCP tools.
+- Do not reload Nginx unless explicitly requested, previewed, validated, and confirmed.
+- Do not overwrite Nginx config without user intent and controlled tool confirmation.
+- Use `ngm_nginx_proxy_save` only for ng-manager managed server/proxy blocks; never write arbitrary file paths.
 - Prefer read-only inspection first.
 - Do not expose sensitive local paths unless necessary.
 - If config validation is available, run validation before reload.

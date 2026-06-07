@@ -18,12 +18,33 @@ export function taskTools(): McpToolDefinition[] {
       riskLevel: "read",
       inputSchema: taskListSchema,
       async handler(args, context) {
-        if (args.projectId) {
-          const rows = await context.services.core.task.listViewsByProject(args.projectId);
-          return ok("ngm.task.list", rows);
+        const localServer = context.services.localServer;
+        const availability = localServer ? await localServer.availability() : { available: false, reason: "local server client is not configured" };
+        if (availability.available && localServer) {
+          if (args.projectId) {
+            const rows = await localServer.listTaskViews(args.projectId);
+            return ok("ngm.task.list", {
+              controlPlane: "local-server",
+              localServer: availability,
+              rows,
+            });
+          }
+          const activeTasks = await localServer.listActiveTasks();
+          return ok("ngm.task.list", {
+            controlPlane: "local-server",
+            localServer: availability,
+            activeTasks,
+          });
         }
-        const activeTasks = await context.services.core.task.listActive();
-        return ok("ngm.task.list", activeTasks);
+
+        return ok("ngm.task.list", {
+          controlPlane: "unavailable",
+          localServer: availability,
+          status: "unavailable",
+          reason: "ng-manager local server is not running; start it with ngm server or ngm ui to inspect shared task state",
+          rows: args.projectId ? [] : undefined,
+          activeTasks: args.projectId ? undefined : [],
+        });
       },
     },
     {
@@ -32,8 +53,24 @@ export function taskTools(): McpToolDefinition[] {
       riskLevel: "read",
       inputSchema: taskStatusSchema,
       async handler(args, context) {
-        const runtime = await context.services.core.task.status(args.taskId);
-        return ok("ngm.task.getStatus", runtime);
+        const localServer = context.services.localServer;
+        const availability = localServer ? await localServer.availability() : { available: false, reason: "local server client is not configured" };
+        if (availability.available && localServer) {
+          const runtime = await localServer.getTaskStatus(args.taskId);
+          return ok("ngm.task.getStatus", {
+            controlPlane: "local-server",
+            localServer: availability,
+            runtime,
+          });
+        }
+
+        return ok("ngm.task.getStatus", {
+          controlPlane: "unavailable",
+          localServer: availability,
+          status: "unavailable",
+          reason: "ng-manager local server is not running; start it with ngm server or ngm ui to inspect shared task state",
+          taskId: args.taskId,
+        });
       },
     },
   ];

@@ -3,10 +3,12 @@ import type { ToolContext } from "../context/tool-context";
 import type { ToolRiskLevel } from "../policy/tool-policy";
 import type { ToolResult } from "../utils/result";
 import { capabilityTools } from "./capability.tools";
+import { controlledTools } from "./controlled.tools";
 import { gitTools } from "./git.tools";
 import { hubV2Tools } from "./hub-v2";
 import { logTools } from "./log.tools";
 import { nginxTools } from "./nginx.tools";
+import { projectObserveTools } from "./project-observe.tools";
 import { projectTools } from "./project.tools";
 import { proxyTools } from "./proxy.tools";
 import { runtimeTools } from "./runtime.tools";
@@ -27,7 +29,9 @@ export function allTools(): McpToolDefinition[] {
   return [
     ...capabilityTools(),
     ...workspaceTools(),
+    ...controlledTools(),
     ...projectTools(),
+    ...projectObserveTools(),
     ...taskTools(),
     ...logTools(),
     ...gitTools(),

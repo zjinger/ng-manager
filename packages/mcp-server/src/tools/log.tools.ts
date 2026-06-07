@@ -34,9 +34,22 @@ export function logTools(): McpToolDefinition[] {
       async handler(args, context) {
         const tail = clampTail(args.tail);
         let runId = args.runId;
+        const localServer = context.services.localServer;
+        const availability = localServer ? await localServer.availability() : { available: false, reason: "local server client is not configured" };
 
         if (!runId && args.taskId) {
-          const snapshot = await context.services.core.task.getSnapshotByTaskId(args.taskId);
+          if (!availability.available || !localServer) {
+            return ok("ngm.log.tail", {
+              controlPlane: "unavailable",
+              localServer: availability,
+              status: "unavailable",
+              reason: "ng-manager local server is not running; start it with ngm server or ngm ui to read shared task logs",
+              taskId: args.taskId,
+              tail,
+              lines: [],
+            });
+          }
+          const snapshot = await localServer.getTaskStatus(args.taskId);
           runId = snapshot?.runId;
         }
 
@@ -44,8 +57,22 @@ export function logTools(): McpToolDefinition[] {
           throw new Error("runId or taskId is required");
         }
 
-        const lines = await context.services.core.task.getTailLogsByRun(runId, tail);
+        if (!availability.available || !localServer) {
+          return ok("ngm.log.tail", {
+            controlPlane: "unavailable",
+            localServer: availability,
+            status: "unavailable",
+            reason: "ng-manager local server is not running; start it with ngm server or ngm ui to read shared task logs",
+            runId,
+            tail,
+            lines: [],
+          });
+        }
+        const controlPlane = "local-server";
+        const lines = await localServer.getTaskLogTail(runId, tail);
         return ok("ngm.log.tail", {
+          controlPlane,
+          localServer: availability,
           runId,
           tail,
           lines,

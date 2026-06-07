@@ -2,6 +2,7 @@ import * as os from "os";
 import * as path from "path";
 import { createCoreApp } from "@yinuo-ngm/core";
 import type { GitReadService, ToolContext } from "./tool-context";
+import { createLocalServerClient } from "./local-server-client";
 
 const gitStub: GitReadService = {
   async status() {
@@ -26,6 +27,7 @@ export async function createToolContext(): Promise<ToolContext> {
     services: {
       core,
       git: gitStub,
+      localServer: createLocalServerClient(),
     },
     async dispose() {
       await core.dispose();
