@@ -57,6 +57,29 @@ function parseMcpResult(result) {
   return JSON.parse(result.content[0].text);
 }
 
+async function withEnv(values, fn) {
+  const previous = new Map();
+  for (const [key, value] of Object.entries(values)) {
+    previous.set(key, process.env[key]);
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    for (const [key, value] of previous.entries()) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
 test("registers new NGM local workspace tools as read-only tools", () => {
   for (const name of NEW_READ_TOOLS) {
     assert.equal(tool(name).riskLevel, "read", `${name} should be read-only`);
@@ -99,6 +122,49 @@ test("confirmed controlled tools are blocked by policy by default", async () => 
   }));
   assert.equal(runtimeResult.ok, false);
   assert.match(runtimeResult.error, /write tools are disabled/);
+});
+
+test("ngm_project_run_script blocks confirmed handler execution without execute env", async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ngm-run-env-block-"));
+  try {
+    fs.writeFileSync(path.join(tempDir, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
+    const result = await withEnv({ NGM_MCP_ALLOW_EXECUTE: undefined }, () => tool("ngm_project_run_script").handler({
+      projectId: "proj_1",
+      script: "dev",
+      confirm: true,
+    }, {
+      workspaceRoot: tempDir,
+      dataDir: tempDir,
+      services: {
+        localServer: {
+          async availability() {
+            return { available: true, url: "http://127.0.0.1:4360" };
+          },
+          async startTask() {
+            throw new Error("start should be blocked by env policy");
+          },
+        },
+        core: {
+          project: {
+            async get() {
+              return { id: "proj_1", name: "demo", root: tempDir, createdAt: 1, updatedAt: 1, packageManager: "npm" };
+            },
+          },
+          nodeRuntime: {
+            async resolveRuntime(config) {
+              return { ...config, nodePath: "node", version: "v18.0.0" };
+            },
+          },
+        },
+      },
+    }));
+
+    assert.equal(result.ok, true);
+    assert.equal(result.data.operation.status, "blocked");
+    assert.equal(result.data.policy.env, "NGM_MCP_ALLOW_EXECUTE");
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("ngm_project_run_script previews package scripts without starting a task", async () => {
@@ -194,7 +260,7 @@ test("ngm_project_run_script executes through local server and reports observed 
       },
     }));
 
-    const result = await tool("ngm_project_run_script").handler({
+    const result = await withEnv({ NGM_MCP_ALLOW_EXECUTE: "true" }, () => tool("ngm_project_run_script").handler({
       projectId: "proj_1",
       script: "dev",
       confirm: true,
@@ -257,7 +323,7 @@ test("ngm_project_run_script executes through local server and reports observed 
           },
         },
       },
-    });
+    }));
 
     assert.equal(result.ok, true);
     assert.equal(startedTaskId, "task_1");
@@ -273,7 +339,7 @@ test("ngm_project_run_script blocks confirmed execution when local server is una
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ngm-run-no-server-"));
   try {
     fs.writeFileSync(path.join(tempDir, "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
-    const result = await tool("ngm_project_run_script").handler({
+    const result = await withEnv({ NGM_MCP_ALLOW_EXECUTE: "true" }, () => tool("ngm_project_run_script").handler({
       projectId: "proj_1",
       script: "dev",
       confirm: true,
@@ -299,7 +365,7 @@ test("ngm_project_run_script blocks confirmed execution when local server is una
           },
         },
       },
-    });
+    }));
 
     assert.equal(result.ok, true);
     assert.equal(result.data.operation.status, "blocked");
@@ -333,6 +399,35 @@ test("ngm_project_stop previews only managed active task targets", async () => {
   assert.equal(result.data.operation.status, "preview");
   assert.equal(result.data.controlPlane, "local-server");
   assert.equal(result.data.target.taskId, "task_1");
+});
+
+test("ngm_project_stop blocks confirmed handler execution without execute env", async () => {
+  let stopCalled = false;
+  const result = await withEnv({ NGM_MCP_ALLOW_EXECUTE: undefined }, () => tool("ngm_project_stop").handler({
+    taskId: "task_1",
+    confirm: true,
+  }, {
+    services: {
+      localServer: {
+        async availability() {
+          return { available: true, url: "http://127.0.0.1:4360" };
+        },
+        async getTaskStatus() {
+          return { taskId: "task_1", runId: "run_1", status: "running" };
+        },
+        async stopTask() {
+          stopCalled = true;
+          throw new Error("stop should be blocked by env policy");
+        },
+      },
+      core: {},
+    },
+  }));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.operation.status, "blocked");
+  assert.equal(result.data.policy.env, "NGM_MCP_ALLOW_EXECUTE");
+  assert.equal(stopCalled, false);
 });
 
 test("ngm_project_task_status reads shared local server runtime state", async () => {
@@ -595,6 +690,34 @@ test("ngm_project_stop blocks when shared local server is unavailable", async ()
   assert.match(result.data.reason, /local server is unavailable/);
 });
 
+test("ngm_project_stop requires an explicit locator for confirmed stops", async () => {
+  let stopCalled = false;
+  const result = await withEnv({ NGM_MCP_ALLOW_EXECUTE: "true" }, () => tool("ngm_project_stop").handler({
+    confirm: true,
+  }, {
+    services: {
+      localServer: {
+        async availability() {
+          return { available: true, url: "http://127.0.0.1:4360" };
+        },
+        async listActiveTasks() {
+          return [{ taskId: "task_1", status: "running" }];
+        },
+        async stopTask() {
+          stopCalled = true;
+          throw new Error("stop should require an explicit locator");
+        },
+      },
+      core: {},
+    },
+  }));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.operation.status, "blocked");
+  assert.match(result.data.reason, /requires taskId, projectId, or projectPath/);
+  assert.equal(stopCalled, false);
+});
+
 test("ngm_runtime_set_for_project previews old and new runtime binding", async () => {
   const result = await tool("ngm_runtime_set_for_project").handler({
     projectId: "proj_1",
@@ -630,9 +753,55 @@ test("ngm_runtime_set_for_project previews old and new runtime binding", async (
   assert.equal(result.data.diff.newRuntime.version, "18.20.0");
 });
 
+test("ngm_runtime_set_for_project blocks confirmed handler write without write env", async () => {
+  let updateCalled = false;
+  const result = await withEnv({ NGM_MCP_ALLOW_WRITE: undefined }, () => tool("ngm_runtime_set_for_project").handler({
+    projectId: "proj_1",
+    runtime: { type: "managed", version: "18.20.0", packageManager: "npm" },
+    confirm: true,
+  }, {
+    services: {
+      localServer: {
+        async availability() {
+          return { available: true, url: "http://127.0.0.1:4360" };
+        },
+        async updateProjectRuntime() {
+          updateCalled = true;
+          throw new Error("runtime write should be blocked by env policy");
+        },
+      },
+      core: {
+        project: {
+          async get() {
+            return {
+              id: "proj_1",
+              name: "demo",
+              root: "D:/demo",
+              createdAt: 1,
+              updatedAt: 1,
+              nodeVersion: "16.20.0",
+              packageManager: "npm",
+            };
+          },
+        },
+        nodeRuntime: {
+          async resolveRuntime(config) {
+            return { ...config, nodePath: "node18", version: "18.20.0" };
+          },
+        },
+      },
+    },
+  }));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.operation.status, "blocked");
+  assert.equal(result.data.policy.env, "NGM_MCP_ALLOW_WRITE");
+  assert.equal(updateCalled, false);
+});
+
 test("ngm_runtime_set_for_project writes through local server when confirmed", async () => {
   let updatedRuntime = null;
-  const result = await tool("ngm_runtime_set_for_project").handler({
+  const result = await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => tool("ngm_runtime_set_for_project").handler({
     projectId: "proj_1",
     runtime: { type: "managed", version: "18.20.0", packageManager: "npm" },
     confirm: true,
@@ -676,7 +845,7 @@ test("ngm_runtime_set_for_project writes through local server when confirmed", a
         },
       },
     },
-  });
+  }));
 
   assert.equal(result.ok, true);
   assert.deepEqual(updatedRuntime, { type: "managed", version: "18.20.0", packageManager: "npm" });
@@ -715,6 +884,42 @@ test("ngm_nginx_reload validates config and previews without reloading", async (
   assert.equal(result.data.validation.valid, true);
 });
 
+test("ngm_nginx_reload blocks confirmed handler execution without execute env", async () => {
+  let reloadCalled = false;
+  const result = await withEnv({ NGM_MCP_ALLOW_EXECUTE: undefined }, () => tool("ngm_nginx_reload").handler({
+    confirm: true,
+  }, {
+    services: {
+      core: {
+        nginx: {
+          service: {
+            getInstance() {
+              return { path: "nginx", configPath: "nginx.conf" };
+            },
+            async getStatus() {
+              return { isRunning: true };
+            },
+            async reload() {
+              reloadCalled = true;
+              throw new Error("reload should be blocked by env policy");
+            },
+          },
+          config: {
+            async validateConfig() {
+              return { valid: true, errors: [] };
+            },
+          },
+        },
+      },
+    },
+  }));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.operation.status, "blocked");
+  assert.equal(result.data.policy.env, "NGM_MCP_ALLOW_EXECUTE");
+  assert.equal(reloadCalled, false);
+});
+
 test("ngm_nginx_proxy_save previews managed proxy save without writing", async () => {
   const result = await tool("ngm_nginx_proxy_save").handler({
     name: "demo-proxy",
@@ -738,6 +943,162 @@ test("ngm_nginx_proxy_save previews managed proxy save without writing", async (
   assert.equal(result.ok, true);
   assert.equal(result.data.operation.status, "preview");
   assert.equal(result.data.afterRequest.locations[0].proxyPass, "http://127.0.0.1:4200/");
+});
+
+test("ngm_nginx_proxy_save redacts sensitive server fields in preview", async () => {
+  const result = await tool("ngm_nginx_proxy_save").handler({
+    serverId: "srv_1",
+    target: "http://127.0.0.1:4200",
+  }, {
+    services: {
+      core: {
+        nginx: {
+          server: {
+            async getServer() {
+              return {
+                id: "srv_1",
+                name: "demo-proxy",
+                listen: ["8080"],
+                domains: ["demo.local"],
+                enabled: true,
+                ssl: true,
+                sslCert: "D:/certs/demo.crt",
+                sslKey: "D:/certs/demo.key",
+                extraConfig: "proxy_set_header Authorization secret;",
+                configText: "server { ssl_certificate_key D:/certs/demo.key; }",
+                locations: [{ path: "/", proxyPass: "http://127.0.0.1:3000" }],
+              };
+            },
+            async updateServer() {
+              throw new Error("updateServer should not run during preview");
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const serialized = JSON.stringify(result.data);
+  assert.equal(result.ok, true);
+  assert.equal(result.data.operation.status, "preview");
+  assert.equal(result.data.before.sslCert, "[REDACTED_PATH]");
+  assert.equal(result.data.before.sslKey, "[REDACTED_PATH]");
+  assert.equal(result.data.before.extraConfig, "[REDACTED]");
+  assert.equal(result.data.before.configText, undefined);
+  assert.equal(result.data.afterRequest.sslCert, "[REDACTED_PATH]");
+  assert.equal(result.data.afterRequest.sslKey, "[REDACTED_PATH]");
+  assert.equal(result.data.afterRequest.extraConfig, "[REDACTED]");
+  assert.equal(serialized.includes("D:/certs/demo.crt"), false);
+  assert.equal(serialized.includes("D:/certs/demo.key"), false);
+  assert.equal(serialized.includes("proxy_set_header Authorization secret"), false);
+  assert.equal(serialized.includes("ssl_certificate_key"), false);
+  assert.match(serialized, /REDACTED/);
+});
+
+test("ngm_nginx_proxy_save rolls back created server when validation fails after save", async () => {
+  let deletedServerId = "";
+  let validateCalls = 0;
+  const result = await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => tool("ngm_nginx_proxy_save").handler({
+    name: "demo-proxy",
+    listen: ["8080"],
+    domains: ["demo.local"],
+    target: "http://127.0.0.1:4200",
+    confirm: true,
+  }, {
+    services: {
+      core: {
+        nginx: {
+          server: {
+            async createServer() {
+              return {
+                id: "srv_bad",
+                name: "demo-proxy",
+                listen: ["8080"],
+                domains: ["demo.local"],
+                enabled: true,
+                locations: [{ path: "/", proxyPass: "http://127.0.0.1:4200/" }],
+              };
+            },
+            async deleteServer(id) {
+              deletedServerId = id;
+              return { snapshotId: "del_1" };
+            },
+          },
+          config: {
+            async validateConfig() {
+              validateCalls += 1;
+              return validateCalls === 1
+                ? { valid: false, errors: ["bad generated config"] }
+                : { valid: true, errors: [] };
+            },
+          },
+        },
+      },
+    },
+  }));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.operation.status, "failed");
+  assert.equal(deletedServerId, "srv_bad");
+  assert.equal(result.data.rollback.status, "rolled_back");
+  assert.equal(result.data.rollback.validation.valid, true);
+  assert.equal(validateCalls, 2);
+});
+
+test("ngm_nginx_proxy_save blocks confirmed handler write without write env", async () => {
+  let createCalled = false;
+  const result = await withEnv({ NGM_MCP_ALLOW_WRITE: undefined }, () => tool("ngm_nginx_proxy_save").handler({
+    name: "demo-proxy",
+    listen: ["8080"],
+    domains: ["demo.local"],
+    target: "http://127.0.0.1:4200",
+    confirm: true,
+  }, {
+    services: {
+      core: {
+        nginx: {
+          server: {
+            async createServer() {
+              createCalled = true;
+              throw new Error("create should be blocked by env policy");
+            },
+          },
+          config: {
+            async validateConfig() {
+              throw new Error("validation should not run before write policy passes");
+            },
+          },
+        },
+      },
+    },
+  }));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.operation.status, "blocked");
+  assert.equal(result.data.policy.env, "NGM_MCP_ALLOW_WRITE");
+  assert.equal(createCalled, false);
+});
+
+test("ngm_nginx_proxy_save rejects Nginx injection characters", async () => {
+  const result = await tool("ngm_nginx_proxy_save").handler({
+    name: "demo-proxy",
+    listen: ["8080"],
+    domains: ["demo.local; include bad.conf"],
+    target: "http://127.0.0.1:4200",
+  }, {
+    services: {
+      core: {
+        nginx: {
+          server: {},
+        },
+      },
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.operation.status, "blocked");
+  assert.equal(result.data.reason, "invalid Nginx proxy input");
+  assert.match(result.data.error, /unsafe Nginx control characters/);
 });
 
 test("ngm.routeTask routes workspace and package capability requests to ngm-workspace", async () => {

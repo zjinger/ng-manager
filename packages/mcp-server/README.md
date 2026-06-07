@@ -38,7 +38,7 @@ execute   blocked
 dangerous blocked
 ```
 
-Write tools are registered only for scoped Hub V2 Personal Token workflows that require explicit tool confirmation when implemented. The server does not implement arbitrary shell execution, task start/stop/restart, git pull/checkout/commit/reset, proxy reload, runtime install/remove, file deletion, system environment mutation, or remote client command execution.
+Write/execute tools are registered only for scoped, controlled workflows that require explicit tool confirmation and matching environment policy flags. The server does not implement arbitrary shell execution, arbitrary PID control, git pull/checkout/commit/reset, runtime install/remove, file deletion, system environment mutation, or remote client command execution.
 
 ## Environment
 
@@ -154,14 +154,26 @@ Use `~/.ng-manager/agent-connections.json` for persistent local configuration, a
 
 ## Tools
 
-Discovery:
+Tool names below are the exact MCP callable names. Do not rewrite a dotted name into snake_case, and do not rewrite a snake_case name into dotted form.
+
+Naming convention:
+
+```text
+ngm.*       ng-manager local read/discovery/context tools.
+ngm_*       ng-manager local controlled operation or project runtime diagnostic tools.
+hub_v2_*    Hub V2 API/document/RD/issue workflow tools.
+```
+
+### `ngm.*` local read/context tools
+
+Discovery and routing:
 
 ```text
 ngm.capabilities
 ngm.routeTask
 ```
 
-Workspace:
+Workspace context:
 
 ```text
 ngm.workspace.summary
@@ -171,7 +183,7 @@ ngm.workspace.mcpTools
 ngm.workspace.capabilityMap
 ```
 
-Project:
+Project metadata:
 
 ```text
 ngm.project.list
@@ -179,23 +191,16 @@ ngm.project.find
 ngm.project.get
 ngm.project.getScripts
 ngm.project.readPackageJson
-ngm_project_run_script
-ngm_project_stop
-ngm_project_list_tasks
-ngm_project_task_status
-ngm_project_task_logs
-ngm_project_port_check
-ngm_project_health_check
 ```
 
-Task:
+Task runtime metadata:
 
 ```text
 ngm.task.list
 ngm.task.getStatus
 ```
 
-Log:
+Logs:
 
 ```text
 ngm.log.tail
@@ -211,17 +216,16 @@ ngm.git.diff
 
 The Git tools are registered in this MVP but return a clear "not implemented in core yet" error through the Git service stub. A future phase should add a read-only Git service to `packages/core` first.
 
-Runtime:
+Runtime context:
 
 ```text
 ngm.runtime.current
 ngm.runtime.list
 ngm.runtime.resolveForProject
 ngm.runtime.detectRequirement
-ngm_runtime_set_for_project
 ```
 
-Nginx:
+Nginx context:
 
 ```text
 ngm.nginx.status
@@ -231,8 +235,6 @@ ngm.nginx.upstreams.list
 ngm.nginx.config.validate
 ngm.nginx.config.getMain
 ngm.nginx.logs.tail
-ngm_nginx_reload
-ngm_nginx_proxy_save
 ```
 
 Proxy:
@@ -244,7 +246,19 @@ ngm.proxy.validate
 
 In this package, "proxy" means ng-manager's current Nginx/proxy management domain, not the operating system global proxy.
 
-Controlled local tools:
+### `ngm_*` local project runtime and controlled tools
+
+Project runtime diagnostics are read-only and use the shared local server task state:
+
+```text
+ngm_project_list_tasks       read, list ng-manager managed project tasks
+ngm_project_task_status      read, inspect one managed task runtime
+ngm_project_task_logs        read, limited/redacted log tail for one task/run
+ngm_project_port_check       read, check one local host/port
+ngm_project_health_check     read, short local HTTP/HTTPS health check
+```
+
+Controlled local operations require `confirm=true` plus the matching environment flag:
 
 ```text
 ngm_project_run_script       execute, preview by default, local server control plane, confirm=true + NGM_MCP_ALLOW_EXECUTE=true to run
@@ -260,7 +274,7 @@ These tools do not accept arbitrary shell commands, arbitrary PIDs, arbitrary fi
 
 Project observation tools (`ngm_project_list_tasks`, `ngm_project_task_status`, `ngm_project_task_logs`) also read the shared local server task runtime instead of creating a second task state center inside the MCP process. If the local server is not running, they return structured `unavailable` results and suggest starting `ngm server` or `ngm ui`; they do not auto-start the server. `ngm_project_task_logs` enforces tail/character limits and redacts token/password/secret/authorization-like values. `ngm_project_port_check` checks one local TCP endpoint only, and `ngm_project_health_check` is limited to local HTTP/HTTPS URLs or URLs detected from managed task runtime.
 
-Hub V2:
+### `hub_v2_*` Hub V2 tools
 
 ```text
 hub_v2_projects_list
