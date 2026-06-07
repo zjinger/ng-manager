@@ -190,7 +190,7 @@ function enterpriseMvpSection(): { lines: string[]; status: DoctorStatus } {
   const names = new Set(allTools().map((tool) => tool.name));
   const required = {
     frontendStandard: ["ngm.standard.get", "ngm.standard.init", "ngm.standard.validateProject"],
-    workflow: ["ngm.workflow.createFrontendTask", "ngm.workflow.generateDevPlan", "ngm.workflow.validateBeforeCommit", "ngm.workflow.generateDeliveryReport"],
+    workflow: ["ngm.workflow.createFrontendTask", "ngm.workflow.generateDevPlan", "ngm.workflow.advanceStatus", "ngm.workflow.validateBeforeCommit", "ngm.workflow.generateDeliveryReport"],
     audit: ["ngm.standard.init", "ngm.workflow.createFrontendTask", "ngm.review.generateReport"],
     patchPreview: ["ngm.workspace.diff", "ngm.workspace.applyPatchPreview"],
     dottedAliases: ["ngm.project.runScript", "ngm.project.stop", "ngm.runtime.setForProject", "ngm.nginx.reload", "ngm.nginx.proxy.save"],

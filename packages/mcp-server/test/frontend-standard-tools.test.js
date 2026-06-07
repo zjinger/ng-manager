@@ -27,6 +27,7 @@ const FRONTEND_TOOLS = {
   "ngm.review.generateReport": "write",
   "ngm.workflow.createFrontendTask": "write",
   "ngm.workflow.generateDevPlan": "write",
+  "ngm.workflow.advanceStatus": "write",
   "ngm.workflow.validateBeforeWrite": "write",
   "ngm.workflow.validateBeforeCommit": "write",
   "ngm.workflow.generateDeliveryReport": "write",
@@ -266,6 +267,122 @@ test("review report and workflow tools write only project .ng-manager files and 
   }
 });
 
+test("advanceStatus previews, blocks without write policy, advances plan-ready to applied, and rejects delivered", async () => {
+  const projectRoot = tempProject();
+  try {
+    const taskCb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => taskCb({
+      projectPath: projectRoot,
+      taskId: "task-advance",
+      title: "Advance task",
+      confirm: true,
+    }));
+    const devPlanCb = registeredTool("ngm.workflow.generateDevPlan", context(projectRoot));
+    await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => devPlanCb({
+      projectPath: projectRoot,
+      taskId: "task-advance",
+      confirm: true,
+    }));
+
+    const taskPath = path.join(projectRoot, ".ng-manager/frontend-tasks/task-advance/task.json");
+    assert.equal(JSON.parse(fs.readFileSync(taskPath, "utf-8")).status, "plan-ready");
+
+    const advanceCb = registeredTool("ngm.workflow.advanceStatus", context(projectRoot));
+    const preview = parseMcpResult(await advanceCb({
+      projectPath: projectRoot,
+      taskId: "task-advance",
+      nextStatus: "applied",
+      note: "preview only",
+    }));
+    assert.equal(preview.ok, true);
+    assert.equal(preview.data.operation.status, "preview");
+    assert.equal(JSON.parse(fs.readFileSync(taskPath, "utf-8")).status, "plan-ready");
+
+    const blocked = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: undefined }, () => advanceCb({
+      projectPath: projectRoot,
+      taskId: "task-advance",
+      nextStatus: "applied",
+      confirm: true,
+    })));
+    assert.equal(blocked.ok, true);
+    assert.equal(blocked.data.operation.status, "blocked");
+
+    const executed = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => advanceCb({
+      projectPath: projectRoot,
+      taskId: "task-advance",
+      nextStatus: "applied",
+      note: "source patch applied",
+      confirm: true,
+    })));
+    assert.equal(executed.ok, true);
+    assert.equal(executed.data.operation.status, "executed");
+    assert.equal(executed.data.task.status, "applied");
+    assert.equal(JSON.parse(fs.readFileSync(taskPath, "utf-8")).status, "applied");
+
+    const delivered = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => advanceCb({
+      projectPath: projectRoot,
+      taskId: "task-advance",
+      nextStatus: "delivered",
+      confirm: true,
+    })));
+    assert.equal(delivered.ok, false);
+    assert.match(delivered.error, /nextStatus/);
+
+    const audit = auditText(projectRoot);
+    assert.match(audit, /ngm.workflow.advanceStatus/);
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("validateBeforeCommit advances applied tasks to verified but leaves other passing statuses unchanged", async () => {
+  const projectRoot = tempProject();
+  try {
+    const taskCb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => taskCb({
+      projectPath: projectRoot,
+      taskId: "task-verify",
+      title: "Verify task",
+      confirm: true,
+    }));
+    const devPlanCb = registeredTool("ngm.workflow.generateDevPlan", context(projectRoot));
+    await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => devPlanCb({
+      projectPath: projectRoot,
+      taskId: "task-verify",
+      confirm: true,
+    }));
+    const taskPath = path.join(projectRoot, ".ng-manager/frontend-tasks/task-verify/task.json");
+
+    const validateCb = registeredTool("ngm.workflow.validateBeforeCommit", context(projectRoot));
+    const planReady = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => validateCb({
+      projectPath: projectRoot,
+      taskId: "task-verify",
+      confirm: true,
+    })));
+    assert.equal(planReady.ok, true);
+    assert.equal(planReady.data.operation.status, "executed");
+    assert.equal(JSON.parse(fs.readFileSync(taskPath, "utf-8")).status, "plan-ready");
+
+    const advanceCb = registeredTool("ngm.workflow.advanceStatus", context(projectRoot));
+    await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => advanceCb({
+      projectPath: projectRoot,
+      taskId: "task-verify",
+      nextStatus: "applied",
+      confirm: true,
+    }));
+    const verified = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => validateCb({
+      projectPath: projectRoot,
+      taskId: "task-verify",
+      confirm: true,
+    })));
+    assert.equal(verified.ok, true);
+    assert.equal(verified.data.operation.status, "executed");
+    assert.equal(JSON.parse(fs.readFileSync(taskPath, "utf-8")).status, "verified");
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("workspace patch preview summarizes diffs without writing and rejects forbidden paths", async () => {
   const projectRoot = tempProject();
   try {
@@ -292,6 +409,11 @@ test("workspace patch preview summarizes diffs without writing and rejects forbi
       projectPath: projectRoot,
       patch: "diff --git a/.env b/.env\n+++ b/.env\n+TOKEN=secret",
     }, context(projectRoot)), /forbidden/);
+
+    await assert.rejects(() => tool("ngm.workspace.applyPatchPreview").handler({
+      projectPath: projectRoot,
+      patch: "diff --git a/src/app/logo.png b/src/app/logo.png\nGIT binary patch\nliteral 0",
+    }, context(projectRoot)), /Binary patch is not supported by workspace preview/);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -341,6 +463,68 @@ test("workspace diff hides full patch by default and returns redacted truncated 
     assert.equal(withPatch.data.patchPreview.includes("secret-token"), false);
     assert.match(withPatch.data.patchPreview, /REDACTED/);
     assert.ok(Buffer.byteLength(withPatch.data.patchPreview, "utf-8") <= 140);
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("workspace diff safely truncates UTF-8 patch previews and rejects binary patches", async () => {
+  const projectRoot = tempProject();
+  const patchPrefix = [
+    "diff --git a/src/app/a.ts b/src/app/a.ts",
+    "--- a/src/app/a.ts",
+    "+++ b/src/app/a.ts",
+    "@@ -1 +1 @@",
+    "-old",
+    "+",
+  ].join("\n");
+  const unicodeDiff = `${patchPrefix}${"中文".repeat(80)}`;
+  try {
+    const unicodeCtx = context(projectRoot, {
+      services: {
+        git: {
+          async status() {
+            return {};
+          },
+          async diff() {
+            return { diff: unicodeDiff };
+          },
+          async changedFiles() {
+            return ["src/app/a.ts"];
+          },
+        },
+      },
+    });
+    const maxBytes = Buffer.byteLength(patchPrefix, "utf-8") + 1;
+    const unicode = await tool("ngm.workspace.diff").handler({
+      projectPath: projectRoot,
+      includePatch: true,
+      maxBytes,
+    }, unicodeCtx);
+    assert.equal(unicode.ok, true);
+    assert.equal(unicode.data.truncated, true);
+    assert.equal(unicode.data.patchPreview.includes("\uFFFD"), false);
+    assert.ok(Buffer.byteLength(unicode.data.patchPreview, "utf-8") <= maxBytes);
+
+    const binaryCtx = context(projectRoot, {
+      services: {
+        git: {
+          async status() {
+            return {};
+          },
+          async diff() {
+            return { diff: "diff --git a/src/app/logo.png b/src/app/logo.png\nBinary files a/src/app/logo.png and b/src/app/logo.png differ" };
+          },
+          async changedFiles() {
+            return ["src/app/logo.png"];
+          },
+        },
+      },
+    });
+    await assert.rejects(() => tool("ngm.workspace.diff").handler({
+      projectPath: projectRoot,
+      includePatch: true,
+    }, binaryCtx), /Binary patch is not supported by workspace preview/);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -485,6 +669,32 @@ test("generateDeliveryReport blocks illegal draft to delivered transition", asyn
     assert.equal(result.data.operation.status, "blocked");
     assert.match(result.data.reason, /draft -> delivered/);
     assert.equal(fs.existsSync(path.join(projectRoot, ".ng-manager/frontend-tasks/task-1/delivery-report.md")), false);
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("workflow transition blocking does not wrap non-transition write errors", async () => {
+  const projectRoot = tempProject();
+  try {
+    const taskCb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => taskCb({
+      projectPath: projectRoot,
+      taskId: "task-write-error",
+      title: "Write error",
+      confirm: true,
+    }));
+    fs.mkdirSync(path.join(projectRoot, ".ng-manager/frontend-tasks/task-write-error/dev-plan.md"));
+
+    const devPlanCb = registeredTool("ngm.workflow.generateDevPlan", context(projectRoot));
+    const result = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => devPlanCb({
+      projectPath: projectRoot,
+      taskId: "task-write-error",
+      confirm: true,
+    })));
+    assert.equal(result.ok, false);
+    assert.doesNotMatch(result.error, /Illegal workflow status transition/);
+    assert.doesNotMatch(result.error, /draft -> plan-ready/);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }

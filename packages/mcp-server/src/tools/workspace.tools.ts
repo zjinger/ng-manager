@@ -57,6 +57,9 @@ function assertWorkspaceReadablePath(projectRoot: string, filePath: string): str
 }
 
 function summarizeDiffText(diffText: string, projectRoot: string) {
+  if (/^GIT binary patch$/m.test(diffText) || /^Binary files\b/m.test(diffText)) {
+    throw new Error("Binary patch is not supported by workspace preview");
+  }
   const changed = new Set<string>();
   let addedLines = 0;
   let removedLines = 0;
@@ -86,18 +89,28 @@ function summarizeDiffText(diffText: string, projectRoot: string) {
   };
 }
 
+export function truncateUtf8(text: string, maxBytes: number): { text: string; truncated: boolean } {
+  if (Buffer.byteLength(text, "utf-8") <= maxBytes) {
+    return { text, truncated: false };
+  }
+  let end = Math.min(text.length, maxBytes);
+  while (end > 0 && Buffer.byteLength(text.slice(0, end), "utf-8") > maxBytes) {
+    end -= 1;
+  }
+  while (end > 0) {
+    const last = text.charCodeAt(end - 1);
+    if (last < 0xd800 || last > 0xdbff) break;
+    end -= 1;
+  }
+  return { text: text.slice(0, end), truncated: true };
+}
+
 function patchPreview(diffText: string, maxBytes: number) {
   const redacted = redactText(diffText);
-  const buffer = Buffer.from(redacted, "utf-8");
-  if (buffer.length <= maxBytes) {
-    return {
-      patchPreview: redacted,
-      truncated: false,
-    };
-  }
+  const truncated = truncateUtf8(redacted, maxBytes);
   return {
-    patchPreview: buffer.subarray(0, maxBytes).toString("utf-8"),
-    truncated: true,
+    patchPreview: truncated.text,
+    truncated: truncated.truncated,
   };
 }
 

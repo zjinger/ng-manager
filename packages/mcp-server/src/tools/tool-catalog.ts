@@ -487,6 +487,13 @@ export const toolCatalog: ToolCatalogEntry[] = [
     description: "Preview or write frontend workflow dev plan.",
   },
   {
+    name: "ngm.workflow.advanceStatus",
+    skill: "ngm-frontend-standard",
+    capability: "frontend-workflow",
+    riskLevel: "write",
+    description: "Preview or advance a frontend workflow task status through controlled transitions.",
+  },
+  {
     name: "ngm.workflow.validateBeforeWrite",
     skill: "ngm-frontend-standard",
     capability: "frontend-workflow",
@@ -698,6 +705,7 @@ export const capabilityCatalog: CapabilityCatalogEntry[] = [
       "ngm.review.generateReport",
       "ngm.workflow.createFrontendTask",
       "ngm.workflow.generateDevPlan",
+      "ngm.workflow.advanceStatus",
       "ngm.workflow.validateBeforeWrite",
       "ngm.workflow.validateBeforeCommit",
       "ngm.workflow.generateDeliveryReport",

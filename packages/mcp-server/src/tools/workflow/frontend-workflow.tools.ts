@@ -8,7 +8,7 @@ import { requireWritePolicy } from "../controlled/operation-policy";
 import { loadFrontendStandard, scanFrontendProject, validateFrontendProject } from "../../standard/frontend-standard.service";
 import { detectMissingSpecs } from "../../standard/validators/test.validator";
 import { detectReviewRisks } from "../../standard/validators/review.validator";
-import { createFrontendTask, createTaskId, deliveryReportMarkdown, devPlanMarkdown, readFrontendTask, updateFrontendTask, writeTaskMarkdown } from "../../workflow/frontend-task.service";
+import { createFrontendTask, createTaskId, deliveryReportMarkdown, devPlanMarkdown, readFrontendTask, updateFrontendTask, updateTaskStatus, writeTaskMarkdown } from "../../workflow/frontend-task.service";
 import type { CheckStatus, StandardCheckResult } from "../../standard/frontend-standard.schema";
 import type { WorkflowCheckStatus } from "../../workflow/frontend-task.schema";
 import { WorkflowTransitionError, workflowTransitionReason } from "../../workflow/workflow-transition";
@@ -46,6 +46,14 @@ const deliverySchema = projectSchema.extend({
   summary: z.string().trim().min(1),
   verification: z.array(z.string().trim().min(1)).optional(),
   risks: z.array(z.string().trim().min(1)).optional(),
+  confirm: z.boolean().optional(),
+  dryRun: z.boolean().optional(),
+}).strict();
+
+const advanceStatusSchema = projectSchema.extend({
+  taskId: z.string().trim().min(1),
+  nextStatus: z.enum(["context-ready", "patch-ready", "applied", "verified", "review-ready", "failed"]),
+  note: z.string().trim().optional(),
   confirm: z.boolean().optional(),
   dryRun: z.boolean().optional(),
 }).strict();
@@ -159,6 +167,45 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
       },
     },
     {
+      name: "ngm.workflow.advanceStatus",
+      description: "Preview or advance a frontend workflow task status through the controlled workflow transition graph.",
+      riskLevel: "write",
+      allowPreviewWhenBlocked: true,
+      deferPolicyToHandler: true,
+      isConfirmed,
+      inputSchema: advanceStatusSchema,
+      async handler(args, context) {
+        const project = await resolveProjectRoot(context, args);
+        const task = await readFrontendTask(project, args.taskId).catch(() => undefined);
+        const safetyMessage = "Advance frontend workflow task status in task.json.";
+        if (!isConfirmed(args)) {
+          return writePreview("ngm.workflow.advanceStatus", safetyMessage, {
+            project,
+            taskId: args.taskId,
+            fromStatus: task?.status,
+            nextStatus: args.nextStatus,
+            note: args.note,
+          });
+        }
+        const policyBlock = requireWritePolicy("low", safetyMessage);
+        if (policyBlock) return ok("ngm.workflow.advanceStatus", policyBlock);
+        if (!task) return ok("ngm.workflow.advanceStatus", blocked("write", "low", safetyMessage, "task.json was not found; create the frontend task first"));
+        let updated: Awaited<ReturnType<typeof updateTaskStatus>>;
+        try {
+          updated = await updateTaskStatus(project, args.taskId, args.nextStatus);
+        } catch (error) {
+          return transitionBlocked("ngm.workflow.advanceStatus", safetyMessage, error);
+        }
+        return ok("ngm.workflow.advanceStatus", {
+          operation: operation("executed", "write", "low", safetyMessage),
+          project,
+          task: updated,
+          note: args.note,
+          changedFiles: [`.ng-manager/frontend-tasks/${args.taskId}/task.json`],
+        });
+      },
+    },
+    {
       name: "ngm.workflow.validateBeforeWrite",
       description: "Preview or persist lightweight frontend project validation before AI writes source changes.",
       riskLevel: "write",
@@ -245,10 +292,16 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
         if (policyBlock) return ok("ngm.workflow.validateBeforeCommit", policyBlock);
         let task: Awaited<ReturnType<typeof updateFrontendTask>>;
         try {
+          const current = await readFrontendTask(project, args.taskId);
+          const statusPatch = aggregateStatus === "failed" || aggregateStatus === "blocked"
+            ? { status: "failed" as const }
+            : current.status === "applied"
+              ? { status: "verified" as const }
+              : {};
           task = await updateFrontendTask(project, args.taskId, {
             checks,
             changedFiles,
-            ...(aggregateStatus === "failed" || aggregateStatus === "blocked" ? { status: "failed" as const } : {}),
+            ...statusPatch,
           });
         } catch (error) {
           return transitionBlocked("ngm.workflow.validateBeforeCommit", safetyMessage, error);

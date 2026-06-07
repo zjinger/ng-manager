@@ -248,6 +248,7 @@ ngm.review.detectRisks
 ngm.review.generateReport
 ngm.workflow.createFrontendTask
 ngm.workflow.generateDevPlan
+ngm.workflow.advanceStatus
 ngm.workflow.validateBeforeWrite
 ngm.workflow.validateBeforeCommit
 ngm.workflow.generateDeliveryReport
@@ -255,7 +256,7 @@ ngm.workflow.generateDeliveryReport
 
 `ngm.standard.init`, `ngm.review.generateReport`, and `ngm.workflow.*` write tools support preview by default. Confirmed writes require `confirm=true` and `NGM_MCP_ALLOW_WRITE=true`, and may only create project-local `.ng-manager/**` files. Workflow task files live under `.ng-manager/frontend-tasks/{taskId}/` with `task.json`, `dev-plan.md`, `review-report.md`, and `delivery-report.md`.
 
-`ngm.workspace.applyPatchPreview` never writes files. It rejects forbidden paths such as `node_modules`, `dist`, `build`, `.git`, `.env`, `*.pem`, and `*.key`, then returns changed files and added/removed line counts.
+`ngm.workspace.applyPatchPreview` never writes files. It rejects forbidden paths such as `node_modules`, `dist`, `build`, `.git`, `.env`, `*.pem`, and `*.key`, rejects binary patches, then returns changed files and added/removed line counts.
 
 Runtime context:
 
