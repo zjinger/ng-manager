@@ -84,6 +84,22 @@ test("local server client converts fetch failures into stable unavailable errors
   });
 });
 
+test("local server client converts fetch timeouts into stable unavailable errors", async () => {
+  await withCleanEnv(async () => {
+    process.env.NGM_MCP_SERVER_URL = "http://127.0.0.1:33000";
+    global.fetch = async () => {
+      const error = new Error("aborted");
+      error.name = "AbortError";
+      throw error;
+    };
+
+    await assert.rejects(
+      () => createLocalServerClient().listActiveTasks(),
+      /ng-manager local server is unavailable: request timed out/
+    );
+  });
+});
+
 test("local server client unwrap keeps ok envelope when data is absent", async () => {
   await withCleanEnv(async () => {
     process.env.NGM_MCP_SERVER_URL = "http://localhost:33000";

@@ -1079,6 +1079,57 @@ test("ngm_nginx_proxy_save blocks confirmed handler write without write env", as
   assert.equal(createCalled, false);
 });
 
+test("ngm_nginx_proxy_save blocks reloadAfterSave without execute env", async () => {
+  let reloadCalled = false;
+  const result = await withEnv({
+    NGM_MCP_ALLOW_WRITE: "true",
+    NGM_MCP_ALLOW_EXECUTE: undefined,
+  }, () => tool("ngm_nginx_proxy_save").handler({
+    name: "demo-proxy",
+    listen: ["8080"],
+    domains: ["demo.local"],
+    target: "http://127.0.0.1:4200",
+    reloadAfterSave: true,
+    confirm: true,
+  }, {
+    services: {
+      core: {
+        nginx: {
+          server: {
+            async createServer() {
+              return {
+                id: "srv_1",
+                name: "demo-proxy",
+                listen: ["8080"],
+                domains: ["demo.local"],
+                enabled: true,
+                locations: [{ path: "/", proxyPass: "http://127.0.0.1:4200/" }],
+              };
+            },
+          },
+          config: {
+            async validateConfig() {
+              return { valid: true, errors: [] };
+            },
+          },
+          service: {
+            async reload() {
+              reloadCalled = true;
+              throw new Error("reload should be blocked by execute env policy");
+            },
+          },
+        },
+      },
+    },
+  }));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.operation.status, "executed");
+  assert.equal(result.data.reload.status, "blocked");
+  assert.equal(result.data.reloadRequired, true);
+  assert.equal(reloadCalled, false);
+});
+
 test("ngm_nginx_proxy_save rejects Nginx injection characters", async () => {
   const result = await tool("ngm_nginx_proxy_save").handler({
     name: "demo-proxy",
