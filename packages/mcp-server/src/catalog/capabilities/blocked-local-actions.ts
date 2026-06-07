@@ -1,0 +1,15 @@
+export const blockedLocalActions = [
+  "run package scripts without confirm=true and NGM_MCP_ALLOW_EXECUTE=true",
+  "stop local project processes without confirm=true and NGM_MCP_ALLOW_EXECUTE=true",
+  "restart local project processes",
+  "install, uninstall, or switch Node versions",
+  "change project runtime binding without confirm=true and NGM_MCP_ALLOW_WRITE=true",
+  "start or stop Nginx",
+  "reload Nginx without config validation, confirm=true, and NGM_MCP_ALLOW_EXECUTE=true",
+  "write Nginx proxy rules without confirm=true and NGM_MCP_ALLOW_WRITE=true",
+  "execute arbitrary shell commands",
+  "kill arbitrary PIDs",
+  "write arbitrary project-external file paths",
+  "write frontend standard, review, or workflow files outside project-local .ng-manager/**",
+  "apply patch previews to source files; ngm.workspace.applyPatchPreview never writes files",
+];
