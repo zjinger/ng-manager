@@ -455,6 +455,8 @@ hub_v2_issues_get
 hub_v2_issues_create
 hub_v2_issues_comment
 hub_v2_issues_assign
+hub_v2_issues_participant_add
+hub_v2_issues_branch_create
 hub_v2_issues_update
 ```
 
@@ -474,6 +476,7 @@ hub_v2_rd_update_progress
 
 ```text
 hub_v2_upload_markdown_image
+hub_v2_file_upload
 ```
 
 当前期望能力与真实 tool name 对照：
@@ -484,7 +487,8 @@ hub_v2_upload_markdown_image
 | project list / get | `hub_v2_projects_list`, `hub_v2_projects_get` | 已实现，读取本地 Hub V2 connection 配置摘要。 |
 | project members | `hub_v2_project_members_list` | 已实现，使用 Project Token。 |
 | image upload | `hub_v2_upload_markdown_image` | 已实现，上传 Markdown 内联图片并返回 Markdown 片段。 |
-| file upload | 无 | 当前 `packages/mcp-server` 未实现通用文件上传 tool。 |
+| file upload | `hub_v2_file_upload` | 已实现受控附件上传，使用 Personal Token，当前支持 `issueAttachment` 和 `taskSheetAttachment`。 |
+| issue collaboration branch | `hub_v2_issues_participant_add`, `hub_v2_issues_branch_create` | 已实现，使用 Personal Token。Issue 协作分支不是 RD。 |
 | doc create | `hub_v2_docs_create` | 已实现，使用 Personal Token，默认 preview，确认写入需要 `confirm=true` + `NGM_MCP_ALLOW_WRITE=true`。 |
 | doc update | `hub_v2_docs_update` | 已实现，使用 Personal Token，默认 preview，确认写入需要 `confirm=true` + `NGM_MCP_ALLOW_WRITE=true`。 |
 
@@ -505,6 +509,8 @@ sl_hub_v2.*
 3. Hub V2 返回可直接插入正文的 Markdown
 4. Agent 将返回的 Markdown 放入文档/RD/Issue/评论正文
 5. 创建或更新业务对象时，Hub V2 业务服务执行 Markdown upload promote
+
+`hub_v2_file_upload` 是附件上传中间步骤：它返回 `uploadId` 和 `rawUrl`，但不会自动把文件挂到 Issue 或 RD 任务单。业务附件关联应由后续专门的业务工具消费 `uploadId` 完成。
 
 返回 Markdown 形态：
 

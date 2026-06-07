@@ -105,6 +105,20 @@ export const issueAssignSchema = projectSelectorSchema.extend({
   confirm: z.boolean().optional(),
 }).strict();
 
+export const issueParticipantAddSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  userId: z.string().trim().min(1),
+  taskTitle: z.string().trim().max(80).optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const issueBranchCreateSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  ownerUserId: z.string().trim().min(1),
+  title: z.string().trim().min(1).max(80),
+  confirm: z.boolean().optional(),
+}).strict();
+
 export const issueUpdateSchema = projectSelectorSchema.extend({
   issueId: z.string().trim().min(1),
   title: z.string().trim().optional(),
@@ -124,6 +138,15 @@ export const markdownImageUploadSchema = projectSelectorSchema.extend({
   fileName: z.string().trim().min(1).optional(),
   mimeType: z.string().trim().min(1).optional(),
   alt: z.string().trim().min(1).optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const fileUploadSchema = projectSelectorSchema.extend({
+  target: z.enum(["issueAttachment", "taskSheetAttachment"]),
+  filePath: z.string().trim().min(1).optional(),
+  contentBase64: z.string().trim().min(1).optional(),
+  fileName: z.string().trim().min(1).optional(),
+  mimeType: z.string().trim().min(1).optional(),
   confirm: z.boolean().optional(),
 }).strict();
 

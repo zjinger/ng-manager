@@ -47,10 +47,10 @@ Use these MCP tools first:
 
 - Project/config: `hub_v2_projects_list`, `hub_v2_projects_get`, `hub_v2_project_members_list`
 - Docs: `hub_v2_docs_list`, `hub_v2_docs_get`, `hub_v2_docs_get_by_slug`, `hub_v2_docs_create`, `hub_v2_docs_update`
-- Issues: `hub_v2_issues_list`, `hub_v2_issues_get`, `hub_v2_issues_create`, `hub_v2_issues_update`, `hub_v2_issues_comment`, `hub_v2_issues_assign`
+- Issues: `hub_v2_issues_list`, `hub_v2_issues_get`, `hub_v2_issues_create`, `hub_v2_issues_update`, `hub_v2_issues_comment`, `hub_v2_issues_assign`, `hub_v2_issues_participant_add`, `hub_v2_issues_branch_create`
 - RD read: `hub_v2_rd_list`, `hub_v2_rd_get`, `hub_v2_rd_stage_tasks_list`
 - RD write: `hub_v2_rd_create`, `hub_v2_rd_advance_stage`, `hub_v2_rd_stage_tasks_create`, `hub_v2_rd_update_progress`
-- Markdown images: `hub_v2_upload_markdown_image`
+- Uploads: `hub_v2_upload_markdown_image`, `hub_v2_file_upload`
 
 ## Project Selection
 
@@ -75,11 +75,15 @@ Use these MCP tools first:
 - Never ask the user to paste tokens into chat or tool arguments.
 - For Document create/update, Issue create/update/comment/assign, RD create, stage advance, stage-task create, progress update, status changes, or any operation that alters workflow state, preview first when the tool supports preview, then execute only after explicit user confirmation.
 - For Markdown images, first call `hub_v2_upload_markdown_image` with either `filePath` or `contentBase64 + fileName`, then insert the returned `markdown` into the target `description` or `content`.
+- For non-Markdown attachments, call `hub_v2_file_upload` to get an `uploadId`; do not claim it is attached to an Issue or RD task until a business attach tool consumes that `uploadId`.
 - For Document creation or content updates with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_docs_create` or `hub_v2_docs_update` with the returned Markdown in `content` or `contentMd`.
 - For Issue creation with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_create` with the returned Markdown in `description`.
 - For Issue description updates with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_update` with the returned Markdown in `description`.
 - For Issue comments with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_comment` with the returned Markdown in `content`.
 - For Issue assignment, call `hub_v2_project_members_list` when the assignee is not already known, ask the user to choose a member when multiple candidates match, then preview and confirm `hub_v2_issues_assign`.
+- For Issue collaborator branches, do not create an RD item and do not use comments as a substitute. If the user says "创建 Issue 协作分支", "协作分支", "给某人创建分支", or gives a branch task title such as "排查后端接口", use Issue tools:
+  - If the user is not already an Issue collaborator, preview and confirm `hub_v2_issues_participant_add` with `userId` and `taskTitle`; this adds the collaborator and can create the collaborator task branch.
+  - If the user is already an Issue collaborator, preview and confirm `hub_v2_issues_branch_create` with `ownerUserId` and `title`.
 - For RD creation or stage-task descriptions with images, call `hub_v2_upload_markdown_image`, then insert the returned Markdown into `hub_v2_rd_create.description` or `hub_v2_rd_stage_tasks_create.description`.
 - When creating an RD item, include `stageTasks` or `stageTaskTemplates` only when the user explicitly provides initial current-stage tasks or asks to create them from templates.
 - When advancing an RD stage, include `stageTasks` or `stageTaskTemplates` if the next stage should start with assigned tasks.
@@ -91,7 +95,9 @@ Use these MCP tools first:
 - `TOKEN_SCOPE_FORBIDDEN`: explain which scope is missing and whether Project Token or Personal Token is involved.
 - Document create requires `doc:create:write`; document update requires `doc:update:write`.
 - Issue create requires `issue:create:write`; Issue update requires `issue:update:write`; Issue assignment requires `issue:assign:write`; Issue comments require `issue:comment:write`.
+- Issue collaborator add requires `issue:participant:write`; Issue collaboration branch create requires `issue:branch:write`.
 - Markdown image upload requires at least one relevant business write scope such as `issue:create:write`, `issue:update:write`, `issue:comment:write`, `rd:create:write`, `rd:stage-task:write`, `rd:transition:write`, or `rd:edit:write`.
+- File upload target `issueAttachment` requires `issue:update:write`; `taskSheetAttachment` requires `rd:stage-task:write` or `rd:edit:write`.
 - RD create requires `rd:create:write`; stage-task create requires `rd:stage-task:write`; progress update requires `rd:progress:write` or `rd:transition:write`.
 - `TOKEN_PROJECT_FORBIDDEN` or `PROJECT_NOT_FOUND`: verify the configured project alias or project key.
 - `PROJECT_ACCESS_DENIED`: explain that the Personal Token owner needs project access.

@@ -356,8 +356,11 @@ hub_v2_issues_get
 hub_v2_issues_create
 hub_v2_issues_comment
 hub_v2_issues_assign
+hub_v2_issues_participant_add
+hub_v2_issues_branch_create
 hub_v2_issues_update
 hub_v2_upload_markdown_image
+hub_v2_file_upload
 hub_v2_rd_list
 hub_v2_rd_get
 hub_v2_rd_stage_tasks_list
@@ -367,7 +370,7 @@ hub_v2_rd_stage_tasks_create
 hub_v2_rd_update_progress
 ```
 
-Hub V2 reads use Project Token configuration and writes use Personal Token configuration. `hub_v2_upload_markdown_image` uploads image files for Markdown bodies and returns a snippet that can be inserted into Document content, RD descriptions, RD stage-task descriptions, Issue descriptions, or Issue comments before calling the matching create/update/comment tool. Prefer `HUB_V2_*` environment variables for temporary overrides and `~/.ng-manager/agent-connections.json` for persistent local configuration.
+Hub V2 reads use Project Token configuration and writes use Personal Token configuration. `hub_v2_upload_markdown_image` uploads image files for Markdown bodies and returns a snippet that can be inserted into Document content, RD descriptions, RD stage-task descriptions, Issue descriptions, or Issue comments before calling the matching create/update/comment tool. `hub_v2_file_upload` uploads controlled attachment files and returns an `uploadId` for later business association; it does not attach the file to an Issue or RD task by itself. Prefer `HUB_V2_*` environment variables for temporary overrides and `~/.ng-manager/agent-connections.json` for persistent local configuration.
 
 Current Hub V2 capability mapping:
 
@@ -377,7 +380,8 @@ Current Hub V2 capability mapping:
 | Project list/get | `hub_v2_projects_list`, `hub_v2_projects_get` | Implemented for local Hub V2 connection config summaries. |
 | Project members | `hub_v2_project_members_list` | Implemented with Project Token. |
 | Image upload for Markdown | `hub_v2_upload_markdown_image` | Implemented with Personal Token. |
-| Generic file upload | none | Not implemented in `packages/mcp-server` current Hub V2 tools. |
+| Controlled file upload | `hub_v2_file_upload` | Implemented with Personal Token for `issueAttachment` and `taskSheetAttachment` targets. |
+| Issue collaboration branch | `hub_v2_issues_participant_add`, `hub_v2_issues_branch_create` | Implemented with Personal Token. Use these for Issue collaborator branches, not RD creation. |
 | Doc create | `hub_v2_docs_create` | Implemented with Personal Token and `confirm=true` write policy. |
 | Doc update | `hub_v2_docs_update` | Implemented with Personal Token and `confirm=true` write policy. |
 

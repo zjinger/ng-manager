@@ -112,8 +112,11 @@ test("registers Hub V2 tools with the unified names only", () => {
     "hub_v2_issues_create",
     "hub_v2_issues_comment",
     "hub_v2_issues_assign",
+    "hub_v2_issues_participant_add",
+    "hub_v2_issues_branch_create",
     "hub_v2_issues_update",
     "hub_v2_upload_markdown_image",
+    "hub_v2_file_upload",
     "hub_v2_rd_list",
     "hub_v2_rd_get",
     "hub_v2_rd_stage_tasks_list",
@@ -128,7 +131,6 @@ test("registers Hub V2 tools with the unified names only", () => {
     assert.ok(registeredTool(name), `${name} should be registered through registerTools()`);
   }
   assert.equal(names.some((name) => name.startsWith("sl_hub_v2.")), false);
-  assert.equal(names.includes("hub_v2_file_upload"), false);
   assert.equal(names.includes("hub_v2_image_upload"), false);
 });
 
@@ -243,6 +245,96 @@ test("hub_v2_issues_assign previews and executes with Personal Token", async () 
     assert.equal(calls[0].init.method, "POST");
     assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
     assert.deepEqual(JSON.parse(calls[0].init.body), { assigneeId: "usr_1" });
+  });
+});
+
+test("hub_v2_issues_participant_add previews and executes with Personal Token", async () => {
+  const preview = await issueTool("hub_v2_issues_participant_add").handler({
+    issueId: "iss_1",
+    userId: "usr_lisi",
+    taskTitle: "排查后端接口",
+  }, {});
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.data.code, "PREVIEW");
+  assert.equal(preview.data.data.path, "/issues/iss_1/participants");
+  assert.equal(preview.data.data.requiredScope, "issue:participant:write");
+  assert.deepEqual(preview.data.data.body, {
+    userId: "usr_lisi",
+    taskTitle: "排查后端接口",
+  });
+
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "part_1" } }), { status: 201 });
+    };
+
+    const result = await issueTool("hub_v2_issues_participant_add").handler({
+      issueId: "iss 1",
+      userId: "usr_lisi",
+      taskTitle: "排查后端接口",
+      confirm: true,
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/issues/iss%201/participants");
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
+    assert.deepEqual(JSON.parse(calls[0].init.body), {
+      userId: "usr_lisi",
+      taskTitle: "排查后端接口",
+    });
+  });
+});
+
+test("hub_v2_issues_branch_create previews and executes with Personal Token", async () => {
+  const preview = await issueTool("hub_v2_issues_branch_create").handler({
+    issueId: "iss_1",
+    ownerUserId: "usr_lisi",
+    title: "排查后端接口",
+  }, {});
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.data.code, "PREVIEW");
+  assert.equal(preview.data.data.path, "/issues/iss_1/branches");
+  assert.equal(preview.data.data.requiredScope, "issue:branch:write");
+  assert.deepEqual(preview.data.data.body, {
+    ownerUserId: "usr_lisi",
+    title: "排查后端接口",
+  });
+
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "br_1" } }), { status: 201 });
+    };
+
+    const result = await issueTool("hub_v2_issues_branch_create").handler({
+      issueId: "iss 1",
+      ownerUserId: "usr_lisi",
+      title: "排查后端接口",
+      confirm: true,
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/issues/iss%201/branches");
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
+    assert.deepEqual(JSON.parse(calls[0].init.body), {
+      ownerUserId: "usr_lisi",
+      title: "排查后端接口",
+    });
   });
 });
 
@@ -403,6 +495,57 @@ test("hub_v2_upload_markdown_image uploads base64 with Personal Token", async ()
     assert.equal(result.ok, true);
     assert.equal(result.data.data.markdown, "![shot](/api/admin/uploads/upl_1/raw)");
     assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/uploads/markdown");
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
+    assert.ok(calls[0].init.body instanceof FormData);
+  });
+});
+
+test("hub_v2_file_upload previews and uploads base64 with Personal Token", async () => {
+  const preview = await uploadTool("hub_v2_file_upload").handler({
+    target: "issueAttachment",
+    contentBase64: Buffer.from("video").toString("base64"),
+    fileName: "clip.mp4",
+    mimeType: "video/mp4",
+  }, {});
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.data.code, "PREVIEW");
+  assert.equal(preview.data.data.path, "/uploads/file");
+  assert.equal(preview.data.data.requiredScope, "issue:update:write");
+  assert.equal(preview.data.data.input.target, "issueAttachment");
+
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(
+        JSON.stringify({
+          code: "OK",
+          data: {
+            uploadId: "upl_1",
+            rawUrl: "/api/admin/uploads/upl_1/raw",
+          },
+        }),
+        { status: 201 }
+      );
+    };
+
+    const result = await uploadTool("hub_v2_file_upload").handler({
+      target: "taskSheetAttachment",
+      contentBase64: Buffer.from("docx").toString("base64"),
+      fileName: "task-sheet.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      confirm: true,
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(result.data.data.uploadId, "upl_1");
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/uploads/file");
     assert.equal(calls[0].init.method, "POST");
     assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
     assert.ok(calls[0].init.body instanceof FormData);

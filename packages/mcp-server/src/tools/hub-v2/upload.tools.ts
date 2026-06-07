@@ -3,7 +3,7 @@ import path from "node:path";
 import type { McpToolDefinition } from "../index";
 import { HubV2Client } from "./client";
 import { resolveHubV2Context } from "./config/index";
-import { markdownImageUploadSchema } from "./schemas";
+import { fileUploadSchema, markdownImageUploadSchema } from "./schemas";
 import { ok } from "../../utils/result";
 
 export function hubV2UploadTools(): McpToolDefinition[] {
@@ -51,7 +51,57 @@ export function hubV2UploadTools(): McpToolDefinition[] {
         return ok("hub_v2_upload_markdown_image", data);
       },
     },
+    {
+      name: "hub_v2_file_upload",
+      description: "Upload a local or base64 file with Personal Token and return a Hub V2 uploadId.",
+      riskLevel: "write",
+      inputSchema: fileUploadSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        const uploadPath = "/uploads/file";
+        if (!args.confirm) {
+          return ok("hub_v2_file_upload", {
+            code: "PREVIEW",
+            message: "set confirm=true to upload this file",
+            data: {
+              method: "POST",
+              path: uploadPath,
+              requiredScope: fileUploadRequiredScope(args.target),
+              maxBytes: maxUploadBytes(),
+              input: {
+                target: args.target,
+                mode: args.filePath ? "filePath" : "contentBase64",
+                fileName: args.fileName,
+                mimeType: args.mimeType,
+                hasFilePath: Boolean(args.filePath),
+                hasContentBase64: Boolean(args.contentBase64),
+              },
+            },
+          });
+        }
+        const ctx = resolveHubV2Context(args, "personal");
+        const client = new HubV2Client(ctx);
+        const file = resolveUploadFile(args);
+        const form = new FormData();
+        const bytes = new Uint8Array(file.content.byteLength);
+        bytes.set(file.content);
+        form.append("file", new Blob([bytes], { type: file.mimeType }), file.fileName);
+        form.append("target", args.target);
+        const data = await client.multipart("POST", client.personalUrl(uploadPath), form);
+        return ok("hub_v2_file_upload", data);
+      },
+    },
   ];
+}
+
+function fileUploadRequiredScope(target: "issueAttachment" | "taskSheetAttachment"): string {
+  switch (target) {
+    case "issueAttachment":
+      return "issue:update:write";
+    case "taskSheetAttachment":
+      return "rd:stage-task:write or rd:edit:write";
+  }
 }
 
 function resolveUploadFile(args: {
@@ -98,7 +148,7 @@ function maxUploadBytes(): number {
 function assertUploadSize(fileSize: number): void {
   const maxBytes = maxUploadBytes();
   if (fileSize > maxBytes) {
-    throw new Error(`upload image is too large: ${fileSize} bytes exceeds NGM_MCP_MAX_UPLOAD_BYTES=${maxBytes}`);
+    throw new Error(`upload file is too large: ${fileSize} bytes exceeds NGM_MCP_MAX_UPLOAD_BYTES=${maxBytes}`);
   }
 }
 

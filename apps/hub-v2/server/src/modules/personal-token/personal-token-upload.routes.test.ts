@@ -96,6 +96,77 @@ describe("personal token markdown upload routes", () => {
     assert.equal(textResponse.json().code, "VALIDATION_ERROR");
   });
 
+  it("accepts issue attachment file uploads with issue update scope", async () => {
+    const ctx = await createTestApp();
+    const token = await createPersonalToken(ctx, ["issue:update:write"]);
+
+    const response = await postFileUpload(ctx, token, {
+      target: "issueAttachment",
+      fileName: "clip.mp4",
+      contentType: "video/mp4",
+      file: Buffer.from("video")
+    });
+
+    assert.equal(response.statusCode, 201);
+    const data = response.json().data;
+    assert.match(data.uploadId, /^upl_/);
+    assert.equal(data.rawUrl, `/api/admin/uploads/${data.uploadId}/raw`);
+    assert.equal(data.upload.bucket, "issues");
+    assert.equal(data.upload.category, "attachment");
+    assert.equal(data.upload.mimeType, "video/mp4");
+
+    const row = getUploadRow(ctx, data.uploadId);
+    assert.equal(row.bucket, "issues");
+    assert.equal(row.category, "attachment");
+    assert.equal(row.mime_type, "video/mp4");
+  });
+
+  it("enforces file upload target scope and policy", async () => {
+    const ctx = await createTestApp();
+    const branchToken = await createPersonalToken(ctx, ["issue:branch:write"]);
+
+    const forbiddenResponse = await postFileUpload(ctx, branchToken, {
+      target: "issueAttachment",
+      fileName: "shot.png",
+      contentType: "image/png",
+      file: pngBuffer()
+    });
+    assert.equal(forbiddenResponse.statusCode, 403);
+    assert.equal(forbiddenResponse.json().code, "TOKEN_SCOPE_FORBIDDEN");
+
+    const updateToken = await createPersonalToken(ctx, ["issue:update:write"]);
+    const invalidTypeResponse = await postFileUpload(ctx, updateToken, {
+      target: "issueAttachment",
+      fileName: "note.txt",
+      contentType: "text/plain",
+      file: Buffer.from("note")
+    });
+    assert.equal(invalidTypeResponse.statusCode, 400);
+    assert.equal(invalidTypeResponse.json().code, "VALIDATION_ERROR");
+  });
+
+  it("accepts task sheet attachment file uploads with RD task scope", async () => {
+    const ctx = await createTestApp();
+    const token = await createPersonalToken(ctx, ["rd:stage-task:write"]);
+
+    const response = await postFileUpload(ctx, token, {
+      target: "taskSheetAttachment",
+      fileName: "task-sheet.docx",
+      contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      file: Buffer.from("docx")
+    });
+
+    assert.equal(response.statusCode, 201);
+    const data = response.json().data;
+    assert.equal(data.upload.bucket, "task-sheets");
+    assert.equal(data.upload.category, "attachment");
+    assert.equal(data.upload.originalName, "task-sheet.docx");
+
+    const row = getUploadRow(ctx, data.uploadId);
+    assert.equal(row.bucket, "task-sheets");
+    assert.equal(row.category, "attachment");
+  });
+
   it("promotes uploaded markdown image when creating an issue", async () => {
     const ctx = await createTestApp();
     const token = await createPersonalToken(ctx, ["issue:create:write"]);
@@ -376,6 +447,24 @@ async function postMarkdownImage(
   return ctx.app.inject({
     method: "POST",
     url: `/api/personal/projects/${ctx.project.key}/uploads/markdown`,
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": `multipart/form-data; boundary=${boundary}`
+    },
+    payload
+  });
+}
+
+async function postFileUpload(
+  ctx: TestApp,
+  token: string,
+  input: { target: string; fileName: string; contentType: string; file: Buffer }
+) {
+  const boundary = `----hubv2fileupload${Date.now()}${Math.random().toString(16).slice(2)}`;
+  const payload = buildMultipartPayload(boundary, { target: input.target }, input.file, input.fileName, input.contentType);
+  return ctx.app.inject({
+    method: "POST",
+    url: `/api/personal/projects/${ctx.project.key}/uploads/file`,
     headers: {
       authorization: `Bearer ${token}`,
       "content-type": `multipart/form-data; boundary=${boundary}`

@@ -55,6 +55,41 @@
 - 读取统一使用 Project Token
 - 关键写操作统一使用 Personal Token
 
+### 3.4 MCP Agent 能力对齐口径
+
+Token API 是 Hub V2 后端接口契约，MCP tools 是面向 AI Agent 的受控子集。`hub-v2-api` skill 只能推荐当前已暴露的 MCP tool；Token route 已存在但 MCP tool 未开放的能力，不应在 Agent 回复中承诺可执行，也不应改用评论、RD 项等近似操作代替。
+
+MCP 写入类工具仍遵循 MCP Server 的安全口径：默认 preview，真实执行需要 `confirm=true` 与 `NGM_MCP_ALLOW_WRITE=true`，并由 Hub V2 Personal Token 继续校验 scope、项目成员关系、业务权限与状态机。
+
+当前 MCP 已暴露能力如下：
+
+| 领域 | Token / 配置能力 | MCP tool | 状态 |
+|---|---|---|---|
+| 连接与项目 | agent connection 配置、项目列表 | `hub_v2_projects_list`、`hub_v2_projects_get` | 已暴露 |
+| 项目成员 | `GET /api/token/projects/:projectKey/members` | `hub_v2_project_members_list` | 已暴露 |
+| Docs 读取 | `GET /api/token/projects/:projectKey/docs*` | `hub_v2_docs_list`、`hub_v2_docs_get`、`hub_v2_docs_get_by_slug` | 已暴露 |
+| Docs 写入 | `POST /api/personal/projects/:projectKey/docs`、`PATCH /api/personal/projects/:projectKey/docs/:docId` | `hub_v2_docs_create`、`hub_v2_docs_update` | 已暴露 |
+| Issue 读取 | `GET /api/token/projects/:projectKey/issues*` | `hub_v2_issues_list`、`hub_v2_issues_get` | 已暴露 |
+| Issue 写入 | 创建、编辑、评论、指派 | `hub_v2_issues_create`、`hub_v2_issues_update`、`hub_v2_issues_comment`、`hub_v2_issues_assign` | 已暴露 |
+| Issue 协作 | 新增协作人、创建协作分支 | `hub_v2_issues_participant_add`、`hub_v2_issues_branch_create` | 已暴露 |
+| 上传 | Markdown 图片、受控附件文件 | `hub_v2_upload_markdown_image`、`hub_v2_file_upload` | 已暴露 |
+| RD 读取 | 研发项列表、详情、当前阶段任务 | `hub_v2_rd_list`、`hub_v2_rd_get`、`hub_v2_rd_stage_tasks_list` | 已暴露 |
+| RD 写入 | 创建研发项、推进阶段、新增阶段任务、更新进度 | `hub_v2_rd_create`、`hub_v2_rd_advance_stage`、`hub_v2_rd_stage_tasks_create`、`hub_v2_rd_update_progress` | 已暴露 |
+
+当前 Token route 已存在但 MCP 暂未暴露的能力如下：
+
+| 领域 | Token route / 能力 | MCP 状态 | Agent 口径 |
+|---|---|---|---|
+| Docs | 发布文档 `POST /api/personal/projects/:projectKey/docs/:docId/publish` | 暂未暴露 | skill 不应承诺可通过 MCP 发布 |
+| Issue 读取 | 日志、评论列表、协作人列表、附件列表、协作分支列表、附件 raw 读取 | 暂未暴露 | 可说明 Token API 存在，但 MCP 当前无对应 tool |
+| Issue 流转 | claim、start、wait-update、resolve、verify、reopen、close | 暂未暴露 | 不应改用评论或 RD tool 代替 |
+| Issue 分支流转 | start-mine、start、complete | 暂未暴露 | MCP 当前只支持创建协作分支 |
+| Issue 协作人删除 | `DELETE /participants/:participantId` | 暂未暴露 | 不应承诺可删除 |
+| RD 读取 | 阶段字典、日志、阶段历史、成员进度、进度历史、Markdown 图片 raw 读取 | 暂未暴露 | 可作为后续 MCP read tool 补齐 |
+| RD 流转 | start、block、resume、complete、accept、reopen、close | 暂未暴露 | MCP 当前只支持 `advance-stage` 与 `update-progress` |
+| RD 编辑 | 基础信息 patch | 暂未暴露 | 不应承诺可编辑基础字段 |
+| Feedback | feedback 列表与详情 | 暂未暴露 | 当前不属于 `hub-v2-api` MCP skill 执行能力 |
+
 ---
 
 ## 4. 配置规范
@@ -320,6 +355,40 @@ Markdown 图片上传：
 }
 ```
 
+受控附件文件上传：
+
+- `POST /api/personal/projects/:projectKey/uploads/file`
+
+说明：
+
+- 该接口用于 AI Agent 或脚本先上传非 Markdown 内联图片类附件，返回可被后续业务操作消费的 `uploadId`
+- 当前支持 `target=issueAttachment` 与 `target=taskSheetAttachment`
+- `issueAttachment` 使用 `issue:update:write` scope
+- `taskSheetAttachment` 使用 `rd:stage-task:write` 或 `rd:edit:write` scope
+- 接口只完成文件上传和落库，不自动挂载到 Issue、RD 或阶段任务；后续必须由明确的业务 attach/update 工具消费 `uploadId`
+- 该能力在 MCP 中对应 `hub_v2_file_upload`
+
+返回示例：
+
+```json
+{
+  "code": "OK",
+  "message": "file uploaded",
+  "data": {
+    "uploadId": "upl_xxx",
+    "rawUrl": "/api/admin/uploads/upl_xxx/raw",
+    "upload": {
+      "id": "upl_xxx",
+      "bucket": "temp",
+      "category": "issue-attachment",
+      "originalName": "error-log.txt",
+      "mimeType": "text/plain",
+      "fileSize": 12345
+    }
+  }
+}
+```
+
 创建请求体：
 
 ```json
@@ -395,6 +464,7 @@ Markdown 图片上传：
 | Issue | 编辑测试单 | `issue:update:write` |
 | Issue | 评论 | `issue:comment:write` |
 | Issue/RD | Markdown 图片上传 | 由目标业务写 scope 派生 |
+| Issue/RD | 受控附件文件上传 | 由 `target` 派生：`issueAttachment` 使用 `issue:update:write`；`taskSheetAttachment` 使用 `rd:stage-task:write` 或 `rd:edit:write` |
 | Issue | 状态流转 | `issue:transition:write` |
 | Issue | 指派与认领 | `issue:assign:write` |
 | Issue | 协作分支管理 | `issue:branch:write` |
@@ -505,6 +575,8 @@ Token 调用审计表：`api_token_audit_logs`
 
 ## 9. Curl 验证示例
 
+本节用于验证 Hub V2 Token API 路由，不代表所有示例都已经开放为 MCP tool。Agent 可执行能力以 [3.4 MCP Agent 能力对齐口径](#34-mcp-agent-能力对齐口径) 为准。
+
 ### 9.1 Personal Token 写评论
 
 ```bash
@@ -554,6 +626,8 @@ curl -X PATCH "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues/<
 ```
 
 Issue 协作分支仍使用 `issue:branch:write` scope。
+
+MCP 当前对应 `hub_v2_issues_branch_create`，只负责创建协作分支；`start-mine`、`start`、`complete` 暂未开放为 MCP tool。
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/issues/<ISSUE_ID>/branches/start-mine" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"协作分支标题\"}"
@@ -625,6 +699,8 @@ curl -X PATCH "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DO
 
 ### 9.13 Personal Token 发布文档
 
+Token API 已支持发布文档，但 MCP 当前暂未开放 docs publish tool；Agent 不应承诺可通过 MCP 发布。
+
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DOC_ID>/publish" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"source\":\"cli\"}"
 ```
@@ -654,4 +730,17 @@ curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/by-slug/
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/uploads/markdown" -H "Authorization: Bearer <PERSONAL_TOKEN>" -F "file=@screenshot.png;type=image/png" -F "alt=登录异常截图"
+```
+
+### 9.16 Personal Token 上传受控附件文件
+
+上传接口使用 multipart form-data，字段：
+
+- `file`：附件文件
+- `target`：`issueAttachment` 或 `taskSheetAttachment`
+
+返回的 `data.uploadId` 仅代表文件已进入 Hub V2 上传生命周期，不代表已经挂载到 Issue、RD 或阶段任务。
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/uploads/file" -H "Authorization: Bearer <PERSONAL_TOKEN>" -F "file=@error-log.txt;type=text/plain" -F "target=issueAttachment"
 ```

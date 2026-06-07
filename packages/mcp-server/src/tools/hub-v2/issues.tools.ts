@@ -1,7 +1,16 @@
 import type { McpToolDefinition } from "../index";
 import { compact, compactUndefined, HubV2Client } from "./client";
 import { resolveHubV2Context } from "./config/index";
-import { issueAssignSchema, issueCommentSchema, issueCreateSchema, issueGetSchema, issuesListSchema, issueUpdateSchema } from "./schemas";
+import {
+  issueAssignSchema,
+  issueBranchCreateSchema,
+  issueCommentSchema,
+  issueCreateSchema,
+  issueGetSchema,
+  issueParticipantAddSchema,
+  issuesListSchema,
+  issueUpdateSchema,
+} from "./schemas";
 import { fail, ok } from "../../utils/result";
 
 export function hubV2IssuesTools(): McpToolDefinition[] {
@@ -138,6 +147,68 @@ export function hubV2IssuesTools(): McpToolDefinition[] {
         const client = new HubV2Client(ctx);
         const data = await client.request("POST", client.personalUrl(path), body);
         return ok("hub_v2_issues_assign", data);
+      },
+    },
+    {
+      name: "hub_v2_issues_participant_add",
+      description: "Preview or add a Hub V2 issue collaborator, optionally creating a collaborator task branch.",
+      riskLevel: "write",
+      inputSchema: issueParticipantAddSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        const path = `/issues/${encodeURIComponent(args.issueId)}/participants`;
+        const body = compact({
+          userId: args.userId,
+          taskTitle: args.taskTitle,
+        });
+        if (!args.confirm) {
+          return ok("hub_v2_issues_participant_add", {
+            code: "PREVIEW",
+            message: "set confirm=true to execute this write operation",
+            data: {
+              method: "POST",
+              path,
+              requiredScope: "issue:participant:write",
+              body,
+            },
+          });
+        }
+        const ctx = resolveHubV2Context(args, "personal");
+        const client = new HubV2Client(ctx);
+        const data = await client.request("POST", client.personalUrl(path), body);
+        return ok("hub_v2_issues_participant_add", data);
+      },
+    },
+    {
+      name: "hub_v2_issues_branch_create",
+      description: "Preview or create a Hub V2 issue collaboration branch for an existing collaborator.",
+      riskLevel: "write",
+      inputSchema: issueBranchCreateSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        const path = `/issues/${encodeURIComponent(args.issueId)}/branches`;
+        const body = {
+          ownerUserId: args.ownerUserId,
+          title: args.title,
+        };
+        if (!args.confirm) {
+          return ok("hub_v2_issues_branch_create", {
+            code: "PREVIEW",
+            message: "set confirm=true to execute this write operation",
+            data: {
+              method: "POST",
+              path,
+              requiredScope: "issue:branch:write",
+              body,
+            },
+          });
+        }
+        const ctx = resolveHubV2Context(args, "personal");
+        const client = new HubV2Client(ctx);
+        const data = await client.request("POST", client.personalUrl(path), body);
+        return ok("hub_v2_issues_branch_create", data);
       },
     },
     {

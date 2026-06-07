@@ -19,11 +19,14 @@ This reference describes Agent-facing MCP tools, not Hub V2 REST endpoints.
 ## Write Tools
 
 - `hub_v2_upload_markdown_image`: upload a Markdown inline image using Personal Token and return a Markdown snippet. Use it before RD/Issue/comment write tools when content includes local or base64 images.
+- `hub_v2_file_upload`: upload a controlled attachment file using Personal Token and return an `uploadId`. Current targets are `issueAttachment` and `taskSheetAttachment`; this tool does not attach the upload to a business object by itself.
 - `hub_v2_docs_create`: preview or create a draft document using Personal Token with `doc:create:write`; `content` or `contentMd` may include Markdown returned by `hub_v2_upload_markdown_image`.
 - `hub_v2_docs_update`: preview or update document fields using Personal Token with `doc:update:write`; `content` or `contentMd` may include Markdown returned by `hub_v2_upload_markdown_image`.
 - `hub_v2_issues_create`: preview or create an Issue using Personal Token with `issue:create:write`; `description` may include Markdown returned by `hub_v2_upload_markdown_image`.
 - `hub_v2_issues_update`: preview or update Issue basic fields using Personal Token with `issue:update:write`; `description` may include Markdown returned by `hub_v2_upload_markdown_image`.
 - `hub_v2_issues_assign`: preview or assign an Issue owner using Personal Token with `issue:assign:write`; call `hub_v2_project_members_list` first when the assignee user id is not known.
+- `hub_v2_issues_participant_add`: preview or add an Issue collaborator using Personal Token with `issue:participant:write`; pass `taskTitle` when the request is to create a collaborator task branch for a new collaborator.
+- `hub_v2_issues_branch_create`: preview or create an Issue collaboration branch for an existing collaborator using Personal Token with `issue:branch:write`.
 - `hub_v2_issues_comment`: preview or add an Issue comment using Personal Token with `issue:comment:write`; `content` may include Markdown returned by `hub_v2_upload_markdown_image`.
 - `hub_v2_rd_create`: preview or create an RD item using Personal Token with `rd:create:write`.
 - `hub_v2_rd_advance_stage`: preview or execute RD stage advance using Personal Token with `rd:transition:write`; supports `stageTasks` and `stageTaskTemplates`.
@@ -38,6 +41,22 @@ Write tools are disabled by default MCP policy. Set `NGM_MCP_ALLOW_WRITE=true` i
 2. Insert the returned `markdown` into the target text field.
 3. Preview the target write tool.
 4. Execute the target write with `confirm: true` only after user confirmation.
+
+## File Upload Workflow
+
+1. Use `hub_v2_file_upload` with `target`, plus `filePath` or `contentBase64 + fileName`.
+2. Keep the returned `uploadId`.
+3. Use a business-specific attach tool when available to associate the `uploadId` with an Issue, RD task sheet, or another domain object.
+4. Until the attach step succeeds, report the result as uploaded but not attached.
+
+## Issue Collaboration Branch Workflow
+
+When the user asks to create an Issue collaboration branch, do not create an RD item and do not add only a comment.
+
+1. Use `hub_v2_project_members_list` if the collaborator user id is not known.
+2. Use `hub_v2_issues_participant_add` with `taskTitle` when adding the collaborator and branch task together.
+3. Use `hub_v2_issues_branch_create` when the collaborator already exists on the Issue and needs another branch.
+4. Report the result as an Issue collaboration branch, not an RD item.
 
 Supported target fields:
 
