@@ -14,7 +14,7 @@ const projectSchema = z.object({
 export function angularStandardTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.angular.validateStructure",
+      name: "ngm_angular_validate_structure",
       description: "Validate configured Angular pages/components/services/models directory structure.",
       riskLevel: "read",
       inputSchema: projectSchema,
@@ -22,11 +22,11 @@ export function angularStandardTools(): McpToolDefinition[] {
         const project = await resolveProjectRoot(context, args);
         const loaded = await loadFrontendStandard(project);
         const files = await scanFrontendProject(project.projectRoot);
-        return ok("ngm.angular.validateStructure", validateAngularStructure(files, loaded.standard));
+        return ok("ngm_angular_validate_structure", validateAngularStructure(files, loaded.standard));
       },
     },
     {
-      name: "ngm.angular.validateComponentNaming",
+      name: "ngm_angular_validate_component_naming",
       description: "Validate Angular component file suffix naming for page/component/dialog/drawer/table/form conventions.",
       riskLevel: "read",
       inputSchema: projectSchema,
@@ -34,11 +34,11 @@ export function angularStandardTools(): McpToolDefinition[] {
         const project = await resolveProjectRoot(context, args);
         const loaded = await loadFrontendStandard(project);
         const files = await scanFrontendProject(project.projectRoot);
-        return ok("ngm.angular.validateComponentNaming", validateComponentNaming(files, loaded.standard));
+        return ok("ngm_angular_validate_component_naming", validateComponentNaming(files, loaded.standard));
       },
     },
     {
-      name: "ngm.angular.validateComponentBoundary",
+      name: "ngm_angular_validate_component_boundary",
       description: "Detect large components, obvious any usage, hardcoded remote API URLs, and page placement issues.",
       riskLevel: "read",
       inputSchema: projectSchema,
@@ -46,7 +46,7 @@ export function angularStandardTools(): McpToolDefinition[] {
         const project = await resolveProjectRoot(context, args);
         const loaded = await loadFrontendStandard(project);
         const files = await scanFrontendProject(project.projectRoot);
-        return ok("ngm.angular.validateComponentBoundary", validateComponentBoundary(files, loaded.standard));
+        return ok("ngm_angular_validate_component_boundary", validateComponentBoundary(files, loaded.standard));
       },
     },
   ];

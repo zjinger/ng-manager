@@ -40,17 +40,17 @@ Use `hub-v2-api` or `hub-v2-docs` for those tasks.
 When available, prefer MCP tools with names like:
 
 ```text
-ngm.nginx.status
-ngm.nginx.servers.list
-ngm.nginx.server.get
-ngm.nginx.upstreams.list
-ngm.nginx.config.validate
-ngm.nginx.config.getMain
-ngm.nginx.logs.tail
+ngm_nginx_status
+ngm_nginx_servers_list
+ngm_nginx_server_get
+ngm_nginx_upstreams_list
+ngm_nginx_config_validate
+ngm_nginx_config_get_main
+ngm_nginx_logs_tail
 ngm_nginx_reload
 ngm_nginx_proxy_save
-ngm.proxy.list
-ngm.proxy.validate
+ngm_proxy_list
+ngm_proxy_validate
 ```
 
 If exact tool names differ, choose tools whose descriptions mention:

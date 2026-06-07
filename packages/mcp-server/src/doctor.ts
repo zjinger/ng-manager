@@ -185,11 +185,11 @@ function toolsSection(): { lines: string[]; status: DoctorStatus } {
 function enterpriseMvpSection(): { lines: string[]; status: DoctorStatus } {
   const names = new Set(allTools().map((tool) => tool.name));
   const required = {
-    frontendStandard: ["ngm.standard.get", "ngm.standard.init", "ngm.standard.validateProject"],
-    workflow: ["ngm.workflow.createFrontendTask", "ngm.workflow.generateDevPlan", "ngm.workflow.advanceStatus", "ngm.workflow.validateBeforeCommit", "ngm.workflow.generateDeliveryReport"],
-    audit: ["ngm.standard.init", "ngm.workflow.createFrontendTask", "ngm.review.generateReport"],
-    patchPreview: ["ngm.workspace.diff", "ngm.workspace.applyPatchPreview"],
-    dottedAliases: ["ngm.project.runScript", "ngm.project.stop", "ngm.runtime.setForProject", "ngm.nginx.reload", "ngm.nginx.proxy.save"],
+    frontendStandard: ["ngm_standard_get", "ngm_standard_init", "ngm_standard_validate_project"],
+    workflow: ["ngm_workflow_create_frontend_task", "ngm_workflow_generate_dev_plan", "ngm_workflow_advance_status", "ngm_workflow_validate_before_commit", "ngm_workflow_generate_delivery_report"],
+    audit: ["ngm_standard_init", "ngm_workflow_create_frontend_task", "ngm_review_generate_report"],
+    patchPreview: ["ngm_workspace_diff", "ngm_workspace_apply_patch_preview"],
+    dottedAliases: ["ngm_project_run_script", "ngm_project_stop", "ngm_runtime_set_for_project", "ngm_nginx_reload", "ngm_nginx_proxy_save"],
   };
   const missing = Object.entries(required)
     .flatMap(([group, tools]) => tools.filter((tool) => !names.has(tool)).map((tool) => `${group}:${tool}`));

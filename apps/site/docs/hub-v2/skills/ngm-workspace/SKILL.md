@@ -49,17 +49,17 @@ Use this skill with more specific local skills when needed:
 When available, prefer MCP tools with names like:
 
 ```text
-ngm.capabilities
-ngm.routeTask
-ngm.workspace.summary
-ngm.workspace.listPackages
-ngm.workspace.getPackage
-ngm.workspace.mcpTools
-ngm.workspace.capabilityMap
-ngm.project.list
-ngm.project.get
-ngm.runtime.list
-ngm.nginx.status
+ngm_capabilities
+ngm_route_task
+ngm_workspace_summary
+ngm_workspace_list_packages
+ngm_workspace_get_package
+ngm_workspace_mcp_tools
+ngm_workspace_capability_map
+ngm_project_managed_list
+ngm_project_get
+ngm_runtime_list
+ngm_nginx_status
 ```
 
 If exact tool names differ, choose tools whose descriptions mention:

@@ -34,27 +34,27 @@ function runtimeConfigForProject(project: Project): NodeRuntimeConfig {
 export function runtimeTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.runtime.current",
+      name: "ngm_runtime_current",
       description: "Read current Node version manager information known to ng-manager.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
       async handler(_args, context) {
         const current = await context.services.core.nodeVersion.getCurrentVersion();
-        return ok("ngm.runtime.current", current);
+        return ok("ngm_runtime_current", current);
       },
     },
     {
-      name: "ngm.runtime.list",
+      name: "ngm_runtime_list",
       description: "List Node runtimes known to ng-manager.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
       async handler(_args, context) {
         const runtimes = await context.services.core.nodeRuntime.listRuntimes();
-        return ok("ngm.runtime.list", runtimes);
+        return ok("ngm_runtime_list", runtimes);
       },
     },
     {
-      name: "ngm.runtime.resolveForProject",
+      name: "ngm_runtime_resolve_for_project",
       description: "Resolve the Node runtime ng-manager would use for a project.",
       riskLevel: "read",
       inputSchema: projectLocatorSchema,
@@ -62,7 +62,7 @@ export function runtimeTools(): McpToolDefinition[] {
         const project = await resolveProject(context, args);
         const requestedRuntime = runtimeConfigForProject(project);
         const resolvedRuntime = await context.services.core.nodeRuntime.resolveRuntime(requestedRuntime);
-        return ok("ngm.runtime.resolveForProject", {
+        return ok("ngm_runtime_resolve_for_project", {
           project: {
             id: project.id,
             name: project.name,
@@ -77,7 +77,7 @@ export function runtimeTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.runtime.detectRequirement",
+      name: "ngm_runtime_detect_requirement",
       description: "Detect Node version requirements for a project path or registered ng-manager project.",
       riskLevel: "read",
       inputSchema: projectLocatorSchema,
@@ -100,7 +100,7 @@ export function runtimeTools(): McpToolDefinition[] {
         }
 
         const requirement = await context.services.core.nodeVersion.detectProjectRequirement(projectPath);
-        return ok("ngm.runtime.detectRequirement", {
+        return ok("ngm_runtime_detect_requirement", {
           project,
           requirement,
         });

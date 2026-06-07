@@ -27,7 +27,7 @@ function clampSearchLimit(value: number | undefined): number {
 export function logTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.log.tail",
+      name: "ngm_log_tail",
       description: "Read recent task logs by runId or taskId.",
       riskLevel: "read",
       inputSchema: logTailSchema,
@@ -39,7 +39,7 @@ export function logTools(): McpToolDefinition[] {
 
         if (!runId && args.taskId) {
           if (!availability.available || !localServer) {
-            return ok("ngm.log.tail", {
+            return ok("ngm_log_tail", {
               controlPlane: "unavailable",
               localServer: availability,
               status: "unavailable",
@@ -58,7 +58,7 @@ export function logTools(): McpToolDefinition[] {
         }
 
         if (!availability.available || !localServer) {
-          return ok("ngm.log.tail", {
+          return ok("ngm_log_tail", {
             controlPlane: "unavailable",
             localServer: availability,
             status: "unavailable",
@@ -70,7 +70,7 @@ export function logTools(): McpToolDefinition[] {
         }
         const controlPlane = "local-server";
         const lines = await localServer.getTaskLogTail(runId, tail);
-        return ok("ngm.log.tail", {
+        return ok("ngm_log_tail", {
           controlPlane,
           localServer: availability,
           runId,
@@ -80,7 +80,7 @@ export function logTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.log.search",
+      name: "ngm_log_search",
       description: "Search recent ng-manager system logs by keyword.",
       riskLevel: "read",
       inputSchema: logSearchSchema,
@@ -99,7 +99,7 @@ export function logTools(): McpToolDefinition[] {
           })
           .slice(0, limit);
 
-        return ok("ngm.log.search", {
+        return ok("ngm_log_search", {
           query: args.query,
           limit,
           entries,

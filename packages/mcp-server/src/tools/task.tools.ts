@@ -13,7 +13,7 @@ const taskStatusSchema = z.object({
 export function taskTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.task.list",
+      name: "ngm_task_list",
       description: "List registered task views for a project, or active tasks when projectId is omitted.",
       riskLevel: "read",
       inputSchema: taskListSchema,
@@ -23,21 +23,21 @@ export function taskTools(): McpToolDefinition[] {
         if (availability.available && localServer) {
           if (args.projectId) {
             const rows = await localServer.listTaskViews(args.projectId);
-            return ok("ngm.task.list", {
+            return ok("ngm_task_list", {
               controlPlane: "local-server",
               localServer: availability,
               rows,
             });
           }
           const activeTasks = await localServer.listActiveTasks();
-          return ok("ngm.task.list", {
+          return ok("ngm_task_list", {
             controlPlane: "local-server",
             localServer: availability,
             activeTasks,
           });
         }
 
-        return ok("ngm.task.list", {
+        return ok("ngm_task_list", {
           controlPlane: "unavailable",
           localServer: availability,
           status: "unavailable",
@@ -48,7 +48,7 @@ export function taskTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.task.getStatus",
+      name: "ngm_task_get_status",
       description: "Get the runtime status for a registered task.",
       riskLevel: "read",
       inputSchema: taskStatusSchema,
@@ -57,14 +57,14 @@ export function taskTools(): McpToolDefinition[] {
         const availability = localServer ? await localServer.availability() : { available: false, reason: "local server client is not configured" };
         if (availability.available && localServer) {
           const runtime = await localServer.getTaskStatus(args.taskId);
-          return ok("ngm.task.getStatus", {
+          return ok("ngm_task_get_status", {
             controlPlane: "local-server",
             localServer: availability,
             runtime,
           });
         }
 
-        return ok("ngm.task.getStatus", {
+        return ok("ngm_task_get_status", {
           controlPlane: "unavailable",
           localServer: availability,
           status: "unavailable",

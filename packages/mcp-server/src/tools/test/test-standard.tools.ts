@@ -13,7 +13,7 @@ const projectSchema = z.object({
 export function testStandardTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.test.detectMissingSpecs",
+      name: "ngm_test_detect_missing_specs",
       description: "Detect service/util/complex component files that should have frontend spec coverage. MVP emits warnings only.",
       riskLevel: "read",
       inputSchema: projectSchema,
@@ -21,11 +21,11 @@ export function testStandardTools(): McpToolDefinition[] {
         const project = await resolveProjectRoot(context, args);
         const loaded = await loadFrontendStandard(project);
         const files = await scanFrontendProject(project.projectRoot);
-        return ok("ngm.test.detectMissingSpecs", detectMissingSpecs(files, loaded.standard));
+        return ok("ngm_test_detect_missing_specs", detectMissingSpecs(files, loaded.standard));
       },
     },
     {
-      name: "ngm.test.generateSpecPlan",
+      name: "ngm_test_generate_spec_plan",
       description: "Generate a lightweight spec plan for missing service/util/component specs.",
       riskLevel: "read",
       inputSchema: projectSchema,
@@ -33,18 +33,18 @@ export function testStandardTools(): McpToolDefinition[] {
         const project = await resolveProjectRoot(context, args);
         const loaded = await loadFrontendStandard(project);
         const files = await scanFrontendProject(project.projectRoot);
-        return ok("ngm.test.generateSpecPlan", generateSpecPlan(files, loaded.standard));
+        return ok("ngm_test_generate_spec_plan", generateSpecPlan(files, loaded.standard));
       },
     },
     {
-      name: "ngm.test.validateNaming",
+      name: "ngm_test_validate_naming",
       description: "Validate frontend test file naming, preferring Angular .spec.ts files.",
       riskLevel: "read",
       inputSchema: projectSchema,
       async handler(args, context) {
         const project = await resolveProjectRoot(context, args);
         const files = await scanFrontendProject(project.projectRoot);
-        return ok("ngm.test.validateNaming", validateSpecNaming(files));
+        return ok("ngm_test_validate_naming", validateSpecNaming(files));
       },
     },
   ];

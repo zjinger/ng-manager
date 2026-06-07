@@ -56,53 +56,53 @@ async function optionalGitValue<T>(read: (() => Promise<T>) | undefined, fallbac
 export function gitTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.git.status",
+      name: "ngm_git_status",
       description: "Read Git working tree status for a project using fixed read-only git status/branch commands.",
       riskLevel: "read",
       inputSchema: gitProjectSchema,
       async handler(args, context) {
         const data = await context.services.git.status(await normalizeGitArgs(context, args));
-        return ok("ngm.git.status", data);
+        return ok("ngm_git_status", data);
       },
     },
     {
-      name: "ngm.git.diff",
+      name: "ngm_git_diff",
       description: "Read Git diff for a project using a fixed read-only git diff command.",
       riskLevel: "read",
       inputSchema: gitDiffSchema,
       async handler(args, context) {
         const data = await context.services.git.diff(await normalizeGitArgs(context, args));
-        return ok("ngm.git.diff", data);
+        return ok("ngm_git_diff", data);
       },
     },
     {
-      name: "ngm.git.validateBranchName",
+      name: "ngm_git_validate_branch_name",
       description: "Validate a branch name against the configured frontend standard.",
       riskLevel: "read",
       inputSchema: branchNameSchema,
       async handler(args, context) {
         const loaded = await standardFor(context, args);
-        return ok("ngm.git.validateBranchName", {
+        return ok("ngm_git_validate_branch_name", {
           standardSource: loaded.source,
           ...validateBranchName(args.branchName, loaded.standard),
         });
       },
     },
     {
-      name: "ngm.git.validateCommitMessage",
+      name: "ngm_git_validate_commit_message",
       description: "Validate a commit message against the configured frontend standard.",
       riskLevel: "read",
       inputSchema: commitMessageSchema,
       async handler(args, context) {
         const loaded = await standardFor(context, args);
-        return ok("ngm.git.validateCommitMessage", {
+        return ok("ngm_git_validate_commit_message", {
           standardSource: loaded.source,
           ...validateCommitMessage(args.message, loaded.standard),
         });
       },
     },
     {
-      name: "ngm.git.generateCommitMessage",
+      name: "ngm_git_generate_commit_message",
       description: "Generate a commit message that follows the configured frontend standard.",
       riskLevel: "read",
       inputSchema: generateCommitMessageSchema,
@@ -113,14 +113,14 @@ export function gitTools(): McpToolDefinition[] {
           scope: args.scope,
           summary: args.summary,
         }, loaded.standard);
-        return ok("ngm.git.generateCommitMessage", {
+        return ok("ngm_git_generate_commit_message", {
           message,
           validation: validateCommitMessage(message, loaded.standard),
         });
       },
     },
     {
-      name: "ngm.git.generateReviewSummary",
+      name: "ngm_git_generate_review_summary",
       description: "Generate a compact review summary from changed files and read-only Git context.",
       riskLevel: "read",
       inputSchema: reviewSummarySchema,
@@ -138,7 +138,7 @@ export function gitTools(): McpToolDefinition[] {
           context.services.git.latestLog ? () => context.services.git.latestLog!(gitArgs) : undefined,
           undefined
         );
-        return ok("ngm.git.generateReviewSummary", {
+        return ok("ngm_git_generate_review_summary", {
           branch,
           latest,
           changedFiles,

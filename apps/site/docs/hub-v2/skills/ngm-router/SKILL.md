@@ -73,17 +73,17 @@ If the task involves local execution, local files, local packages, local process
 If the MCP server exposes capability discovery tools, call them first:
 
 ```text
-ngm.capabilities
-ngm.routeTask
+ngm_capabilities
+ngm_route_task
 ```
 
 If those tools are not available, inspect available MCP tools and prefer tools with names or domains related to:
 
 ```text
-ngm.project
-ngm.runtime
-ngm.nginx
-ngm.workspace
+ngm_project
+ngm_runtime
+ngm_nginx
+ngm_workspace
 project
 runtime
 node

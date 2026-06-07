@@ -2,28 +2,28 @@ import type { ToolCatalogEntry } from "../types";
 
 export const runtimeTools: ToolCatalogEntry[] = [
   {
-    name: "ngm.runtime.current",
+    name: "ngm_runtime_current",
     skill: "ngm-runtime",
     capability: "runtime",
     riskLevel: "read",
     description: "Read current Node version manager information.",
   },
   {
-    name: "ngm.runtime.list",
+    name: "ngm_runtime_list",
     skill: "ngm-runtime",
     capability: "runtime",
     riskLevel: "read",
     description: "List Node runtimes known to ng-manager.",
   },
   {
-    name: "ngm.runtime.resolveForProject",
+    name: "ngm_runtime_resolve_for_project",
     skill: "ngm-runtime",
     capability: "runtime",
     riskLevel: "read",
     description: "Resolve the Node runtime ng-manager would use for a project.",
   },
   {
-    name: "ngm.runtime.detectRequirement",
+    name: "ngm_runtime_detect_requirement",
     skill: "ngm-runtime",
     capability: "runtime",
     riskLevel: "read",
@@ -37,7 +37,7 @@ export const runtimeTools: ToolCatalogEntry[] = [
     description: "Preview or set a registered projectId's Node runtime binding through the local server; preferred over config/shell edits and audit logged when confirmed.",
   },
   {
-    name: "ngm.runtime.setForProject",
+    name: "ngm_runtime_set_for_project",
     skill: "ngm-runtime",
     capability: "runtime",
     riskLevel: "write",

@@ -125,7 +125,7 @@ function runScriptTool(): McpToolDefinition {
         packageManager,
         requestedRuntime,
         resolvedRuntime,
-        logHint: "Use ngm.log.tail with taskId or runId after execution.",
+        logHint: "Use ngm_log_tail with taskId or runId after execution.",
       };
 
       if (!confirmed) return ok("ngm_project_run_script", preview);
@@ -176,7 +176,7 @@ function runScriptTool(): McpToolDefinition {
         taskId: row.spec.id,
         runtime,
         launch,
-        logHint: `Use ngm.log.tail with taskId=${row.spec.id}${runId ? ` or runId=${runId}` : ""}.`,
+        logHint: `Use ngm_log_tail with taskId=${row.spec.id}${runId ? ` or runId=${runId}` : ""}.`,
       });
     },
   };

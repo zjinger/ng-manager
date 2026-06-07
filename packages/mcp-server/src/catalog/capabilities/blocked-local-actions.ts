@@ -11,5 +11,5 @@ export const blockedLocalActions = [
   "kill arbitrary PIDs",
   "write arbitrary project-external file paths",
   "write frontend standard, review, or workflow files outside project-local .ng-manager/**",
-  "apply patch previews to source files; ngm.workspace.applyPatchPreview never writes files",
+  "apply patch previews to source files; ngm_workspace_apply_patch_preview never writes files",
 ];

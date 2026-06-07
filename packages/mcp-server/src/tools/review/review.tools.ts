@@ -39,29 +39,29 @@ async function readChangedFiles(context: ToolContext, args: z.infer<typeof chang
 export function reviewTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.review.scanChangedFiles",
+      name: "ngm_review_scan_changed_files",
       description: "Read changed files from a fixed read-only git status command, or echo provided changedFiles.",
       riskLevel: "read",
       inputSchema: changedFilesSchema,
       async handler(args, context) {
         const project = await resolveProjectRoot(context, args);
         const changedFiles = await readChangedFiles(context, args, project.projectRoot);
-        return ok("ngm.review.scanChangedFiles", { project, changedFiles });
+        return ok("ngm_review_scan_changed_files", { project, changedFiles });
       },
     },
     {
-      name: "ngm.review.generateChecklist",
+      name: "ngm_review_generate_checklist",
       description: "Generate a frontend code review checklist for the current changed files.",
       riskLevel: "read",
       inputSchema: changedFilesSchema,
       async handler(args, context) {
         const project = await resolveProjectRoot(context, args);
         const changedFiles = await readChangedFiles(context, args, project.projectRoot);
-        return ok("ngm.review.generateChecklist", { changedFiles, checklist: reviewChecklist(changedFiles) });
+        return ok("ngm_review_generate_checklist", { changedFiles, checklist: reviewChecklist(changedFiles) });
       },
     },
     {
-      name: "ngm.review.detectRisks",
+      name: "ngm_review_detect_risks",
       description: "Detect lightweight review risks in changed frontend files.",
       riskLevel: "read",
       inputSchema: changedFilesSchema,
@@ -70,14 +70,14 @@ export function reviewTools(): McpToolDefinition[] {
         const loaded = await loadFrontendStandard(project);
         const changedFiles = await readChangedFiles(context, args, project.projectRoot);
         const files = await scanFrontendProject(project.projectRoot);
-        return ok("ngm.review.detectRisks", {
+        return ok("ngm_review_detect_risks", {
           changedFiles,
           ...detectReviewRisks(files, changedFiles, loaded.standard),
         });
       },
     },
     {
-      name: "ngm.review.generateReport",
+      name: "ngm_review_generate_report",
       description: "Preview or write .ng-manager/reports/review-{taskId}.md with changed files, automated checks, risks, suggestions, and manual confirmation items.",
       riskLevel: "write",
       allowPreviewWhenBlocked: true,
@@ -114,13 +114,13 @@ export function reviewTools(): McpToolDefinition[] {
           changedFiles,
           markdown,
         };
-        if (!isConfirmed(args)) return ok("ngm.review.generateReport", preview);
+        if (!isConfirmed(args)) return ok("ngm_review_generate_report", preview);
         const policyBlock = requireWritePolicy("low", safetyMessage);
-        if (policyBlock) return ok("ngm.review.generateReport", policyBlock);
+        if (policyBlock) return ok("ngm_review_generate_report", policyBlock);
         try {
           const task = await readFrontendTask(project, args.taskId);
           if (!canTransitionWorkflowStatus(task.status, "review-ready")) {
-            return ok("ngm.review.generateReport", blocked("write", "low", safetyMessage, workflowTransitionReason(task.status, "review-ready")));
+            return ok("ngm_review_generate_report", blocked("write", "low", safetyMessage, workflowTransitionReason(task.status, "review-ready")));
           }
           await writeTextFile(reportPath, markdown);
           await updateFrontendTask(project, args.taskId, {
@@ -134,9 +134,9 @@ export function reviewTools(): McpToolDefinition[] {
             },
           });
         } catch (error) {
-          return ok("ngm.review.generateReport", blocked("write", "low", safetyMessage, error instanceof Error ? error.message : String(error)));
+          return ok("ngm_review_generate_report", blocked("write", "low", safetyMessage, error instanceof Error ? error.message : String(error)));
         }
-        return ok("ngm.review.generateReport", {
+        return ok("ngm_review_generate_report", {
           ...preview,
           operation: operation("executed", "write", "low", safetyMessage),
           changedFiles: [

@@ -52,7 +52,6 @@ function registerMcpTool(server: Pick<McpServer, "registerTool">, tool: McpToolD
 
 export function registerTools(server: McpServer, context: ToolContext): void {
   const policy = createDefaultToolPolicy();
-
   for (const tool of allTools()) {
     registerMcpTool(
       server,
@@ -71,6 +70,7 @@ export function registerTools(server: McpServer, context: ToolContext): void {
             assertToolPolicy(policy, tool.name, tool.riskLevel);
           }
           result = await tool.handler(parsedArgs, context);
+          result = { ...result, tool: tool.name };
           if (shouldWriteAudit(tool, confirmed, result)) {
             try {
               await writeAuditLog(context, {
