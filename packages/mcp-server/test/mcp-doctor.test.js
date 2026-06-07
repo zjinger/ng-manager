@@ -127,11 +127,11 @@ test("doctor reports tool counts without executing tool handlers", async () => {
       assert.match(report.text, /  write: \d+/);
       assert.match(report.text, /  execute: \d+/);
       assert.match(report.text, /  dangerous: \d+/);
-      assert.match(report.text, /Enterprise MVP:/);
-      assert.match(report.text, /frontendStandard: available/);
-      assert.match(report.text, /workflow: available/);
-      assert.match(report.text, /audit: project-local \.ng-manager\/audit\/mcp-YYYY-MM-DD\.jsonl/);
-      assert.match(report.text, /dottedAliases: available/);
+      assert.equal(report.text.includes("Enterprise MVP:"), false);
+      assert.equal(report.text.includes("frontendStandard:"), false);
+      assert.equal(report.text.includes("workflow:"), false);
+      assert.equal(report.text.includes("patchPreview:"), false);
+      assert.equal(report.text.includes("dottedAliases:"), false);
     })
   );
 });
