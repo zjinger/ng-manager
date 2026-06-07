@@ -1,0 +1,7 @@
+interface:
+  display_name: "NGM MCP Maintenance"
+  short_description: "Maintain NGM MCP tools and docs"
+  default_prompt: "Use $ngm-mcp-maintenance to add or update an ng-manager MCP tool and synchronize related Hub V2 documentation."
+
+policy:
+  allow_implicit_invocation: true
