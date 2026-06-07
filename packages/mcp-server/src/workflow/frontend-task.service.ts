@@ -2,7 +2,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import type { ResolvedProjectRoot } from "../filesystem/project-files";
 import { projectRelativePath, resolveNgManagerPath, validateSafeId, writeJsonFile, writeTextFile } from "../filesystem/project-files";
-import type { FrontendTask } from "./frontend-task.schema";
+import type { FrontendTask, WorkflowChecks } from "./frontend-task.schema";
 import { frontendTaskSchema } from "./frontend-task.schema";
 import type { FrontendWorkflowStatus } from "./workflow-status";
 
@@ -37,6 +37,15 @@ export function taskFile(projectRoot: string, taskId: string, fileName: string):
   return resolveNgManagerPath(projectRoot, "frontend-tasks", taskId, fileName);
 }
 
+export function pendingWorkflowChecks(): WorkflowChecks {
+  return {
+    standard: "pending",
+    test: "pending",
+    review: "pending",
+    build: "pending",
+  };
+}
+
 export async function readFrontendTask(project: ResolvedProjectRoot, taskId: string): Promise<FrontendTask> {
   const raw = await fs.readFile(taskFile(project.projectRoot, taskId, "task.json"), "utf-8");
   return frontendTaskSchema.parse(JSON.parse(raw));
@@ -56,12 +65,16 @@ export async function createFrontendTask(project: ResolvedProjectRoot, input: {
   const now = new Date().toISOString();
   const task: FrontendTask = {
     taskId: input.taskId || createTaskId(input.title),
-    title: input.title,
-    description: input.description,
     status: "draft",
     projectId: project.projectId,
+    projectRoot: project.projectRoot,
+    title: input.title,
+    description: input.description ?? "",
     createdAt: now,
     updatedAt: now,
+    designContextPath: null,
+    changedFiles: [],
+    checks: pendingWorkflowChecks(),
   };
   validateSafeId("taskId", task.taskId);
   const dir = taskDir(project.projectRoot, task.taskId);
@@ -73,6 +86,19 @@ export async function createFrontendTask(project: ResolvedProjectRoot, input: {
 export async function updateTaskStatus(project: ResolvedProjectRoot, taskId: string, status: FrontendWorkflowStatus): Promise<FrontendTask> {
   const task = await readFrontendTask(project, taskId);
   const updated = { ...task, status, updatedAt: new Date().toISOString() };
+  await writeFrontendTask(project, updated);
+  return updated;
+}
+
+export async function updateFrontendTask(project: ResolvedProjectRoot, taskId: string, patch: Partial<Omit<FrontendTask, "taskId" | "createdAt">>): Promise<FrontendTask> {
+  const task = await readFrontendTask(project, taskId);
+  const updated = frontendTaskSchema.parse({
+    ...task,
+    ...patch,
+    taskId: task.taskId,
+    createdAt: task.createdAt,
+    updatedAt: new Date().toISOString(),
+  });
   await writeFrontendTask(project, updated);
   return updated;
 }

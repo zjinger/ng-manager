@@ -17,6 +17,8 @@ const NEW_READ_TOOLS = [
   "ngm.workspace.getPackage",
   "ngm.workspace.mcpTools",
   "ngm.workspace.capabilityMap",
+  "ngm.workspace.diff",
+  "ngm.workspace.applyPatchPreview",
   "ngm.project.find",
   "ngm.project.readPackageJson",
   "ngm.runtime.current",
@@ -100,10 +102,15 @@ test("registers project observation tools as read-only tools", () => {
 
 test("registers controlled NGM tools with write or execute risk", () => {
   assert.equal(tool("ngm_project_run_script").riskLevel, "execute");
+  assert.equal(tool("ngm.project.runScript").riskLevel, "execute");
   assert.equal(tool("ngm_project_stop").riskLevel, "execute");
+  assert.equal(tool("ngm.project.stop").riskLevel, "execute");
   assert.equal(tool("ngm_runtime_set_for_project").riskLevel, "write");
+  assert.equal(tool("ngm.runtime.setForProject").riskLevel, "write");
   assert.equal(tool("ngm_nginx_reload").riskLevel, "execute");
+  assert.equal(tool("ngm.nginx.reload").riskLevel, "execute");
   assert.equal(tool("ngm_nginx_proxy_save").riskLevel, "write");
+  assert.equal(tool("ngm.nginx.proxy.save").riskLevel, "write");
 });
 
 test("confirmed controlled tools are blocked by policy by default", async () => {

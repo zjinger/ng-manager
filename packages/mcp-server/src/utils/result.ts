@@ -15,6 +15,10 @@ export type ToolErrorResult = {
 
 export type ToolResult<T = unknown> = (ToolSuccessResult<T> | ToolErrorResult) & {
   truncated?: true;
+  auditWarning?: {
+    code: string;
+    message: string;
+  };
 };
 
 export function ok<T>(tool: string, data: T): ToolSuccessResult<T> {
@@ -29,6 +33,13 @@ export function fail(tool: string, error: string, metadata: { code?: string; sta
     ...(metadata.code ? { code: metadata.code } : {}),
     ...(metadata.status ? { status: metadata.status } : {}),
     ...(metadata.detail !== undefined ? { detail: metadata.detail } : {}),
+  };
+}
+
+export function withAuditWarning(result: ToolResult, warning: { code: string; message: string }): ToolResult {
+  return {
+    ...result,
+    auditWarning: warning,
   };
 }
 

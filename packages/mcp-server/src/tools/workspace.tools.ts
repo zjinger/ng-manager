@@ -2,6 +2,7 @@ import * as path from "path";
 import { z } from "zod";
 import { ok } from "../utils/result";
 import type { McpToolDefinition } from "./index";
+import { resolveProjectRoot, assertPathInsideProject, projectRelativePath } from "../filesystem/project-files";
 import { capabilityCatalog, toolCatalog } from "./tool-catalog";
 import { listKnownWorkspacePackages, readPackageJsonSummary } from "./workspace-package";
 
@@ -10,8 +11,73 @@ const getPackageSchema = z.object({
   path: z.string().trim().min(1).optional(),
 }).strict();
 
+const workspaceDiffSchema = z.object({
+  projectId: z.string().trim().min(1).optional(),
+  projectPath: z.string().trim().min(1).optional(),
+  maxBytes: z.number().int().min(1).max(200000).optional(),
+}).strict();
+
+const patchPreviewSchema = z.object({
+  projectId: z.string().trim().min(1).optional(),
+  projectPath: z.string().trim().min(1).optional(),
+  patch: z.string().min(1),
+}).strict();
+
 function normalizePath(value: string): string {
   return value.replace(/\\/g, "/").replace(/^\.?\//, "").toLowerCase();
+}
+
+function isForbiddenWorkspacePath(filePath: string): boolean {
+  const normalized = filePath.replace(/\\/g, "/").replace(/^\.?\//, "");
+  const parts = normalized.split("/");
+  return parts.some((part) => ["node_modules", "dist", "build", ".git"].includes(part))
+    || parts.some((part) => part === ".env" || part.startsWith(".env."))
+    || normalized.endsWith(".pem")
+    || normalized.endsWith(".key");
+}
+
+function assertWorkspaceReadablePath(projectRoot: string, filePath: string): string {
+  const normalized = filePath.replace(/\\/g, "/").replace(/^a\//, "").replace(/^b\//, "");
+  if (!normalized || normalized === "/dev/null") return normalized;
+  if (path.isAbsolute(normalized) || normalized.includes("..")) {
+    throw new Error(`Patch path is not project-relative: ${filePath}`);
+  }
+  if (isForbiddenWorkspacePath(normalized)) {
+    throw new Error(`Patch path is forbidden for workspace preview: ${filePath}`);
+  }
+  const resolved = path.resolve(projectRoot, normalized);
+  assertPathInsideProject(projectRoot, resolved);
+  return projectRelativePath(projectRoot, resolved);
+}
+
+function summarizeDiffText(diffText: string, projectRoot: string) {
+  const changed = new Set<string>();
+  let addedLines = 0;
+  let removedLines = 0;
+  for (const line of diffText.split(/\r?\n/)) {
+    const diffMatch = /^diff --git a\/(.+?) b\/(.+)$/.exec(line);
+    if (diffMatch) {
+      changed.add(assertWorkspaceReadablePath(projectRoot, diffMatch[2]));
+      continue;
+    }
+    const fileMatch = /^(?:---|\+\+\+) (?:a|b)\/(.+)$/.exec(line);
+    if (fileMatch) {
+      changed.add(assertWorkspaceReadablePath(projectRoot, fileMatch[1]));
+      continue;
+    }
+    if (line.startsWith("+++") || line.startsWith("---")) continue;
+    if (line.startsWith("+")) addedLines += 1;
+    if (line.startsWith("-")) removedLines += 1;
+  }
+  const changedFiles = [...changed].filter((item) => item !== "/dev/null").sort();
+  return {
+    changedFiles,
+    addedLines,
+    removedLines,
+    summary: changedFiles.length
+      ? `${changedFiles.length} file(s), +${addedLines}/-${removedLines}`
+      : `0 file(s), +${addedLines}/-${removedLines}`,
+  };
 }
 
 function capabilityMap() {
@@ -151,6 +217,44 @@ export function workspaceTools(): McpToolDefinition[] {
         return ok("ngm.workspace.capabilityMap", {
           areas: capabilityMap(),
           capabilities: capabilityCatalog,
+        });
+      },
+    },
+    {
+      name: "ngm.workspace.diff",
+      description: "Read a safe Git diff summary for a project without exposing forbidden workspace paths.",
+      riskLevel: "read",
+      inputSchema: workspaceDiffSchema,
+      async handler(args, context) {
+        const project = await resolveProjectRoot(context, args);
+        const gitArgs = { ...args, projectPath: project.projectRoot };
+        const diff = await context.services.git.diff(gitArgs);
+        const diffText = typeof (diff as { diff?: unknown }).diff === "string" ? (diff as { diff: string }).diff : JSON.stringify(diff);
+        const summary = summarizeDiffText(diffText, project.projectRoot);
+        return ok("ngm.workspace.diff", {
+          project,
+          ...summary,
+          diff,
+        });
+      },
+    },
+    {
+      name: "ngm.workspace.applyPatchPreview",
+      description: "Preview a unified patch without writing files. It rejects forbidden paths and returns changed files plus added/removed line counts.",
+      riskLevel: "read",
+      inputSchema: patchPreviewSchema,
+      async handler(args, context) {
+        const project = await resolveProjectRoot(context, args);
+        const summary = summarizeDiffText(args.patch, project.projectRoot);
+        return ok("ngm.workspace.applyPatchPreview", {
+          project,
+          operation: {
+            status: "preview",
+            type: "write",
+            risk: "medium",
+            safetyMessage: "Patch preview only; no file writes are performed.",
+          },
+          ...summary,
         });
       },
     },

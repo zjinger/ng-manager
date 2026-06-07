@@ -5,15 +5,7 @@ import type { ToolContext } from "../context/tool-context";
 import type { ToolResult } from "../utils/result";
 import { resolveNgManagerPath, resolveProjectRoot } from "../filesystem/project-files";
 import { redactValue } from "./redact";
-
-export type AuditToolEvent = {
-  tool: string;
-  riskLevel: ToolRiskLevel;
-  args?: unknown;
-  result?: ToolResult;
-  error?: unknown;
-  durationMs: number;
-};
+import type { AuditToolEvent, AuditWarning } from "./audit-event";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -58,6 +50,7 @@ export async function writeAuditLog(context: ToolContext, event: AuditToolEvent)
     tool: event.tool,
     riskLevel: event.riskLevel,
     projectId: getString(args, "projectId") ?? project.projectId,
+    projectRoot: project.projectRoot,
     taskId: getString(args, "taskId"),
     status: resultStatus(event.result, event.error),
     changedFiles: changedFilesFromResult(event.result),
@@ -72,4 +65,11 @@ export async function writeAuditLog(context: ToolContext, event: AuditToolEvent)
 
 export function shouldAuditTool(toolName: string, riskLevel: ToolRiskLevel): boolean {
   return riskLevel !== "read" || toolName.startsWith("ngm.workflow.");
+}
+
+export function auditWarning(error: unknown): AuditWarning {
+  return {
+    code: "AUDIT_LOG_WRITE_FAILED",
+    message: error instanceof Error ? error.message : String(error),
+  };
 }

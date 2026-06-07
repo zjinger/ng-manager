@@ -1,11 +1,16 @@
 import { z } from "zod";
 import type { McpToolDefinition } from "../index";
+import type { ToolContext } from "../../context/tool-context";
 import { ok } from "../../utils/result";
 import { resolveProjectRoot } from "../../filesystem/project-files";
 import { blocked, isConfirmed, operation } from "../controlled/operation-result";
 import { requireWritePolicy } from "../controlled/operation-policy";
-import { loadFrontendStandard, validateFrontendProject } from "../../standard/frontend-standard.service";
-import { createFrontendTask, createTaskId, deliveryReportMarkdown, devPlanMarkdown, readFrontendTask, writeTaskMarkdown } from "../../workflow/frontend-task.service";
+import { loadFrontendStandard, scanFrontendProject, validateFrontendProject } from "../../standard/frontend-standard.service";
+import { detectMissingSpecs } from "../../standard/validators/test.validator";
+import { detectReviewRisks } from "../../standard/validators/review.validator";
+import { createFrontendTask, createTaskId, deliveryReportMarkdown, devPlanMarkdown, readFrontendTask, updateFrontendTask, writeTaskMarkdown } from "../../workflow/frontend-task.service";
+import type { CheckStatus, StandardCheckResult } from "../../standard/frontend-standard.schema";
+import type { WorkflowCheckStatus } from "../../workflow/frontend-task.schema";
 
 const projectSchema = z.object({
   projectId: z.string().trim().min(1).optional(),
@@ -31,6 +36,8 @@ const devPlanSchema = projectSchema.extend({
 
 const validateSchema = projectSchema.extend({
   taskId: z.string().trim().min(1).optional(),
+  confirm: z.boolean().optional(),
+  dryRun: z.boolean().optional(),
 }).strict();
 
 const deliverySchema = projectSchema.extend({
@@ -47,6 +54,26 @@ function writePreview(tool: string, safetyMessage: string, data: Record<string, 
     operation: operation("preview", "write", "low", safetyMessage),
     ...data,
   });
+}
+
+function toWorkflowCheckStatus(status: CheckStatus): WorkflowCheckStatus {
+  return status === "passed" || status === "warning" || status === "failed" || status === "blocked" ? status : "pending";
+}
+
+function aggregateValidationStatus(results: StandardCheckResult[]): CheckStatus {
+  if (results.some((item) => item.status === "failed")) return "failed";
+  if (results.some((item) => item.status === "blocked")) return "blocked";
+  if (results.some((item) => item.status === "warning")) return "warning";
+  return "passed";
+}
+
+async function readChangedFiles(context: ToolContext, args: { projectId?: string; projectPath?: string }, projectRoot: string): Promise<string[]> {
+  if (!context.services.git.changedFiles) return [];
+  try {
+    return await context.services.git.changedFiles({ ...args, projectPath: projectRoot });
+  } catch {
+    return [];
+  }
 }
 
 export function frontendWorkflowTools(): McpToolDefinition[] {
@@ -115,34 +142,95 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
     },
     {
       name: "ngm.workflow.validateBeforeWrite",
-      description: "Run lightweight frontend project validation before AI writes source changes.",
-      riskLevel: "read",
+      description: "Preview or persist lightweight frontend project validation before AI writes source changes.",
+      riskLevel: "write",
+      allowPreviewWhenBlocked: true,
+      deferPolicyToHandler: true,
+      isConfirmed,
       inputSchema: validateSchema,
       async handler(args, context) {
         const project = await resolveProjectRoot(context, args);
         const loaded = await loadFrontendStandard(project);
         const validation = await validateFrontendProject(project, loaded.standard);
-        return ok("ngm.workflow.validateBeforeWrite", { project, taskId: args.taskId, ...validation });
+        const test = validation.checks.missingSpecs;
+        const checks = {
+          standard: toWorkflowCheckStatus(validation.status),
+          test: toWorkflowCheckStatus(test.status),
+          review: "pending" as const,
+          build: "pending" as const,
+        };
+        const safetyMessage = "Update frontend workflow pre-write checks in task.json.";
+        const preview = {
+          operation: operation("preview", "write", "low", safetyMessage),
+          project,
+          taskId: args.taskId,
+          checks,
+          validation,
+        };
+        if (!args.taskId || !isConfirmed(args)) return ok("ngm.workflow.validateBeforeWrite", preview);
+        const policyBlock = requireWritePolicy("low", safetyMessage);
+        if (policyBlock) return ok("ngm.workflow.validateBeforeWrite", policyBlock);
+        const task = await updateFrontendTask(project, args.taskId, { checks });
+        return ok("ngm.workflow.validateBeforeWrite", {
+          ...preview,
+          operation: operation("executed", "write", "low", safetyMessage),
+          task,
+          changedFiles: [`.ng-manager/frontend-tasks/${args.taskId}/task.json`],
+        });
       },
     },
     {
       name: "ngm.workflow.validateBeforeCommit",
-      description: "Run lightweight frontend validation and Git changed-file scan before commit.",
-      riskLevel: "read",
+      description: "Preview or persist frontend standard/test/review/Git checks before commit.",
+      riskLevel: "write",
+      allowPreviewWhenBlocked: true,
+      deferPolicyToHandler: true,
+      isConfirmed,
       inputSchema: validateSchema,
       async handler(args, context) {
         const project = await resolveProjectRoot(context, args);
         const loaded = await loadFrontendStandard(project);
         const validation = await validateFrontendProject(project, loaded.standard);
-        let changedFiles: string[] = [];
-        if (context.services.git.changedFiles) {
-          try {
-            changedFiles = await context.services.git.changedFiles({ ...args, projectPath: project.projectRoot });
-          } catch {
-            changedFiles = [];
-          }
-        }
-        return ok("ngm.workflow.validateBeforeCommit", { project, taskId: args.taskId, changedFiles, ...validation });
+        const files = await scanFrontendProject(project.projectRoot);
+        const changedFiles = await readChangedFiles(context, args, project.projectRoot);
+        const test = detectMissingSpecs(files, loaded.standard);
+        const review = detectReviewRisks(files, changedFiles, loaded.standard);
+        const aggregateStatus = aggregateValidationStatus([validation, test, review]);
+        const checks = {
+          standard: toWorkflowCheckStatus(validation.status),
+          test: toWorkflowCheckStatus(test.status),
+          review: toWorkflowCheckStatus(review.status),
+          build: "pending" as const,
+        };
+        const safetyMessage = "Update frontend workflow pre-commit checks in task.json.";
+        const preview = {
+          operation: operation("preview", "write", "low", safetyMessage),
+          project,
+          taskId: args.taskId,
+          status: aggregateStatus,
+          changedFiles,
+          checks,
+          standard: validation,
+          test,
+          review,
+          git: {
+            changedFiles,
+          },
+        };
+        if (!args.taskId || !isConfirmed(args)) return ok("ngm.workflow.validateBeforeCommit", preview);
+        const policyBlock = requireWritePolicy("low", safetyMessage);
+        if (policyBlock) return ok("ngm.workflow.validateBeforeCommit", policyBlock);
+        const task = await updateFrontendTask(project, args.taskId, {
+          checks,
+          changedFiles,
+          status: aggregateStatus === "failed" || aggregateStatus === "blocked" ? "failed" : "verified",
+        });
+        return ok("ngm.workflow.validateBeforeCommit", {
+          ...preview,
+          operation: operation("executed", "write", "low", safetyMessage),
+          task,
+          changedFiles: [`.ng-manager/frontend-tasks/${args.taskId}/task.json`],
+        });
       },
     },
     {

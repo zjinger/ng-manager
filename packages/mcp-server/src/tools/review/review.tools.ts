@@ -2,11 +2,12 @@ import { z } from "zod";
 import type { McpToolDefinition } from "../index";
 import type { ToolContext } from "../../context/tool-context";
 import { ok } from "../../utils/result";
-import { resolveNgManagerPath, resolveProjectRoot, projectRelativePath, validateSafeId, writeTextFile } from "../../filesystem/project-files";
+import { resolveProjectRoot, projectRelativePath, validateSafeId, writeTextFile } from "../../filesystem/project-files";
 import { blocked, isConfirmed, operation } from "../controlled/operation-result";
 import { requireWritePolicy } from "../controlled/operation-policy";
 import { loadFrontendStandard, scanFrontendProject, validateFrontendProject } from "../../standard/frontend-standard.service";
 import { detectReviewRisks, generateReviewMarkdown, reviewChecklist } from "../../standard/validators/review.validator";
+import { readFrontendTask, taskFile, updateFrontendTask } from "../../workflow/frontend-task.service";
 
 const projectSchema = z.object({
   projectId: z.string().trim().min(1).optional(),
@@ -102,8 +103,8 @@ export function reviewTools(): McpToolDefinition[] {
           risks: risks.findings,
           checklist,
         });
-        const reportPath = resolveNgManagerPath(project.projectRoot, "reports", `review-${args.taskId}.md`);
-        const safetyMessage = "Write frontend code review report under project .ng-manager/reports.";
+        const reportPath = taskFile(project.projectRoot, args.taskId, "review-report.md");
+        const safetyMessage = "Write frontend code review report under project .ng-manager/frontend-tasks.";
         const preview = {
           operation: operation("preview", "write", "low", safetyMessage),
           project,
@@ -116,14 +117,28 @@ export function reviewTools(): McpToolDefinition[] {
         const policyBlock = requireWritePolicy("low", safetyMessage);
         if (policyBlock) return ok("ngm.review.generateReport", policyBlock);
         try {
+          await readFrontendTask(project, args.taskId);
           await writeTextFile(reportPath, markdown);
+          await updateFrontendTask(project, args.taskId, {
+            status: "review-ready",
+            changedFiles,
+            checks: {
+              standard: projectChecks.status === "passed" || projectChecks.status === "warning" || projectChecks.status === "failed" || projectChecks.status === "blocked" ? projectChecks.status : "pending",
+              test: projectChecks.checks.missingSpecs.status === "passed" || projectChecks.checks.missingSpecs.status === "warning" || projectChecks.checks.missingSpecs.status === "failed" || projectChecks.checks.missingSpecs.status === "blocked" ? projectChecks.checks.missingSpecs.status : "pending",
+              review: risks.status === "passed" || risks.status === "warning" || risks.status === "failed" || risks.status === "blocked" ? risks.status : "pending",
+              build: "pending",
+            },
+          });
         } catch (error) {
           return ok("ngm.review.generateReport", blocked("write", "low", safetyMessage, error instanceof Error ? error.message : String(error)));
         }
         return ok("ngm.review.generateReport", {
           ...preview,
           operation: operation("executed", "write", "low", safetyMessage),
-          changedFiles: [projectRelativePath(project.projectRoot, reportPath)],
+          changedFiles: [
+            projectRelativePath(project.projectRoot, reportPath),
+            `.ng-manager/frontend-tasks/${args.taskId}/task.json`,
+          ],
         });
       },
     },

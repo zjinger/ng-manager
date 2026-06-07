@@ -4,8 +4,8 @@ import { assertToolPolicy } from "./policy/assert-tool-policy";
 import { createDefaultToolPolicy } from "./policy/tool-policy";
 import { allTools, type McpToolDefinition } from "./tools";
 import { errorMessage, errorMetadata } from "./utils/errors";
-import { fail, toMcpTextResult, type ToolResult } from "./utils/result";
-import { shouldAuditTool, writeAuditLog } from "./audit/audit-log.service";
+import { fail, toMcpTextResult, withAuditWarning, type ToolResult } from "./utils/result";
+import { auditWarning, shouldAuditTool, writeAuditLog } from "./audit/audit-log.service";
 
 type McpToolHandler = (args: unknown) => Promise<ReturnType<typeof toMcpTextResult>>;
 type RegisterToolCompat = (
@@ -64,8 +64,8 @@ export function registerTools(server: McpServer, context: ToolContext): void {
                 result,
                 durationMs: Date.now() - startedAt,
               });
-            } catch {
-              // Keep tool responses stable if audit storage is temporarily unavailable.
+            } catch (auditError) {
+              result = withAuditWarning(result, auditWarning(auditError));
             }
           }
           return toMcpTextResult(result);
@@ -81,8 +81,8 @@ export function registerTools(server: McpServer, context: ToolContext): void {
                 error,
                 durationMs: Date.now() - startedAt,
               });
-            } catch {
-              // Keep tool responses stable if audit storage is temporarily unavailable.
+            } catch (auditError) {
+              result = withAuditWarning(result, auditWarning(auditError));
             }
           }
           return toMcpTextResult(result);

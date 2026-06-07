@@ -59,7 +59,7 @@ Project-local frontend standard, review, workflow, and audit files are written o
 .ng-manager/
 ```
 
-Audit logs are written as `.ng-manager/audit/mcp-YYYY-MM-DD.jsonl` for write/execute/workflow tool calls. Audit entries are redacted and do not enable business writes by themselves.
+Audit logs are written as `.ng-manager/audit/mcp-YYYY-MM-DD.jsonl` for write/execute/workflow tool calls. Audit entries are redacted and do not enable business writes by themselves. If audit storage fails, the main tool result stays intact and includes a top-level `auditWarning`.
 
 ## Commands
 
@@ -189,6 +189,8 @@ ngm.workspace.listPackages
 ngm.workspace.getPackage
 ngm.workspace.mcpTools
 ngm.workspace.capabilityMap
+ngm.workspace.diff
+ngm.workspace.applyPatchPreview
 ```
 
 Project metadata:
@@ -251,7 +253,9 @@ ngm.workflow.validateBeforeCommit
 ngm.workflow.generateDeliveryReport
 ```
 
-`ngm.standard.init`, `ngm.review.generateReport`, and `ngm.workflow.*` write tools support preview by default. Confirmed writes require `confirm=true` and `NGM_MCP_ALLOW_WRITE=true`, and may only create project-local `.ng-manager/**` files.
+`ngm.standard.init`, `ngm.review.generateReport`, and `ngm.workflow.*` write tools support preview by default. Confirmed writes require `confirm=true` and `NGM_MCP_ALLOW_WRITE=true`, and may only create project-local `.ng-manager/**` files. Workflow task files live under `.ng-manager/frontend-tasks/{taskId}/` with `task.json`, `dev-plan.md`, `review-report.md`, and `delivery-report.md`.
+
+`ngm.workspace.applyPatchPreview` never writes files. It rejects forbidden paths such as `node_modules`, `dist`, `build`, `.git`, `.env`, `*.pem`, and `*.key`, then returns changed files and added/removed line counts.
 
 Runtime context:
 
@@ -303,6 +307,16 @@ ngm_project_stop             execute, preview by default, local server control p
 ngm_runtime_set_for_project  write, preview by default, local server control plane, confirm=true + NGM_MCP_ALLOW_WRITE=true to save
 ngm_nginx_reload             execute, validates config first, confirm=true + NGM_MCP_ALLOW_EXECUTE=true to reload
 ngm_nginx_proxy_save         write, preview by default, confirm=true + NGM_MCP_ALLOW_WRITE=true to save
+```
+
+Dotted aliases are also registered and should be preferred in new docs and skills:
+
+```text
+ngm.project.runScript
+ngm.project.stop
+ngm.runtime.setForProject
+ngm.nginx.reload
+ngm.nginx.proxy.save
 ```
 
 These tools do not accept arbitrary shell commands, arbitrary PIDs, arbitrary file paths, or system-level Node/Nginx mutations. They adapt existing ng-manager core services and return structured operation status (`preview`, `executed`, `blocked`, or `failed`).
