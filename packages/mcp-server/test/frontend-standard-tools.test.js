@@ -176,8 +176,8 @@ test("ngm.standard.init previews, blocks without write policy, writes with polic
 
     const audit = auditText(projectRoot);
     assert.match(audit, /ngm.standard.init/);
-    assert.match(audit, /blocked/);
     assert.match(audit, /executed/);
+    assert.doesNotMatch(audit, /blocked/);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -584,14 +584,15 @@ test("dotted controlled aliases are registered and keep blocked default write be
       runtime: { type: "system" },
       confirm: true,
     }));
-    assert.equal(result.ok, false);
-    assert.match(result.error, /write tools are disabled/);
+    assert.equal(result.ok, true);
+    assert.equal(result.data.operation.status, "blocked");
+    assert.equal(result.data.errorCode, "WRITE_NOT_ALLOWED");
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
 });
 
-test("audit warning is returned when audit storage fails but preview succeeds", async () => {
+test("preview succeeds without audit writes when audit storage would fail", async () => {
   const fileRoot = path.join(os.tmpdir(), `ngm-audit-file-${Date.now()}`);
   fs.writeFileSync(fileRoot, "not a directory");
   try {
@@ -603,13 +604,13 @@ test("audit warning is returned when audit storage fails but preview succeeds", 
     }));
     assert.equal(result.ok, true);
     assert.equal(result.data.operation.status, "preview");
-    assert.equal(result.auditWarning.code, "AUDIT_LOG_WRITE_FAILED");
+    assert.equal(result.auditWarning, undefined);
   } finally {
     fs.rmSync(fileRoot, { force: true });
   }
 });
 
-test("audit log refuses arbitrary projectPath outside workspaceRoot without blocking main tool", async () => {
+test("preview outside workspaceRoot does not write audit or block main tool", async () => {
   const workspaceRoot = tempProject();
   const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ngm-audit-outside-"));
   try {
@@ -621,7 +622,7 @@ test("audit log refuses arbitrary projectPath outside workspaceRoot without bloc
     }));
     assert.equal(result.ok, true);
     assert.equal(result.data.operation.status, "preview");
-    assert.equal(result.auditWarning.code, "AUDIT_LOG_WRITE_FAILED");
+    assert.equal(result.auditWarning, undefined);
     assert.equal(fs.existsSync(path.join(outsideRoot, ".ng-manager/audit")), false);
   } finally {
     fs.rmSync(workspaceRoot, { recursive: true, force: true });

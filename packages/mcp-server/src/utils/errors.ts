@@ -9,9 +9,14 @@ export function errorMetadata(error: unknown): { code?: string; status?: number;
   if (!error || typeof error !== "object") {
     return {};
   }
-  const record = error as { code?: unknown; status?: unknown; detail?: unknown };
+  const record = error as { code?: unknown; errorCode?: unknown; status?: unknown; detail?: unknown };
+  const code = typeof record.errorCode === "string"
+    ? record.errorCode
+    : typeof record.code === "string"
+      ? record.code
+      : undefined;
   return {
-    code: typeof record.code === "string" ? record.code : undefined,
+    code,
     status: typeof record.status === "number" ? record.status : undefined,
     detail: record.detail,
   };

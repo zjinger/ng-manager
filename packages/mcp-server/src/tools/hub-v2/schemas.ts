@@ -30,6 +30,36 @@ export const docsGetBySlugSchema = projectSelectorSchema.extend({
   contentOnly: z.boolean().optional(),
 }).strict();
 
+export const docsCreateSchema = projectSelectorSchema.extend({
+  title: z.string().trim().min(1).max(120),
+  content: z.string().min(1).optional(),
+  contentMd: z.string().min(1).optional(),
+  slug: z.string().trim().min(1).max(80).optional(),
+  category: z.string().trim().max(80).optional(),
+  categoryId: z.string().trim().max(80).optional(),
+  summary: z.string().trim().max(500).optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+  status: z.enum(["draft"]).optional(),
+  source: z.string().trim().max(40).optional(),
+  version: z.string().trim().max(40).optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const docsUpdateSchema = projectSelectorSchema.extend({
+  docId: z.string().trim().min(1),
+  title: z.string().trim().min(1).max(120).optional(),
+  content: z.string().min(1).optional(),
+  contentMd: z.string().min(1).optional(),
+  slug: z.string().trim().min(1).max(80).optional(),
+  category: z.string().trim().max(80).optional(),
+  categoryId: z.string().trim().max(80).optional(),
+  summary: z.string().trim().max(500).nullable().optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+  source: z.string().trim().max(40).optional(),
+  version: z.string().trim().max(40).nullable().optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
 export const issuesListSchema = projectSelectorSchema.extend({
   page: z.number().int().min(1).optional(),
   pageSize: z.number().int().min(1).max(200).optional(),

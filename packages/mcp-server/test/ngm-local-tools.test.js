@@ -11,6 +11,7 @@ const { registerTools } = require("../lib/register-tools.js");
 
 const NEW_READ_TOOLS = [
   "ngm.capabilities",
+  "ngm_doctor",
   "ngm.routeTask",
   "ngm.workspace.summary",
   "ngm.workspace.listPackages",
@@ -152,16 +153,18 @@ test("confirmed controlled tools are blocked by policy by default", async () => 
     script: "dev",
     confirm: true,
   }));
-  assert.equal(runResult.ok, false);
-  assert.match(runResult.error, /execute tools are disabled/);
+  assert.equal(runResult.ok, true);
+  assert.equal(runResult.data.operation.status, "blocked");
+  assert.equal(runResult.data.errorCode, "EXECUTE_NOT_ALLOWED");
 
   const runtimeResult = parseMcpResult(await registeredTool("ngm_runtime_set_for_project")({
     projectId: "proj_1",
     runtime: { type: "system" },
     confirm: true,
   }));
-  assert.equal(runtimeResult.ok, false);
-  assert.match(runtimeResult.error, /write tools are disabled/);
+  assert.equal(runtimeResult.ok, true);
+  assert.equal(runtimeResult.data.operation.status, "blocked");
+  assert.equal(runtimeResult.data.errorCode, "WRITE_NOT_ALLOWED");
 });
 
 test("ngm_file_write writes only inside the registered project after confirmation and write policy", async () => {
@@ -207,17 +210,21 @@ test("ngm_file_write writes only inside the registered project after confirmatio
     assert.deepEqual(executed.data.changedFiles, ["src/generated.txt"]);
     assert.equal(fs.readFileSync(path.join(tempDir, "src/generated.txt"), "utf-8"), "hello\n");
 
-    await assert.rejects(() => tool("ngm_file_write").handler({
+    const absolutePath = await tool("ngm_file_write").handler({
       projectId: "proj_1",
       relativePath: path.resolve(tempDir, "outside.txt"),
       content: "bad",
-    }, ctx), /relativePath must not be absolute/);
+    }, ctx);
+    assert.equal(absolutePath.ok, false);
+    assert.equal(absolutePath.errorCode, "ABSOLUTE_PATH_DENIED");
 
-    await assert.rejects(() => tool("ngm_file_write").handler({
+    const traversal = await tool("ngm_file_write").handler({
       projectId: "proj_1",
       relativePath: "../outside.txt",
       content: "bad",
-    }, ctx), /relativePath must stay inside/);
+    }, ctx);
+    assert.equal(traversal.ok, false);
+    assert.equal(traversal.errorCode, "PATH_ESCAPE_DENIED");
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
@@ -813,43 +820,48 @@ test("ngm_project_stop requires an explicit locator for confirmed stops", async 
 
   assert.equal(result.ok, true);
   assert.equal(result.data.operation.status, "blocked");
-  assert.match(result.data.reason, /requires taskId, projectId, or projectPath/);
+  assert.match(result.data.reason, /requires taskId or projectId/);
   assert.equal(stopCalled, false);
 });
 
 test("ngm_runtime_set_for_project previews old and new runtime binding", async () => {
-  const result = await tool("ngm_runtime_set_for_project").handler({
-    projectId: "proj_1",
-    runtime: { type: "managed", version: "18.20.0", packageManager: "npm" },
-  }, {
-    services: {
-      core: {
-        project: {
-          async get() {
-            return {
-              id: "proj_1",
-              name: "demo",
-              root: "D:/demo",
-              createdAt: 1,
-              updatedAt: 1,
-              nodeVersion: "16.20.0",
-              packageManager: "npm",
-            };
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ngm-runtime-preview-"));
+  try {
+    const result = await tool("ngm_runtime_set_for_project").handler({
+      projectId: "proj_1",
+      runtime: { type: "managed", version: "18.20.0", packageManager: "npm" },
+    }, {
+      services: {
+        core: {
+          project: {
+            async get() {
+              return {
+                id: "proj_1",
+                name: "demo",
+                root: tempDir,
+                createdAt: 1,
+                updatedAt: 1,
+                nodeVersion: "16.20.0",
+                packageManager: "npm",
+              };
+            },
           },
-        },
-        nodeRuntime: {
-          async resolveRuntime(config) {
-            return { ...config, nodePath: "node18", version: "18.20.0" };
+          nodeRuntime: {
+            async resolveRuntime(config) {
+              return { ...config, nodePath: "node18", version: "18.20.0" };
+            },
           },
         },
       },
-    },
-  });
+    });
 
-  assert.equal(result.ok, true);
-  assert.equal(result.data.operation.status, "preview");
-  assert.equal(result.data.diff.oldRuntime.version, "16.20.0");
-  assert.equal(result.data.diff.newRuntime.version, "18.20.0");
+    assert.equal(result.ok, true);
+    assert.equal(result.data.operation.status, "preview");
+    assert.equal(result.data.diff.oldRuntime.version, "16.20.0");
+    assert.equal(result.data.diff.newRuntime.version, "18.20.0");
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("ngm_runtime_set_for_project blocks confirmed handler write without write env", async () => {
@@ -899,57 +911,62 @@ test("ngm_runtime_set_for_project blocks confirmed handler write without write e
 });
 
 test("ngm_runtime_set_for_project writes through local server when confirmed", async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ngm-runtime-write-"));
   let updatedRuntime = null;
-  const result = await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => tool("ngm_runtime_set_for_project").handler({
-    projectId: "proj_1",
-    runtime: { type: "managed", version: "18.20.0", packageManager: "npm" },
-    confirm: true,
-  }, {
-    services: {
-      localServer: {
-        async availability() {
-          return { available: true, url: "http://127.0.0.1:4360" };
-        },
-        async updateProjectRuntime(_projectId, runtime) {
-          updatedRuntime = runtime;
-          return {
-            id: "proj_1",
-            name: "demo",
-            root: "D:/demo",
-            runtime,
-          };
-        },
-      },
-      core: {
-        project: {
-          async get() {
+  try {
+    const result = await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => tool("ngm_runtime_set_for_project").handler({
+      projectId: "proj_1",
+      runtime: { type: "managed", version: "18.20.0", packageManager: "npm" },
+      confirm: true,
+    }, {
+      services: {
+        localServer: {
+          async availability() {
+            return { available: true, url: "http://127.0.0.1:4360" };
+          },
+          async updateProjectRuntime(_projectId, runtime) {
+            updatedRuntime = runtime;
             return {
               id: "proj_1",
               name: "demo",
-              root: "D:/demo",
-              createdAt: 1,
-              updatedAt: 1,
-              nodeVersion: "16.20.0",
-              packageManager: "npm",
+              root: tempDir,
+              runtime,
             };
           },
-          async update() {
-            throw new Error("runtime write should use local server");
-          },
         },
-        nodeRuntime: {
-          async resolveRuntime(config) {
-            return { ...config, nodePath: "node18", version: "18.20.0" };
+        core: {
+          project: {
+            async get() {
+              return {
+                id: "proj_1",
+                name: "demo",
+                root: tempDir,
+                createdAt: 1,
+                updatedAt: 1,
+                nodeVersion: "16.20.0",
+                packageManager: "npm",
+              };
+            },
+            async update() {
+              throw new Error("runtime write should use local server");
+            },
+          },
+          nodeRuntime: {
+            async resolveRuntime(config) {
+              return { ...config, nodePath: "node18", version: "18.20.0" };
+            },
           },
         },
       },
-    },
-  }));
+    }));
 
-  assert.equal(result.ok, true);
-  assert.deepEqual(updatedRuntime, { type: "managed", version: "18.20.0", packageManager: "npm" });
-  assert.equal(result.data.controlPlane, "local-server");
-  assert.equal(result.data.project.runtime.version, "18.20.0");
+    assert.equal(result.ok, true);
+    assert.deepEqual(updatedRuntime, { type: "managed", version: "18.20.0", packageManager: "npm" });
+    assert.equal(result.data.controlPlane, "local-server");
+    assert.equal(result.data.project.runtime.version, "18.20.0");
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("ngm_nginx_reload validates config and previews without reloading", async () => {

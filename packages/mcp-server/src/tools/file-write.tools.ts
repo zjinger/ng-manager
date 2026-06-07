@@ -1,11 +1,12 @@
-import { existsSync } from "fs";
-import * as path from "path";
 import { z } from "zod";
 import type { McpToolDefinition } from "./index";
-import { blocked, isConfirmed, operation } from "./controlled/operation-result";
-import { requireWritePolicy } from "./controlled/operation-policy";
-import { assertPathInsideProject, projectRelativePath, writeTextFile } from "../filesystem/project-files";
-import { ok } from "../utils/result";
+import { controlledFields, isConfirmed, operation } from "./controlled/operation-result";
+import { requiredEnv, requireWritePolicy } from "./controlled/operation-policy";
+import { projectRelativePath, writeTextFile } from "../filesystem/project-files";
+import { ok, fail } from "../utils/result";
+import { PathGuardService } from "../services/path-guard.service";
+import { ProjectResolverService } from "../services/project-resolver.service";
+import { errorMessage, errorMetadata } from "../utils/errors";
 
 const fileWriteSchema = z.object({
   projectId: z.string().trim().min(1),
@@ -15,54 +16,51 @@ const fileWriteSchema = z.object({
   dryRun: z.boolean().optional(),
 }).strict();
 
-function resolveProjectRelativeFile(projectRoot: string, relativePath: string): string {
-  const normalized = relativePath.replace(/\\/g, "/");
-  if (path.isAbsolute(normalized)) {
-    throw new Error("relativePath must not be absolute");
-  }
-  const parts = normalized.split("/").filter(Boolean);
-  if (!parts.length || parts.includes("..")) {
-    throw new Error("relativePath must stay inside the project directory");
-  }
-  const target = path.resolve(projectRoot, ...parts);
-  assertPathInsideProject(projectRoot, target);
-  return target;
+function pathGuard(context: Parameters<McpToolDefinition["handler"]>[1]): PathGuardService {
+  return (context.services as any).pathGuard ?? new PathGuardService();
+}
+
+function projectResolver(context: Parameters<McpToolDefinition["handler"]>[1]): ProjectResolverService {
+  return (context.services as any).projectResolver ?? new ProjectResolverService(context.services.core.project as any);
 }
 
 export function fileWriteTools(): McpToolDefinition[] {
   return [
     {
       name: "ngm_file_write",
-      description: "Preview or write a text file inside a registered ng-manager project using projectId and a project-relative path.",
+      description: "Controlled write for text files inside a registered ng-manager project. Use this instead of direct filesystem writes when the target is an ng-manager project: it accepts projectId plus project-relative relativePath only, rejects absolute paths and traversal, previews by default, and confirmed writes require NGM_MCP_ALLOW_WRITE=true and are audit logged.",
       riskLevel: "write",
       allowPreviewWhenBlocked: true,
       deferPolicyToHandler: true,
       isConfirmed,
       inputSchema: fileWriteSchema,
       async handler(args, context) {
-        const project = await context.services.core.project.get(args.projectId);
+        const confirmed = isConfirmed(args);
+        const project = await projectResolver(context).resolveProject(args.projectId);
         const safetyMessage = `Write project file "${args.relativePath}" for managed project "${project.name}".`;
-        if (!existsSync(project.root)) {
-          return ok("ngm_file_write", blocked("write", "medium", safetyMessage, "registered project path does not exist", {
-            project: { id: project.id, name: project.name, path: project.root },
-          }));
+        let target: string;
+        try {
+          target = pathGuard(context).resolveInsideProject(project.root, args.relativePath);
+        } catch (error) {
+          return fail("ngm_file_write", errorMessage(error), errorMetadata(error));
         }
-        const target = resolveProjectRelativeFile(project.root, args.relativePath);
         const relativePath = projectRelativePath(project.root, target);
         const preview = {
+          ...controlledFields("write", confirmed, requiredEnv("write")),
           operation: operation("preview", "write", "medium", safetyMessage),
           project: { id: project.id, name: project.name, path: project.root },
           relativePath,
           bytes: Buffer.byteLength(args.content, "utf-8"),
         };
 
-        if (!isConfirmed(args)) return ok("ngm_file_write", preview);
+        if (!confirmed) return ok("ngm_file_write", preview);
         const policyBlock = requireWritePolicy("medium", safetyMessage);
         if (policyBlock) return ok("ngm_file_write", policyBlock);
 
         await writeTextFile(target, args.content);
         return ok("ngm_file_write", {
           ...preview,
+          ...controlledFields("write", true, requiredEnv("write")),
           operation: operation("executed", "write", "medium", safetyMessage),
           changedFiles: [relativePath],
         });

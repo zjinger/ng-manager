@@ -1,7 +1,7 @@
 import type { McpToolDefinition } from "../index";
-import { HubV2Client } from "./client";
+import { compact, compactUndefined, HubV2Client } from "./client";
 import { resolveHubV2Context } from "./config/index";
-import { docsGetBySlugSchema, docsGetSchema, docsListSchema } from "./schemas";
+import { docsCreateSchema, docsGetBySlugSchema, docsGetSchema, docsListSchema, docsUpdateSchema } from "./schemas";
 import { fail, ok } from "../../utils/result";
 
 export function hubV2DocsTools(): McpToolDefinition[] {
@@ -67,6 +67,97 @@ export function hubV2DocsTools(): McpToolDefinition[] {
         return ok("hub_v2_docs_get_by_slug", payload);
       },
     },
+    {
+      name: "hub_v2_docs_create",
+      description: "Preview or create a Hub V2 project document draft with Personal Token.",
+      riskLevel: "write",
+      inputSchema: docsCreateSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        const path = "/docs";
+        if (!hasDocumentContent(args)) {
+          return fail("hub_v2_docs_create", "content or contentMd is required", {
+            code: "VALIDATION_ERROR",
+            detail: { field: "content" },
+          });
+        }
+        const ctx = args.confirm ? resolveHubV2Context(args, "personal") : undefined;
+        const body = compact({
+          title: args.title,
+          content: args.content,
+          contentMd: args.contentMd,
+          slug: args.slug,
+          category: args.category,
+          categoryId: args.categoryId,
+          summary: args.summary,
+          tags: args.tags,
+          status: args.status ?? "draft",
+          source: args.source ?? ctx?.source,
+          version: args.version,
+        });
+        if (!args.confirm) {
+          return ok("hub_v2_docs_create", {
+            code: "PREVIEW",
+            message: "set confirm=true to execute this write operation",
+            data: {
+              method: "POST",
+              path,
+              requiredScope: "doc:create:write",
+              body,
+            },
+          });
+        }
+        const client = new HubV2Client(ctx!);
+        const data = await client.request("POST", client.personalUrl(path), body);
+        return ok("hub_v2_docs_create", data);
+      },
+    },
+    {
+      name: "hub_v2_docs_update",
+      description: "Preview or update a Hub V2 project document with Personal Token.",
+      riskLevel: "write",
+      inputSchema: docsUpdateSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        const path = `/docs/${encodeURIComponent(args.docId)}`;
+        if (!hasDocumentUpdateField(args)) {
+          return fail("hub_v2_docs_update", "at least one document field is required", {
+            code: "VALIDATION_ERROR",
+            detail: { field: "title" },
+          });
+        }
+        const ctx = args.confirm ? resolveHubV2Context(args, "personal") : undefined;
+        const body = compactUndefined({
+          title: args.title,
+          content: args.content,
+          contentMd: args.contentMd,
+          slug: args.slug,
+          category: args.category,
+          categoryId: args.categoryId,
+          summary: args.summary,
+          tags: args.tags,
+          source: args.source ?? ctx?.source,
+          version: args.version,
+        });
+        if (!args.confirm) {
+          return ok("hub_v2_docs_update", {
+            code: "PREVIEW",
+            message: "set confirm=true to execute this write operation",
+            data: {
+              method: "PATCH",
+              path,
+              requiredScope: "doc:update:write",
+              body,
+            },
+          });
+        }
+        const client = new HubV2Client(ctx!);
+        const data = await client.request("PATCH", client.personalUrl(path), body, { preserveNull: true });
+        return ok("hub_v2_docs_update", data);
+      },
+    },
   ];
 }
 
@@ -81,4 +172,30 @@ function extractDocumentContent(payload: Record<string, unknown>): string | unde
     ? (data.item as Record<string, unknown>)
     : undefined;
   return typeof item?.contentMd === "string" ? item.contentMd : undefined;
+}
+
+function hasDocumentContent(args: { content?: string; contentMd?: string }): boolean {
+  return Boolean(args.content?.trim() || args.contentMd?.trim());
+}
+
+function hasDocumentUpdateField(args: {
+  title?: string;
+  content?: string;
+  contentMd?: string;
+  slug?: string;
+  category?: string;
+  categoryId?: string;
+  summary?: string | null;
+  version?: string | null;
+}): boolean {
+  return (
+    args.title !== undefined ||
+    args.content !== undefined ||
+    args.contentMd !== undefined ||
+    args.slug !== undefined ||
+    args.category !== undefined ||
+    args.categoryId !== undefined ||
+    args.summary !== undefined ||
+    args.version !== undefined
+  );
 }

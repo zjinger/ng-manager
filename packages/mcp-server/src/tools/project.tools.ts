@@ -5,6 +5,7 @@ import type { ToolContext } from "../context/tool-context";
 import { ok } from "../utils/result";
 import type { McpToolDefinition } from "./index";
 import { readWorkspacePackageJson } from "./workspace.tools";
+import { ProjectResolverService, type ResolvedProject } from "../services/project-resolver.service";
 
 export const projectLocatorSchema = z.object({
   projectId: z.string().trim().min(1).optional(),
@@ -56,7 +57,7 @@ function toProjectSummary(project: Project): Record<string, unknown> {
   return {
     id: project.id,
     name: project.name,
-    path: project.root,
+    path: project.root.replace(/\\/g, "/"),
     root: project.root,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
@@ -74,15 +75,19 @@ function toProjectSummary(project: Project): Record<string, unknown> {
   };
 }
 
-function scriptNames(project: Project): string[] {
+function projectResolver(context: ToolContext): ProjectResolverService {
+  return (context.services as any).projectResolver ?? new ProjectResolverService(context.services.core.project as any);
+}
+
+function scriptNames(project: Project | ResolvedProject): string[] {
   return Object.keys(project.scripts ?? {}).sort();
 }
 
-function toMcpProjectItem(project: Project): McpProjectItem {
+function toMcpProjectItem(project: Project | ResolvedProject): McpProjectItem {
   return {
     id: project.id,
     name: project.name,
-    path: project.root,
+    path: project.root.replace(/\\/g, "/"),
     framework: project.framework,
     favorite: project.isFavorite,
     scripts: scriptNames(project),
@@ -105,11 +110,11 @@ export function projectTools(): McpToolDefinition[] {
   return [
     {
       name: "ngm_project_list",
-      description: "List projects from the ng-manager local project registry without scanning workspace roots.",
+      description: "List registered ng-manager projects by projectId. Prefer this MCP read tool before direct shell discovery because it uses the ng-manager project registry and does not scan arbitrary workspace roots.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
       async handler(_args, context) {
-        const projects = await context.services.core.project.list();
+        const projects = await projectResolver(context).listProjects();
         return ok("ngm_project_list", projects.map(toMcpProjectItem));
       },
     },

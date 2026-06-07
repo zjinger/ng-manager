@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpToolDefinition } from "../index";
 import type { ToolContext } from "../../context/tool-context";
-import { projectLocatorSchema, resolveProject } from "../project.tools";
+import { resolveProject } from "../project.tools";
 import { ok } from "../../utils/result";
 import { fetchWithTimeout, headersObject, normalizeLocalHost, normalizeLocalUrl, portCheck, readBodyPreview, redactHeaders } from "./local-diagnostics";
 import { redactText } from "./observe-redaction";
@@ -17,7 +17,8 @@ import {
   type RuntimeLike,
 } from "./observe-runtime";
 
-const taskListSchema = projectLocatorSchema.extend({
+const taskListSchema = z.object({
+  projectId: z.string().trim().min(1).optional(),
   activeOnly: z.boolean().optional(),
 }).strict();
 
@@ -38,7 +39,8 @@ const portCheckSchema = z.object({
   timeoutMs: z.number().int().min(50).max(3000).optional(),
 }).strict();
 
-const healthCheckSchema = projectLocatorSchema.extend({
+const healthCheckSchema = z.object({
+  projectId: z.string().trim().min(1).optional(),
   taskId: z.string().trim().min(1).optional(),
   url: z.string().trim().min(1).optional(),
   method: z.enum(["GET", "HEAD"]).optional(),
@@ -54,7 +56,7 @@ async function deriveHealthUrl(context: ToolContext, args: z.infer<typeof health
     const urls = Array.isArray(status.runtime?.urls) ? status.runtime?.urls.filter((item): item is string => typeof item === "string") : [];
     return urls[0] ? { url: urls[0], runtime: status.runtime } : { reason: "task runtime has no detected URL", runtime: status.runtime };
   }
-  if (args.projectId || args.projectPath) {
+  if (args.projectId) {
     const project = await resolveProject(context, args);
     const availability = await localServerAvailability(context);
     const { rows } = await listProjectRows(context, project.id, availability);
@@ -62,7 +64,7 @@ async function deriveHealthUrl(context: ToolContext, args: z.infer<typeof health
     const url = row?.runtime?.urls?.find((item: unknown): item is string => typeof item === "string");
     return url ? { url, runtime: row?.runtime } : { reason: "project has no running task with detected URL" };
   }
-  return { reason: "url, taskId, projectId, or projectPath is required" };
+  return { reason: "url, taskId, or projectId is required" };
 }
 
 function listTasksTool(): McpToolDefinition {
@@ -76,12 +78,12 @@ function listTasksTool(): McpToolDefinition {
       if (!availability.available) {
         return ok("ngm_project_list_tasks", { controlPlane: "unavailable", localServer: availability, status: "unavailable", reason: "ng-manager local server is not running; start it with ngm server or ngm ui to inspect managed task state", taskGroups: [] });
       }
-      if (args.activeOnly && !args.projectId && !args.projectPath) {
+      if (args.activeOnly && !args.projectId) {
         const { tasks, controlPlane } = await activeTasks(context, availability);
         return ok("ngm_project_list_tasks", { controlPlane, localServer: availability, activeOnly: true, tasks: tasks.map(taskSummary) });
       }
 
-      const projects = args.projectId || args.projectPath ? [await resolveProject(context, args)] : await context.services.core.project.list();
+      const projects = args.projectId ? [await resolveProject(context, args)] : await context.services.core.project.list();
       const taskGroups = [];
       for (const project of projects) {
         const { rows, controlPlane } = await listProjectRows(context, project.id, availability);

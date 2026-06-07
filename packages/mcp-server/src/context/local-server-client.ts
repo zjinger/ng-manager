@@ -1,5 +1,6 @@
 import { getLocalServerDataDir, readLocalServerLock } from "@yinuo-ngm/runtime";
 import type { LocalServerAvailability, LocalServerClient } from "./tool-context";
+import { McpErrorCodes } from "../errors/error-codes";
 
 type ApiEnvelope<T> = {
   ok?: boolean;
@@ -99,7 +100,8 @@ function unavailableError(error: unknown): Error {
     ? "request timed out"
     : message;
   const out = new Error(`ng-manager local server is unavailable: ${normalized}`);
-  (out as Error & { code?: string }).code = "NGM_LOCAL_SERVER_UNAVAILABLE";
+  (out as Error & { code?: string; errorCode?: string }).code = McpErrorCodes.LOCAL_SERVER_UNAVAILABLE;
+  (out as Error & { code?: string; errorCode?: string }).errorCode = McpErrorCodes.LOCAL_SERVER_UNAVAILABLE;
   return out;
 }
 

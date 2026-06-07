@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ok } from "../utils/result";
 import type { McpToolDefinition } from "./index";
 import { blockedLocalActions, capabilityCatalog, toolCatalog } from "./tool-catalog";
+import { createDefaultToolPolicy } from "../policy/tool-policy";
 
 const routeTaskSchema = z.object({
   query: z.string().trim().min(1),
@@ -164,6 +165,40 @@ export function capabilityTools(): McpToolDefinition[] {
           capabilities: capabilityCatalog,
           tools: toolCatalog,
           blockedLocalActions,
+        });
+      },
+    },
+    {
+      name: "ngm_doctor",
+      description: "Inspect ng-manager MCP server readiness, policy flags, Hub V2 configuration, and registered tool coverage. Prefer this read-only MCP diagnostic before shell checks because it reports the same controlled server/audit/policy view agents use.",
+      riskLevel: "read",
+      inputSchema: z.object({}).strict(),
+      handler() {
+        const policy = createDefaultToolPolicy();
+        const counts = toolCatalog.reduce<Record<string, number>>((acc, tool) => {
+          acc[tool.riskLevel] = (acc[tool.riskLevel] ?? 0) + 1;
+          return acc;
+        }, {});
+        return ok("ngm_doctor", {
+          status: "OK",
+          runtime: {
+            node: process.version,
+            platform: `${process.platform} ${process.arch}`,
+            cwd: process.cwd(),
+          },
+          policy,
+          tools: {
+            total: toolCatalog.length,
+            counts,
+          },
+          localServer: {
+            discovery: ["runtime lock file", "NGM_MCP_SERVER_URL", "NGM_SERVER_URL"],
+          },
+          notes: [
+            "Read tools are enabled by default.",
+            "Confirmed write tools require NGM_MCP_ALLOW_WRITE=true.",
+            "Confirmed execute tools require NGM_MCP_ALLOW_EXECUTE=true.",
+          ],
         });
       },
     },

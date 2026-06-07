@@ -1,6 +1,6 @@
 ---
 name: hub-v2-docs
-description: Use ng-manager Hub V2 MCP tools to list and read Hub V2 project documents, and to guide future document write operations through the unified ngm mcp server without direct REST calls.
+description: Use ng-manager Hub V2 MCP tools to list, read, create, and update Hub V2 project documents through the unified ngm mcp server without direct REST calls.
 ---
 
 # Hub V2 Docs Skill
@@ -14,7 +14,8 @@ Use this skill for:
 - Hub V2 project documents
 - document discovery
 - document Markdown reads
-- Project Token document API
+- controlled document draft create/update
+- Project Token and Personal Token document API
 
 Do not use this skill for local ng-manager engineering control or workspace-context tasks such as:
 
@@ -48,6 +49,8 @@ Use these MCP tools first:
 - List docs: `hub_v2_docs_list`
 - Read by id: `hub_v2_docs_get`
 - Read by slug: `hub_v2_docs_get_by_slug`
+- Create draft: `hub_v2_docs_create`
+- Update doc: `hub_v2_docs_update`
 
 ## Project Selection
 
@@ -66,13 +69,15 @@ Use these MCP tools first:
 
 ## Write Boundary
 
-- Current unified MCP rollout prioritizes read tools. Do not create, update, publish, or archive documents through direct HTTP from this skill.
-- If future document write tools are added, they must use Personal Token, be marked as write tools, and require explicit confirmation before publish-style operations.
+- Document create/update tools use Personal Token and require MCP server write policy: `NGM_MCP_ALLOW_WRITE=true`.
+- Preview document create/update first when the tool supports preview, then execute only after explicit user confirmation with `confirm: true`.
+- Publishing and archiving documents are not exposed by the current MCP tools. Do not publish or archive through direct HTTP from this skill.
 - Never ask the user to paste tokens into chat or tool arguments.
 
 ## Error Handling
 
 - `TOKEN_SCOPE_FORBIDDEN`: explain that the Project Token needs `docs:read` for read operations.
+- Document create requires `doc:create:write`; document update requires `doc:update:write`, both on Personal Token.
 - `TOKEN_PROJECT_FORBIDDEN` or `PROJECT_NOT_FOUND`: verify the configured project alias or project key.
 - `DOCUMENT_NOT_FOUND`: list docs again or ask for a more precise id or slug.
 - `TOKEN_RATE_LIMITED`: back off and suggest retrying later.

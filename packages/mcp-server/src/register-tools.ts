@@ -20,6 +20,21 @@ type RegisterToolServerCompat = {
   registerTool: RegisterToolCompat;
 };
 
+function resultOperationStatus(result: ToolResult | undefined): string | undefined {
+  if (!result?.ok || typeof result.data !== "object" || result.data === null) return undefined;
+  const operation = (result.data as { operation?: unknown }).operation;
+  if (!operation || typeof operation !== "object") return undefined;
+  const status = (operation as { status?: unknown }).status;
+  return typeof status === "string" ? status : undefined;
+}
+
+function shouldWriteAudit(tool: McpToolDefinition, confirmed: boolean, result: ToolResult | undefined): boolean {
+  if (!shouldAuditTool(tool.name, tool.riskLevel)) return false;
+  if (!confirmed) return false;
+  const status = resultOperationStatus(result);
+  return status === "executed" || status === "failed";
+}
+
 function registerMcpTool(server: Pick<McpServer, "registerTool">, tool: McpToolDefinition, handler: McpToolHandler): void {
   // Keep the MCP SDK compatibility boundary here. The SDK registerTool generic
   // type is intentionally broad and can over-expand with dynamically composed
@@ -46,16 +61,17 @@ export function registerTools(server: McpServer, context: ToolContext): void {
         const startedAt = Date.now();
         let parsed: unknown;
         let result: ToolResult | undefined;
+        let confirmed = true;
         try {
           parsed = tool.inputSchema.parse(args);
           const parsedArgs = parsed as Record<string, unknown>;
-          const confirmed = tool.isConfirmed?.(parsedArgs) ?? true;
+          confirmed = tool.isConfirmed?.(parsedArgs) ?? true;
           const isAllowedPreview = tool.allowPreviewWhenBlocked === true && (!confirmed || tool.deferPolicyToHandler === true);
           if (!isAllowedPreview) {
             assertToolPolicy(policy, tool.name, tool.riskLevel);
           }
           result = await tool.handler(parsedArgs, context);
-          if (shouldAuditTool(tool.name, tool.riskLevel)) {
+          if (shouldWriteAudit(tool, confirmed, result)) {
             try {
               await writeAuditLog(context, {
                 tool: tool.name,
@@ -71,7 +87,7 @@ export function registerTools(server: McpServer, context: ToolContext): void {
           return toMcpTextResult(result);
         } catch (error) {
           result = fail(tool.name, errorMessage(error), errorMetadata(error));
-          if (shouldAuditTool(tool.name, tool.riskLevel)) {
+          if (shouldWriteAudit(tool, confirmed, result)) {
             try {
               await writeAuditLog(context, {
                 tool: tool.name,

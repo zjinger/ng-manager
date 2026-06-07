@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { projectLocatorSchema } from "../project.tools";
 
 export const confirmSchema = {
   confirm: z.boolean().optional(),
@@ -13,7 +12,12 @@ export const runScriptSchema = z.object({
   ...confirmSchema,
 }).strict();
 
-export const stopProjectSchema = projectLocatorSchema.extend({
+export const projectIdSchema = {
+  projectId: z.string().trim().min(1),
+};
+
+export const stopProjectSchema = z.object({
+  projectId: z.string().trim().min(1).optional(),
   taskId: z.string().trim().min(1).optional(),
   script: z.string().trim().min(1).optional(),
   ...confirmSchema,
@@ -27,7 +31,8 @@ export const runtimeConfigSchema = z.object({
   packageManager: z.enum(["npm", "pnpm", "yarn"]).optional(),
 }).strict();
 
-export const setRuntimeSchema = projectLocatorSchema.extend({
+export const setRuntimeSchema = z.object({
+  ...projectIdSchema,
   runtime: runtimeConfigSchema,
   ...confirmSchema,
 }).strict();

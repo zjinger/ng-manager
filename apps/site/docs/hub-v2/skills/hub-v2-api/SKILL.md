@@ -46,6 +46,7 @@ If the user asks whether the local MCP configuration is ready, or if a tool repo
 Use these MCP tools first:
 
 - Project/config: `hub_v2_projects_list`, `hub_v2_projects_get`, `hub_v2_project_members_list`
+- Docs: `hub_v2_docs_list`, `hub_v2_docs_get`, `hub_v2_docs_get_by_slug`, `hub_v2_docs_create`, `hub_v2_docs_update`
 - Issues: `hub_v2_issues_list`, `hub_v2_issues_get`, `hub_v2_issues_create`, `hub_v2_issues_update`, `hub_v2_issues_comment`, `hub_v2_issues_assign`
 - RD read: `hub_v2_rd_list`, `hub_v2_rd_get`, `hub_v2_rd_stage_tasks_list`
 - RD write: `hub_v2_rd_create`, `hub_v2_rd_advance_stage`, `hub_v2_rd_stage_tasks_create`, `hub_v2_rd_update_progress`
@@ -72,8 +73,9 @@ Use these MCP tools first:
 
 - Write tools use Personal Token and require MCP server write policy: `NGM_MCP_ALLOW_WRITE=true`.
 - Never ask the user to paste tokens into chat or tool arguments.
-- For Issue create, Issue update, Issue comment, RD create, stage advance, stage-task create, progress update, status changes, or any operation that alters workflow state, preview first when the tool supports preview, then execute only after explicit user confirmation.
+- For Document create/update, Issue create/update/comment/assign, RD create, stage advance, stage-task create, progress update, status changes, or any operation that alters workflow state, preview first when the tool supports preview, then execute only after explicit user confirmation.
 - For Markdown images, first call `hub_v2_upload_markdown_image` with either `filePath` or `contentBase64 + fileName`, then insert the returned `markdown` into the target `description` or `content`.
+- For Document creation or content updates with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_docs_create` or `hub_v2_docs_update` with the returned Markdown in `content` or `contentMd`.
 - For Issue creation with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_create` with the returned Markdown in `description`.
 - For Issue description updates with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_update` with the returned Markdown in `description`.
 - For Issue comments with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_comment` with the returned Markdown in `content`.
@@ -87,6 +89,7 @@ Use these MCP tools first:
 ## Error Handling
 
 - `TOKEN_SCOPE_FORBIDDEN`: explain which scope is missing and whether Project Token or Personal Token is involved.
+- Document create requires `doc:create:write`; document update requires `doc:update:write`.
 - Issue create requires `issue:create:write`; Issue update requires `issue:update:write`; Issue assignment requires `issue:assign:write`; Issue comments require `issue:comment:write`.
 - Markdown image upload requires at least one relevant business write scope such as `issue:create:write`, `issue:update:write`, `issue:comment:write`, `rd:create:write`, `rd:stage-task:write`, `rd:transition:write`, or `rd:edit:write`.
 - RD create requires `rd:create:write`; stage-task create requires `rd:stage-task:write`; progress update requires `rd:progress:write` or `rd:transition:write`.

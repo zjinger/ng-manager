@@ -124,7 +124,7 @@ NGM_MCP_ALLOW_DANGEROUS=true
 
 - tool call 传入 `confirm=true`
 - 已配置 `HUB_V2_PERSONAL_TOKEN` 或 `agent-connections.json` 中的 `personalToken`
-- Personal Token 拥有对应 Hub V2 scope，例如 `issue:create:write`、`issue:update:write`、`issue:comment:write`、`rd:create:write`、`rd:transition:write`
+- Personal Token 拥有对应 Hub V2 scope，例如 `doc:create:write`、`doc:update:write`、`issue:create:write`、`issue:update:write`、`issue:comment:write`、`rd:create:write`、`rd:transition:write`
 
 其他 NGM MCP 环境变量：
 
@@ -219,7 +219,7 @@ Hub V2 MCP tools 的 token 使用规则：
 | Token | 用途 |
 | --- | --- |
 | Project Token | 文档、项目、Issue、RD 等只读工具 |
-| Personal Token | Issue/RD 创建、更新、评论、阶段推进、Markdown 图片上传等写操作 |
+| Personal Token | 文档创建/更新、Issue/RD 创建、更新、评论、阶段推进、Markdown 图片上传等写操作 |
 
 安全要求：
 
@@ -443,6 +443,8 @@ hub_v2_project_members_list
 hub_v2_docs_list
 hub_v2_docs_get
 hub_v2_docs_get_by_slug
+hub_v2_docs_create
+hub_v2_docs_update
 ```
 
 Issue：
@@ -474,6 +476,18 @@ hub_v2_rd_update_progress
 hub_v2_upload_markdown_image
 ```
 
+当前期望能力与真实 tool name 对照：
+
+| 能力 | 当前真实 tool name | 状态 |
+| --- | --- | --- |
+| connection list | `hub_v2_projects_list` | 已实现。列出 `agent-connections.json` 中配置的项目 alias，不返回 token 原文。 |
+| project list / get | `hub_v2_projects_list`, `hub_v2_projects_get` | 已实现，读取本地 Hub V2 connection 配置摘要。 |
+| project members | `hub_v2_project_members_list` | 已实现，使用 Project Token。 |
+| image upload | `hub_v2_upload_markdown_image` | 已实现，上传 Markdown 内联图片并返回 Markdown 片段。 |
+| file upload | 无 | 当前 `packages/mcp-server` 未实现通用文件上传 tool。 |
+| doc create | `hub_v2_docs_create` | 已实现，使用 Personal Token，默认 preview，确认写入需要 `confirm=true` + `NGM_MCP_ALLOW_WRITE=true`。 |
+| doc update | `hub_v2_docs_update` | 已实现，使用 Personal Token，默认 preview，确认写入需要 `confirm=true` + `NGM_MCP_ALLOW_WRITE=true`。 |
+
 不注册旧工具别名：
 
 ```text
@@ -482,14 +496,14 @@ sl_hub_v2.*
 
 ## 9. Markdown 图片上传流程
 
-`hub_v2_upload_markdown_image` 用于给 RD 描述、RD 阶段任务描述、Issue 描述和 Issue 评论插入 Markdown 图片。
+`hub_v2_upload_markdown_image` 用于给文档正文、RD 描述、RD 阶段任务描述、Issue 描述和 Issue 评论插入 Markdown 图片。
 
 推荐流程：
 
 1. Agent 调用 `hub_v2_upload_markdown_image`
 2. MCP tool 使用 Personal Token 调用 Hub V2 markdown image upload endpoint
 3. Hub V2 返回可直接插入正文的 Markdown
-4. Agent 将返回的 Markdown 放入 RD/Issue/评论正文
+4. Agent 将返回的 Markdown 放入文档/RD/Issue/评论正文
 5. 创建或更新业务对象时，Hub V2 业务服务执行 Markdown upload promote
 
 返回 Markdown 形态：

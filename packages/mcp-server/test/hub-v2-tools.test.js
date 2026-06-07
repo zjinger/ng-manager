@@ -18,6 +18,7 @@ const ENV_KEYS = [
   "HUB_V2_PROJECT_KEY",
   "HUB_V2_PROJECT_TOKEN",
   "HUB_V2_PERSONAL_TOKEN",
+  "HUB_V2_SOURCE",
   "HUB_V2_CONFIG",
   "NGM_MCP_UPLOAD_ROOT",
   "NGM_MCP_ALLOW_WRITE",
@@ -97,23 +98,38 @@ async function callRegisteredTool(name, args) {
 
 test("registers Hub V2 tools with the unified names only", () => {
   const names = allTools().map((tool) => tool.name);
+  const expected = [
+    "hub_v2_projects_list",
+    "hub_v2_projects_get",
+    "hub_v2_project_members_list",
+    "hub_v2_docs_list",
+    "hub_v2_docs_get",
+    "hub_v2_docs_get_by_slug",
+    "hub_v2_docs_create",
+    "hub_v2_docs_update",
+    "hub_v2_issues_list",
+    "hub_v2_issues_get",
+    "hub_v2_issues_create",
+    "hub_v2_issues_comment",
+    "hub_v2_issues_assign",
+    "hub_v2_issues_update",
+    "hub_v2_upload_markdown_image",
+    "hub_v2_rd_list",
+    "hub_v2_rd_get",
+    "hub_v2_rd_stage_tasks_list",
+    "hub_v2_rd_create",
+    "hub_v2_rd_advance_stage",
+    "hub_v2_rd_stage_tasks_create",
+    "hub_v2_rd_update_progress",
+  ];
 
-  assert.ok(names.includes("hub_v2_docs_list"));
-  assert.ok(names.includes("hub_v2_docs_get"));
-  assert.ok(names.includes("hub_v2_docs_get_by_slug"));
-  assert.ok(names.includes("hub_v2_projects_list"));
-  assert.ok(names.includes("hub_v2_project_members_list"));
-  assert.ok(names.includes("hub_v2_issues_list"));
-  assert.ok(names.includes("hub_v2_issues_create"));
-  assert.ok(names.includes("hub_v2_issues_comment"));
-  assert.ok(names.includes("hub_v2_issues_assign"));
-  assert.ok(names.includes("hub_v2_issues_update"));
-  assert.ok(names.includes("hub_v2_upload_markdown_image"));
-  assert.ok(names.includes("hub_v2_rd_create"));
-  assert.ok(names.includes("hub_v2_rd_stage_tasks_list"));
-  assert.ok(names.includes("hub_v2_rd_stage_tasks_create"));
-  assert.ok(names.includes("hub_v2_rd_update_progress"));
+  for (const name of expected) {
+    assert.ok(names.includes(name), `${name} should be registered through allTools()`);
+    assert.ok(registeredTool(name), `${name} should be registered through registerTools()`);
+  }
   assert.equal(names.some((name) => name.startsWith("sl_hub_v2.")), false);
+  assert.equal(names.includes("hub_v2_file_upload"), false);
+  assert.equal(names.includes("hub_v2_image_upload"), false);
 });
 
 test("hub_v2_project_members_list uses Project Token", async () => {
@@ -122,6 +138,7 @@ test("hub_v2_project_members_list uses Project Token", async () => {
     process.env.HUB_V2_PROJECT_KEY = "demo";
     process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
     process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    process.env.HUB_V2_SOURCE = "codex";
     const calls = [];
     global.fetch = async (url, init) => {
       calls.push({ url: String(url), init });
@@ -546,6 +563,109 @@ test("hub_v2_docs_get and get_by_slug map ids and slugs", async () => {
     ]);
     assert.equal(slugResult.ok, true);
     assert.equal(slugResult.data, "# Doc");
+  });
+});
+
+test("hub_v2_docs_create previews and executes with Personal Token", async () => {
+  const preview = await docsTool("hub_v2_docs_create").handler({
+    title: "Agent guide",
+    content: "# Guide",
+    slug: "agent-guide",
+    tags: ["mcp"],
+  }, {});
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.data.code, "PREVIEW");
+  assert.equal(preview.data.data.method, "POST");
+  assert.equal(preview.data.data.path, "/docs");
+  assert.equal(preview.data.data.requiredScope, "doc:create:write");
+  assert.deepEqual(preview.data.data.body, {
+    title: "Agent guide",
+    content: "# Guide",
+    slug: "agent-guide",
+    tags: ["mcp"],
+    status: "draft",
+  });
+
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    process.env.HUB_V2_SOURCE = "codex";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "doc_1" } }), { status: 201 });
+    };
+
+    const result = await docsTool("hub_v2_docs_create").handler({
+      title: "Agent guide",
+      content: "# Guide",
+      categoryId: "cat_1",
+      confirm: true,
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/docs");
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
+    assert.deepEqual(JSON.parse(calls[0].init.body), {
+      title: "Agent guide",
+      content: "# Guide",
+      categoryId: "cat_1",
+      status: "draft",
+      source: "codex",
+    });
+    assert.equal(JSON.stringify(calls[0].init.body).includes("project-secret"), false);
+  });
+});
+
+test("hub_v2_docs_update previews and executes with Personal Token", async () => {
+  const preview = await docsTool("hub_v2_docs_update").handler({
+    docId: "doc_1",
+    title: "Updated guide",
+    contentMd: "# Updated",
+  }, {});
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.data.code, "PREVIEW");
+  assert.equal(preview.data.data.method, "PATCH");
+  assert.equal(preview.data.data.path, "/docs/doc_1");
+  assert.equal(preview.data.data.requiredScope, "doc:update:write");
+  assert.deepEqual(preview.data.data.body, {
+    title: "Updated guide",
+    contentMd: "# Updated",
+  });
+
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "doc_1" } }), { status: 200 });
+    };
+
+    const result = await docsTool("hub_v2_docs_update").handler({
+      docId: "doc 1",
+      title: "Updated guide",
+      summary: null,
+      confirm: true,
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/docs/doc%201");
+    assert.equal(calls[0].init.method, "PATCH");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
+    assert.deepEqual(JSON.parse(calls[0].init.body), {
+      title: "Updated guide",
+      summary: null,
+      source: "codex",
+    });
+    assert.equal(JSON.stringify(calls[0].init.body).includes("project-secret"), false);
   });
 });
 

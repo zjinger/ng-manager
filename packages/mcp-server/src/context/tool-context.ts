@@ -1,4 +1,7 @@
 import type { CoreApp } from "@yinuo-ngm/core";
+import type { PathGuardService } from "../services/path-guard.service";
+import type { PermissionService } from "../services/permission.service";
+import type { ProjectResolverService } from "../services/project-resolver.service";
 
 export type GitReadService = {
   status(input: { projectId?: string; projectPath?: string }): Promise<unknown>;
@@ -30,6 +33,9 @@ export type LocalServerClient = {
 export type ToolServices = {
   core: CoreApp;
   git: GitReadService;
+  pathGuard: PathGuardService;
+  permission: PermissionService;
+  projectResolver: ProjectResolverService;
   localServer?: LocalServerClient;
 };
 

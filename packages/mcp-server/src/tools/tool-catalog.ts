@@ -32,6 +32,13 @@ export const toolCatalog: ToolCatalogEntry[] = [
     description: "Route a user request to Hub V2 or NGM local skills and read-only MCP tools.",
   },
   {
+    name: "ngm_doctor",
+    skill: "ngm-router",
+    capability: "discovery",
+    riskLevel: "read",
+    description: "Inspect MCP readiness, policy flags, Hub V2 config, and tool coverage through the controlled ng-manager MCP view.",
+  },
+  {
     name: "ngm.workspace.summary",
     skill: "ngm-workspace",
     capability: "workspace",
@@ -71,7 +78,7 @@ export const toolCatalog: ToolCatalogEntry[] = [
     skill: "ngm-project",
     capability: "project",
     riskLevel: "read",
-    description: "List registered ng-manager local projects without workspace root scanning.",
+    description: "List registered ng-manager projects by projectId; prefer before shell discovery because it uses the project registry and does not scan arbitrary roots.",
   },
   {
     name: "ngm.project.list",
@@ -113,7 +120,7 @@ export const toolCatalog: ToolCatalogEntry[] = [
     skill: "ngm-project",
     capability: "project",
     riskLevel: "execute",
-    description: "Preview or run an existing package.json script through ng-manager task services with explicit confirmation.",
+    description: "Preview or run an existing package.json script for a registered projectId through the local ng-manager server runtime; preferred over direct shell so task state, logs, and audit stay unified.",
   },
   {
     name: "ngm.project.runScript",
@@ -127,7 +134,7 @@ export const toolCatalog: ToolCatalogEntry[] = [
     skill: "ngm-project",
     capability: "project",
     riskLevel: "execute",
-    description: "Preview or stop one ng-manager managed task process with explicit confirmation.",
+    description: "Preview or stop a ng-manager managed task by taskId or projectId through the local server runtime; preferred over killing PIDs and audit logged when confirmed.",
   },
   {
     name: "ngm.project.stop",
@@ -141,7 +148,7 @@ export const toolCatalog: ToolCatalogEntry[] = [
     skill: "ngm-project",
     capability: "project",
     riskLevel: "write",
-    description: "Preview or write a text file inside a registered project using projectId and relativePath.",
+    description: "Preview or write a text file inside a registered project using projectId and safe relativePath only; rejects absolute paths/traversal and audit logs confirmed writes.",
   },
   {
     name: "ngm_project_list_tasks",
@@ -211,7 +218,7 @@ export const toolCatalog: ToolCatalogEntry[] = [
     skill: "ngm-runtime",
     capability: "runtime",
     riskLevel: "write",
-    description: "Preview or set a managed project's Node runtime binding with explicit confirmation.",
+    description: "Preview or set a registered projectId's Node runtime binding through the local server; preferred over config/shell edits and audit logged when confirmed.",
   },
   {
     name: "ngm.runtime.setForProject",
@@ -274,7 +281,7 @@ export const toolCatalog: ToolCatalogEntry[] = [
     skill: "ngm-nginx",
     capability: "nginx",
     riskLevel: "execute",
-    description: "Validate and preview or reload the ng-manager managed local Nginx instance with explicit confirmation.",
+    description: "Validate and preview or reload the ng-manager managed local Nginx instance; preferred over direct nginx commands and audit logged when confirmed.",
   },
   {
     name: "ngm.nginx.reload",
@@ -288,7 +295,7 @@ export const toolCatalog: ToolCatalogEntry[] = [
     skill: "ngm-nginx",
     capability: "nginx",
     riskLevel: "write",
-    description: "Preview or save a ng-manager managed Nginx proxy server block with explicit confirmation.",
+    description: "Preview or save a ng-manager managed Nginx proxy server block; validates inputs, avoids arbitrary file writes, and audit logs confirmed saves.",
   },
   {
     name: "ngm.nginx.proxy.save",
@@ -571,6 +578,20 @@ export const toolCatalog: ToolCatalogEntry[] = [
     description: "Read a Hub V2 project document by slug.",
   },
   {
+    name: "hub_v2_docs_create",
+    skill: "hub-v2-docs",
+    capability: "hub-v2",
+    riskLevel: "write",
+    description: "Preview or create a Hub V2 project document draft with explicit confirmation.",
+  },
+  {
+    name: "hub_v2_docs_update",
+    skill: "hub-v2-docs",
+    capability: "hub-v2",
+    riskLevel: "write",
+    description: "Preview or update a Hub V2 project document with explicit confirmation.",
+  },
+  {
     name: "hub_v2_issues_list",
     skill: "hub-v2-api",
     capability: "hub-v2",
@@ -675,7 +696,7 @@ export const capabilityCatalog: CapabilityCatalogEntry[] = [
     id: "routing",
     label: "Skill routing and MCP capability discovery",
     skills: ["ngm-router"],
-    tools: ["ngm.capabilities", "ngm.routeTask"],
+    tools: ["ngm.capabilities", "ngm_doctor", "ngm.routeTask"],
   },
   {
     id: "workspace",
@@ -796,6 +817,8 @@ export const capabilityCatalog: CapabilityCatalogEntry[] = [
       "hub_v2_docs_list",
       "hub_v2_docs_get",
       "hub_v2_docs_get_by_slug",
+      "hub_v2_docs_create",
+      "hub_v2_docs_update",
       "hub_v2_issues_list",
       "hub_v2_issues_get",
       "hub_v2_issues_create",

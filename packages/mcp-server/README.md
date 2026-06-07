@@ -49,6 +49,7 @@ NGM_MCP_MAX_UPLOAD_BYTES     Max Hub V2 markdown image upload bytes. Defaults to
 NGM_MCP_MAX_RESULT_CHARS     Max MCP text result characters. Defaults to 120000.
 NGM_MCP_ALLOW_WRITE          Enables confirmed write tools. Defaults to false.
 NGM_MCP_ALLOW_EXECUTE        Enables execute tools. Defaults to false.
+NGM_MCP_ALLOW_HUB            Enables external Hub write/execution-style tools when required.
 NGM_MCP_ALLOW_DANGEROUS      Enables dangerous tools. Defaults to false.
 ```
 
@@ -58,7 +59,7 @@ Project-local frontend standard, review, workflow, and audit files are written o
 .ng-manager/
 ```
 
-Audit logs are written as `.ng-manager/audit/mcp-YYYY-MM-DD.jsonl` for write/execute/workflow tool calls. Audit entries are redacted and do not enable business writes by themselves. If audit storage fails, the main tool result stays intact and includes a top-level `auditWarning`.
+Audit logs are written as `.ng-manager/audit/mcp-YYYY-MM-DD.jsonl` only for confirmed write/execute operations that actually reach `executed` or `failed`. Preview and blocked results do not write audit files, so `confirm !== true` remains side-effect free. Audit entries are redacted and do not enable business writes by themselves. If audit storage fails during a real operation, the main tool result stays intact and includes a top-level `auditWarning`.
 
 ## Commands
 
@@ -309,6 +310,18 @@ ngm_nginx_reload             execute, validates config first, confirm=true + NGM
 ngm_nginx_proxy_save         write, preview by default, confirm=true + NGM_MCP_ALLOW_WRITE=true to save
 ```
 
+Preview/confirm results include a stable control envelope:
+
+```json
+{
+  "action": "preview",
+  "confirmed": false,
+  "requires": ["NGM_MCP_ALLOW_WRITE"]
+}
+```
+
+When `confirm !== true`, the tools return a plan/preview only and do not write files, start tasks, stop tasks, reload Nginx, or write audit logs. When `confirm === true`, the tool checks the matching permission service rule first (`write`, `execute`, or `external`) and then performs the controlled operation.
+
 Dotted aliases are also registered and should be preferred in new docs and skills:
 
 ```text
@@ -319,11 +332,11 @@ ngm.nginx.reload
 ngm.nginx.proxy.save
 ```
 
-These tools do not accept arbitrary shell commands, arbitrary PIDs, project-external file paths, or system-level Node/Nginx mutations. They adapt existing ng-manager core services and return structured operation status (`preview`, `executed`, `blocked`, or `failed`).
+These tools do not accept arbitrary shell commands, arbitrary PIDs, project-external file paths, or system-level Node/Nginx mutations. Project-level controlled tools resolve registered projects by `projectId` through the project resolver; they do not accept arbitrary `cwd`, `absolutePath`, `root`, or `workspaceRoot` as a project root. They adapt existing ng-manager core/local-server services and return structured operation status (`preview`, `executed`, `blocked`, or `failed`).
 
 `ngm_project_run_script` resolves the registered project by `projectId`, reads scripts from that project's `package.json`, and executes through the currently running local ng-manager server discovered from the runtime lock file or `NGM_MCP_SERVER_URL` / `NGM_SERVER_URL`. This keeps MCP-started task runtime state in the same in-memory task service and WebSocket event stream used by the UI. The tool returns a short launch observation (`launch.status`, `launch.message`, and `launch.runtime`) after starting; long-running dev servers are reported as `running` or `ready`, while early exits are reported as `failed`, `success`, or `stopped`.
 
-`ngm_file_write` resolves the registered project by `projectId`, rejects absolute `relativePath` values and `../` traversal, and writes only inside that project directory after `confirm=true` and `NGM_MCP_ALLOW_WRITE=true`.
+`ngm_file_write` resolves the registered project by `projectId`, rejects absolute `relativePath` values and `../` traversal through the path guard, asserts the final path stays inside the project root, and writes only inside that project directory after `confirm=true` and `NGM_MCP_ALLOW_WRITE=true`.
 
 Project observation tools (`ngm_project_list_tasks`, `ngm_project_task_status`, `ngm_project_task_logs`) also read the shared local server task runtime instead of creating a second task state center inside the MCP process. If the local server is not running, they return structured `unavailable` results and suggest starting `ngm server` or `ngm ui`; they do not auto-start the server. `ngm_project_task_logs` enforces tail/character limits and redacts token/password/secret/authorization-like values. `ngm_project_port_check` checks one local TCP endpoint only, and `ngm_project_health_check` is limited to local HTTP/HTTPS URLs or URLs detected from managed task runtime.
 
@@ -336,6 +349,8 @@ hub_v2_project_members_list
 hub_v2_docs_list
 hub_v2_docs_get
 hub_v2_docs_get_by_slug
+hub_v2_docs_create
+hub_v2_docs_update
 hub_v2_issues_list
 hub_v2_issues_get
 hub_v2_issues_create
@@ -352,7 +367,19 @@ hub_v2_rd_stage_tasks_create
 hub_v2_rd_update_progress
 ```
 
-Hub V2 reads use Project Token configuration and writes use Personal Token configuration. `hub_v2_upload_markdown_image` uploads image files for Markdown bodies and returns a snippet that can be inserted into RD descriptions, RD stage-task descriptions, Issue descriptions, or Issue comments before calling the matching create/comment tool. Prefer `HUB_V2_*` environment variables for temporary overrides and `~/.ng-manager/agent-connections.json` for persistent local configuration.
+Hub V2 reads use Project Token configuration and writes use Personal Token configuration. `hub_v2_upload_markdown_image` uploads image files for Markdown bodies and returns a snippet that can be inserted into Document content, RD descriptions, RD stage-task descriptions, Issue descriptions, or Issue comments before calling the matching create/update/comment tool. Prefer `HUB_V2_*` environment variables for temporary overrides and `~/.ng-manager/agent-connections.json` for persistent local configuration.
+
+Current Hub V2 capability mapping:
+
+| Capability | Current tool name | Status |
+| --- | --- | --- |
+| Connection/project alias list | `hub_v2_projects_list` | Implemented. Lists configured `agent-connections.json` project aliases without token values. |
+| Project list/get | `hub_v2_projects_list`, `hub_v2_projects_get` | Implemented for local Hub V2 connection config summaries. |
+| Project members | `hub_v2_project_members_list` | Implemented with Project Token. |
+| Image upload for Markdown | `hub_v2_upload_markdown_image` | Implemented with Personal Token. |
+| Generic file upload | none | Not implemented in `packages/mcp-server` current Hub V2 tools. |
+| Doc create | `hub_v2_docs_create` | Implemented with Personal Token and `confirm=true` write policy. |
+| Doc update | `hub_v2_docs_update` | Implemented with Personal Token and `confirm=true` write policy. |
 
 
 ## Result Shape
@@ -373,8 +400,24 @@ Errors use:
 {
   "ok": false,
   "tool": "ngm.project.get",
-  "error": "projectId or projectPath is required"
+  "error": "projectId is required",
+  "errorCode": "TOOL_INPUT_INVALID",
+  "code": "TOOL_INPUT_INVALID"
 }
+```
+
+Common MCP error codes:
+
+```text
+PROJECT_NOT_FOUND          projectId is not in the ng-manager project registry
+PROJECT_ROOT_NOT_FOUND     registered project root no longer exists on disk
+ABSOLUTE_PATH_DENIED       relativePath was absolute
+PATH_ESCAPE_DENIED         relativePath tried to leave the project root
+CONFIRM_REQUIRED           confirmed operation needs an explicit managed target
+WRITE_NOT_ALLOWED          NGM_MCP_ALLOW_WRITE=true is required
+EXECUTE_NOT_ALLOWED        NGM_MCP_ALLOW_EXECUTE=true is required
+LOCAL_SERVER_UNAVAILABLE   local ng-manager server was not discoverable or healthy
+TOOL_INPUT_INVALID         schema or controlled-input validation failed
 ```
 
 ## Replacing Stubs

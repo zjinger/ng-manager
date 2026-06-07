@@ -10,6 +10,11 @@ This reference describes Agent-facing MCP tools, not Hub V2 REST endpoints.
 - `hub_v2_docs_get`: read one document by id using Project Token.
 - `hub_v2_docs_get_by_slug`: read one document by slug using Project Token.
 
+## Write Tools
+
+- `hub_v2_docs_create`: preview or create a draft document using Personal Token with `doc:create:write`.
+- `hub_v2_docs_update`: preview or update document title/content/slug/category/summary/version using Personal Token with `doc:update:write`.
+
 ## Read Behavior
 
 - Lists omit full Markdown content.
@@ -20,8 +25,9 @@ This reference describes Agent-facing MCP tools, not Hub V2 REST endpoints.
 ## Token Use
 
 - Project Token is required for document reads.
+- Personal Token is required for document create/update writes.
 - Tool arguments must not include token values.
-- Personal Token document writes are reserved for future unified MCP tools.
+- Write tools are disabled by default MCP policy. Set `NGM_MCP_ALLOW_WRITE=true` in the MCP server environment and pass `confirm: true` after preview to execute.
 
 ## Common Errors
 

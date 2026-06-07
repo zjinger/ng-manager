@@ -8,6 +8,7 @@ export type ToolErrorResult = {
   ok: false;
   tool: string;
   error: string;
+  errorCode?: string;
   code?: string;
   status?: number;
   detail?: unknown;
@@ -30,6 +31,7 @@ export function fail(tool: string, error: string, metadata: { code?: string; sta
     ok: false,
     tool,
     error,
+    ...(metadata.code ? { errorCode: metadata.code } : {}),
     ...(metadata.code ? { code: metadata.code } : {}),
     ...(metadata.status ? { status: metadata.status } : {}),
     ...(metadata.detail !== undefined ? { detail: metadata.detail } : {}),
@@ -95,6 +97,7 @@ function buildTruncatedResult(result: ToolResult, originalLength: number, previe
     ok: false,
     tool: result.tool,
     error: result.error,
+    errorCode: result.errorCode ?? result.code,
     code: result.code,
     status: result.status,
     truncated: true,
