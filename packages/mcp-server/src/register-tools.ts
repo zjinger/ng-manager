@@ -4,7 +4,8 @@ import { assertToolPolicy } from "./policy/assert-tool-policy";
 import { createDefaultToolPolicy } from "./policy/tool-policy";
 import { allTools, type McpToolDefinition } from "./tools";
 import { errorMessage, errorMetadata } from "./utils/errors";
-import { fail, toMcpTextResult } from "./utils/result";
+import { fail, toMcpTextResult, type ToolResult } from "./utils/result";
+import { shouldAuditTool, writeAuditLog } from "./audit/audit-log.service";
 
 type McpToolHandler = (args: unknown) => Promise<ReturnType<typeof toMcpTextResult>>;
 type RegisterToolCompat = (
@@ -42,17 +43,49 @@ export function registerTools(server: McpServer, context: ToolContext): void {
       server,
       tool,
       async (args) => {
+        const startedAt = Date.now();
+        let parsed: unknown;
+        let result: ToolResult | undefined;
         try {
-          const parsed = tool.inputSchema.parse(args);
-          const confirmed = tool.isConfirmed?.(parsed) ?? true;
-          const isAllowedPreview = tool.allowPreviewWhenBlocked === true && !confirmed;
+          parsed = tool.inputSchema.parse(args);
+          const parsedArgs = parsed as Record<string, unknown>;
+          const confirmed = tool.isConfirmed?.(parsedArgs) ?? true;
+          const isAllowedPreview = tool.allowPreviewWhenBlocked === true && (!confirmed || tool.deferPolicyToHandler === true);
           if (!isAllowedPreview) {
             assertToolPolicy(policy, tool.name, tool.riskLevel);
           }
-          const result = await tool.handler(parsed, context);
+          result = await tool.handler(parsedArgs, context);
+          if (shouldAuditTool(tool.name, tool.riskLevel)) {
+            try {
+              await writeAuditLog(context, {
+                tool: tool.name,
+                riskLevel: tool.riskLevel,
+                args: parsed,
+                result,
+                durationMs: Date.now() - startedAt,
+              });
+            } catch {
+              // Keep tool responses stable if audit storage is temporarily unavailable.
+            }
+          }
           return toMcpTextResult(result);
         } catch (error) {
-          return toMcpTextResult(fail(tool.name, errorMessage(error), errorMetadata(error)));
+          result = fail(tool.name, errorMessage(error), errorMetadata(error));
+          if (shouldAuditTool(tool.name, tool.riskLevel)) {
+            try {
+              await writeAuditLog(context, {
+                tool: tool.name,
+                riskLevel: tool.riskLevel,
+                args: parsed ?? args,
+                result,
+                error,
+                durationMs: Date.now() - startedAt,
+              });
+            } catch {
+              // Keep tool responses stable if audit storage is temporarily unavailable.
+            }
+          }
+          return toMcpTextResult(result);
         }
       }
     );

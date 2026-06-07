@@ -56,6 +56,25 @@ function routeTask(query: string): RouteMatch {
     "仓库",
     "能力",
   ]);
+  const frontendStandard = hasAny(text, [
+    "frontend",
+    "angular",
+    "ng-zorro",
+    "standard",
+    "review",
+    "commit",
+    "branch",
+    "spec",
+    "workflow",
+    "前端",
+    "规范",
+    "评审",
+    "提交",
+    "分支",
+    "测试",
+    "组件",
+    "流程",
+  ]);
   const hubV2 = hasAny(text, [
     "issue",
     "issues",
@@ -70,7 +89,7 @@ function routeTask(query: string): RouteMatch {
   ]);
   const hubDocs = hasAny(text, ["doc", "docs", "document", "文档", "需求文档", "项目文档"]);
 
-  if ((localExecution || runtime || nginx || workspace) && !hasAny(text, ["查一下某个研发项的需求文档"])) {
+  if ((localExecution || runtime || nginx || workspace || frontendStandard) && !hasAny(text, ["查一下某个研发项的需求文档"])) {
     const skills = ["ngm-router"];
     const tools = ["ngm.capabilities"];
 
@@ -89,6 +108,10 @@ function routeTask(query: string): RouteMatch {
     if (nginx) {
       skills.push("ngm-nginx");
       tools.push("ngm.nginx.status", "ngm.nginx.servers.list", "ngm.nginx.config.validate");
+    }
+    if (frontendStandard) {
+      skills.push("ngm-frontend-standard");
+      tools.push("ngm.standard.get", "ngm.standard.validateProject", "ngm.workflow.validateBeforeWrite", "ngm.review.generateChecklist");
     }
     if (skills.length === 1) {
       skills.push("ngm-workspace");

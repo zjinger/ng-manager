@@ -53,6 +53,14 @@ NGM_MCP_ALLOW_EXECUTE        Enables execute tools. Defaults to false.
 NGM_MCP_ALLOW_DANGEROUS      Enables dangerous tools. Defaults to false.
 ```
 
+Project-local frontend standard, review, workflow, and audit files are written only under:
+
+```text
+.ng-manager/
+```
+
+Audit logs are written as `.ng-manager/audit/mcp-YYYY-MM-DD.jsonl` for write/execute/workflow tool calls. Audit entries are redacted and do not enable business writes by themselves.
+
 ## Commands
 
 From the repository root:
@@ -212,9 +220,38 @@ Git:
 ```text
 ngm.git.status
 ngm.git.diff
+ngm.git.validateBranchName
+ngm.git.validateCommitMessage
+ngm.git.generateCommitMessage
+ngm.git.generateReviewSummary
 ```
 
-The Git tools are registered in this MVP but return a clear "not implemented in core yet" error through the Git service stub. A future phase should add a read-only Git service to `packages/core` first.
+Git tools use fixed read-only Git commands only. They do not expose commit, checkout, reset, push, pull, merge, or arbitrary shell execution.
+
+Frontend standards:
+
+```text
+ngm.standard.get
+ngm.standard.init
+ngm.standard.validateProject
+ngm.test.detectMissingSpecs
+ngm.test.generateSpecPlan
+ngm.test.validateNaming
+ngm.angular.validateStructure
+ngm.angular.validateComponentNaming
+ngm.angular.validateComponentBoundary
+ngm.review.scanChangedFiles
+ngm.review.generateChecklist
+ngm.review.detectRisks
+ngm.review.generateReport
+ngm.workflow.createFrontendTask
+ngm.workflow.generateDevPlan
+ngm.workflow.validateBeforeWrite
+ngm.workflow.validateBeforeCommit
+ngm.workflow.generateDeliveryReport
+```
+
+`ngm.standard.init`, `ngm.review.generateReport`, and `ngm.workflow.*` write tools support preview by default. Confirmed writes require `confirm=true` and `NGM_MCP_ALLOW_WRITE=true`, and may only create project-local `.ng-manager/**` files.
 
 Runtime context:
 

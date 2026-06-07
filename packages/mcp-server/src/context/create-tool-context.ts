@@ -1,17 +1,9 @@
 import * as os from "os";
 import * as path from "path";
 import { createCoreApp } from "@yinuo-ngm/core";
-import type { GitReadService, ToolContext } from "./tool-context";
+import type { ToolContext } from "./tool-context";
 import { createLocalServerClient } from "./local-server-client";
-
-const gitStub: GitReadService = {
-  async status() {
-    throw new Error("Git service is not implemented in core yet");
-  },
-  async diff() {
-    throw new Error("Git service is not implemented in core yet");
-  },
-};
+import { createLocalGitReadService } from "../git/local-git-read-service";
 
 export async function createToolContext(): Promise<ToolContext> {
   const dataDir = process.env.NGM_DATA_DIR || path.join(os.homedir(), ".ng-manager");
@@ -26,7 +18,7 @@ export async function createToolContext(): Promise<ToolContext> {
     dataDir,
     services: {
       core,
-      git: gitStub,
+      git: createLocalGitReadService(workspaceRoot),
       localServer: createLocalServerClient(),
     },
     async dispose() {

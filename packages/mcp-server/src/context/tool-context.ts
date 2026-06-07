@@ -3,6 +3,9 @@ import type { CoreApp } from "@yinuo-ngm/core";
 export type GitReadService = {
   status(input: { projectId?: string; projectPath?: string }): Promise<unknown>;
   diff(input: { projectId?: string; projectPath?: string; maxBytes?: number }): Promise<unknown>;
+  changedFiles?(input: { projectId?: string; projectPath?: string }): Promise<string[]>;
+  currentBranch?(input: { projectId?: string; projectPath?: string }): Promise<string>;
+  latestLog?(input: { projectId?: string; projectPath?: string }): Promise<string>;
 };
 
 export type LocalServerAvailability = {
