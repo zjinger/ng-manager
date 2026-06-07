@@ -44,20 +44,17 @@ Use `hub-v2-api` or `hub-v2-docs` for those tasks.
 When available, prefer MCP tools with names like:
 
 ```text
-ngm.project.list
-ngm.project.find
-ngm.project.get
-ngm.project.readPackageJson
-ngm.project.getScripts
+ngm_project_managed_list
+ngm_project_find
+ngm_project_get
+ngm_project_read_package_json
+ngm_project_get_scripts
+ngm_file_write
 ngm_project_run_script
 ngm_project_stop
-ngm_project_list_tasks
-ngm_project_task_status
-ngm_project_task_logs
-ngm_project_port_check
-ngm_project_health_check
-ngm.task.list
-ngm.task.getStatus
+ngm_task_list
+ngm_task_get_status
+ngm_log_tail
 ```
 
 If exact tool names differ, choose tools whose descriptions mention:
@@ -114,10 +111,10 @@ When execution is confirmed, `ngm_project_run_script` should run through the act
 After a project is started, use the observation tools to close the loop:
 
 ```text
-1. `ngm_project_task_status` to check shared server runtime state
-2. `ngm_project_task_logs` to inspect limited, redacted recent logs
-3. `ngm_project_port_check` for one expected local port when known
-4. `ngm_project_health_check` for a local URL detected from task runtime or supplied by the user
+1. `ngm_task_get_status` to check shared server runtime state
+2. `ngm_log_tail` to inspect limited, redacted recent logs
+3. Use the port check tool for one expected local port when known
+4. Use the health check tool for a local URL detected from task runtime or supplied by the user
 ```
 
 If the local ng-manager server is unavailable, state that task runtime/log observation requires `ngm server` or `ngm ui`; do not ask MCP to start a second server implicitly.
@@ -146,9 +143,9 @@ Recommended steps:
 - Use `ngm_project_run_script` only for scripts present in the project's `package.json`; never pass arbitrary shell.
 - Use `ngm_project_stop` only for ng-manager managed task ids or matching managed project tasks; never kill arbitrary PID.
 - Prefer local-server task status/log results after starting or stopping, because the UI reads the same server-side task runtime.
-- Use `ngm_project_task_logs` only for limited tails; never request or return full log files.
-- Use `ngm_project_port_check` for a single local host/port only; never scan port ranges.
-- Use `ngm_project_health_check` only for local URLs or URLs detected from managed task runtime.
+- Use `ngm_log_tail` only for limited tails; never request or return full log files.
+- Use the port check tool for a single local host/port only; never scan port ranges.
+- Use the health check tool only for local URLs or URLs detected from managed task runtime.
 - Do not modify `package.json` unless explicitly requested.
 - Prefer read-only inspection first.
 - When showing environment variables, redact secrets and tokens.

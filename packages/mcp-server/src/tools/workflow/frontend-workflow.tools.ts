@@ -95,7 +95,7 @@ async function readChangedFiles(context: ToolContext, args: { projectId?: string
 export function frontendWorkflowTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.workflow.createFrontendTask",
+      name: "ngm_workflow_create_frontend_task",
       description: "Preview or create .ng-manager/frontend-tasks/{taskId}/task.json for a frontend workflow task.",
       riskLevel: "write",
       allowPreviewWhenBlocked: true,
@@ -107,24 +107,24 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
         const taskId = args.taskId || createTaskId(args.title);
         const safetyMessage = "Create frontend workflow task metadata under project .ng-manager/frontend-tasks.";
         if (!isConfirmed(args)) {
-          return writePreview("ngm.workflow.createFrontendTask", safetyMessage, {
+          return writePreview("ngm_workflow_create_frontend_task", safetyMessage, {
             project,
             task: { taskId, title: args.title, description: args.description, status: "draft" },
           });
         }
         const policyBlock = requireWritePolicy("low", safetyMessage);
-        if (policyBlock) return ok("ngm.workflow.createFrontendTask", policyBlock);
+        if (policyBlock) return ok("ngm_workflow_create_frontend_task", policyBlock);
         const result = await createFrontendTask(project, {
           taskId: args.taskId,
           title: args.title,
           description: args.description,
         });
         if (result.status === "blocked") {
-          return ok("ngm.workflow.createFrontendTask", blocked("write", "low", safetyMessage, result.reason, {
+          return ok("ngm_workflow_create_frontend_task", blocked("write", "low", safetyMessage, result.reason, {
             taskId: result.taskId,
           }));
         }
-        return ok("ngm.workflow.createFrontendTask", {
+        return ok("ngm_workflow_create_frontend_task", {
           operation: operation("executed", "write", "low", safetyMessage),
           project,
           task: result.task,
@@ -133,7 +133,7 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.workflow.generateDevPlan",
+      name: "ngm_workflow_generate_dev_plan",
       description: "Preview or write .ng-manager/frontend-tasks/{taskId}/dev-plan.md and advance task status to plan-ready.",
       riskLevel: "write",
       allowPreviewWhenBlocked: true,
@@ -147,18 +147,18 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
         const markdown = devPlanMarkdown({ taskId: args.taskId, title, context: args.context, acceptance: args.acceptance });
         const safetyMessage = "Write frontend development plan under project .ng-manager/frontend-tasks.";
         if (!isConfirmed(args)) {
-          return writePreview("ngm.workflow.generateDevPlan", safetyMessage, { project, taskId: args.taskId, markdown });
+          return writePreview("ngm_workflow_generate_dev_plan", safetyMessage, { project, taskId: args.taskId, markdown });
         }
         const policyBlock = requireWritePolicy("low", safetyMessage);
-        if (policyBlock) return ok("ngm.workflow.generateDevPlan", policyBlock);
-        if (!task) return ok("ngm.workflow.generateDevPlan", blocked("write", "low", safetyMessage, "task.json was not found; create the frontend task first"));
+        if (policyBlock) return ok("ngm_workflow_generate_dev_plan", policyBlock);
+        if (!task) return ok("ngm_workflow_generate_dev_plan", blocked("write", "low", safetyMessage, "task.json was not found; create the frontend task first"));
         let result: Awaited<ReturnType<typeof writeTaskMarkdown>>;
         try {
           result = await writeTaskMarkdown(project, args.taskId, "dev-plan.md", markdown, "plan-ready");
         } catch (error) {
-          return transitionBlocked("ngm.workflow.generateDevPlan", safetyMessage, error);
+          return transitionBlocked("ngm_workflow_generate_dev_plan", safetyMessage, error);
         }
-        return ok("ngm.workflow.generateDevPlan", {
+        return ok("ngm_workflow_generate_dev_plan", {
           operation: operation("executed", "write", "low", safetyMessage),
           project,
           task: result.task,
@@ -167,7 +167,7 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.workflow.advanceStatus",
+      name: "ngm_workflow_advance_status",
       description: "Preview or advance a frontend workflow task status through the controlled workflow transition graph.",
       riskLevel: "write",
       allowPreviewWhenBlocked: true,
@@ -179,7 +179,7 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
         const task = await readFrontendTask(project, args.taskId).catch(() => undefined);
         const safetyMessage = "Advance frontend workflow task status in task.json.";
         if (!isConfirmed(args)) {
-          return writePreview("ngm.workflow.advanceStatus", safetyMessage, {
+          return writePreview("ngm_workflow_advance_status", safetyMessage, {
             project,
             taskId: args.taskId,
             fromStatus: task?.status,
@@ -188,15 +188,15 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
           });
         }
         const policyBlock = requireWritePolicy("low", safetyMessage);
-        if (policyBlock) return ok("ngm.workflow.advanceStatus", policyBlock);
-        if (!task) return ok("ngm.workflow.advanceStatus", blocked("write", "low", safetyMessage, "task.json was not found; create the frontend task first"));
+        if (policyBlock) return ok("ngm_workflow_advance_status", policyBlock);
+        if (!task) return ok("ngm_workflow_advance_status", blocked("write", "low", safetyMessage, "task.json was not found; create the frontend task first"));
         let updated: Awaited<ReturnType<typeof updateTaskStatus>>;
         try {
           updated = await updateTaskStatus(project, args.taskId, args.nextStatus);
         } catch (error) {
-          return transitionBlocked("ngm.workflow.advanceStatus", safetyMessage, error);
+          return transitionBlocked("ngm_workflow_advance_status", safetyMessage, error);
         }
-        return ok("ngm.workflow.advanceStatus", {
+        return ok("ngm_workflow_advance_status", {
           operation: operation("executed", "write", "low", safetyMessage),
           project,
           task: updated,
@@ -206,7 +206,7 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.workflow.validateBeforeWrite",
+      name: "ngm_workflow_validate_before_write",
       description: "Preview or persist lightweight frontend project validation before AI writes source changes.",
       riskLevel: "write",
       allowPreviewWhenBlocked: true,
@@ -232,16 +232,16 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
           checks,
           validation,
         };
-        if (!args.taskId || !isConfirmed(args)) return ok("ngm.workflow.validateBeforeWrite", preview);
+        if (!args.taskId || !isConfirmed(args)) return ok("ngm_workflow_validate_before_write", preview);
         const policyBlock = requireWritePolicy("low", safetyMessage);
-        if (policyBlock) return ok("ngm.workflow.validateBeforeWrite", policyBlock);
+        if (policyBlock) return ok("ngm_workflow_validate_before_write", policyBlock);
         let task: Awaited<ReturnType<typeof updateFrontendTask>>;
         try {
           task = await updateFrontendTask(project, args.taskId, { checks });
         } catch (error) {
-          return transitionBlocked("ngm.workflow.validateBeforeWrite", safetyMessage, error);
+          return transitionBlocked("ngm_workflow_validate_before_write", safetyMessage, error);
         }
-        return ok("ngm.workflow.validateBeforeWrite", {
+        return ok("ngm_workflow_validate_before_write", {
           ...preview,
           operation: operation("executed", "write", "low", safetyMessage),
           task,
@@ -250,7 +250,7 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.workflow.validateBeforeCommit",
+      name: "ngm_workflow_validate_before_commit",
       description: "Preview or persist frontend standard/test/review/Git checks before commit.",
       riskLevel: "write",
       allowPreviewWhenBlocked: true,
@@ -287,9 +287,9 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
             changedFiles,
           },
         };
-        if (!args.taskId || !isConfirmed(args)) return ok("ngm.workflow.validateBeforeCommit", preview);
+        if (!args.taskId || !isConfirmed(args)) return ok("ngm_workflow_validate_before_commit", preview);
         const policyBlock = requireWritePolicy("low", safetyMessage);
-        if (policyBlock) return ok("ngm.workflow.validateBeforeCommit", policyBlock);
+        if (policyBlock) return ok("ngm_workflow_validate_before_commit", policyBlock);
         let task: Awaited<ReturnType<typeof updateFrontendTask>>;
         try {
           const current = await readFrontendTask(project, args.taskId);
@@ -304,9 +304,9 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
             ...statusPatch,
           });
         } catch (error) {
-          return transitionBlocked("ngm.workflow.validateBeforeCommit", safetyMessage, error);
+          return transitionBlocked("ngm_workflow_validate_before_commit", safetyMessage, error);
         }
-        return ok("ngm.workflow.validateBeforeCommit", {
+        return ok("ngm_workflow_validate_before_commit", {
           ...preview,
           operation: operation("executed", "write", "low", safetyMessage),
           task,
@@ -315,7 +315,7 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.workflow.generateDeliveryReport",
+      name: "ngm_workflow_generate_delivery_report",
       description: "Preview or write .ng-manager/frontend-tasks/{taskId}/delivery-report.md and advance task status to delivered.",
       riskLevel: "write",
       allowPreviewWhenBlocked: true,
@@ -332,19 +332,19 @@ export function frontendWorkflowTools(): McpToolDefinition[] {
         });
         const safetyMessage = "Write frontend delivery report under project .ng-manager/frontend-tasks.";
         if (!isConfirmed(args)) {
-          return writePreview("ngm.workflow.generateDeliveryReport", safetyMessage, { project, taskId: args.taskId, markdown });
+          return writePreview("ngm_workflow_generate_delivery_report", safetyMessage, { project, taskId: args.taskId, markdown });
         }
         const policyBlock = requireWritePolicy("low", safetyMessage);
-        if (policyBlock) return ok("ngm.workflow.generateDeliveryReport", policyBlock);
+        if (policyBlock) return ok("ngm_workflow_generate_delivery_report", policyBlock);
         const task = await readFrontendTask(project, args.taskId).catch(() => undefined);
-        if (!task) return ok("ngm.workflow.generateDeliveryReport", blocked("write", "low", safetyMessage, "task.json was not found; create the frontend task first"));
+        if (!task) return ok("ngm_workflow_generate_delivery_report", blocked("write", "low", safetyMessage, "task.json was not found; create the frontend task first"));
         let result: Awaited<ReturnType<typeof writeTaskMarkdown>>;
         try {
           result = await writeTaskMarkdown(project, args.taskId, "delivery-report.md", markdown, "delivered");
         } catch (error) {
-          return transitionBlocked("ngm.workflow.generateDeliveryReport", safetyMessage, error);
+          return transitionBlocked("ngm_workflow_generate_delivery_report", safetyMessage, error);
         }
-        return ok("ngm.workflow.generateDeliveryReport", {
+        return ok("ngm_workflow_generate_delivery_report", {
           operation: operation("executed", "write", "low", safetyMessage),
           project,
           task: result.task,

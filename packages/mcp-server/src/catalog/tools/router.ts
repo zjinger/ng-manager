@@ -2,14 +2,14 @@ import type { ToolCatalogEntry } from "../types";
 
 export const routerTools: ToolCatalogEntry[] = [
   {
-    name: "ngm.capabilities",
+    name: "ngm_capabilities",
     skill: "ngm-router",
     capability: "discovery",
     riskLevel: "read",
     description: "List ng-manager MCP capability groups, skills, and tool coverage.",
   },
   {
-    name: "ngm.routeTask",
+    name: "ngm_route_task",
     skill: "ngm-router",
     capability: "routing",
     riskLevel: "read",

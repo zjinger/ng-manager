@@ -5,7 +5,7 @@ export const routerCapabilities: CapabilityCatalogEntry[] = [
     id: "routing",
     label: "Skill routing and MCP capability discovery",
     skills: ["ngm-router"],
-    tools: ["ngm.capabilities", "ngm_doctor", "ngm.routeTask"],
+    tools: ["ngm_capabilities", "ngm_doctor", "ngm_route_task"],
   },
 ];
 

@@ -306,29 +306,29 @@ MCP Client 配置示例：
 发现与路由：
 
 ```text
-ngm.capabilities
-ngm.routeTask
+ngm_capabilities
+ngm_route_task
 ```
 
 Workspace：
 
 ```text
-ngm.workspace.summary
-ngm.workspace.listPackages
-ngm.workspace.getPackage
-ngm.workspace.mcpTools
-ngm.workspace.capabilityMap
+ngm_workspace_summary
+ngm_workspace_list_packages
+ngm_workspace_get_package
+ngm_workspace_mcp_tools
+ngm_workspace_capability_map
 ```
 
 Project：
 
 ```text
 ngm_project_list
-ngm.project.list
-ngm.project.find
-ngm.project.get
-ngm.project.getScripts
-ngm.project.readPackageJson
+ngm_project_managed_list
+ngm_project_find
+ngm_project_get
+ngm_project_get_scripts
+ngm_project_read_package_json
 ngm_project_run_script
 ngm_file_write
 ngm_project_stop
@@ -342,44 +342,44 @@ ngm_project_health_check
 Task：
 
 ```text
-ngm.task.list
-ngm.task.getStatus
+ngm_task_list
+ngm_task_get_status
 ```
 
 Log：
 
 ```text
-ngm.log.tail
-ngm.log.search
+ngm_log_tail
+ngm_log_search
 ```
 
 Git：
 
 ```text
-ngm.git.status
-ngm.git.diff
+ngm_git_status
+ngm_git_diff
 ```
 
 Runtime：
 
 ```text
-ngm.runtime.current
-ngm.runtime.list
-ngm.runtime.resolveForProject
-ngm.runtime.detectRequirement
+ngm_runtime_current
+ngm_runtime_list
+ngm_runtime_resolve_for_project
+ngm_runtime_detect_requirement
 ngm_runtime_set_for_project
 ```
 
 Nginx：
 
 ```text
-ngm.nginx.status
-ngm.nginx.servers.list
-ngm.nginx.server.get
-ngm.nginx.upstreams.list
-ngm.nginx.config.validate
-ngm.nginx.config.getMain
-ngm.nginx.logs.tail
+ngm_nginx_status
+ngm_nginx_servers_list
+ngm_nginx_server_get
+ngm_nginx_upstreams_list
+ngm_nginx_config_validate
+ngm_nginx_config_get_main
+ngm_nginx_logs_tail
 ngm_nginx_reload
 ngm_nginx_proxy_save
 ```
@@ -387,8 +387,8 @@ ngm_nginx_proxy_save
 兼容 Proxy：
 
 ```text
-ngm.proxy.list
-ngm.proxy.validate
+ngm_proxy_list
+ngm_proxy_validate
 ```
 
 受控本地工具：

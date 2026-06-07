@@ -150,7 +150,7 @@ export async function writeAuditLog(context: ToolContext, event: AuditToolEvent)
 }
 
 export function shouldAuditTool(toolName: string, riskLevel: ToolRiskLevel): boolean {
-  return riskLevel !== "read" || toolName.startsWith("ngm.workflow.");
+  return riskLevel !== "read" || toolName.startsWith("ngm_workflow_");
 }
 
 export function auditWarning(error: unknown): AuditWarning {

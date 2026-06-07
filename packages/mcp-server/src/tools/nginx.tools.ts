@@ -22,7 +22,7 @@ function clampTail(value: number | undefined): number {
 export function nginxTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.nginx.status",
+      name: "ngm_nginx_status",
       description: "Read local ng-manager Nginx binding and process status without starting, stopping, or reloading it.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
@@ -33,7 +33,7 @@ export function nginxTools(): McpToolDefinition[] {
           isRunning: false,
           error: error instanceof Error ? error.message : String(error),
         }));
-        return ok("ngm.nginx.status", {
+        return ok("ngm_nginx_status", {
           instance,
           status,
           lastConfigAppliedAt: nginx.service.getLastConfigAppliedAt(),
@@ -41,17 +41,17 @@ export function nginxTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.nginx.servers.list",
+      name: "ngm_nginx_servers_list",
       description: "List local ng-manager Nginx server blocks without changing Nginx config.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
       async handler(_args, context) {
         const servers = await context.services.core.nginx.server.getAllServers();
-        return ok("ngm.nginx.servers.list", servers);
+        return ok("ngm_nginx_servers_list", servers);
       },
     },
     {
-      name: "ngm.nginx.server.get",
+      name: "ngm_nginx_server_get",
       description: "Get one local ng-manager Nginx server block by id.",
       riskLevel: "read",
       inputSchema: nginxServerGetSchema,
@@ -60,41 +60,41 @@ export function nginxTools(): McpToolDefinition[] {
         if (!server) {
           throw new Error(`Nginx server not found: ${args.id}`);
         }
-        return ok("ngm.nginx.server.get", server);
+        return ok("ngm_nginx_server_get", server);
       },
     },
     {
-      name: "ngm.nginx.upstreams.list",
+      name: "ngm_nginx_upstreams_list",
       description: "List local ng-manager Nginx upstream definitions without saving changes.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
       async handler(_args, context) {
         const upstreams = await context.services.core.nginx.module.getUpstreams();
-        return ok("ngm.nginx.upstreams.list", upstreams);
+        return ok("ngm_nginx_upstreams_list", upstreams);
       },
     },
     {
-      name: "ngm.nginx.config.validate",
+      name: "ngm_nginx_config_validate",
       description: "Validate the current or supplied local ng-manager Nginx config without reload.",
       riskLevel: "read",
       inputSchema: nginxValidateSchema,
       async handler(args, context) {
         const validation = await context.services.core.nginx.config.validateConfig(args.configText);
-        return ok("ngm.nginx.config.validate", validation);
+        return ok("ngm_nginx_config_validate", validation);
       },
     },
     {
-      name: "ngm.nginx.config.getMain",
+      name: "ngm_nginx_config_get_main",
       description: "Read local ng-manager Nginx main config metadata and content without writing it.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
       async handler(_args, context) {
         const config = await context.services.core.nginx.config.readMainConfig();
-        return ok("ngm.nginx.config.getMain", config);
+        return ok("ngm_nginx_config_get_main", config);
       },
     },
     {
-      name: "ngm.nginx.logs.tail",
+      name: "ngm_nginx_logs_tail",
       description: "Read recent local ng-manager Nginx access or error log lines.",
       riskLevel: "read",
       inputSchema: nginxLogsTailSchema,
@@ -102,7 +102,7 @@ export function nginxTools(): McpToolDefinition[] {
         const type = args.type ?? "error";
         const tail = clampTail(args.tail);
         const lines = await context.services.core.nginx.log.readLogTail(type, tail);
-        return ok("ngm.nginx.logs.tail", {
+        return ok("ngm_nginx_logs_tail", {
           type,
           tail,
           logPath: context.services.core.nginx.log.getLogFilePath(type),

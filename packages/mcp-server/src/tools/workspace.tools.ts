@@ -178,13 +178,13 @@ function capabilityMap() {
 export function workspaceTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.workspace.summary",
+      name: "ngm_workspace_summary",
       description: "Summarize the local ng-manager workspace root, major app/package areas, and MCP read-only discovery status.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
       async handler(_args, context) {
         const packages = await listKnownWorkspacePackages(context.workspaceRoot);
-        return ok("ngm.workspace.summary", {
+        return ok("ngm_workspace_summary", {
           workspaceRoot: context.workspaceRoot,
           dataDir: context.dataDir,
           packageCount: packages.length,
@@ -199,17 +199,17 @@ export function workspaceTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.workspace.listPackages",
+      name: "ngm_workspace_list_packages",
       description: "List package.json metadata from known ng-manager workspace package and app roots.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
       async handler(_args, context) {
         const packages = await listKnownWorkspacePackages(context.workspaceRoot);
-        return ok("ngm.workspace.listPackages", packages);
+        return ok("ngm_workspace_list_packages", packages);
       },
     },
     {
-      name: "ngm.workspace.getPackage",
+      name: "ngm_workspace_get_package",
       description: "Get package.json metadata for one known ng-manager workspace package or app by name or relative path.",
       riskLevel: "read",
       inputSchema: getPackageSchema,
@@ -230,32 +230,32 @@ export function workspaceTools(): McpToolDefinition[] {
           throw new Error(`Workspace package not found: ${args.name || args.path}`);
         }
 
-        return ok("ngm.workspace.getPackage", found);
+        return ok("ngm_workspace_get_package", found);
       },
     },
     {
-      name: "ngm.workspace.mcpTools",
+      name: "ngm_workspace_mcp_tools",
       description: "List ng-manager MCP tools with skill, capability, and risk-level mapping.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
       handler() {
-        return ok("ngm.workspace.mcpTools", toolCatalog);
+        return ok("ngm_workspace_mcp_tools", toolCatalog);
       },
     },
     {
-      name: "ngm.workspace.capabilityMap",
+      name: "ngm_workspace_capability_map",
       description: "Map ng-manager workspace areas and MCP capability groups to the correct NGM or Hub V2 skill.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
       handler() {
-        return ok("ngm.workspace.capabilityMap", {
+        return ok("ngm_workspace_capability_map", {
           areas: capabilityMap(),
           capabilities: capabilityCatalog,
         });
       },
     },
     {
-      name: "ngm.workspace.diff",
+      name: "ngm_workspace_diff",
       description: "Read a safe Git diff summary for a project without exposing forbidden workspace paths.",
       riskLevel: "read",
       inputSchema: workspaceDiffSchema,
@@ -268,7 +268,7 @@ export function workspaceTools(): McpToolDefinition[] {
         const summary = summarizeDiffText(diffText, project.projectRoot);
         const includePatch = args.includePatch === true;
         const preview = includePatch ? patchPreview(diffText, maxBytes) : undefined;
-        return ok("ngm.workspace.diff", {
+        return ok("ngm_workspace_diff", {
           project,
           ...summary,
           ...(preview ? {
@@ -280,14 +280,14 @@ export function workspaceTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.workspace.applyPatchPreview",
+      name: "ngm_workspace_apply_patch_preview",
       description: "Preview a unified patch without writing files. It rejects forbidden paths and returns changed files plus added/removed line counts.",
       riskLevel: "read",
       inputSchema: patchPreviewSchema,
       async handler(args, context) {
         const project = await resolveProjectRoot(context, args);
         const summary = summarizeDiffText(args.patch, project.projectRoot);
-        return ok("ngm.workspace.applyPatchPreview", {
+        return ok("ngm_workspace_apply_patch_preview", {
           project,
           operation: {
             status: "preview",

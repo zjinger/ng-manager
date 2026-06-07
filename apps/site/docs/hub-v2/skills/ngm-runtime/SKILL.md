@@ -41,10 +41,10 @@ Use `hub-v2-api` or `hub-v2-docs` for those tasks.
 When available, prefer MCP tools with names like:
 
 ```text
-ngm.runtime.current
-ngm.runtime.list
-ngm.runtime.detectRequirement
-ngm.runtime.resolveForProject
+ngm_runtime_current
+ngm_runtime_list
+ngm_runtime_detect_requirement
+ngm_runtime_resolve_for_project
 ngm_runtime_set_for_project
 ```
 

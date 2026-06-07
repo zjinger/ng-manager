@@ -20,14 +20,14 @@ const initSchema = projectSchema.extend({
 export function standardTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.standard.get",
+      name: "ngm_standard_get",
       description: "Read the frontend standard config for a project, returning defaults when .ng-manager/frontend-standard.json does not exist.",
       riskLevel: "read",
       inputSchema: projectSchema,
       async handler(args, context) {
         const project = await resolveProjectRoot(context, args);
         const loaded = await loadFrontendStandard(project);
-        return ok("ngm.standard.get", {
+        return ok("ngm_standard_get", {
           project,
           source: loaded.source,
           path: projectRelativePath(project.projectRoot, loaded.path),
@@ -36,7 +36,7 @@ export function standardTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.standard.init",
+      name: "ngm_standard_init",
       description: "Preview or create .ng-manager/frontend-standard.json for a project. Requires confirm=true and NGM_MCP_ALLOW_WRITE=true to write.",
       riskLevel: "write",
       allowPreviewWhenBlocked: true,
@@ -53,16 +53,16 @@ export function standardTools(): McpToolDefinition[] {
           path: projectRelativePath(project.projectRoot, loaded.path),
           standard: loaded.standard,
         };
-        if (!isConfirmed(args)) return ok("ngm.standard.init", preview);
+        if (!isConfirmed(args)) return ok("ngm_standard_init", preview);
         const policyBlock = requireWritePolicy("low", safetyMessage);
-        if (policyBlock) return ok("ngm.standard.init", policyBlock);
+        if (policyBlock) return ok("ngm_standard_init", policyBlock);
         const result = await initFrontendStandard(project, args.overwrite === true);
         if (result.status === "blocked") {
-          return ok("ngm.standard.init", blocked("write", "low", safetyMessage, result.reason ?? "frontend standard init was blocked", {
+          return ok("ngm_standard_init", blocked("write", "low", safetyMessage, result.reason ?? "frontend standard init was blocked", {
             path: projectRelativePath(project.projectRoot, result.path),
           }));
         }
-        return ok("ngm.standard.init", {
+        return ok("ngm_standard_init", {
           ...preview,
           operation: operation("executed", "write", "low", safetyMessage),
           path: projectRelativePath(project.projectRoot, result.path),
@@ -71,7 +71,7 @@ export function standardTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.standard.validateProject",
+      name: "ngm_standard_validate_project",
       description: "Run lightweight frontend standard checks for Angular structure, component boundaries, and test naming.",
       riskLevel: "read",
       inputSchema: projectSchema,
@@ -79,7 +79,7 @@ export function standardTools(): McpToolDefinition[] {
         const project = await resolveProjectRoot(context, args);
         const loaded = await loadFrontendStandard(project);
         const result = await validateFrontendProject(project, loaded.standard);
-        return ok("ngm.standard.validateProject", {
+        return ok("ngm_standard_validate_project", {
           project,
           standardSource: loaded.source,
           ...result,

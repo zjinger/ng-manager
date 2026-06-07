@@ -7,6 +7,7 @@ import { ok, fail } from "../utils/result";
 import { PathGuardService } from "../services/path-guard.service";
 import { ProjectResolverService } from "../services/project-resolver.service";
 import { errorMessage, errorMetadata } from "../utils/errors";
+import { MCP_TOOL_NAMES } from "../registry/tool-names";
 
 const fileWriteSchema = z.object({
   projectId: z.string().trim().min(1),
@@ -27,7 +28,7 @@ function projectResolver(context: Parameters<McpToolDefinition["handler"]>[1]): 
 export function fileWriteTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm_file_write",
+      name: MCP_TOOL_NAMES.NGM_FILE_WRITE,
       description: "Controlled write for text files inside a registered ng-manager project. Use this instead of direct filesystem writes when the target is an ng-manager project: it accepts projectId plus project-relative relativePath only, rejects absolute paths and traversal, previews by default, and confirmed writes require NGM_MCP_ALLOW_WRITE=true and are audit logged.",
       riskLevel: "write",
       allowPreviewWhenBlocked: true,
@@ -42,7 +43,7 @@ export function fileWriteTools(): McpToolDefinition[] {
         try {
           target = pathGuard(context).resolveInsideProject(project.root, args.relativePath);
         } catch (error) {
-          return fail("ngm_file_write", errorMessage(error), errorMetadata(error));
+          return fail(MCP_TOOL_NAMES.NGM_FILE_WRITE, errorMessage(error), errorMetadata(error));
         }
         const relativePath = projectRelativePath(project.root, target);
         const preview = {
@@ -53,12 +54,12 @@ export function fileWriteTools(): McpToolDefinition[] {
           bytes: Buffer.byteLength(args.content, "utf-8"),
         };
 
-        if (!confirmed) return ok("ngm_file_write", preview);
+        if (!confirmed) return ok(MCP_TOOL_NAMES.NGM_FILE_WRITE, preview);
         const policyBlock = requireWritePolicy("medium", safetyMessage);
-        if (policyBlock) return ok("ngm_file_write", policyBlock);
+        if (policyBlock) return ok(MCP_TOOL_NAMES.NGM_FILE_WRITE, policyBlock);
 
         await writeTextFile(target, args.content);
-        return ok("ngm_file_write", {
+        return ok(MCP_TOOL_NAMES.NGM_FILE_WRITE, {
           ...preview,
           ...controlledFields("write", true, requiredEnv("write")),
           operation: operation("executed", "write", "medium", safetyMessage),

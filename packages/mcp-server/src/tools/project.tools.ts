@@ -119,17 +119,17 @@ export function projectTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.project.list",
+      name: "ngm_project_managed_list",
       description: "List projects managed by ng-manager.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
       async handler(_args, context) {
         const projects = await context.services.core.project.list();
-        return ok("ngm.project.list", projects.map(toProjectSummary));
+        return ok("ngm_project_managed_list", projects.map(toProjectSummary));
       },
     },
     {
-      name: "ngm.project.find",
+      name: "ngm_project_find",
       description: "Find ng-manager local projects by name, path, framework, package manager, or repository URL.",
       riskLevel: "read",
       inputSchema: projectFindSchema,
@@ -157,38 +157,38 @@ export function projectTools(): McpToolDefinition[] {
             .toLowerCase();
           return text.includes(query);
         });
-        return ok("ngm.project.find", matched.map(toProjectSummary));
+        return ok("ngm_project_find", matched.map(toProjectSummary));
       },
     },
     {
-      name: "ngm.project.get",
+      name: "ngm_project_get",
       description: "Get one ng-manager project by projectId or projectPath.",
       riskLevel: "read",
       inputSchema: projectLocatorSchema,
       async handler(args, context) {
         const project = await resolveProject(context, args);
-        return ok("ngm.project.get", toProjectSummary(project));
+        return ok("ngm_project_get", toProjectSummary(project));
       },
     },
     {
-      name: "ngm.project.getScripts",
+      name: "ngm_project_get_scripts",
       description: "Get package scripts and runtime hints for one ng-manager project.",
       riskLevel: "read",
       inputSchema: projectLocatorSchema,
       async handler(args, context) {
         const project = await resolveProject(context, args);
-        return ok("ngm.project.getScripts", toProjectScripts(project));
+        return ok("ngm_project_get_scripts", toProjectScripts(project));
       },
     },
     {
-      name: "ngm.project.readPackageJson",
+      name: "ngm_project_read_package_json",
       description: "Read package.json metadata for one registered ng-manager local project without running scripts.",
       riskLevel: "read",
       inputSchema: projectLocatorSchema,
       async handler(args, context) {
         const project = await resolveProject(context, args);
         const packageJson = await readWorkspacePackageJson(context.workspaceRoot, project.root);
-        return ok("ngm.project.readPackageJson", {
+        return ok("ngm_project_read_package_json", {
           project: {
             id: project.id,
             name: project.name,

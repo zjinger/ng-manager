@@ -9,7 +9,7 @@ const proxyValidateSchema = z.object({
 export function proxyTools(): McpToolDefinition[] {
   return [
     {
-      name: "ngm.proxy.list",
+      name: "ngm_proxy_list",
       description: "List current ng-manager Nginx/proxy binding, status, servers, and upstreams.",
       riskLevel: "read",
       inputSchema: z.object({}).strict(),
@@ -25,7 +25,7 @@ export function proxyTools(): McpToolDefinition[] {
           nginx.module.getUpstreams().catch(() => []),
         ]);
 
-        return ok("ngm.proxy.list", {
+        return ok("ngm_proxy_list", {
           instance,
           status,
           servers,
@@ -34,13 +34,13 @@ export function proxyTools(): McpToolDefinition[] {
       },
     },
     {
-      name: "ngm.proxy.validate",
+      name: "ngm_proxy_validate",
       description: "Validate the current or supplied ng-manager Nginx/proxy config without reload.",
       riskLevel: "read",
       inputSchema: proxyValidateSchema,
       async handler(args, context) {
         const validation = await context.services.core.nginx.config.validateConfig(args.configText);
-        return ok("ngm.proxy.validate", validation);
+        return ok("ngm_proxy_validate", validation);
       },
     },
   ];

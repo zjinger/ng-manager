@@ -26,6 +26,7 @@
     "inspect:dev": "mcp-inspector tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "build": "rimraf lib tsconfig.tsbuildinfo && tsc -b tsconfig.json",
+    "lint:tool-names": "tsx scripts/lint-tool-names.ts",
     "test": "npm run build && node --test test",
     "start": "node lib/index.js"
   },

@@ -6,12 +6,11 @@ export const runtimeCapabilities: CapabilityCatalogEntry[] = [
     label: "Node runtime, Node version manager, and project runtime resolution",
     skills: ["ngm-runtime"],
     tools: [
-      "ngm.runtime.current",
-      "ngm.runtime.list",
-      "ngm.runtime.resolveForProject",
-      "ngm.runtime.detectRequirement",
+      "ngm_runtime_current",
+      "ngm_runtime_list",
+      "ngm_runtime_resolve_for_project",
+      "ngm_runtime_detect_requirement",
       "ngm_runtime_set_for_project",
-      "ngm.runtime.setForProject",
     ],
   },
 ];
