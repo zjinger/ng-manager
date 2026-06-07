@@ -8,6 +8,7 @@ import { requireWritePolicy } from "../controlled/operation-policy";
 import { loadFrontendStandard, scanFrontendProject, validateFrontendProject } from "../../standard/frontend-standard.service";
 import { detectReviewRisks, generateReviewMarkdown, reviewChecklist } from "../../standard/validators/review.validator";
 import { readFrontendTask, taskFile, updateFrontendTask } from "../../workflow/frontend-task.service";
+import { canTransitionWorkflowStatus, workflowTransitionReason } from "../../workflow/workflow-transition";
 
 const projectSchema = z.object({
   projectId: z.string().trim().min(1).optional(),
@@ -117,7 +118,10 @@ export function reviewTools(): McpToolDefinition[] {
         const policyBlock = requireWritePolicy("low", safetyMessage);
         if (policyBlock) return ok("ngm.review.generateReport", policyBlock);
         try {
-          await readFrontendTask(project, args.taskId);
+          const task = await readFrontendTask(project, args.taskId);
+          if (!canTransitionWorkflowStatus(task.status, "review-ready")) {
+            return ok("ngm.review.generateReport", blocked("write", "low", safetyMessage, workflowTransitionReason(task.status, "review-ready")));
+          }
           await writeTextFile(reportPath, markdown);
           await updateFrontendTask(project, args.taskId, {
             status: "review-ready",

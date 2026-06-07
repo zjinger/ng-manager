@@ -217,17 +217,6 @@ test("review report and workflow tools write only project .ng-manager files and 
       build: "pending",
     });
 
-    const reviewCb = registeredTool("ngm.review.generateReport", context(projectRoot));
-    const report = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => reviewCb({
-      projectPath: projectRoot,
-      taskId: "task-1",
-      changedFiles: ["src/app/services/demo.service.ts"],
-      confirm: true,
-    })));
-    assert.equal(report.ok, true);
-    assert.equal(report.data.operation.status, "executed");
-    assert.equal(fs.existsSync(path.join(projectRoot, ".ng-manager/frontend-tasks/task-1/review-report.md")), true);
-
     const devPlanCb = registeredTool("ngm.workflow.generateDevPlan", context(projectRoot));
     const devPlan = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => devPlanCb({
       projectPath: projectRoot,
@@ -252,9 +241,24 @@ test("review report and workflow tools write only project .ng-manager files and 
     assert.equal(validatedTask.checks.test, "warning");
     assert.deepEqual(validatedTask.changedFiles, ["src/app/services/demo.service.ts"]);
 
+    fs.writeFileSync(taskPath, JSON.stringify({ ...validatedTask, status: "verified" }, null, 2));
+    const reviewCb = registeredTool("ngm.review.generateReport", context(projectRoot));
+    const report = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => reviewCb({
+      projectPath: projectRoot,
+      taskId: "task-1",
+      changedFiles: ["src/app/services/demo.service.ts"],
+      confirm: true,
+    })));
+    assert.equal(report.ok, true);
+    assert.equal(report.data.operation.status, "executed");
+    assert.equal(fs.existsSync(path.join(projectRoot, ".ng-manager/frontend-tasks/task-1/review-report.md")), true);
+
     const audit = auditText(projectRoot);
     assert.equal(audit.includes("secret-title"), false);
     assert.equal(audit.includes("secret-value"), false);
+    assert.equal(audit.includes("Design context"), false);
+    assert.match(audit, /contextBytes/);
+    assert.equal(audit.includes('"args"'), false);
     assert.match(audit, /projectRoot/);
     assert.match(audit, /REDACTED/);
   } finally {
@@ -288,6 +292,55 @@ test("workspace patch preview summarizes diffs without writing and rejects forbi
       projectPath: projectRoot,
       patch: "diff --git a/.env b/.env\n+++ b/.env\n+TOKEN=secret",
     }, context(projectRoot)), /forbidden/);
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("workspace diff hides full patch by default and returns redacted truncated patch preview when requested", async () => {
+  const projectRoot = tempProject();
+  const diffText = [
+    "diff --git a/src/app/a.ts b/src/app/a.ts",
+    "--- a/src/app/a.ts",
+    "+++ b/src/app/a.ts",
+    "@@ -1 +1,3 @@",
+    "-old",
+    "+TOKEN=secret-token",
+    `+${"x".repeat(120)}`,
+  ].join("\n");
+  try {
+    const ctx = context(projectRoot, {
+      services: {
+        git: {
+          async status() {
+            return {};
+          },
+          async diff() {
+            return { diff: diffText };
+          },
+          async changedFiles() {
+            return ["src/app/a.ts"];
+          },
+        },
+      },
+    });
+    const summary = await tool("ngm.workspace.diff").handler({ projectPath: projectRoot }, ctx);
+    assert.equal(summary.ok, true);
+    assert.deepEqual(summary.data.changedFiles, ["src/app/a.ts"]);
+    assert.equal(summary.data.diff, undefined);
+    assert.equal(summary.data.patchPreview, undefined);
+
+    const withPatch = await tool("ngm.workspace.diff").handler({
+      projectPath: projectRoot,
+      includePatch: true,
+      maxBytes: 140,
+    }, ctx);
+    assert.equal(withPatch.ok, true);
+    assert.equal(withPatch.data.maxBytes, 140);
+    assert.equal(withPatch.data.truncated, true);
+    assert.equal(withPatch.data.patchPreview.includes("secret-token"), false);
+    assert.match(withPatch.data.patchPreview, /REDACTED/);
+    assert.ok(Buffer.byteLength(withPatch.data.patchPreview, "utf-8") <= 140);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -360,6 +413,80 @@ test("audit warning is returned when audit storage fails but preview succeeds", 
     assert.equal(result.auditWarning.code, "AUDIT_LOG_WRITE_FAILED");
   } finally {
     fs.rmSync(fileRoot, { force: true });
+  }
+});
+
+test("audit log refuses arbitrary projectPath outside workspaceRoot without blocking main tool", async () => {
+  const workspaceRoot = tempProject();
+  const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ngm-audit-outside-"));
+  try {
+    const cb = registeredTool("ngm.workflow.createFrontendTask", context(workspaceRoot));
+    const result = parseMcpResult(await cb({
+      projectPath: outsideRoot,
+      taskId: "task-1",
+      title: "Preview outside",
+    }));
+    assert.equal(result.ok, true);
+    assert.equal(result.data.operation.status, "preview");
+    assert.equal(result.auditWarning.code, "AUDIT_LOG_WRITE_FAILED");
+    assert.equal(fs.existsSync(path.join(outsideRoot, ".ng-manager/audit")), false);
+  } finally {
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    fs.rmSync(outsideRoot, { recursive: true, force: true });
+  }
+});
+
+test("createFrontendTask blocks duplicate taskId without overwriting task.json", async () => {
+  const projectRoot = tempProject();
+  try {
+    const cb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    const first = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => cb({
+      projectPath: projectRoot,
+      taskId: "task-1",
+      title: "First title",
+      confirm: true,
+    })));
+    assert.equal(first.data.operation.status, "executed");
+    const taskPath = path.join(projectRoot, ".ng-manager/frontend-tasks/task-1/task.json");
+    const before = fs.readFileSync(taskPath, "utf-8");
+    const second = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => cb({
+      projectPath: projectRoot,
+      taskId: "task-1",
+      title: "Second title",
+      confirm: true,
+    })));
+    assert.equal(second.ok, true);
+    assert.equal(second.data.operation.status, "blocked");
+    assert.match(second.data.reason, /already exists/);
+    assert.equal(fs.readFileSync(taskPath, "utf-8"), before);
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("generateDeliveryReport blocks illegal draft to delivered transition", async () => {
+  const projectRoot = tempProject();
+  try {
+    const taskCb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => taskCb({
+      projectPath: projectRoot,
+      taskId: "task-1",
+      title: "Delivery transition",
+      confirm: true,
+    }));
+    const deliveryCb = registeredTool("ngm.workflow.generateDeliveryReport", context(projectRoot));
+    const result = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => deliveryCb({
+      projectPath: projectRoot,
+      taskId: "task-1",
+      summary: "done",
+      confirm: true,
+    })));
+    assert.equal(result.ok, true);
+    assert.equal(result.data.operation.status, "blocked");
+    assert.match(result.data.reason, /draft -> delivered/);
+    assert.equal(fs.existsSync(path.join(projectRoot, ".ng-manager/frontend-tasks/task-1/delivery-report.md")), false);
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
   }
 });
 

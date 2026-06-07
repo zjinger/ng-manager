@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ok } from "../utils/result";
 import type { McpToolDefinition } from "./index";
 import { resolveProjectRoot, assertPathInsideProject, projectRelativePath } from "../filesystem/project-files";
+import { redactText } from "../audit/redact";
 import { capabilityCatalog, toolCatalog } from "./tool-catalog";
 import { listKnownWorkspacePackages, readPackageJsonSummary } from "./workspace-package";
 
@@ -14,6 +15,7 @@ const getPackageSchema = z.object({
 const workspaceDiffSchema = z.object({
   projectId: z.string().trim().min(1).optional(),
   projectPath: z.string().trim().min(1).optional(),
+  includePatch: z.boolean().optional(),
   maxBytes: z.number().int().min(1).max(200000).optional(),
 }).strict();
 
@@ -30,10 +32,14 @@ function normalizePath(value: string): string {
 function isForbiddenWorkspacePath(filePath: string): boolean {
   const normalized = filePath.replace(/\\/g, "/").replace(/^\.?\//, "");
   const parts = normalized.split("/");
-  return parts.some((part) => ["node_modules", "dist", "build", ".git"].includes(part))
+  return parts.some((part) => ["node_modules", "dist", "build", ".git", "coverage", ".cache", ".angular", ".idea"].includes(part))
     || parts.some((part) => part === ".env" || part.startsWith(".env."))
     || normalized.endsWith(".pem")
-    || normalized.endsWith(".key");
+    || normalized.endsWith(".key")
+    || normalized.endsWith(".p12")
+    || normalized.endsWith(".pfx")
+    || normalized.endsWith(".jks")
+    || normalized.endsWith(".keystore");
 }
 
 function assertWorkspaceReadablePath(projectRoot: string, filePath: string): string {
@@ -77,6 +83,21 @@ function summarizeDiffText(diffText: string, projectRoot: string) {
     summary: changedFiles.length
       ? `${changedFiles.length} file(s), +${addedLines}/-${removedLines}`
       : `0 file(s), +${addedLines}/-${removedLines}`,
+  };
+}
+
+function patchPreview(diffText: string, maxBytes: number) {
+  const redacted = redactText(diffText);
+  const buffer = Buffer.from(redacted, "utf-8");
+  if (buffer.length <= maxBytes) {
+    return {
+      patchPreview: redacted,
+      truncated: false,
+    };
+  }
+  return {
+    patchPreview: buffer.subarray(0, maxBytes).toString("utf-8"),
+    truncated: true,
   };
 }
 
@@ -227,14 +248,21 @@ export function workspaceTools(): McpToolDefinition[] {
       inputSchema: workspaceDiffSchema,
       async handler(args, context) {
         const project = await resolveProjectRoot(context, args);
+        const maxBytes = args.maxBytes ?? 20000;
         const gitArgs = { ...args, projectPath: project.projectRoot };
         const diff = await context.services.git.diff(gitArgs);
         const diffText = typeof (diff as { diff?: unknown }).diff === "string" ? (diff as { diff: string }).diff : JSON.stringify(diff);
         const summary = summarizeDiffText(diffText, project.projectRoot);
+        const includePatch = args.includePatch === true;
+        const preview = includePatch ? patchPreview(diffText, maxBytes) : undefined;
         return ok("ngm.workspace.diff", {
           project,
           ...summary,
-          diff,
+          ...(preview ? {
+            ...preview,
+            maxBytes,
+            truncated: Boolean((diff as { truncated?: unknown }).truncated) || preview.truncated,
+          } : {}),
         });
       },
     },

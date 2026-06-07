@@ -5,6 +5,7 @@ import { projectRelativePath, resolveNgManagerPath, validateSafeId, writeJsonFil
 import type { FrontendTask, WorkflowChecks } from "./frontend-task.schema";
 import { frontendTaskSchema } from "./frontend-task.schema";
 import type { FrontendWorkflowStatus } from "./workflow-status";
+import { assertWorkflowTransition } from "./workflow-transition";
 
 function timestampSlug(date = new Date()): string {
   const pad = (value: number) => String(value).padStart(2, "0");
@@ -61,7 +62,7 @@ export async function createFrontendTask(project: ResolvedProjectRoot, input: {
   taskId?: string;
   title: string;
   description?: string;
-}): Promise<{ task: FrontendTask; changedFiles: string[] }> {
+}): Promise<{ status: "executed"; task: FrontendTask; changedFiles: string[] } | { status: "blocked"; taskId: string; reason: string }> {
   const now = new Date().toISOString();
   const task: FrontendTask = {
     taskId: input.taskId || createTaskId(input.title),
@@ -78,13 +79,24 @@ export async function createFrontendTask(project: ResolvedProjectRoot, input: {
   };
   validateSafeId("taskId", task.taskId);
   const dir = taskDir(project.projectRoot, task.taskId);
+  try {
+    await fs.access(taskFile(project.projectRoot, task.taskId, "task.json"));
+    return {
+      status: "blocked",
+      taskId: task.taskId,
+      reason: "frontend task already exists",
+    };
+  } catch {
+    // Missing task.json is the expected create path.
+  }
   await fs.mkdir(dir, { recursive: true });
   const changedFiles = [await writeFrontendTask(project, task)];
-  return { task, changedFiles };
+  return { status: "executed", task, changedFiles };
 }
 
 export async function updateTaskStatus(project: ResolvedProjectRoot, taskId: string, status: FrontendWorkflowStatus): Promise<FrontendTask> {
   const task = await readFrontendTask(project, taskId);
+  assertWorkflowTransition(task.status, status);
   const updated = { ...task, status, updatedAt: new Date().toISOString() };
   await writeFrontendTask(project, updated);
   return updated;
@@ -92,6 +104,9 @@ export async function updateTaskStatus(project: ResolvedProjectRoot, taskId: str
 
 export async function updateFrontendTask(project: ResolvedProjectRoot, taskId: string, patch: Partial<Omit<FrontendTask, "taskId" | "createdAt">>): Promise<FrontendTask> {
   const task = await readFrontendTask(project, taskId);
+  if (patch.status) {
+    assertWorkflowTransition(task.status, patch.status);
+  }
   const updated = frontendTaskSchema.parse({
     ...task,
     ...patch,
@@ -104,6 +119,8 @@ export async function updateFrontendTask(project: ResolvedProjectRoot, taskId: s
 }
 
 export async function writeTaskMarkdown(project: ResolvedProjectRoot, taskId: string, fileName: string, content: string, nextStatus: FrontendWorkflowStatus) {
+  const current = await readFrontendTask(project, taskId);
+  assertWorkflowTransition(current.status, nextStatus);
   const filePath = taskFile(project.projectRoot, taskId, fileName);
   await writeTextFile(filePath, content);
   const task = await updateTaskStatus(project, taskId, nextStatus);
