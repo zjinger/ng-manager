@@ -16,6 +16,7 @@ import staticFileRoutes from './static-files.routes';
 import hubRoutes from './hub.routes';
 import nodeRuntimeRoutes from './node-runtime.routes';
 import nodeVersionRoutes from './node-version.routes';
+import agentConnectionsRoutes from './agent-connections.routes';
 
 export default async function routes(fastify: FastifyInstance) {
     // system
@@ -63,4 +64,7 @@ export default async function routes(fastify: FastifyInstance) {
 
     // node-runtime
     await fastify.register(nodeRuntimeRoutes, { prefix: '/api/node-runtimes' });
+
+    // agent connections
+    await fastify.register(agentConnectionsRoutes, { prefix: '/api/agent-connections' });
 }

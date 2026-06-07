@@ -23,7 +23,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node lib/index.js"
+    "start": "node lib/index.js",
+    "test": "node --import tsx --test test"
   },
   "dependencies": {
     "@fastify/static": "^9.0.0",
