@@ -230,6 +230,28 @@ Hub V2 MCP tools 的 token 使用规则：
 - project summary 只能返回 `hasProjectToken`、`hasPersonalToken` 等布尔信息
 - HTTP 错误转换不得包含 Authorization header
 
+## 6.1 Server 本地 Agent Connections 管理 API
+
+`packages/server` 提供本地配置管理 API（仅管理 `hubV2` 节点）：
+
+```text
+GET    /api/agent-connections/hub-v2
+POST   /api/agent-connections/hub-v2
+PUT    /api/agent-connections/hub-v2/:name
+DELETE /api/agent-connections/hub-v2/:name
+POST   /api/agent-connections/hub-v2/:name/set-default
+```
+
+实现边界：
+
+- 仅读写 `NGM_DATA_DIR || ~/.ng-manager` 下的 `agent-connections.json`
+- 仅改写 `hubV2`，保留未知顶级 provider 字段（例如 `github`）
+- GET 不返回明文 token，仅返回 `has*Token` 与脱敏预览
+- 文件损坏（JSON 解析失败）时返回错误，不覆盖原文件
+- 写入采用原子替换（`agent-connections.json.tmp` -> rename）
+
+`packages/mcp-server` 继续独立读取同一文件，不依赖 `packages/server` 启动与否。
+
 ## 7. 写工具确认与 policy
 
 MCP Server 对工具使用 risk level：
