@@ -124,7 +124,6 @@ function decodeBase64Content(value: string): Buffer {
 
 function assertAllowedFilePath(filePath: string): void {
   const roots = [
-    process.env.NGM_WORKSPACE_ROOT,
     process.env.NGM_MCP_UPLOAD_ROOT,
     process.cwd(),
   ]
@@ -133,7 +132,7 @@ function assertAllowedFilePath(filePath: string): void {
     .map((item) => path.resolve(item));
   const allowed = roots.some((root) => filePath === root || filePath.startsWith(`${root}${path.sep}`));
   if (!allowed) {
-    throw new Error("filePath must be under NGM_WORKSPACE_ROOT, NGM_MCP_UPLOAD_ROOT, or the current workspace");
+    throw new Error("filePath must be under NGM_MCP_UPLOAD_ROOT or the current working directory");
   }
 }
 

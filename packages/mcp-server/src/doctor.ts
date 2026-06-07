@@ -34,10 +34,6 @@ function defaultDataDir(): string {
   return envValue("NGM_DATA_DIR") ?? join(homedir(), ".ng-manager");
 }
 
-function defaultWorkspaceRoot(): string {
-  return envValue("NGM_WORKSPACE_ROOT") ?? process.cwd();
-}
-
 function readPackageInfo(): { text: string; status: DoctorStatus } {
   try {
     const packagePath = join(__dirname, "..", "package.json");
@@ -228,7 +224,6 @@ export function createDoctorReport(): DoctorReport {
     "",
     "Paths:",
     `  dataDir: ${defaultDataDir()}`,
-    `  workspaceRoot: ${defaultWorkspaceRoot()}`,
     `  agentConnections: ${resolveAgentConnectionsPath()}`,
     "",
     ...hubV2.lines,

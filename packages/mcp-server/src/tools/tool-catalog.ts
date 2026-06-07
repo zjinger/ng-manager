@@ -67,6 +67,13 @@ export const toolCatalog: ToolCatalogEntry[] = [
     description: "Map ng-manager workspace areas to local capability domains.",
   },
   {
+    name: "ngm_project_list",
+    skill: "ngm-project",
+    capability: "project",
+    riskLevel: "read",
+    description: "List registered ng-manager local projects without workspace root scanning.",
+  },
+  {
     name: "ngm.project.list",
     skill: "ngm-project",
     capability: "project",
@@ -128,6 +135,13 @@ export const toolCatalog: ToolCatalogEntry[] = [
     capability: "project",
     riskLevel: "execute",
     description: "Dotted alias for ngm_project_stop.",
+  },
+  {
+    name: "ngm_file_write",
+    skill: "ngm-project",
+    capability: "project",
+    riskLevel: "write",
+    description: "Preview or write a text file inside a registered project using projectId and relativePath.",
   },
   {
     name: "ngm_project_list_tasks",
@@ -718,10 +732,12 @@ export const capabilityCatalog: CapabilityCatalogEntry[] = [
     skills: ["ngm-project"],
     tools: [
       "ngm.project.list",
+      "ngm_project_list",
       "ngm.project.find",
       "ngm.project.get",
       "ngm.project.getScripts",
       "ngm.project.readPackageJson",
+      "ngm_file_write",
       "ngm_project_run_script",
       "ngm.project.runScript",
       "ngm_project_stop",
@@ -809,7 +825,7 @@ export const blockedLocalActions = [
   "write Nginx proxy rules without confirm=true and NGM_MCP_ALLOW_WRITE=true",
   "execute arbitrary shell commands",
   "kill arbitrary PIDs",
-  "write arbitrary file paths",
+  "write arbitrary project-external file paths",
   "write frontend standard, review, or workflow files outside project-local .ng-manager/**",
   "apply patch previews to source files; ngm.workspace.applyPatchPreview never writes files",
 ];

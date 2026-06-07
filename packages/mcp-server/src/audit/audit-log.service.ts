@@ -20,11 +20,6 @@ function normalizePath(value: string): string {
   return process.platform === "win32" ? resolved.replace(/\\/g, "/").toLowerCase() : resolved;
 }
 
-function isInside(parent: string, child: string): boolean {
-  const relative = path.relative(parent, child);
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
-}
-
 async function registeredProjectByPath(context: ToolContext, projectPath: string): Promise<{
   projectId?: string;
   projectName?: string;
@@ -63,20 +58,16 @@ async function resolveAuditProjectRoot(context: ToolContext, args: Record<string
     };
   }
 
-  const workspaceRoot = path.resolve(context.workspaceRoot);
   const projectPath = getString(args, "projectPath");
   if (projectPath) {
     const requestedRoot = path.resolve(projectPath);
     const registered = await registeredProjectByPath(context, requestedRoot);
     if (registered) return registered;
-    if (isInside(normalizePath(workspaceRoot), normalizePath(requestedRoot))) {
-      return { projectRoot: requestedRoot };
-    }
-    throw new Error("Audit projectPath must match a registered project root or stay inside workspaceRoot");
+    throw new Error("Audit projectPath must match a registered project root");
   }
 
   return {
-    projectRoot: workspaceRoot,
+    projectRoot: path.resolve(context.workspaceRoot),
   };
 }
 

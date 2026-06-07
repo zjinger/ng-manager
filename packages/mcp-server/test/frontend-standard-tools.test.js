@@ -87,7 +87,16 @@ function context(projectRoot, extra = {}) {
     workspaceRoot: projectRoot,
     dataDir: projectRoot,
     services: {
-      core: {},
+      core: {
+        project: {
+          async get() {
+            return { id: "proj_1", name: "demo", root: projectRoot, createdAt: 1, updatedAt: 1 };
+          },
+          async list() {
+            return [{ id: "proj_1", name: "demo", root: projectRoot, createdAt: 1, updatedAt: 1 }];
+          },
+        },
+      },
       git: {
         async status() {
           return { changedFiles: ["src/app/services/demo.service.ts"] };

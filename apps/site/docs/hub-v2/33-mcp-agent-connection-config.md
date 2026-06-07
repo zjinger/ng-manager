@@ -79,7 +79,6 @@ HUB_V2_CONFIG explicit config path
 
 ```text
 NGM_DATA_DIR
-NGM_WORKSPACE_ROOT
 NGM_MCP_UPLOAD_ROOT
 NGM_MCP_MAX_UPLOAD_BYTES
 NGM_MCP_MAX_RESULT_CHARS
@@ -99,7 +98,6 @@ HUB_V2_CONFIG
 
 ```bash
 NGM_DATA_DIR=C:/Users/you/.ng-manager
-NGM_WORKSPACE_ROOT=D:/ng-manager
 HUB_V2_BASE_URL=http://127.0.0.1:7001
 HUB_V2_PROJECT_KEY=ng-manager
 HUB_V2_PROJECT_TOKEN=project-token-for-reads
@@ -133,7 +131,6 @@ NGM_MCP_ALLOW_DANGEROUS=true
 | 变量 | 默认值 | 用途 |
 | --- | --- | --- |
 | `NGM_DATA_DIR` | `~/.ng-manager` | ng-manager 本地数据目录 |
-| `NGM_WORKSPACE_ROOT` | `process.cwd()` | MCP Server 的本地 workspace hint，也用于限制部分文件读取/上传根目录 |
 | `NGM_MCP_UPLOAD_ROOT` | 未设置 | Hub V2 Markdown 图片上传额外允许根目录 |
 | `NGM_MCP_MAX_UPLOAD_BYTES` | `5242880` | Markdown 图片上传最大字节数 |
 | `NGM_MCP_MAX_RESULT_CHARS` | `120000` | MCP text result 最大字符数，超出会截断 |
@@ -291,7 +288,6 @@ MCP Client 配置示例：
       "args": ["mcp"],
       "env": {
         "NGM_DATA_DIR": "C:/Users/you/.ng-manager",
-        "NGM_WORKSPACE_ROOT": "D:/ng-manager",
         "NGM_MCP_ALLOW_WRITE": "true",
         "NGM_MCP_ALLOW_EXECUTE": "true",
         "NGM_MCP_ALLOW_DANGEROUS": "false"
@@ -327,12 +323,14 @@ ngm.workspace.capabilityMap
 Project：
 
 ```text
+ngm_project_list
 ngm.project.list
 ngm.project.find
 ngm.project.get
 ngm.project.getScripts
 ngm.project.readPackageJson
 ngm_project_run_script
+ngm_file_write
 ngm_project_stop
 ngm_project_list_tasks
 ngm_project_task_status
@@ -397,13 +395,14 @@ ngm.proxy.validate
 
 | 工具 | risk | 默认行为 | 确认执行条件 |
 | --- | --- | --- | --- |
-| `ngm_project_run_script` | execute | 预览 package.json script 启动计划；确认后通过本地 ng-manager server 启动并返回 `launch.status` | `confirm=true` + `NGM_MCP_ALLOW_EXECUTE=true` |
+| `ngm_project_run_script` | execute | 通过 `projectId` 从项目注册表解析项目路径，预览 package.json script 启动计划；确认后通过本地 ng-manager server 启动并返回 `launch.status` | `confirm=true` + `NGM_MCP_ALLOW_EXECUTE=true` |
+| `ngm_file_write` | write | 通过 `projectId + relativePath` 预览项目内文件写入；拒绝绝对路径和 `../` 逃逸 | `confirm=true` + `NGM_MCP_ALLOW_WRITE=true` |
 | `ngm_project_stop` | execute | 预览将停止的受管 task；确认后优先通过本地 ng-manager server 停止 | `confirm=true` + `NGM_MCP_ALLOW_EXECUTE=true` |
 | `ngm_runtime_set_for_project` | write | 预览 runtime binding diff；确认后通过本地 ng-manager server 写入 | `confirm=true` + `NGM_MCP_ALLOW_WRITE=true` + local server available |
 | `ngm_nginx_reload` | execute | 校验 Nginx config 并预览 reload | `confirm=true` + `NGM_MCP_ALLOW_EXECUTE=true` |
 | `ngm_nginx_proxy_save` | write | 预览代理 server block 写入 | `confirm=true` + `NGM_MCP_ALLOW_WRITE=true` |
 
-项目脚本执行使用当前本地 ng-manager server 作为控制面，server 地址来自 `packages/runtime` 维护的 lock 文件，也可通过 `NGM_MCP_SERVER_URL` 或 `NGM_SERVER_URL` 显式指定。这样 MCP 启动的 task 会进入 UI 使用的同一套 task runtime 和 WebSocket 事件流。启动工具返回的 `launch.status` 用于区分 `ready`、`running`、`failed`、`success`、`stopped` 或 `unknown`，Agent 不应只根据进程创建结果宣称启动成功。
+本地项目路径来源是 ng-manager 项目注册表，不通过 workspace root 扫描项目。项目脚本执行使用当前本地 ng-manager server 作为控制面，server 地址来自 `packages/runtime` 维护的 lock 文件，也可通过 `NGM_MCP_SERVER_URL` 或 `NGM_SERVER_URL` 显式指定。这样 MCP 启动的 task 会进入 UI 使用的同一套 task runtime 和 WebSocket 事件流。启动工具返回的 `launch.status` 用于区分 `ready`、`running`、`failed`、`success`、`stopped` 或 `unknown`，Agent 不应只根据进程创建结果宣称启动成功。
 
 项目运行观测工具：
 
@@ -502,7 +501,7 @@ sl_hub_v2.*
 上传工具限制：
 
 - 输入支持 `filePath` 或 `contentBase64 + fileName`
-- `filePath` 只允许位于 `NGM_WORKSPACE_ROOT` 或 `NGM_MCP_UPLOAD_ROOT` 下
+- `filePath` 只允许位于 `NGM_MCP_UPLOAD_ROOT` 或当前 MCP Server 进程目录下；`contentBase64 + fileName` 不依赖本地项目路径
 - 默认最大上传大小为 5MB
 - 可通过 `NGM_MCP_MAX_UPLOAD_BYTES` 调整
 - 默认只 preview，不读取大文件、不上传

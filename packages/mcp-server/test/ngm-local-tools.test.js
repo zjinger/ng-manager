@@ -19,6 +19,7 @@ const NEW_READ_TOOLS = [
   "ngm.workspace.capabilityMap",
   "ngm.workspace.diff",
   "ngm.workspace.applyPatchPreview",
+  "ngm_project_list",
   "ngm.project.find",
   "ngm.project.readPackageJson",
   "ngm.runtime.current",
@@ -103,6 +104,7 @@ test("registers project observation tools as read-only tools", () => {
 test("registers controlled NGM tools with write or execute risk", () => {
   assert.equal(tool("ngm_project_run_script").riskLevel, "execute");
   assert.equal(tool("ngm.project.runScript").riskLevel, "execute");
+  assert.equal(tool("ngm_file_write").riskLevel, "write");
   assert.equal(tool("ngm_project_stop").riskLevel, "execute");
   assert.equal(tool("ngm.project.stop").riskLevel, "execute");
   assert.equal(tool("ngm_runtime_set_for_project").riskLevel, "write");
@@ -111,6 +113,37 @@ test("registers controlled NGM tools with write or execute risk", () => {
   assert.equal(tool("ngm.nginx.reload").riskLevel, "execute");
   assert.equal(tool("ngm_nginx_proxy_save").riskLevel, "write");
   assert.equal(tool("ngm.nginx.proxy.save").riskLevel, "write");
+});
+
+test("ngm_project_list reads compact projects from the registry without workspace scanning", async () => {
+  const result = await tool("ngm_project_list").handler({}, {
+    services: {
+      core: {
+        project: {
+          async list() {
+            return [{
+              id: "proj_1",
+              name: "demo",
+              root: "D:/projects/demo",
+              framework: "angular",
+              isFavorite: true,
+              scripts: { dev: "vite", build: "vite build" },
+            }];
+          },
+        },
+      },
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data, [{
+    id: "proj_1",
+    name: "demo",
+    path: "D:/projects/demo",
+    framework: "angular",
+    favorite: true,
+    scripts: ["build", "dev"],
+  }]);
 });
 
 test("confirmed controlled tools are blocked by policy by default", async () => {
@@ -129,6 +162,65 @@ test("confirmed controlled tools are blocked by policy by default", async () => 
   }));
   assert.equal(runtimeResult.ok, false);
   assert.match(runtimeResult.error, /write tools are disabled/);
+});
+
+test("ngm_file_write writes only inside the registered project after confirmation and write policy", async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ngm-file-write-"));
+  const ctx = {
+    services: {
+      core: {
+        project: {
+          async get() {
+            return { id: "proj_1", name: "demo", root: tempDir, createdAt: 1, updatedAt: 1 };
+          },
+        },
+      },
+    },
+  };
+  try {
+    const preview = await tool("ngm_file_write").handler({
+      projectId: "proj_1",
+      relativePath: "src/generated.txt",
+      content: "hello",
+    }, ctx);
+    assert.equal(preview.ok, true);
+    assert.equal(preview.data.operation.status, "preview");
+    assert.equal(fs.existsSync(path.join(tempDir, "src/generated.txt")), false);
+
+    const blocked = await withEnv({ NGM_MCP_ALLOW_WRITE: undefined }, () => tool("ngm_file_write").handler({
+      projectId: "proj_1",
+      relativePath: "src/generated.txt",
+      content: "hello",
+      confirm: true,
+    }, ctx));
+    assert.equal(blocked.ok, true);
+    assert.equal(blocked.data.operation.status, "blocked");
+
+    const executed = await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => tool("ngm_file_write").handler({
+      projectId: "proj_1",
+      relativePath: "src/generated.txt",
+      content: "hello",
+      confirm: true,
+    }, ctx));
+    assert.equal(executed.ok, true);
+    assert.equal(executed.data.operation.status, "executed");
+    assert.deepEqual(executed.data.changedFiles, ["src/generated.txt"]);
+    assert.equal(fs.readFileSync(path.join(tempDir, "src/generated.txt"), "utf-8"), "hello\n");
+
+    await assert.rejects(() => tool("ngm_file_write").handler({
+      projectId: "proj_1",
+      relativePath: path.resolve(tempDir, "outside.txt"),
+      content: "bad",
+    }, ctx), /relativePath must not be absolute/);
+
+    await assert.rejects(() => tool("ngm_file_write").handler({
+      projectId: "proj_1",
+      relativePath: "../outside.txt",
+      content: "bad",
+    }, ctx), /relativePath must stay inside/);
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("ngm_project_run_script blocks confirmed handler execution without execute env", async () => {

@@ -1,3 +1,4 @@
+import { existsSync } from "fs";
 import type { McpToolDefinition } from "../index";
 import type { LocalServerAvailability, ToolContext } from "../../context/tool-context";
 import { blocked, isConfirmed, operation } from "../controlled/operation-result";
@@ -91,13 +92,19 @@ function runScriptTool(): McpToolDefinition {
     inputSchema: runScriptSchema,
     async handler(args, context) {
       const project = await resolveProject(context, args);
-      const packageJson = await readWorkspacePackageJson(context.workspaceRoot, project.root);
-      const scriptCommand = packageJson.scripts[args.script];
       const safetyMessage = `Run package.json script "${args.script}" for managed project "${project.name}".`;
+      if (!existsSync(project.root)) {
+        return ok("ngm_project_run_script", blocked("execute", "medium", safetyMessage, "registered project path does not exist", {
+          project: { id: project.id, name: project.name, path: project.root },
+        }));
+      }
+
+      const packageJson = await readWorkspacePackageJson(project.root, project.root);
+      const scriptCommand = packageJson.scripts[args.script];
 
       if (!scriptCommand) {
         return ok("ngm_project_run_script", blocked("execute", "medium", safetyMessage, "script not found in package.json", {
-          project: { id: project.id, name: project.name, root: project.root },
+          project: { id: project.id, name: project.name, path: project.root },
           availableScripts: Object.keys(packageJson.scripts),
         }));
       }
@@ -107,7 +114,7 @@ function runScriptTool(): McpToolDefinition {
       const resolvedRuntime = await context.services.core.nodeRuntime.resolveRuntime(requestedRuntime);
       const preview = {
         operation: operation("preview", "execute", "medium", safetyMessage),
-        project: { id: project.id, name: project.name, root: project.root },
+        project: { id: project.id, name: project.name, path: project.root },
         script: { name: args.script, command: scriptCommand },
         cwd: project.root,
         packageManager,
@@ -124,7 +131,7 @@ function runScriptTool(): McpToolDefinition {
       if (!serverCheck.server) {
         return ok("ngm_project_run_script", blocked("execute", "medium", safetyMessage, "local ng-manager server is unavailable; start ng-manager UI/server before executing managed project scripts", {
           localServer: serverCheck.availability,
-          project: { id: project.id, name: project.name, root: project.root },
+          project: { id: project.id, name: project.name, path: project.root },
           script: args.script,
         }));
       }
@@ -133,7 +140,7 @@ function runScriptTool(): McpToolDefinition {
       const { row } = await findScriptTaskViaServer(context, project.id, args.script);
       if (!row?.spec?.runnable) {
         return ok("ngm_project_run_script", blocked("execute", "medium", safetyMessage, "managed task spec was not runnable", {
-          project: { id: project.id, name: project.name, root: project.root },
+          project: { id: project.id, name: project.name, path: project.root },
           script: args.script,
         }));
       }

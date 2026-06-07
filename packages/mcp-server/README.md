@@ -44,7 +44,6 @@ Write/execute tools are registered only for scoped, controlled workflows that re
 
 ```text
 NGM_DATA_DIR                 ng-manager data directory. Defaults to ~/.ng-manager.
-NGM_WORKSPACE_ROOT           Optional workspace hint. Defaults to process.cwd().
 NGM_MCP_UPLOAD_ROOT          Optional extra root for Hub V2 markdown image uploads.
 NGM_MCP_MAX_UPLOAD_BYTES     Max Hub V2 markdown image upload bytes. Defaults to 5242880.
 NGM_MCP_MAX_RESULT_CHARS     Max MCP text result characters. Defaults to 120000.
@@ -113,7 +112,6 @@ Built output:
       ],
       "env": {
         "NGM_DATA_DIR": "C:/Users/you/.ng-manager",
-        "NGM_WORKSPACE_ROOT": "D:/ng-manager",
         "NGM_MCP_ALLOW_WRITE": "false",
         "NGM_MCP_ALLOW_EXECUTE": "false",
         "NGM_MCP_ALLOW_DANGEROUS": "false"
@@ -137,8 +135,7 @@ Development:
         "@yinuo-ngm/mcp-server"
       ],
       "env": {
-        "NGM_DATA_DIR": "C:/Users/you/.ng-manager",
-        "NGM_WORKSPACE_ROOT": "D:/ng-manager"
+        "NGM_DATA_DIR": "C:/Users/you/.ng-manager"
       }
     }
   }
@@ -293,6 +290,7 @@ In this package, "proxy" means ng-manager's current Nginx/proxy management domai
 Project runtime diagnostics are read-only and use the shared local server task state:
 
 ```text
+ngm_project_list             read, compact registered local project list
 ngm_project_list_tasks       read, list ng-manager managed project tasks
 ngm_project_task_status      read, inspect one managed task runtime
 ngm_project_task_logs        read, limited/redacted log tail for one task/run
@@ -304,6 +302,7 @@ Controlled local operations require `confirm=true` plus the matching environment
 
 ```text
 ngm_project_run_script       execute, preview by default, local server control plane, confirm=true + NGM_MCP_ALLOW_EXECUTE=true to run
+ngm_file_write               write, preview by default, projectId + relativePath only, confirm=true + NGM_MCP_ALLOW_WRITE=true to write
 ngm_project_stop             execute, preview by default, local server control plane when available, confirm=true + NGM_MCP_ALLOW_EXECUTE=true to stop
 ngm_runtime_set_for_project  write, preview by default, local server control plane, confirm=true + NGM_MCP_ALLOW_WRITE=true to save
 ngm_nginx_reload             execute, validates config first, confirm=true + NGM_MCP_ALLOW_EXECUTE=true to reload
@@ -320,9 +319,11 @@ ngm.nginx.reload
 ngm.nginx.proxy.save
 ```
 
-These tools do not accept arbitrary shell commands, arbitrary PIDs, arbitrary file paths, or system-level Node/Nginx mutations. They adapt existing ng-manager core services and return structured operation status (`preview`, `executed`, `blocked`, or `failed`).
+These tools do not accept arbitrary shell commands, arbitrary PIDs, project-external file paths, or system-level Node/Nginx mutations. They adapt existing ng-manager core services and return structured operation status (`preview`, `executed`, `blocked`, or `failed`).
 
-`ngm_project_run_script` executes through the currently running local ng-manager server discovered from the runtime lock file or `NGM_MCP_SERVER_URL` / `NGM_SERVER_URL`. This keeps MCP-started task runtime state in the same in-memory task service and WebSocket event stream used by the UI. The tool returns a short launch observation (`launch.status`, `launch.message`, and `launch.runtime`) after starting; long-running dev servers are reported as `running` or `ready`, while early exits are reported as `failed`, `success`, or `stopped`.
+`ngm_project_run_script` resolves the registered project by `projectId`, reads scripts from that project's `package.json`, and executes through the currently running local ng-manager server discovered from the runtime lock file or `NGM_MCP_SERVER_URL` / `NGM_SERVER_URL`. This keeps MCP-started task runtime state in the same in-memory task service and WebSocket event stream used by the UI. The tool returns a short launch observation (`launch.status`, `launch.message`, and `launch.runtime`) after starting; long-running dev servers are reported as `running` or `ready`, while early exits are reported as `failed`, `success`, or `stopped`.
+
+`ngm_file_write` resolves the registered project by `projectId`, rejects absolute `relativePath` values and `../` traversal, and writes only inside that project directory after `confirm=true` and `NGM_MCP_ALLOW_WRITE=true`.
 
 Project observation tools (`ngm_project_list_tasks`, `ngm_project_task_status`, `ngm_project_task_logs`) also read the shared local server task runtime instead of creating a second task state center inside the MCP process. If the local server is not running, they return structured `unavailable` results and suggest starting `ngm server` or `ngm ui`; they do not auto-start the server. `ngm_project_task_logs` enforces tail/character limits and redacts token/password/secret/authorization-like values. `ngm_project_port_check` checks one local TCP endpoint only, and `ngm_project_health_check` is limited to local HTTP/HTTPS URLs or URLs detected from managed task runtime.
 

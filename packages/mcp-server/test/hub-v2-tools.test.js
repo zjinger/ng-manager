@@ -19,7 +19,6 @@ const ENV_KEYS = [
   "HUB_V2_PROJECT_TOKEN",
   "HUB_V2_PERSONAL_TOKEN",
   "HUB_V2_CONFIG",
-  "NGM_WORKSPACE_ROOT",
   "NGM_MCP_UPLOAD_ROOT",
   "NGM_MCP_ALLOW_WRITE",
   "NGM_MCP_MAX_UPLOAD_BYTES",
@@ -465,7 +464,7 @@ test("hub_v2_upload_markdown_image rejects filePath over the upload limit", asyn
       process.env.HUB_V2_BASE_URL = "http://hub.test";
       process.env.HUB_V2_PROJECT_KEY = "demo";
       process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
-      process.env.NGM_WORKSPACE_ROOT = tempDir;
+      process.env.NGM_MCP_UPLOAD_ROOT = tempDir;
       process.env.NGM_MCP_MAX_UPLOAD_BYTES = "2";
       const filePath = path.join(tempDir, "shot.png");
       fs.writeFileSync(filePath, "png");
@@ -489,7 +488,7 @@ test("hub_v2_upload_markdown_image rejects filePath outside allowed roots", asyn
       process.env.HUB_V2_PROJECT_KEY = "demo";
       process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
       process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
-      process.env.NGM_WORKSPACE_ROOT = tempDir;
+      process.env.NGM_MCP_UPLOAD_ROOT = tempDir;
       const outsideFile = path.join(outsideDir, "shot.png");
       fs.writeFileSync(outsideFile, "png");
 

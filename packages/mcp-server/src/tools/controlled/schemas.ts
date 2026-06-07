@@ -6,7 +6,8 @@ export const confirmSchema = {
   dryRun: z.boolean().optional(),
 };
 
-export const runScriptSchema = projectLocatorSchema.extend({
+export const runScriptSchema = z.object({
+  projectId: z.string().trim().min(1),
   script: z.string().trim().min(1),
   waitMs: z.number().int().min(0).max(10000).optional(),
   ...confirmSchema,

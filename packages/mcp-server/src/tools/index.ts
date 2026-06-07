@@ -5,6 +5,7 @@ import type { ToolResult } from "../utils/result";
 import { capabilityTools } from "./capability.tools";
 import { angularStandardTools } from "./angular";
 import { controlledTools } from "./controlled.tools";
+import { fileWriteTools } from "./file-write.tools";
 import { gitTools } from "./git.tools";
 import { hubV2Tools } from "./hub-v2";
 import { logTools } from "./log.tools";
@@ -36,6 +37,7 @@ export function allTools(): McpToolDefinition[] {
     ...capabilityTools(),
     ...workspaceTools(),
     ...controlledTools(),
+    ...fileWriteTools(),
     ...projectTools(),
     ...projectObserveTools(),
     ...taskTools(),

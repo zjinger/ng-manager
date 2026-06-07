@@ -13,6 +13,15 @@ export const projectLocatorSchema = z.object({
 
 type ProjectLocator = z.infer<typeof projectLocatorSchema>;
 
+export interface McpProjectItem {
+  id: string;
+  name: string;
+  path: string;
+  framework?: string;
+  favorite?: boolean;
+  scripts: string[];
+}
+
 const projectFindSchema = z.object({
   query: z.string().trim().min(1).optional(),
   framework: z.string().trim().min(1).optional(),
@@ -47,6 +56,7 @@ function toProjectSummary(project: Project): Record<string, unknown> {
   return {
     id: project.id,
     name: project.name,
+    path: project.root,
     root: project.root,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
@@ -64,6 +74,21 @@ function toProjectSummary(project: Project): Record<string, unknown> {
   };
 }
 
+function scriptNames(project: Project): string[] {
+  return Object.keys(project.scripts ?? {}).sort();
+}
+
+function toMcpProjectItem(project: Project): McpProjectItem {
+  return {
+    id: project.id,
+    name: project.name,
+    path: project.root,
+    framework: project.framework,
+    favorite: project.isFavorite,
+    scripts: scriptNames(project),
+  };
+}
+
 function toProjectScripts(project: Project): Record<string, unknown> {
   return {
     id: project.id,
@@ -78,6 +103,16 @@ function toProjectScripts(project: Project): Record<string, unknown> {
 
 export function projectTools(): McpToolDefinition[] {
   return [
+    {
+      name: "ngm_project_list",
+      description: "List projects from the ng-manager local project registry without scanning workspace roots.",
+      riskLevel: "read",
+      inputSchema: z.object({}).strict(),
+      async handler(_args, context) {
+        const projects = await context.services.core.project.list();
+        return ok("ngm_project_list", projects.map(toMcpProjectItem));
+      },
+    },
     {
       name: "ngm.project.list",
       description: "List projects managed by ng-manager.",
