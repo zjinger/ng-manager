@@ -6,6 +6,7 @@ const test = require("node:test");
 
 const { hubV2DocsTools } = require("../lib/tools/hub-v2/docs.tools.js");
 const { hubV2IssuesTools } = require("../lib/tools/hub-v2/issues.tools.js");
+const { hubV2IssueWorkflowTools } = require("../lib/tools/hub-v2/issues-workflow.tools.js");
 const { hubV2ProjectsTools } = require("../lib/tools/hub-v2/projects.tools.js");
 const { hubV2RdTools } = require("../lib/tools/hub-v2/rd.tools.js");
 const { hubV2UploadTools } = require("../lib/tools/hub-v2/upload.tools.js");
@@ -62,7 +63,7 @@ function rdTool(name) {
 }
 
 function issueTool(name) {
-  const tool = hubV2IssuesTools().find((item) => item.name === name);
+  const tool = [...hubV2IssuesTools(), ...hubV2IssueWorkflowTools()].find((item) => item.name === name);
   assert.ok(tool, `tool ${name} should exist`);
   return tool;
 }
@@ -107,23 +108,56 @@ test("registers Hub V2 tools with the unified names only", () => {
     "hub_v2_docs_get_by_slug",
     "hub_v2_docs_create",
     "hub_v2_docs_update",
+    "hub_v2_docs_publish",
     "hub_v2_issues_list",
     "hub_v2_issues_get",
+    "hub_v2_issues_logs_list",
+    "hub_v2_issues_comments_list",
+    "hub_v2_issues_participants_list",
+    "hub_v2_issues_attachments_list",
+    "hub_v2_issues_branches_list",
+    "hub_v2_issues_attachment_raw_get",
+    "hub_v2_issues_upload_raw_get",
     "hub_v2_issues_create",
     "hub_v2_issues_comment",
     "hub_v2_issues_assign",
+    "hub_v2_issues_claim",
     "hub_v2_issues_participant_add",
+    "hub_v2_issues_participant_remove",
     "hub_v2_issues_branch_create",
+    "hub_v2_issues_branch_start_mine",
+    "hub_v2_issues_branch_start",
+    "hub_v2_issues_branch_complete",
     "hub_v2_issues_update",
+    "hub_v2_issues_start",
+    "hub_v2_issues_wait_update",
+    "hub_v2_issues_resolve",
+    "hub_v2_issues_verify",
+    "hub_v2_issues_reopen",
+    "hub_v2_issues_close",
     "hub_v2_upload_markdown_image",
     "hub_v2_file_upload",
     "hub_v2_rd_list",
     "hub_v2_rd_get",
     "hub_v2_rd_stage_tasks_list",
+    "hub_v2_rd_stages_list",
+    "hub_v2_rd_logs_list",
+    "hub_v2_rd_stage_history_list",
+    "hub_v2_rd_progress_list",
+    "hub_v2_rd_progress_history_list",
+    "hub_v2_rd_upload_raw_get",
     "hub_v2_rd_create",
     "hub_v2_rd_advance_stage",
+    "hub_v2_rd_start",
+    "hub_v2_rd_block",
+    "hub_v2_rd_resume",
+    "hub_v2_rd_complete",
+    "hub_v2_rd_accept",
+    "hub_v2_rd_reopen",
+    "hub_v2_rd_close",
     "hub_v2_rd_stage_tasks_create",
     "hub_v2_rd_update_progress",
+    "hub_v2_rd_update",
   ];
 
   for (const name of expected) {
@@ -335,6 +369,98 @@ test("hub_v2_issues_branch_create previews and executes with Personal Token", as
       ownerUserId: "usr_lisi",
       title: "排查后端接口",
     });
+  });
+});
+
+test("new Hub V2 issue read tools use Project Token", async () => {
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { items: [] } }), { status: 200 });
+    };
+
+    const result = await issueTool("hub_v2_issues_comments_list").handler({ issueId: "iss 1" }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/token/projects/demo/issues/iss%201/comments");
+    assert.equal(calls[0].init.method, "GET");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer project-secret");
+  });
+});
+
+test("hub_v2_issues_upload_raw_get returns base64 metadata and enforces maxBytes", async () => {
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    global.fetch = async () =>
+      new Response(Buffer.from("hello"), {
+        status: 200,
+        headers: {
+          "content-type": "text/plain",
+          "content-disposition": "inline; filename=\"hello.txt\"",
+        },
+      });
+
+    const result = await issueTool("hub_v2_issues_upload_raw_get").handler({
+      issueId: "iss_1",
+      uploadId: "upl_1",
+      maxBytes: 10,
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(result.data.contentBase64, Buffer.from("hello").toString("base64"));
+    assert.equal(result.data.contentType, "text/plain");
+    assert.equal(result.data.fileName, "hello.txt");
+    assert.equal(result.data.sizeBytes, 5);
+
+    await assert.rejects(
+      () => issueTool("hub_v2_issues_upload_raw_get").handler({ issueId: "iss_1", uploadId: "upl_1", maxBytes: 2 }, {}),
+      /raw file is too large/
+    );
+  });
+});
+
+test("new Hub V2 issue write tools preview and execute with Personal Token", async () => {
+  const preview = await issueTool("hub_v2_issues_branch_complete").handler({
+    issueId: "iss_1",
+    branchId: "br_1",
+    summary: "接口问题已修复",
+  }, {});
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.data.code, "PREVIEW");
+  assert.equal(preview.data.data.path, "/issues/iss_1/branches/br_1/complete");
+  assert.equal(preview.data.data.requiredScope, "issue:branch:write");
+  assert.deepEqual(preview.data.data.body, { summary: "接口问题已修复" });
+
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "iss_1", status: "resolved" } }), { status: 200 });
+    };
+
+    const result = await issueTool("hub_v2_issues_resolve").handler({
+      issueId: "iss 1",
+      resolutionSummary: "fixed",
+      confirm: true,
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/issues/iss%201/resolve");
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
+    assert.deepEqual(JSON.parse(calls[0].init.body), { resolutionSummary: "fixed" });
   });
 });
 
@@ -812,6 +938,44 @@ test("hub_v2_docs_update previews and executes with Personal Token", async () =>
   });
 });
 
+test("hub_v2_docs_publish previews and executes with Personal Token", async () => {
+  const preview = await docsTool("hub_v2_docs_publish").handler({
+    docId: "doc_1",
+    source: "codex",
+  }, {});
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.data.code, "PREVIEW");
+  assert.equal(preview.data.data.method, "POST");
+  assert.equal(preview.data.data.path, "/docs/doc_1/publish");
+  assert.equal(preview.data.data.requiredScope, "doc:publish:write");
+  assert.deepEqual(preview.data.data.body, { source: "codex" });
+
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    process.env.HUB_V2_SOURCE = "agent";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "doc_1", status: "published" } }), { status: 200 });
+    };
+
+    const result = await docsTool("hub_v2_docs_publish").handler({
+      docId: "doc 1",
+      confirm: true,
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/docs/doc%201/publish");
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
+    assert.deepEqual(JSON.parse(calls[0].init.body), { source: "agent" });
+  });
+});
+
 test("hub_v2_docs_get_by_slug contentOnly supports nested item content and fails when content is absent", async () => {
   await withCleanEnv(async () => {
     process.env.HUB_V2_BASE_URL = "http://hub.test";
@@ -916,6 +1080,29 @@ test("hub_v2_rd_stage_tasks_list uses Project Token", async () => {
   });
 });
 
+test("new Hub V2 RD read tools use Project Token", async () => {
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { items: [] } }), { status: 200 });
+    };
+
+    const stages = await rdTool("hub_v2_rd_stages_list").handler({}, {});
+    const history = await rdTool("hub_v2_rd_stage_history_list").handler({ itemId: "rdi 1" }, {});
+
+    assert.equal(stages.ok, true);
+    assert.equal(history.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/token/projects/demo/rd-stages");
+    assert.equal(calls[1].url, "http://hub.test/api/token/projects/demo/rd-items/rdi%201/stage-history");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer project-secret");
+  });
+});
+
 test("hub_v2_rd_create previews stage tasks before execution", async () => {
   const result = await rdTool("hub_v2_rd_create").handler({
     title: "Login feature",
@@ -933,6 +1120,57 @@ test("hub_v2_rd_create previews stage tasks before execution", async () => {
   assert.equal(result.data.code, "PREVIEW");
   assert.equal(result.data.data.requiredScope, "rd:create:write");
   assert.deepEqual(result.data.data.body.stageTasks, [{ title: "Backend API", ownerId: "usr_1" }]);
+});
+
+test("new Hub V2 RD transition and update tools preview and execute with Personal Token", async () => {
+  const blockPreview = await rdTool("hub_v2_rd_block").handler({
+    itemId: "rdi_1",
+    blockerReason: "等待接口",
+  }, {});
+
+  assert.equal(blockPreview.ok, true);
+  assert.equal(blockPreview.data.code, "PREVIEW");
+  assert.equal(blockPreview.data.data.path, "/rd-items/rdi_1/block");
+  assert.equal(blockPreview.data.data.requiredScope, "rd:transition:write");
+  assert.deepEqual(blockPreview.data.data.body, { blockerReason: "等待接口" });
+
+  const updatePreview = await rdTool("hub_v2_rd_update").handler({
+    itemId: "rdi_1",
+    version: 2,
+    title: "更新标题",
+    description: null,
+  }, {});
+
+  assert.equal(updatePreview.ok, true);
+  assert.equal(updatePreview.data.data.method, "PATCH");
+  assert.equal(updatePreview.data.data.requiredScope, "rd:edit:write");
+  assert.deepEqual(updatePreview.data.data.body, {
+    version: 2,
+    title: "更新标题",
+    description: null,
+  });
+
+  await withCleanEnv(async () => {
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PROJECT_TOKEN = "project-secret";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "rdi_1", status: "accepted" } }), { status: 200 });
+    };
+
+    const result = await rdTool("hub_v2_rd_accept").handler({
+      itemId: "rdi 1",
+      confirm: true,
+    }, {});
+
+    assert.equal(result.ok, true);
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/rd-items/rdi%201/accept");
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
+  });
 });
 
 test("hub_v2_rd_stage_tasks_create executes with Personal Token when confirmed", async () => {

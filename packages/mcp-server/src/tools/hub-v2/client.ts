@@ -50,6 +50,26 @@ export class HubV2Client {
     return (parsed ?? { code: "OK", data: null }) as T;
   }
 
+  async raw(method: "GET", url: string): Promise<{
+    content: Buffer;
+    contentType: string;
+    contentDisposition: string | null;
+  }> {
+    const response = await fetch(url, {
+      method,
+      headers: { Authorization: `Bearer ${this.context.token}` },
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw toHubV2HttpError(response.status, response.statusText, parseResponseBody(text));
+    }
+    return {
+      content: Buffer.from(await response.arrayBuffer()),
+      contentType: response.headers.get("content-type") ?? "application/octet-stream",
+      contentDisposition: response.headers.get("content-disposition"),
+    };
+  }
+
   private queryUrl(prefix: string, suffix: string, query?: Record<string, unknown>): string {
     let url = `${this.context.baseUrl}/${prefix}/projects/${encodeURIComponent(this.context.projectKey)}${suffix}`;
     const queryString = toQueryString(query ?? {});

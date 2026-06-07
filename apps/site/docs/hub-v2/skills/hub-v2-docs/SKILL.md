@@ -1,6 +1,6 @@
 ---
 name: hub-v2-docs
-description: Use ng-manager Hub V2 MCP tools to list, read, create, and update Hub V2 project documents through the unified ngm mcp server without direct REST calls.
+description: Use ng-manager Hub V2 MCP tools to list, read, create, update, and publish Hub V2 project documents through the unified ngm mcp server without direct REST calls.
 ---
 
 # Hub V2 Docs Skill
@@ -15,6 +15,7 @@ Use this skill for:
 - document discovery
 - document Markdown reads
 - controlled document draft create/update
+- controlled document publish
 - Project Token and Personal Token document API
 
 Do not use this skill for local ng-manager engineering control or workspace-context tasks such as:
@@ -51,6 +52,7 @@ Use these MCP tools first:
 - Read by slug: `hub_v2_docs_get_by_slug`
 - Create draft: `hub_v2_docs_create`
 - Update doc: `hub_v2_docs_update`
+- Publish doc: `hub_v2_docs_publish`
 
 ## Project Selection
 
@@ -71,13 +73,13 @@ Use these MCP tools first:
 
 - Document create/update tools use Personal Token and require MCP server write policy: `NGM_MCP_ALLOW_WRITE=true`.
 - Preview document create/update first when the tool supports preview, then execute only after explicit user confirmation with `confirm: true`.
-- Publishing and archiving documents are not exposed by the current MCP tools. Do not publish or archive through direct HTTP from this skill.
+- Publishing documents is exposed as `hub_v2_docs_publish` and must be previewed and confirmed like other write tools. Archiving documents is not exposed by the current MCP tools.
 - Never ask the user to paste tokens into chat or tool arguments.
 
 ## Error Handling
 
 - `TOKEN_SCOPE_FORBIDDEN`: explain that the Project Token needs `docs:read` for read operations.
-- Document create requires `doc:create:write`; document update requires `doc:update:write`, both on Personal Token.
+- Document create requires `doc:create:write`; document update requires `doc:update:write`; document publish requires `doc:publish:write`, all on Personal Token.
 - `TOKEN_PROJECT_FORBIDDEN` or `PROJECT_NOT_FOUND`: verify the configured project alias or project key.
 - `DOCUMENT_NOT_FOUND`: list docs again or ask for a more precise id or slug.
 - `TOKEN_RATE_LIMITED`: back off and suggest retrying later.

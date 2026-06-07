@@ -1,7 +1,7 @@
 import type { McpToolDefinition } from "../index";
 import { compact, compactUndefined, HubV2Client } from "./client";
 import { resolveHubV2Context } from "./config/index";
-import { docsCreateSchema, docsGetBySlugSchema, docsGetSchema, docsListSchema, docsUpdateSchema } from "./schemas";
+import { docsCreateSchema, docsGetBySlugSchema, docsGetSchema, docsListSchema, docsPublishSchema, docsUpdateSchema } from "./schemas";
 import { fail, ok } from "../../utils/result";
 
 export function hubV2DocsTools(): McpToolDefinition[] {
@@ -156,6 +156,36 @@ export function hubV2DocsTools(): McpToolDefinition[] {
         const client = new HubV2Client(ctx!);
         const data = await client.request("PATCH", client.personalUrl(path), body, { preserveNull: true });
         return ok("hub_v2_docs_update", data);
+      },
+    },
+    {
+      name: "hub_v2_docs_publish",
+      description: "Preview or publish a Hub V2 project document with Personal Token.",
+      riskLevel: "write",
+      inputSchema: docsPublishSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        const path = `/docs/${encodeURIComponent(args.docId)}/publish`;
+        const ctx = args.confirm ? resolveHubV2Context(args, "personal") : undefined;
+        const body = compact({
+          source: args.source ?? ctx?.source,
+        });
+        if (!args.confirm) {
+          return ok("hub_v2_docs_publish", {
+            code: "PREVIEW",
+            message: "set confirm=true to execute this write operation",
+            data: {
+              method: "POST",
+              path,
+              requiredScope: "doc:publish:write",
+              body,
+            },
+          });
+        }
+        const client = new HubV2Client(ctx!);
+        const data = await client.request("POST", client.personalUrl(path), body);
+        return ok("hub_v2_docs_publish", data);
       },
     },
   ];

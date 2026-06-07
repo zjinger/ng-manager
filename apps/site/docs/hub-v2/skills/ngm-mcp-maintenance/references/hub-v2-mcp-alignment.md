@@ -51,17 +51,36 @@ Docs:
 - `hub_v2_docs_get_by_slug`
 - `hub_v2_docs_create`
 - `hub_v2_docs_update`
+- `hub_v2_docs_publish`
 
 Issues:
 
 - `hub_v2_issues_list`
 - `hub_v2_issues_get`
+- `hub_v2_issues_logs_list`
+- `hub_v2_issues_comments_list`
+- `hub_v2_issues_participants_list`
+- `hub_v2_issues_attachments_list`
+- `hub_v2_issues_branches_list`
+- `hub_v2_issues_attachment_raw_get`
+- `hub_v2_issues_upload_raw_get`
 - `hub_v2_issues_create`
 - `hub_v2_issues_update`
 - `hub_v2_issues_comment`
 - `hub_v2_issues_assign`
+- `hub_v2_issues_claim`
 - `hub_v2_issues_participant_add`
+- `hub_v2_issues_participant_remove`
 - `hub_v2_issues_branch_create`
+- `hub_v2_issues_branch_start_mine`
+- `hub_v2_issues_branch_start`
+- `hub_v2_issues_branch_complete`
+- `hub_v2_issues_start`
+- `hub_v2_issues_wait_update`
+- `hub_v2_issues_resolve`
+- `hub_v2_issues_verify`
+- `hub_v2_issues_reopen`
+- `hub_v2_issues_close`
 
 Uploads:
 
@@ -73,10 +92,24 @@ RD:
 - `hub_v2_rd_list`
 - `hub_v2_rd_get`
 - `hub_v2_rd_stage_tasks_list`
+- `hub_v2_rd_stages_list`
+- `hub_v2_rd_logs_list`
+- `hub_v2_rd_stage_history_list`
+- `hub_v2_rd_progress_list`
+- `hub_v2_rd_progress_history_list`
+- `hub_v2_rd_upload_raw_get`
 - `hub_v2_rd_create`
 - `hub_v2_rd_advance_stage`
 - `hub_v2_rd_stage_tasks_create`
 - `hub_v2_rd_update_progress`
+- `hub_v2_rd_start`
+- `hub_v2_rd_block`
+- `hub_v2_rd_resume`
+- `hub_v2_rd_complete`
+- `hub_v2_rd_accept`
+- `hub_v2_rd_reopen`
+- `hub_v2_rd_close`
+- `hub_v2_rd_update`
 
 ## Hub V2 Tool Rules
 
@@ -97,6 +130,7 @@ RD:
 - If a user asks for Issue collaboration branch creation, use Issue tools, not RD tools:
   - Add collaborator plus task branch with `hub_v2_issues_participant_add` when the user is not already a collaborator.
   - Create a branch for an existing collaborator with `hub_v2_issues_branch_create`.
+  - Start or complete existing branches with `hub_v2_issues_branch_start_mine`, `hub_v2_issues_branch_start`, or `hub_v2_issues_branch_complete`.
 - `hub_v2_file_upload` uploads a file and returns `uploadId`; it does not attach the file to an Issue, RD, or stage task until a future business attach/update tool consumes that id.
 - `hub_v2_upload_markdown_image` returns Markdown intended for document content, Issue descriptions/comments, RD descriptions, or stage-task descriptions.
 
@@ -104,14 +138,6 @@ RD:
 
 Do not teach Agents to execute these through MCP unless a tool is added and registered:
 
-- Docs publish.
-- Issue logs, comments list, participants list, attachments list, branches list, raw attachment/upload reads.
-- Issue claim, start, wait-update, resolve, verify, reopen, close.
-- Issue branch start-mine, start, complete.
-- Issue participant delete.
-- RD stages dictionary, logs, stage history, progress history, raw upload reads.
-- RD start, block, resume, complete, accept, reopen, close.
-- RD basic field patch.
 - Feedback list/detail.
 
 ## Verification

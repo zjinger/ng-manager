@@ -74,3 +74,4 @@ apps/hub-v2/server/backupdev
 md/
 docs/ui/
 .codex-tmp/
+.agents/

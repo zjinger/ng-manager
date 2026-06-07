@@ -46,10 +46,11 @@ If the user asks whether the local MCP configuration is ready, or if a tool repo
 Use these MCP tools first:
 
 - Project/config: `hub_v2_projects_list`, `hub_v2_projects_get`, `hub_v2_project_members_list`
-- Docs: `hub_v2_docs_list`, `hub_v2_docs_get`, `hub_v2_docs_get_by_slug`, `hub_v2_docs_create`, `hub_v2_docs_update`
-- Issues: `hub_v2_issues_list`, `hub_v2_issues_get`, `hub_v2_issues_create`, `hub_v2_issues_update`, `hub_v2_issues_comment`, `hub_v2_issues_assign`, `hub_v2_issues_participant_add`, `hub_v2_issues_branch_create`
-- RD read: `hub_v2_rd_list`, `hub_v2_rd_get`, `hub_v2_rd_stage_tasks_list`
-- RD write: `hub_v2_rd_create`, `hub_v2_rd_advance_stage`, `hub_v2_rd_stage_tasks_create`, `hub_v2_rd_update_progress`
+- Docs: `hub_v2_docs_list`, `hub_v2_docs_get`, `hub_v2_docs_get_by_slug`, `hub_v2_docs_create`, `hub_v2_docs_update`, `hub_v2_docs_publish`
+- Issues read: `hub_v2_issues_list`, `hub_v2_issues_get`, `hub_v2_issues_logs_list`, `hub_v2_issues_comments_list`, `hub_v2_issues_participants_list`, `hub_v2_issues_attachments_list`, `hub_v2_issues_branches_list`, `hub_v2_issues_attachment_raw_get`, `hub_v2_issues_upload_raw_get`
+- Issues write: `hub_v2_issues_create`, `hub_v2_issues_update`, `hub_v2_issues_comment`, `hub_v2_issues_assign`, `hub_v2_issues_claim`, `hub_v2_issues_participant_add`, `hub_v2_issues_participant_remove`, `hub_v2_issues_branch_create`, `hub_v2_issues_branch_start_mine`, `hub_v2_issues_branch_start`, `hub_v2_issues_branch_complete`, `hub_v2_issues_start`, `hub_v2_issues_wait_update`, `hub_v2_issues_resolve`, `hub_v2_issues_verify`, `hub_v2_issues_reopen`, `hub_v2_issues_close`
+- RD read: `hub_v2_rd_list`, `hub_v2_rd_get`, `hub_v2_rd_stage_tasks_list`, `hub_v2_rd_stages_list`, `hub_v2_rd_logs_list`, `hub_v2_rd_stage_history_list`, `hub_v2_rd_progress_list`, `hub_v2_rd_progress_history_list`, `hub_v2_rd_upload_raw_get`
+- RD write: `hub_v2_rd_create`, `hub_v2_rd_advance_stage`, `hub_v2_rd_stage_tasks_create`, `hub_v2_rd_update_progress`, `hub_v2_rd_start`, `hub_v2_rd_block`, `hub_v2_rd_resume`, `hub_v2_rd_complete`, `hub_v2_rd_accept`, `hub_v2_rd_reopen`, `hub_v2_rd_close`, `hub_v2_rd_update`
 - Uploads: `hub_v2_upload_markdown_image`, `hub_v2_file_upload`
 
 ## Project Selection
@@ -73,7 +74,7 @@ Use these MCP tools first:
 
 - Write tools use Personal Token and require MCP server write policy: `NGM_MCP_ALLOW_WRITE=true`.
 - Never ask the user to paste tokens into chat or tool arguments.
-- For Document create/update, Issue create/update/comment/assign, RD create, stage advance, stage-task create, progress update, status changes, or any operation that alters workflow state, preview first when the tool supports preview, then execute only after explicit user confirmation.
+- For Document create/update/publish, Issue create/update/comment/assign/lifecycle/collaboration, RD create/edit/stage advance/stage-task/progress/lifecycle, or any operation that alters workflow state, preview first when the tool supports preview, then execute only after explicit user confirmation.
 - For Markdown images, first call `hub_v2_upload_markdown_image` with either `filePath` or `contentBase64 + fileName`, then insert the returned `markdown` into the target `description` or `content`.
 - For non-Markdown attachments, call `hub_v2_file_upload` to get an `uploadId`; do not claim it is attached to an Issue or RD task until a business attach tool consumes that `uploadId`.
 - For Document creation or content updates with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_docs_create` or `hub_v2_docs_update` with the returned Markdown in `content` or `contentMd`.
@@ -81,24 +82,27 @@ Use these MCP tools first:
 - For Issue description updates with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_update` with the returned Markdown in `description`.
 - For Issue comments with images, call `hub_v2_upload_markdown_image`, then preview and confirm `hub_v2_issues_comment` with the returned Markdown in `content`.
 - For Issue assignment, call `hub_v2_project_members_list` when the assignee is not already known, ask the user to choose a member when multiple candidates match, then preview and confirm `hub_v2_issues_assign`.
+- For Issue lifecycle actions, use the matching tool directly: `hub_v2_issues_claim`, `hub_v2_issues_start`, `hub_v2_issues_wait_update`, `hub_v2_issues_resolve`, `hub_v2_issues_verify`, `hub_v2_issues_reopen`, or `hub_v2_issues_close`. Do not substitute comments for lifecycle operations.
 - For Issue collaborator branches, do not create an RD item and do not use comments as a substitute. If the user says "创建 Issue 协作分支", "协作分支", "给某人创建分支", or gives a branch task title such as "排查后端接口", use Issue tools:
   - If the user is not already an Issue collaborator, preview and confirm `hub_v2_issues_participant_add` with `userId` and `taskTitle`; this adds the collaborator and can create the collaborator task branch.
   - If the user is already an Issue collaborator, preview and confirm `hub_v2_issues_branch_create` with `ownerUserId` and `title`.
+- For existing Issue branch lifecycle, use `hub_v2_issues_branch_start_mine`, `hub_v2_issues_branch_start`, or `hub_v2_issues_branch_complete`.
 - For RD creation or stage-task descriptions with images, call `hub_v2_upload_markdown_image`, then insert the returned Markdown into `hub_v2_rd_create.description` or `hub_v2_rd_stage_tasks_create.description`.
 - When creating an RD item, include `stageTasks` or `stageTaskTemplates` only when the user explicitly provides initial current-stage tasks or asks to create them from templates.
 - When advancing an RD stage, include `stageTasks` or `stageTaskTemplates` if the next stage should start with assigned tasks.
 - When updating RD progress and the RD has active stage tasks, pass `stageTaskId`; otherwise tell the user to choose a stage task first.
+- For RD lifecycle actions, use the matching tool directly: `hub_v2_rd_start`, `hub_v2_rd_block`, `hub_v2_rd_resume`, `hub_v2_rd_complete`, `hub_v2_rd_accept`, `hub_v2_rd_reopen`, or `hub_v2_rd_close`. Use `hub_v2_rd_update` for basic field edits with the current `version`.
 - If a confirmed write tool is blocked by policy, tell the user to set `NGM_MCP_ALLOW_WRITE=true` in the MCP server environment or MCP client server `env`, then restart the MCP server. Do not retry through direct HTTP.
 
 ## Error Handling
 
 - `TOKEN_SCOPE_FORBIDDEN`: explain which scope is missing and whether Project Token or Personal Token is involved.
-- Document create requires `doc:create:write`; document update requires `doc:update:write`.
-- Issue create requires `issue:create:write`; Issue update requires `issue:update:write`; Issue assignment requires `issue:assign:write`; Issue comments require `issue:comment:write`.
-- Issue collaborator add requires `issue:participant:write`; Issue collaboration branch create requires `issue:branch:write`.
+- Document create requires `doc:create:write`; document update requires `doc:update:write`; document publish requires `doc:publish:write`.
+- Issue create requires `issue:create:write`; Issue update requires `issue:update:write`; Issue assignment/claim requires `issue:assign:write`; Issue comments require `issue:comment:write`; Issue lifecycle requires `issue:transition:write`.
+- Issue collaborator add/remove requires `issue:participant:write`; Issue collaboration branch create/start/complete requires `issue:branch:write`.
 - Markdown image upload requires at least one relevant business write scope such as `issue:create:write`, `issue:update:write`, `issue:comment:write`, `rd:create:write`, `rd:stage-task:write`, `rd:transition:write`, or `rd:edit:write`.
 - File upload target `issueAttachment` requires `issue:update:write`; `taskSheetAttachment` requires `rd:stage-task:write` or `rd:edit:write`.
-- RD create requires `rd:create:write`; stage-task create requires `rd:stage-task:write`; progress update requires `rd:progress:write` or `rd:transition:write`.
+- RD create requires `rd:create:write`; stage-task create requires `rd:stage-task:write`; progress update requires `rd:progress:write` or `rd:transition:write`; RD lifecycle/stage advance requires `rd:transition:write`; RD basic edit requires `rd:edit:write`.
 - `TOKEN_PROJECT_FORBIDDEN` or `PROJECT_NOT_FOUND`: verify the configured project alias or project key.
 - `PROJECT_ACCESS_DENIED`: explain that the Personal Token owner needs project access.
 - `TOKEN_RATE_LIMITED`: back off and suggest retrying later.

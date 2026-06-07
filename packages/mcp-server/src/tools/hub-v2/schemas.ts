@@ -60,6 +60,12 @@ export const docsUpdateSchema = projectSelectorSchema.extend({
   confirm: z.boolean().optional(),
 }).strict();
 
+export const docsPublishSchema = projectSelectorSchema.extend({
+  docId: z.string().trim().min(1),
+  source: z.string().trim().max(40).optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
 export const issuesListSchema = projectSelectorSchema.extend({
   page: z.number().int().min(1).optional(),
   pageSize: z.number().int().min(1).max(200).optional(),
@@ -73,6 +79,20 @@ export const issuesListSchema = projectSelectorSchema.extend({
 
 export const issueGetSchema = projectSelectorSchema.extend({
   issueId: z.string().trim().min(1),
+}).strict();
+
+export const issueReadDetailSchema = issueGetSchema;
+
+export const issueAttachmentRawSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  attachmentId: z.string().trim().min(1),
+  maxBytes: z.number().int().min(1).max(5 * 1024 * 1024).optional(),
+}).strict();
+
+export const issueUploadRawSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  uploadId: z.string().trim().min(1),
+  maxBytes: z.number().int().min(1).max(5 * 1024 * 1024).optional(),
 }).strict();
 
 const issueTypeSchema = z.enum(["bug", "feature", "change", "improvement", "task", "test"]);
@@ -105,6 +125,30 @@ export const issueAssignSchema = projectSelectorSchema.extend({
   confirm: z.boolean().optional(),
 }).strict();
 
+export const issueSimpleWriteSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const issueResolveSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  resolutionSummary: z.string().optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const issueReopenSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  remark: z.string().optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const issueCloseSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  reason: z.string().trim().optional(),
+  remark: z.string().optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
 export const issueParticipantAddSchema = projectSelectorSchema.extend({
   issueId: z.string().trim().min(1),
   userId: z.string().trim().min(1),
@@ -116,6 +160,31 @@ export const issueBranchCreateSchema = projectSelectorSchema.extend({
   issueId: z.string().trim().min(1),
   ownerUserId: z.string().trim().min(1),
   title: z.string().trim().min(1).max(80),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const issueBranchStartMineSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  title: z.string().trim().min(1).max(80),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const issueBranchActionSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  branchId: z.string().trim().min(1),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const issueBranchCompleteSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  branchId: z.string().trim().min(1),
+  summary: z.string().trim().max(500).optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const issueParticipantRemoveSchema = projectSelectorSchema.extend({
+  issueId: z.string().trim().min(1),
+  participantId: z.string().trim().min(1),
   confirm: z.boolean().optional(),
 }).strict();
 
@@ -163,6 +232,14 @@ export const rdListSchema = projectSelectorSchema.extend({
 
 export const rdGetSchema = projectSelectorSchema.extend({
   itemId: z.string().trim().min(1),
+}).strict();
+
+export const rdReadDetailSchema = rdGetSchema;
+
+export const rdUploadRawSchema = projectSelectorSchema.extend({
+  itemId: z.string().trim().min(1),
+  uploadId: z.string().trim().min(1),
+  maxBytes: z.number().int().min(1).max(5 * 1024 * 1024).optional(),
 }).strict();
 
 const rdTypeSchema = z.enum([
@@ -244,5 +321,44 @@ export const rdUpdateProgressSchema = projectSelectorSchema.extend({
   blockReason: z.string().trim().min(1).max(500).optional(),
   resolveBlockId: z.string().trim().min(1).optional(),
   stageTaskId: z.string().trim().min(1).optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const rdSimpleWriteSchema = projectSelectorSchema.extend({
+  itemId: z.string().trim().min(1),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const rdBlockSchema = projectSelectorSchema.extend({
+  itemId: z.string().trim().min(1),
+  blockerReason: z.string().optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const rdCompleteSchema = projectSelectorSchema.extend({
+  itemId: z.string().trim().min(1),
+  reason: z.string().trim().max(1000).optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const rdCloseSchema = projectSelectorSchema.extend({
+  itemId: z.string().trim().min(1),
+  reason: z.string().trim().optional(),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const rdUpdateSchema = projectSelectorSchema.extend({
+  itemId: z.string().trim().min(1),
+  version: z.number().int().min(1),
+  title: z.string().trim().optional(),
+  description: z.string().nullable().optional(),
+  stageId: z.string().trim().nullable().optional(),
+  type: rdTypeSchema.optional(),
+  priority: rdPrioritySchema.optional(),
+  memberIds: z.array(z.string().trim().min(1)).min(1).optional(),
+  verifierId: z.string().trim().nullable().optional(),
+  planStartAt: z.string().trim().nullable().optional(),
+  planEndAt: z.string().trim().nullable().optional(),
+  stageDescription: z.string().trim().max(4000).nullable().optional(),
   confirm: z.boolean().optional(),
 }).strict();

@@ -1,16 +1,25 @@
 import type { McpToolDefinition } from "../index";
-import { compact, HubV2Client } from "./client";
+import { compact, compactUndefined, HubV2Client } from "./client";
 import { resolveHubV2Context } from "./config/index";
 import {
   rdAdvanceStageSchema,
+  rdBlockSchema,
+  rdCloseSchema,
+  rdCompleteSchema,
   rdCreateSchema,
   rdGetSchema,
   rdListSchema,
+  projectSelectorSchema,
+  rdReadDetailSchema,
+  rdSimpleWriteSchema,
   rdStageTaskCreateSchema,
   rdStageTasksListSchema,
+  rdUpdateSchema,
   rdUpdateProgressSchema,
+  rdUploadRawSchema,
 } from "./schemas";
 import { ok } from "../../utils/result";
+import { readRawAsBase64 } from "./raw";
 
 export function hubV2RdTools(): McpToolDefinition[] {
   return [
@@ -51,6 +60,20 @@ export function hubV2RdTools(): McpToolDefinition[] {
       },
     },
     {
+      name: "hub_v2_rd_stages_list",
+      description: "List Hub V2 RD stage dictionary with Project Token.",
+      riskLevel: "read",
+      inputSchema: projectSelectorSchema,
+      async handler(args) {
+        const ctx = resolveHubV2Context(args, "project");
+        const client = new HubV2Client(ctx);
+        const data = await client.request("GET", client.tokenUrl("/rd-stages"));
+        return ok("hub_v2_rd_stages_list", data);
+      },
+    },
+    rdReadTool("hub_v2_rd_logs_list", "List Hub V2 RD item logs with Project Token.", "logs"),
+    rdReadTool("hub_v2_rd_stage_history_list", "List Hub V2 RD item stage history with Project Token.", "stage-history"),
+    {
       name: "hub_v2_rd_stage_tasks_list",
       description: "List Hub V2 RD current stage tasks with Project Token.",
       riskLevel: "read",
@@ -60,6 +83,24 @@ export function hubV2RdTools(): McpToolDefinition[] {
         const client = new HubV2Client(ctx);
         const data = await client.request("GET", client.tokenUrl(`/rd-items/${encodeURIComponent(args.itemId)}/stage-tasks`));
         return ok("hub_v2_rd_stage_tasks_list", data);
+      },
+    },
+    rdReadTool("hub_v2_rd_progress_list", "List Hub V2 RD item member progress with Project Token.", "progress"),
+    rdReadTool("hub_v2_rd_progress_history_list", "List Hub V2 RD item progress history with Project Token.", "progress/history"),
+    {
+      name: "hub_v2_rd_upload_raw_get",
+      description: "Read one Hub V2 RD Markdown upload raw file as base64 with Project Token.",
+      riskLevel: "read",
+      inputSchema: rdUploadRawSchema,
+      async handler(args) {
+        const ctx = resolveHubV2Context(args, "project");
+        const client = new HubV2Client(ctx);
+        const data = await readRawAsBase64(
+          client,
+          client.tokenUrl(`/rd-items/${encodeURIComponent(args.itemId)}/uploads/${encodeURIComponent(args.uploadId)}/raw`),
+          args.maxBytes
+        );
+        return ok("hub_v2_rd_upload_raw_get", data);
       },
     },
     {
@@ -138,6 +179,49 @@ export function hubV2RdTools(): McpToolDefinition[] {
         return ok("hub_v2_rd_advance_stage", data);
       },
     },
+    rdSimpleWriteTool("hub_v2_rd_start", "Preview or start a Hub V2 RD item with Personal Token.", "start"),
+    {
+      name: "hub_v2_rd_block",
+      description: "Preview or block a Hub V2 RD item with Personal Token.",
+      riskLevel: "write",
+      inputSchema: rdBlockSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        return rdBodyWrite("hub_v2_rd_block", args, "block", {
+          blockerReason: args.blockerReason,
+        });
+      },
+    },
+    rdSimpleWriteTool("hub_v2_rd_resume", "Preview or resume a Hub V2 RD item with Personal Token.", "resume"),
+    {
+      name: "hub_v2_rd_complete",
+      description: "Preview or complete a Hub V2 RD item with Personal Token.",
+      riskLevel: "write",
+      inputSchema: rdCompleteSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        return rdBodyWrite("hub_v2_rd_complete", args, "complete", {
+          reason: args.reason,
+        });
+      },
+    },
+    rdSimpleWriteTool("hub_v2_rd_accept", "Preview or accept a Hub V2 RD item with Personal Token.", "accept"),
+    rdSimpleWriteTool("hub_v2_rd_reopen", "Preview or reopen a Hub V2 RD item with Personal Token.", "reopen"),
+    {
+      name: "hub_v2_rd_close",
+      description: "Preview or close a Hub V2 RD item with Personal Token.",
+      riskLevel: "write",
+      inputSchema: rdCloseSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        return rdBodyWrite("hub_v2_rd_close", args, "close", {
+          reason: args.reason,
+        });
+      },
+    },
     {
       name: "hub_v2_rd_stage_tasks_create",
       description: "Preview or create a Hub V2 RD stage task on the current stage with Personal Token.",
@@ -208,5 +292,100 @@ export function hubV2RdTools(): McpToolDefinition[] {
         return ok("hub_v2_rd_update_progress", data);
       },
     },
+    {
+      name: "hub_v2_rd_update",
+      description: "Preview or update Hub V2 RD item basic fields with Personal Token.",
+      riskLevel: "write",
+      inputSchema: rdUpdateSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        const path = `/rd-items/${encodeURIComponent(args.itemId)}`;
+        const body = compactUndefined({
+          version: args.version,
+          title: args.title,
+          description: args.description,
+          stageId: args.stageId,
+          type: args.type,
+          priority: args.priority,
+          memberIds: args.memberIds,
+          verifierId: args.verifierId,
+          planStartAt: args.planStartAt,
+          planEndAt: args.planEndAt,
+          stageDescription: args.stageDescription,
+        });
+        if (!args.confirm) {
+          return ok("hub_v2_rd_update", {
+            code: "PREVIEW",
+            message: "set confirm=true to execute this write operation",
+            data: {
+              method: "PATCH",
+              path,
+              requiredScope: "rd:edit:write",
+              body,
+            },
+          });
+        }
+        const ctx = resolveHubV2Context(args, "personal");
+        const client = new HubV2Client(ctx);
+        const data = await client.request("PATCH", client.personalUrl(path), body, { preserveNull: true });
+        return ok("hub_v2_rd_update", data);
+      },
+    },
   ];
+}
+
+function rdReadTool(name: string, description: string, suffix: string): McpToolDefinition {
+  return {
+    name,
+    description,
+    riskLevel: "read",
+    inputSchema: rdReadDetailSchema,
+    async handler(args) {
+      const ctx = resolveHubV2Context(args, "project");
+      const client = new HubV2Client(ctx);
+      const data = await client.request("GET", client.tokenUrl(`/rd-items/${encodeURIComponent(args.itemId)}/${suffix}`));
+      return ok(name, data);
+    },
+  };
+}
+
+function rdSimpleWriteTool(name: string, description: string, suffix: string): McpToolDefinition {
+  return {
+    name,
+    description,
+    riskLevel: "write",
+    inputSchema: rdSimpleWriteSchema,
+    allowPreviewWhenBlocked: true,
+    isConfirmed: (args) => args.confirm === true,
+    async handler(args) {
+      return rdBodyWrite(name, args, suffix);
+    },
+  };
+}
+
+async function rdBodyWrite(
+  name: string,
+  args: Record<string, any>,
+  suffix: string,
+  body: Record<string, unknown> = {}
+) {
+  const path = `/rd-items/${encodeURIComponent(args.itemId)}/${suffix}`;
+  const compactBody = compact(body);
+  if (!args.confirm) {
+    return ok(name, {
+      code: "PREVIEW",
+      message: "set confirm=true to execute this write operation",
+      data: {
+        method: "POST",
+        path,
+        requiredScope: "rd:transition:write",
+        ...(Object.keys(compactBody).length > 0 ? { body: compactBody } : {}),
+      },
+    });
+  }
+  const ctx = resolveHubV2Context(args, "personal");
+  const client = new HubV2Client(ctx);
+  const data = await client.request("POST", client.personalUrl(path), compactBody);
+  return ok(name, data);
 }

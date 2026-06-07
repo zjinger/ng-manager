@@ -445,6 +445,7 @@ hub_v2_docs_get
 hub_v2_docs_get_by_slug
 hub_v2_docs_create
 hub_v2_docs_update
+hub_v2_docs_publish
 ```
 
 Issue：
@@ -452,12 +453,30 @@ Issue：
 ```text
 hub_v2_issues_list
 hub_v2_issues_get
+hub_v2_issues_logs_list
+hub_v2_issues_comments_list
+hub_v2_issues_participants_list
+hub_v2_issues_attachments_list
+hub_v2_issues_branches_list
+hub_v2_issues_attachment_raw_get
+hub_v2_issues_upload_raw_get
 hub_v2_issues_create
 hub_v2_issues_comment
 hub_v2_issues_assign
+hub_v2_issues_claim
 hub_v2_issues_participant_add
+hub_v2_issues_participant_remove
 hub_v2_issues_branch_create
+hub_v2_issues_branch_start_mine
+hub_v2_issues_branch_start
+hub_v2_issues_branch_complete
 hub_v2_issues_update
+hub_v2_issues_start
+hub_v2_issues_wait_update
+hub_v2_issues_resolve
+hub_v2_issues_verify
+hub_v2_issues_reopen
+hub_v2_issues_close
 ```
 
 RD：
@@ -466,10 +485,24 @@ RD：
 hub_v2_rd_list
 hub_v2_rd_get
 hub_v2_rd_stage_tasks_list
+hub_v2_rd_stages_list
+hub_v2_rd_logs_list
+hub_v2_rd_stage_history_list
+hub_v2_rd_progress_list
+hub_v2_rd_progress_history_list
+hub_v2_rd_upload_raw_get
 hub_v2_rd_create
 hub_v2_rd_advance_stage
+hub_v2_rd_start
+hub_v2_rd_block
+hub_v2_rd_resume
+hub_v2_rd_complete
+hub_v2_rd_accept
+hub_v2_rd_reopen
+hub_v2_rd_close
 hub_v2_rd_stage_tasks_create
 hub_v2_rd_update_progress
+hub_v2_rd_update
 ```
 
 上传：
@@ -488,9 +521,14 @@ hub_v2_file_upload
 | project members | `hub_v2_project_members_list` | 已实现，使用 Project Token。 |
 | image upload | `hub_v2_upload_markdown_image` | 已实现，上传 Markdown 内联图片并返回 Markdown 片段。 |
 | file upload | `hub_v2_file_upload` | 已实现受控附件上传，使用 Personal Token，当前支持 `issueAttachment` 和 `taskSheetAttachment`。 |
-| issue collaboration branch | `hub_v2_issues_participant_add`, `hub_v2_issues_branch_create` | 已实现，使用 Personal Token。Issue 协作分支不是 RD。 |
+| issue read detail/raw | `hub_v2_issues_logs_list`, `hub_v2_issues_comments_list`, `hub_v2_issues_participants_list`, `hub_v2_issues_attachments_list`, `hub_v2_issues_branches_list`, `hub_v2_issues_attachment_raw_get`, `hub_v2_issues_upload_raw_get` | 已实现，使用 Project Token；raw 工具返回受限 base64 元数据。 |
+| issue lifecycle | `hub_v2_issues_claim`, `hub_v2_issues_start`, `hub_v2_issues_wait_update`, `hub_v2_issues_resolve`, `hub_v2_issues_verify`, `hub_v2_issues_reopen`, `hub_v2_issues_close` | 已实现，使用 Personal Token。 |
+| issue collaboration branch | `hub_v2_issues_participant_add`, `hub_v2_issues_participant_remove`, `hub_v2_issues_branch_create`, `hub_v2_issues_branch_start_mine`, `hub_v2_issues_branch_start`, `hub_v2_issues_branch_complete` | 已实现，使用 Personal Token。Issue 协作分支不是 RD。 |
 | doc create | `hub_v2_docs_create` | 已实现，使用 Personal Token，默认 preview，确认写入需要 `confirm=true` + `NGM_MCP_ALLOW_WRITE=true`。 |
 | doc update | `hub_v2_docs_update` | 已实现，使用 Personal Token，默认 preview，确认写入需要 `confirm=true` + `NGM_MCP_ALLOW_WRITE=true`。 |
+| doc publish | `hub_v2_docs_publish` | 已实现，使用 Personal Token，默认 preview，确认写入需要 `confirm=true` + `NGM_MCP_ALLOW_WRITE=true`。 |
+| rd read detail/raw | `hub_v2_rd_stages_list`, `hub_v2_rd_logs_list`, `hub_v2_rd_stage_history_list`, `hub_v2_rd_progress_list`, `hub_v2_rd_progress_history_list`, `hub_v2_rd_upload_raw_get` | 已实现，使用 Project Token；raw 工具返回受限 base64 元数据。 |
+| rd lifecycle/edit | `hub_v2_rd_start`, `hub_v2_rd_block`, `hub_v2_rd_resume`, `hub_v2_rd_complete`, `hub_v2_rd_accept`, `hub_v2_rd_reopen`, `hub_v2_rd_close`, `hub_v2_rd_update` | 已实现，使用 Personal Token。 |
 
 不注册旧工具别名：
 
