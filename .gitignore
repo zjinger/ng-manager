@@ -75,3 +75,4 @@ md/
 docs/ui/
 .codex-tmp/
 .agents/
+outputs/
