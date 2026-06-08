@@ -1,0 +1,208 @@
+<div class="ai-agent-settings">
+  <nz-card nzTitle="AI Agent / MCP 配置">
+    <p class="description">
+      管理 ng-manager MCP Server 使用的 Agent Connection 配置。MCP Server 通过
+      agent-connections.json 读取 Hub V2 Project Token 和 Personal Token。
+    </p>
+    <div class="meta-list">
+      <div><strong>MCP 启动命令：</strong><code>ngm mcp</code></div>
+      <div><strong>诊断命令：</strong><code>ngm mcp doctor</code></div>
+      <div><strong>配置文件路径：</strong><code>{{ configPath() || '-' }}</code></div>
+      <div class="hint">
+        ngm mcp 是 stdio MCP Server，直接运行时无普通输出是正常现象。
+      </div>
+    </div>
+  </nz-card>
+
+  <nz-card class="connections-card" nzTitle="Hub V2 Agent Connection 列表">
+    <div class="toolbar">
+      <button nz-button nzType="primary" (click)="openCreate()">新增</button>
+      <button nz-button (click)="refresh(true)" [disabled]="loading() || submitting()">刷新</button>
+    </div>
+
+    @if (errorMessage()) {
+      <nz-alert nzType="error" [nzMessage]="errorMessage()"></nz-alert>
+    }
+
+    <nz-spin [nzSpinning]="loading()">
+      @if (!loading() && !errorMessage() && items().length === 0) {
+        <nz-empty
+          nzNotFoundContent="暂无 Hub V2 Agent Connection。请新增一个连接，用于 MCP tools 访问 Hub V2 文档、Issue 和研发项。"
+        ></nz-empty>
+      } @else {
+        <nz-table [nzData]="items()" [nzFrontPagination]="false" nzSize="small">
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>Base URL</th>
+              <th>Project Key</th>
+              <th>Project Name</th>
+              <th>Project Token</th>
+              <th>Personal Token</th>
+              <th>默认</th>
+              <th>来源</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of items(); track item.name) {
+              <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.baseUrl }}</td>
+                <td>{{ item.projectKey }}</td>
+                <td>{{ item.projectName || '-' }}</td>
+                <td>{{ tokenStatusText(item.hasProjectToken, item.projectTokenPreview) }}</td>
+                <td>{{ tokenStatusText(item.hasPersonalToken, item.personalTokenPreview) }}</td>
+                <td>
+                  @if (item.isDefault) {
+                    <nz-tag nzColor="blue">默认</nz-tag>
+                  } @else {
+                    <span>-</span>
+                  }
+                </td>
+                <td>{{ item.source || '-' }}</td>
+                <td>
+                  <div class="row-actions">
+                    <button nz-button nzType="link" (click)="openEdit(item)">编辑</button>
+                    <button
+                      nz-button
+                      nzType="link"
+                      (click)="setDefault(item)"
+                      [disabled]="item.isDefault || submitting()"
+                    >
+                      设为默认
+                    </button>
+                    <button
+                      nz-button
+                      nzType="link"
+                      nzDanger
+                      (click)="confirmDelete(item)"
+                      [disabled]="submitting()"
+                    >
+                      删除
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </nz-table>
+      }
+    </nz-spin>
+  </nz-card>
+
+  <nz-card nzTitle="使用说明">
+    <p>
+      该配置用于 AI Agent 通过 ng-manager MCP Server 访问 Hub V2 文档、Issue、研发项等能力。Token
+      不会在页面中明文展示。
+    </p>
+    <pre class="code-block">{
+  "mcpServers": {
+    "ng-manager": {
+      "command": "ngm",
+      "args": ["mcp"]
+    }
+  }
+}</pre>
+  </nz-card>
+</div>
+
+<nz-modal
+  [nzVisible]="createVisible()"
+  [nzMaskClosable]="false"
+  nzTitle="新增 Hub V2 Agent Connection"
+  [nzOkLoading]="submitting()"
+  (nzOnCancel)="closeCreate()"
+  (nzOnOk)="submitCreate()"
+>
+  <ng-container *nzModalContent>
+    <div class="form-grid">
+      <label>name</label>
+      <input nz-input [(ngModel)]="createForm.name" placeholder="例如：ng-manager" />
+
+      <label>baseUrl</label>
+      <input nz-input [(ngModel)]="createForm.baseUrl" placeholder="http://127.0.0.1:7001" />
+
+      <label>projectKey</label>
+      <input nz-input [(ngModel)]="createForm.projectKey" placeholder="例如：ng-manager" />
+
+      <label>projectName</label>
+      <input nz-input [(ngModel)]="createForm.projectName" placeholder="可选" />
+
+      <label>projectToken</label>
+      <input nz-input type="password" [(ngModel)]="createForm.projectToken" placeholder="可选" />
+
+      <label>personalToken</label>
+      <input nz-input type="password" [(ngModel)]="createForm.personalToken" placeholder="可选" />
+
+      <label></label>
+      <label nz-checkbox [(ngModel)]="createForm.isDefault">设为默认连接</label>
+    </div>
+  </ng-container>
+</nz-modal>
+
+<nz-modal
+  [nzVisible]="editVisible()"
+  [nzMaskClosable]="false"
+  nzTitle="编辑 Hub V2 Agent Connection"
+  [nzOkLoading]="submitting()"
+  (nzOnCancel)="closeEdit()"
+  (nzOnOk)="submitEdit()"
+>
+  <ng-container *nzModalContent>
+    @if (editingItem()) {
+      <div class="form-grid">
+        <label>name</label>
+        <input nz-input [ngModel]="editForm.name" disabled />
+
+        <label>baseUrl</label>
+        <input nz-input [(ngModel)]="editForm.baseUrl" />
+
+        <label>projectKey</label>
+        <input nz-input [(ngModel)]="editForm.projectKey" />
+
+        <label>projectName</label>
+        <input nz-input [(ngModel)]="editForm.projectName" />
+
+        <label>Project Token</label>
+        <div class="token-input-row">
+          <input
+            nz-input
+            type="password"
+            [ngModel]="editForm.projectTokenInput"
+            (ngModelChange)="onProjectTokenInput($event)"
+            placeholder="留空则不更新；输入新值则覆盖"
+          />
+          <button nz-button nzType="default" (click)="clearProjectTokenInEdit()">清除 Project Token</button>
+        </div>
+        <div class="token-hint">
+          当前状态：{{ tokenStatusText(editingItem()!.hasProjectToken, editingItem()!.projectTokenPreview) }}
+          @if (editForm.clearProjectToken) {
+            <nz-tag nzColor="orange">将被清除</nz-tag>
+          }
+        </div>
+
+        <label>Personal Token</label>
+        <div class="token-input-row">
+          <input
+            nz-input
+            type="password"
+            [ngModel]="editForm.personalTokenInput"
+            (ngModelChange)="onPersonalTokenInput($event)"
+            placeholder="留空则不更新；输入新值则覆盖"
+          />
+          <button nz-button nzType="default" (click)="clearPersonalTokenInEdit()">清除 Personal Token</button>
+        </div>
+        <div class="token-hint">
+          当前状态：{{ tokenStatusText(editingItem()!.hasPersonalToken, editingItem()!.personalTokenPreview) }}
+          @if (editForm.clearPersonalToken) {
+            <nz-tag nzColor="orange">将被清除</nz-tag>
+          }
+        </div>
+
+        <label></label>
+        <label nz-checkbox [(ngModel)]="editForm.isDefault">设为默认连接</label>
+      </div>
+    }
+  </ng-container>
+</nz-modal>

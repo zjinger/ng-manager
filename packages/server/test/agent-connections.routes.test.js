@@ -6,6 +6,7 @@ const test = require("node:test");
 const Fastify = require("fastify");
 
 let loadedModules;
+let loadedMcpModules;
 async function loadModules() {
   if (loadedModules) {
     return loadedModules;
@@ -22,6 +23,22 @@ async function loadModules() {
     agentConnectionsRoutes: agentConnectionsRoutes.default,
   };
   return loadedModules;
+}
+
+async function loadMcpModules() {
+  if (loadedMcpModules) {
+    return loadedMcpModules;
+  }
+  const [configModule, mcpIndexModule] = await Promise.all([
+    import("../../mcp-server/src/tools/hub-v2/config/index.ts"),
+    import("../../mcp-server/src/doctor.ts"),
+  ]);
+  loadedMcpModules = {
+    loadConfig: configModule.loadConfig,
+    resolveHubV2Context: configModule.resolveHubV2Context,
+    createDoctorReport: mcpIndexModule.createDoctorReport,
+  };
+  return loadedMcpModules;
 }
 
 async function createApp(dataDir) {
@@ -65,6 +82,35 @@ async function createDefaultConnection(app, payload = {}) {
     },
   });
   assert.equal(res.statusCode, 200);
+}
+
+function withCleanHubEnv(fn) {
+  const keys = [
+    "HUB_V2_BASE_URL",
+    "HUB_V2_PROJECT",
+    "HUB_V2_PROJECT_KEY",
+    "HUB_V2_PROJECT_TOKEN",
+    "HUB_V2_PERSONAL_TOKEN",
+    "HUB_V2_CONFIG",
+    "HUB_V2_SOURCE",
+    "NGM_DATA_DIR",
+  ];
+  const saved = {};
+  for (const key of keys) {
+    saved[key] = process.env[key];
+    delete process.env[key];
+  }
+  return Promise.resolve()
+    .then(fn)
+    .finally(() => {
+      for (const key of keys) {
+        if (saved[key] === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = saved[key];
+        }
+      }
+    });
 }
 
 test("GET /hub-v2 returns empty list when config file does not exist", async () => {
@@ -116,6 +162,72 @@ test("POST creates connection and GET never returns full token", async () => {
   });
 });
 
+test("POST writes expected JSON and mcp-server can resolve context", async () => {
+  await withCleanHubEnv(async () =>
+    withTempDataDir(async (dataDir) => {
+      const app = await createApp(dataDir);
+      try {
+        const file = configPath(dataDir);
+        const res = await app.inject({
+          method: "POST",
+          url: "/api/agent-connections/hub-v2",
+          payload: {
+            name: "ng-manager",
+            baseUrl: "http://127.0.0.1:7001",
+            projectKey: "ng-manager",
+            projectName: "ng-manager 协作平台",
+            projectToken: "project-token",
+            personalToken: "personal-token",
+            isDefault: true,
+          },
+        });
+        assert.equal(res.statusCode, 200);
+
+        const fileJson = JSON.parse(fs.readFileSync(file, "utf8"));
+        assert.deepEqual(fileJson, {
+          version: 1,
+          hubV2: {
+            defaultProject: "ng-manager",
+            projects: {
+              "ng-manager": {
+                name: "ng-manager",
+                baseUrl: "http://127.0.0.1:7001",
+                projectKey: "ng-manager",
+                projectName: "ng-manager 协作平台",
+                projectToken: "project-token",
+                personalToken: "personal-token",
+                source: "ng-manager-ui",
+              },
+            },
+          },
+        });
+
+        const mcp = await loadMcpModules();
+        const config = mcp.loadConfig(file);
+        assert.equal(config.default_project, "ng-manager");
+        const projectContext = mcp.resolveHubV2Context({}, "project", file);
+        const personalContext = mcp.resolveHubV2Context({}, "personal", file);
+        assert.equal(projectContext.baseUrl, "http://127.0.0.1:7001");
+        assert.equal(projectContext.projectKey, "ng-manager");
+        assert.equal(projectContext.token, "project-token");
+        assert.equal(personalContext.token, "personal-token");
+
+        process.env.HUB_V2_CONFIG = file;
+        const report = mcp.createDoctorReport();
+        assert.equal(report.text.includes("config: found"), true);
+        assert.equal(report.text.includes("defaultProject: ng-manager"), true);
+        assert.equal(report.text.includes("projectToken: configured"), true);
+        assert.equal(report.text.includes("personalToken: configured"), true);
+        assert.equal(report.text.includes("Status:\n  OK"), true);
+        assert.equal(report.text.includes("project-token"), false);
+        assert.equal(report.text.includes("personal-token"), false);
+      } finally {
+        await app.close();
+      }
+    })
+  );
+});
+
 test("PUT updates baseUrl without clearing existing tokens", async () => {
   await withTempDataDir(async (dataDir) => {
     const app = await createApp(dataDir);
@@ -130,44 +242,66 @@ test("PUT updates baseUrl without clearing existing tokens", async () => {
       });
       const body = JSON.parse(updateRes.body);
       const item = body.data.items[0];
+      const file = JSON.parse(fs.readFileSync(configPath(dataDir), "utf8"));
+      const project = file.hubV2.projects["ng-manager"];
 
       assert.equal(updateRes.statusCode, 200);
       assert.equal(item.baseUrl, "http://127.0.0.1:7002");
       assert.equal(item.hasProjectToken, true);
       assert.equal(item.hasPersonalToken, true);
+      assert.equal(project.baseUrl, "http://127.0.0.1:7002");
+      assert.equal(project.projectToken, "project-secret-value");
+      assert.equal(project.personalToken, "personal-secret-value");
     } finally {
       await app.close();
     }
   });
 });
 
-test("PUT token update rules support null-clear and empty-string-keep", async () => {
+test("PUT projectToken=null clears project token only", async () => {
   await withTempDataDir(async (dataDir) => {
     const app = await createApp(dataDir);
     try {
       await createDefaultConnection(app);
-      let res = await app.inject({
-        method: "PUT",
-        url: "/api/agent-connections/hub-v2/ng-manager",
-        payload: {
-          projectToken: "",
-        },
-      });
-      let body = JSON.parse(res.body);
-      let item = body.data.items[0];
-      assert.equal(item.hasProjectToken, true);
-
-      res = await app.inject({
+      const res = await app.inject({
         method: "PUT",
         url: "/api/agent-connections/hub-v2/ng-manager",
         payload: {
           projectToken: null,
         },
       });
-      body = JSON.parse(res.body);
-      item = body.data.items[0];
+      const body = JSON.parse(res.body);
+      const item = body.data.items[0];
+      const file = JSON.parse(fs.readFileSync(configPath(dataDir), "utf8"));
+      const project = file.hubV2.projects["ng-manager"];
       assert.equal(item.hasProjectToken, false);
       assert.equal(item.projectTokenPreview, undefined);
+      assert.equal(project.projectToken, undefined);
+      assert.equal(project.personalToken, "personal-secret-value");
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+test("PUT personalToken empty string keeps original token", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const app = await createApp(dataDir);
+    try {
+      await createDefaultConnection(app);
+      const res = await app.inject({
+        method: "PUT",
+        url: "/api/agent-connections/hub-v2/ng-manager",
+        payload: {
+          personalToken: "",
+        },
+      });
+      const body = JSON.parse(res.body);
+      const item = body.data.items[0];
+      const file = JSON.parse(fs.readFileSync(configPath(dataDir), "utf8"));
+      const project = file.hubV2.projects["ng-manager"];
+      assert.equal(item.hasPersonalToken, true);
+      assert.equal(project.personalToken, "personal-secret-value");
     } finally {
       await app.close();
     }
@@ -200,6 +334,25 @@ test("DELETE default project promotes next project", async () => {
       assert.equal(body.data.items.length, 1);
       assert.equal(body.data.items[0].name, "backup");
       assert.equal(body.data.items[0].isDefault, true);
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+test("DELETE only default project clears defaultProject", async () => {
+  await withTempDataDir(async (dataDir) => {
+    const app = await createApp(dataDir);
+    try {
+      await createDefaultConnection(app, { name: "main", projectKey: "main" });
+      const delRes = await app.inject({
+        method: "DELETE",
+        url: "/api/agent-connections/hub-v2/main",
+      });
+      const body = JSON.parse(delRes.body);
+      assert.equal(delRes.statusCode, 200);
+      assert.equal(body.data.items.length, 0);
+      assert.equal(body.data.defaultProject, undefined);
     } finally {
       await app.close();
     }

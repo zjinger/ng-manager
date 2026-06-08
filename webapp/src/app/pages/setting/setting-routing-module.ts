@@ -1,9 +1,26 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { SettingComponent } from './setting.component';
 
 const routes: Routes = [
-  { path: '', component: SettingComponent }
+  {
+    path: '',
+    loadComponent: () =>
+      import('./setting.component').then((m) => m.SettingComponent),
+    children: [
+      {
+        path: '',
+        redirectTo: 'ai-agent',
+        pathMatch: 'full',
+      },
+      {
+        path: 'ai-agent',
+        loadComponent: () =>
+          import('./pages/ai-agent-settings/ai-agent-settings.component').then(
+            (m) => m.AiAgentSettingsComponent
+          ),
+      },
+    ],
+  },
 ];
 
 @NgModule({
