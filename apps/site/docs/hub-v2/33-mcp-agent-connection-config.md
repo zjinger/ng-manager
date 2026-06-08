@@ -245,12 +245,23 @@ POST   /api/agent-connections/hub-v2/:name/set-default
 实现边界：
 
 - 仅读写 `NGM_DATA_DIR || ~/.ng-manager` 下的 `agent-connections.json`
+- 当前阶段由 `packages/server` API 统一管理该文件
 - 仅改写 `hubV2`，保留未知顶级 provider 字段（例如 `github`）
 - GET 不返回明文 token，仅返回 `has*Token` 与脱敏预览
 - 文件损坏（JSON 解析失败）时返回错误，不覆盖原文件
 - 写入采用原子替换（`agent-connections.json.tmp` -> rename）
+- 当前阶段不使用 SQLite / Secret Store（也不落库 Personal Token）
 
 `packages/mcp-server` 继续独立读取同一文件，不依赖 `packages/server` 启动与否。
+
+PUT token 字段语义（用于 UI 编辑时避免误清空）：
+
+- 字段缺失或 `undefined`：不更新原 token
+- 字段为 `""`：不更新原 token
+- 字段为 `null`：清除 token
+- 字段为非空字符串：覆盖 token
+
+下一阶段 UI 页面将直接接入上述 server API，不在前端拼接底层文件逻辑。
 
 ## 7. 写工具确认与 policy
 
