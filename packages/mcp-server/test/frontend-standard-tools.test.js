@@ -8,29 +8,29 @@ const { allTools } = require("../lib/tools/index.js");
 const { registerTools } = require("../lib/register-tools.js");
 
 const FRONTEND_TOOLS = {
-  "ngm.standard.get": "read",
-  "ngm.standard.init": "write",
-  "ngm.standard.validateProject": "read",
-  "ngm.git.validateBranchName": "read",
-  "ngm.git.validateCommitMessage": "read",
-  "ngm.git.generateCommitMessage": "read",
-  "ngm.git.generateReviewSummary": "read",
-  "ngm.test.detectMissingSpecs": "read",
-  "ngm.test.generateSpecPlan": "read",
-  "ngm.test.validateNaming": "read",
-  "ngm.angular.validateStructure": "read",
-  "ngm.angular.validateComponentNaming": "read",
-  "ngm.angular.validateComponentBoundary": "read",
-  "ngm.review.scanChangedFiles": "read",
-  "ngm.review.generateChecklist": "read",
-  "ngm.review.detectRisks": "read",
-  "ngm.review.generateReport": "write",
-  "ngm.workflow.createFrontendTask": "write",
-  "ngm.workflow.generateDevPlan": "write",
-  "ngm.workflow.advanceStatus": "write",
-  "ngm.workflow.validateBeforeWrite": "write",
-  "ngm.workflow.validateBeforeCommit": "write",
-  "ngm.workflow.generateDeliveryReport": "write",
+  "ngm_standard_get": "read",
+  "ngm_standard_init": "write",
+  "ngm_standard_validate_project": "read",
+  "ngm_git_validate_branch_name": "read",
+  "ngm_git_validate_commit_message": "read",
+  "ngm_git_generate_commit_message": "read",
+  "ngm_git_generate_review_summary": "read",
+  "ngm_test_detect_missing_specs": "read",
+  "ngm_test_generate_spec_plan": "read",
+  "ngm_test_validate_naming": "read",
+  "ngm_angular_validate_structure": "read",
+  "ngm_angular_validate_component_naming": "read",
+  "ngm_angular_validate_component_boundary": "read",
+  "ngm_review_scan_changed_files": "read",
+  "ngm_review_generate_checklist": "read",
+  "ngm_review_detect_risks": "read",
+  "ngm_review_generate_report": "write",
+  "ngm_workflow_create_frontend_task": "write",
+  "ngm_workflow_generate_dev_plan": "write",
+  "ngm_workflow_advance_status": "write",
+  "ngm_workflow_validate_before_write": "write",
+  "ngm_workflow_validate_before_commit": "write",
+  "ngm_workflow_generate_delivery_report": "write",
 };
 
 function tool(name) {
@@ -128,19 +128,19 @@ test("registers frontend standard, review, test, angular, and workflow tools wit
 test("validates frontend branch and commit conventions", async () => {
   const projectRoot = tempProject();
   try {
-    const validBranch = await tool("ngm.git.validateBranchName").handler({
+    const validBranch = await tool("ngm_git_validate_branch_name").handler({
       projectPath: projectRoot,
       branchName: "feature/ABC123-login-form",
     }, context(projectRoot));
     assert.equal(validBranch.data.status, "passed");
 
-    const invalidBranch = await tool("ngm.git.validateBranchName").handler({
+    const invalidBranch = await tool("ngm_git_validate_branch_name").handler({
       projectPath: projectRoot,
       branchName: "feature/login_form",
     }, context(projectRoot));
     assert.equal(invalidBranch.data.status, "failed");
 
-    const validCommit = await tool("ngm.git.validateCommitMessage").handler({
+    const validCommit = await tool("ngm_git_validate_commit_message").handler({
       projectPath: projectRoot,
       message: "feat(auth): add login form",
     }, context(projectRoot));
@@ -150,10 +150,10 @@ test("validates frontend branch and commit conventions", async () => {
   }
 });
 
-test("ngm.standard.init previews, blocks without write policy, writes with policy, and audits calls", async () => {
+test("ngm_standard_init previews, blocks without write policy, writes with policy, and audits calls", async () => {
   const projectRoot = tempProject();
   try {
-    const cb = registeredTool("ngm.standard.init", context(projectRoot));
+    const cb = registeredTool("ngm_standard_init", context(projectRoot));
     const preview = parseMcpResult(await cb({ projectPath: projectRoot }));
     assert.equal(preview.ok, true);
     assert.equal(preview.data.operation.status, "preview");
@@ -175,7 +175,7 @@ test("ngm.standard.init previews, blocks without write policy, writes with polic
     assert.equal(fs.existsSync(path.join(projectRoot, ".ng-manager/frontend-standard.json")), true);
 
     const audit = auditText(projectRoot);
-    assert.match(audit, /ngm.standard.init/);
+    assert.match(audit, /ngm_standard_init/);
     assert.match(audit, /executed/);
     assert.doesNotMatch(audit, /blocked/);
   } finally {
@@ -189,12 +189,12 @@ test("detects missing specs and Angular component boundary warnings", async () =
     fs.writeFileSync(path.join(projectRoot, "src/app/services/demo.service.ts"), "export class DemoService {}\n");
     fs.writeFileSync(path.join(projectRoot, "src/app/components/demo.component.ts"), `const endpoint = "https://api.example.com";\nlet value: any;\n${"x\n".repeat(130)}`);
 
-    const missing = await tool("ngm.test.detectMissingSpecs").handler({ projectPath: projectRoot }, context(projectRoot));
+    const missing = await tool("ngm_test_detect_missing_specs").handler({ projectPath: projectRoot }, context(projectRoot));
     assert.equal(missing.ok, true);
     assert.equal(missing.data.status, "warning");
     assert.ok(missing.data.findings.some((item) => item.ruleId === "test.missing-service-spec"));
 
-    const boundary = await tool("ngm.angular.validateComponentBoundary").handler({ projectPath: projectRoot }, context(projectRoot));
+    const boundary = await tool("ngm_angular_validate_component_boundary").handler({ projectPath: projectRoot }, context(projectRoot));
     assert.equal(boundary.ok, true);
     assert.ok(boundary.data.findings.some((item) => item.ruleId === "typescript.no-obvious-any"));
     assert.ok(boundary.data.findings.some((item) => item.ruleId === "angular.no-hardcoded-api-url"));
@@ -207,7 +207,7 @@ test("review report and workflow tools write only project .ng-manager files and 
   const projectRoot = tempProject();
   try {
     fs.writeFileSync(path.join(projectRoot, "src/app/services/demo.service.ts"), "const password = 'secret-value';\n");
-    const taskCb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    const taskCb = registeredTool("ngm_workflow_create_frontend_task", context(projectRoot));
     const task = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => taskCb({
       projectPath: projectRoot,
       taskId: "task-1",
@@ -227,7 +227,7 @@ test("review report and workflow tools write only project .ng-manager files and 
       build: "pending",
     });
 
-    const devPlanCb = registeredTool("ngm.workflow.generateDevPlan", context(projectRoot));
+    const devPlanCb = registeredTool("ngm_workflow_generate_dev_plan", context(projectRoot));
     const devPlan = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => devPlanCb({
       projectPath: projectRoot,
       taskId: "task-1",
@@ -238,7 +238,7 @@ test("review report and workflow tools write only project .ng-manager files and 
     assert.equal(fs.existsSync(path.join(projectRoot, ".ng-manager/frontend-tasks/task-1/dev-plan.md")), true);
     assert.equal(JSON.parse(fs.readFileSync(taskPath, "utf-8")).status, "plan-ready");
 
-    const validateCb = registeredTool("ngm.workflow.validateBeforeCommit", context(projectRoot));
+    const validateCb = registeredTool("ngm_workflow_validate_before_commit", context(projectRoot));
     const validation = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => validateCb({
       projectPath: projectRoot,
       taskId: "task-1",
@@ -252,7 +252,7 @@ test("review report and workflow tools write only project .ng-manager files and 
     assert.deepEqual(validatedTask.changedFiles, ["src/app/services/demo.service.ts"]);
 
     fs.writeFileSync(taskPath, JSON.stringify({ ...validatedTask, status: "verified" }, null, 2));
-    const reviewCb = registeredTool("ngm.review.generateReport", context(projectRoot));
+    const reviewCb = registeredTool("ngm_review_generate_report", context(projectRoot));
     const report = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => reviewCb({
       projectPath: projectRoot,
       taskId: "task-1",
@@ -279,14 +279,14 @@ test("review report and workflow tools write only project .ng-manager files and 
 test("advanceStatus previews, blocks without write policy, advances plan-ready to applied, and rejects delivered", async () => {
   const projectRoot = tempProject();
   try {
-    const taskCb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    const taskCb = registeredTool("ngm_workflow_create_frontend_task", context(projectRoot));
     await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => taskCb({
       projectPath: projectRoot,
       taskId: "task-advance",
       title: "Advance task",
       confirm: true,
     }));
-    const devPlanCb = registeredTool("ngm.workflow.generateDevPlan", context(projectRoot));
+    const devPlanCb = registeredTool("ngm_workflow_generate_dev_plan", context(projectRoot));
     await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => devPlanCb({
       projectPath: projectRoot,
       taskId: "task-advance",
@@ -296,7 +296,7 @@ test("advanceStatus previews, blocks without write policy, advances plan-ready t
     const taskPath = path.join(projectRoot, ".ng-manager/frontend-tasks/task-advance/task.json");
     assert.equal(JSON.parse(fs.readFileSync(taskPath, "utf-8")).status, "plan-ready");
 
-    const advanceCb = registeredTool("ngm.workflow.advanceStatus", context(projectRoot));
+    const advanceCb = registeredTool("ngm_workflow_advance_status", context(projectRoot));
     const preview = parseMcpResult(await advanceCb({
       projectPath: projectRoot,
       taskId: "task-advance",
@@ -338,7 +338,7 @@ test("advanceStatus previews, blocks without write policy, advances plan-ready t
     assert.match(delivered.error, /nextStatus/);
 
     const audit = auditText(projectRoot);
-    assert.match(audit, /ngm.workflow.advanceStatus/);
+    assert.match(audit, /ngm_workflow_advance_status/);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -347,14 +347,14 @@ test("advanceStatus previews, blocks without write policy, advances plan-ready t
 test("validateBeforeCommit advances applied tasks to verified but leaves other passing statuses unchanged", async () => {
   const projectRoot = tempProject();
   try {
-    const taskCb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    const taskCb = registeredTool("ngm_workflow_create_frontend_task", context(projectRoot));
     await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => taskCb({
       projectPath: projectRoot,
       taskId: "task-verify",
       title: "Verify task",
       confirm: true,
     }));
-    const devPlanCb = registeredTool("ngm.workflow.generateDevPlan", context(projectRoot));
+    const devPlanCb = registeredTool("ngm_workflow_generate_dev_plan", context(projectRoot));
     await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => devPlanCb({
       projectPath: projectRoot,
       taskId: "task-verify",
@@ -362,7 +362,7 @@ test("validateBeforeCommit advances applied tasks to verified but leaves other p
     }));
     const taskPath = path.join(projectRoot, ".ng-manager/frontend-tasks/task-verify/task.json");
 
-    const validateCb = registeredTool("ngm.workflow.validateBeforeCommit", context(projectRoot));
+    const validateCb = registeredTool("ngm_workflow_validate_before_commit", context(projectRoot));
     const planReady = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => validateCb({
       projectPath: projectRoot,
       taskId: "task-verify",
@@ -372,7 +372,7 @@ test("validateBeforeCommit advances applied tasks to verified but leaves other p
     assert.equal(planReady.data.operation.status, "executed");
     assert.equal(JSON.parse(fs.readFileSync(taskPath, "utf-8")).status, "plan-ready");
 
-    const advanceCb = registeredTool("ngm.workflow.advanceStatus", context(projectRoot));
+    const advanceCb = registeredTool("ngm_workflow_advance_status", context(projectRoot));
     await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => advanceCb({
       projectPath: projectRoot,
       taskId: "task-verify",
@@ -395,7 +395,7 @@ test("validateBeforeCommit advances applied tasks to verified but leaves other p
 test("workspace patch preview summarizes diffs without writing and rejects forbidden paths", async () => {
   const projectRoot = tempProject();
   try {
-    const preview = await tool("ngm.workspace.applyPatchPreview").handler({
+    const preview = await tool("ngm_workspace_apply_patch_preview").handler({
       projectPath: projectRoot,
       patch: [
         "diff --git a/src/app/a.ts b/src/app/a.ts",
@@ -414,12 +414,12 @@ test("workspace patch preview summarizes diffs without writing and rejects forbi
     assert.equal(preview.data.removedLines, 1);
     assert.equal(fs.existsSync(path.join(projectRoot, "src/app/a.ts")), false);
 
-    await assert.rejects(() => tool("ngm.workspace.applyPatchPreview").handler({
+    await assert.rejects(() => tool("ngm_workspace_apply_patch_preview").handler({
       projectPath: projectRoot,
       patch: "diff --git a/.env b/.env\n+++ b/.env\n+TOKEN=secret",
     }, context(projectRoot)), /forbidden/);
 
-    await assert.rejects(() => tool("ngm.workspace.applyPatchPreview").handler({
+    await assert.rejects(() => tool("ngm_workspace_apply_patch_preview").handler({
       projectPath: projectRoot,
       patch: "diff --git a/src/app/logo.png b/src/app/logo.png\nGIT binary patch\nliteral 0",
     }, context(projectRoot)), /Binary patch is not supported by workspace preview/);
@@ -455,13 +455,13 @@ test("workspace diff hides full patch by default and returns redacted truncated 
         },
       },
     });
-    const summary = await tool("ngm.workspace.diff").handler({ projectPath: projectRoot }, ctx);
+    const summary = await tool("ngm_workspace_diff").handler({ projectPath: projectRoot }, ctx);
     assert.equal(summary.ok, true);
     assert.deepEqual(summary.data.changedFiles, ["src/app/a.ts"]);
     assert.equal(summary.data.diff, undefined);
     assert.equal(summary.data.patchPreview, undefined);
 
-    const withPatch = await tool("ngm.workspace.diff").handler({
+    const withPatch = await tool("ngm_workspace_diff").handler({
       projectPath: projectRoot,
       includePatch: true,
       maxBytes: 140,
@@ -505,7 +505,7 @@ test("workspace diff safely truncates UTF-8 patch previews and rejects binary pa
       },
     });
     const maxBytes = Buffer.byteLength(patchPrefix, "utf-8") + 1;
-    const unicode = await tool("ngm.workspace.diff").handler({
+    const unicode = await tool("ngm_workspace_diff").handler({
       projectPath: projectRoot,
       includePatch: true,
       maxBytes,
@@ -530,7 +530,7 @@ test("workspace diff safely truncates UTF-8 patch previews and rejects binary pa
         },
       },
     });
-    await assert.rejects(() => tool("ngm.workspace.diff").handler({
+    await assert.rejects(() => tool("ngm_workspace_diff").handler({
       projectPath: projectRoot,
       includePatch: true,
     }, binaryCtx), /Binary patch is not supported by workspace preview/);
@@ -539,20 +539,20 @@ test("workspace diff safely truncates UTF-8 patch previews and rejects binary pa
   }
 });
 
-test("dotted controlled aliases are registered and keep blocked default write behavior", async () => {
+test("controlled snake_case tools are registered and keep blocked default write behavior", async () => {
   for (const name of [
-    "ngm.project.runScript",
-    "ngm.project.stop",
-    "ngm.runtime.setForProject",
-    "ngm.nginx.reload",
-    "ngm.nginx.proxy.save",
+    "ngm_project_run_script",
+    "ngm_project_stop",
+    "ngm_runtime_set_for_project",
+    "ngm_nginx_reload",
+    "ngm_nginx_proxy_save",
   ]) {
     assert.ok(tool(name), `${name} should be registered`);
   }
 
   const projectRoot = tempProject();
   try {
-    const cb = registeredTool("ngm.runtime.setForProject", {
+    const cb = registeredTool("ngm_runtime_set_for_project", {
       workspaceRoot: projectRoot,
       dataDir: projectRoot,
       services: {
@@ -596,7 +596,7 @@ test("preview succeeds without audit writes when audit storage would fail", asyn
   const fileRoot = path.join(os.tmpdir(), `ngm-audit-file-${Date.now()}`);
   fs.writeFileSync(fileRoot, "not a directory");
   try {
-    const cb = registeredTool("ngm.workflow.createFrontendTask", context(fileRoot));
+    const cb = registeredTool("ngm_workflow_create_frontend_task", context(fileRoot));
     const result = parseMcpResult(await cb({
       projectPath: fileRoot,
       taskId: "task-1",
@@ -614,7 +614,7 @@ test("preview outside workspaceRoot does not write audit or block main tool", as
   const workspaceRoot = tempProject();
   const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ngm-audit-outside-"));
   try {
-    const cb = registeredTool("ngm.workflow.createFrontendTask", context(workspaceRoot));
+    const cb = registeredTool("ngm_workflow_create_frontend_task", context(workspaceRoot));
     const result = parseMcpResult(await cb({
       projectPath: outsideRoot,
       taskId: "task-1",
@@ -633,7 +633,7 @@ test("preview outside workspaceRoot does not write audit or block main tool", as
 test("createFrontendTask blocks duplicate taskId without overwriting task.json", async () => {
   const projectRoot = tempProject();
   try {
-    const cb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    const cb = registeredTool("ngm_workflow_create_frontend_task", context(projectRoot));
     const first = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => cb({
       projectPath: projectRoot,
       taskId: "task-1",
@@ -661,14 +661,14 @@ test("createFrontendTask blocks duplicate taskId without overwriting task.json",
 test("generateDeliveryReport blocks illegal draft to delivered transition", async () => {
   const projectRoot = tempProject();
   try {
-    const taskCb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    const taskCb = registeredTool("ngm_workflow_create_frontend_task", context(projectRoot));
     await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => taskCb({
       projectPath: projectRoot,
       taskId: "task-1",
       title: "Delivery transition",
       confirm: true,
     }));
-    const deliveryCb = registeredTool("ngm.workflow.generateDeliveryReport", context(projectRoot));
+    const deliveryCb = registeredTool("ngm_workflow_generate_delivery_report", context(projectRoot));
     const result = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => deliveryCb({
       projectPath: projectRoot,
       taskId: "task-1",
@@ -687,7 +687,7 @@ test("generateDeliveryReport blocks illegal draft to delivered transition", asyn
 test("workflow transition blocking does not wrap non-transition write errors", async () => {
   const projectRoot = tempProject();
   try {
-    const taskCb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    const taskCb = registeredTool("ngm_workflow_create_frontend_task", context(projectRoot));
     await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => taskCb({
       projectPath: projectRoot,
       taskId: "task-write-error",
@@ -696,7 +696,7 @@ test("workflow transition blocking does not wrap non-transition write errors", a
     }));
     fs.mkdirSync(path.join(projectRoot, ".ng-manager/frontend-tasks/task-write-error/dev-plan.md"));
 
-    const devPlanCb = registeredTool("ngm.workflow.generateDevPlan", context(projectRoot));
+    const devPlanCb = registeredTool("ngm_workflow_generate_dev_plan", context(projectRoot));
     const result = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => devPlanCb({
       projectPath: projectRoot,
       taskId: "task-write-error",
@@ -713,7 +713,7 @@ test("workflow transition blocking does not wrap non-transition write errors", a
 test("workflow tool rejects unsafe task ids through registered MCP result", async () => {
   const projectRoot = tempProject();
   try {
-    const cb = registeredTool("ngm.workflow.createFrontendTask", context(projectRoot));
+    const cb = registeredTool("ngm_workflow_create_frontend_task", context(projectRoot));
     const result = parseMcpResult(await withEnv({ NGM_MCP_ALLOW_WRITE: "true" }, () => cb({
       projectPath: projectRoot,
       taskId: "../bad",

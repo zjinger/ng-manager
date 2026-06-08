@@ -182,37 +182,11 @@ function toolsSection(): { lines: string[]; status: DoctorStatus } {
   }
 }
 
-function enterpriseMvpSection(): { lines: string[]; status: DoctorStatus } {
-  const names = new Set(allTools().map((tool) => tool.name));
-  const required = {
-    frontendStandard: ["ngm_standard_get", "ngm_standard_init", "ngm_standard_validate_project"],
-    workflow: ["ngm_workflow_create_frontend_task", "ngm_workflow_generate_dev_plan", "ngm_workflow_advance_status", "ngm_workflow_validate_before_commit", "ngm_workflow_generate_delivery_report"],
-    audit: ["ngm_standard_init", "ngm_workflow_create_frontend_task", "ngm_review_generate_report"],
-    patchPreview: ["ngm_workspace_diff", "ngm_workspace_apply_patch_preview"],
-    dottedAliases: ["ngm_project_run_script", "ngm_project_stop", "ngm_runtime_set_for_project", "ngm_nginx_reload", "ngm_nginx_proxy_save"],
-  };
-  const missing = Object.entries(required)
-    .flatMap(([group, tools]) => tools.filter((tool) => !names.has(tool)).map((tool) => `${group}:${tool}`));
-  return {
-    status: missing.length ? "WARN" : "OK",
-    lines: [
-      "Enterprise MVP:",
-      `  frontendStandard: ${required.frontendStandard.every((tool) => names.has(tool)) ? "available" : "missing"}`,
-      `  workflow: ${required.workflow.every((tool) => names.has(tool)) ? "available" : "missing"}`,
-      "  audit: project-local .ng-manager/audit/mcp-YYYY-MM-DD.jsonl",
-      `  patchPreview: ${required.patchPreview.every((tool) => names.has(tool)) ? "available" : "missing"}`,
-      `  dottedAliases: ${required.dottedAliases.every((tool) => names.has(tool)) ? "available" : "missing"}`,
-      ...(missing.length ? [`  missing: ${missing.join(", ")}`] : []),
-    ],
-  };
-}
-
 export function createDoctorReport(): DoctorReport {
   const packageInfo = readPackageInfo();
   const hubV2 = hubV2Section();
   const tools = toolsSection();
-  const enterprise = enterpriseMvpSection();
-  const status = maxStatus(packageInfo.status, hubV2.status, tools.status, enterprise.status);
+  const status = maxStatus(packageInfo.status, hubV2.status, tools.status);
   const lines = [
     "ng-manager MCP Doctor",
     "",
@@ -231,8 +205,6 @@ export function createDoctorReport(): DoctorReport {
     ...policySection(),
     "",
     ...tools.lines,
-    "",
-    ...enterprise.lines,
     "",
     "Status:",
     `  ${status}`,

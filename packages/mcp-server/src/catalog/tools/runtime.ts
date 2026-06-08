@@ -36,12 +36,5 @@ export const runtimeTools: ToolCatalogEntry[] = [
     riskLevel: "write",
     description: "Preview or set a registered projectId's Node runtime binding through the local server; preferred over config/shell edits and audit logged when confirmed.",
   },
-  {
-    name: "ngm_runtime_set_for_project",
-    skill: "ngm-runtime",
-    capability: "runtime",
-    riskLevel: "write",
-    description: "Dotted alias for ngm_runtime_set_for_project.",
-  },
 ];
 

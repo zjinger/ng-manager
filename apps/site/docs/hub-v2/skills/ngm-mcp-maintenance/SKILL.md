@@ -32,7 +32,7 @@ For Hub V2-specific tool names, docs, and alignment rules, read [references/hub-
 
 - Register new MCP tools in the relevant domain index and in `packages/mcp-server/src/tools/index.ts` if the domain aggregate requires it.
 - Add the tool to `packages/mcp-server/src/tools/tool-catalog.ts` with the correct `riskLevel`, description, and capability grouping.
-- Preserve old tool names and aliases unless the user explicitly asks for a breaking cleanup.
+- Use snake_case tool names only: `ngm_` for local ng-manager tools and `hub_v2_` for Hub V2 tools. Do not add dotted, camelCase, `hubv2_`, `sl_hub_v2_`, or other legacy aliases.
 - Confirm `ngm mcp doctor` capability summaries still include the domain after the change when relevant.
 
 ### 4. Align Docs And Skills

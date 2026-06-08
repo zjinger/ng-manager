@@ -8,30 +8,31 @@ const test = require("node:test");
 
 const { allTools } = require("../lib/tools/index.js");
 const { registerTools } = require("../lib/register-tools.js");
+const { toolCatalog } = require("../lib/tools/tool-catalog.js");
 
 const NEW_READ_TOOLS = [
-  "ngm.capabilities",
+  "ngm_capabilities",
   "ngm_doctor",
-  "ngm.routeTask",
-  "ngm.workspace.summary",
-  "ngm.workspace.listPackages",
-  "ngm.workspace.getPackage",
-  "ngm.workspace.mcpTools",
-  "ngm.workspace.capabilityMap",
-  "ngm.workspace.diff",
-  "ngm.workspace.applyPatchPreview",
+  "ngm_route_task",
+  "ngm_workspace_summary",
+  "ngm_workspace_list_packages",
+  "ngm_workspace_get_package",
+  "ngm_workspace_mcp_tools",
+  "ngm_workspace_capability_map",
+  "ngm_workspace_diff",
+  "ngm_workspace_apply_patch_preview",
   "ngm_project_list",
-  "ngm.project.find",
-  "ngm.project.readPackageJson",
-  "ngm.runtime.current",
-  "ngm.runtime.detectRequirement",
-  "ngm.nginx.status",
-  "ngm.nginx.servers.list",
-  "ngm.nginx.server.get",
-  "ngm.nginx.upstreams.list",
-  "ngm.nginx.config.validate",
-  "ngm.nginx.config.getMain",
-  "ngm.nginx.logs.tail",
+  "ngm_project_find",
+  "ngm_project_read_package_json",
+  "ngm_runtime_current",
+  "ngm_runtime_detect_requirement",
+  "ngm_nginx_status",
+  "ngm_nginx_servers_list",
+  "ngm_nginx_server_get",
+  "ngm_nginx_upstreams_list",
+  "ngm_nginx_config_validate",
+  "ngm_nginx_config_get_main",
+  "ngm_nginx_logs_tail",
   "ngm_project_list_tasks",
   "ngm_project_task_status",
   "ngm_project_task_logs",
@@ -104,16 +105,21 @@ test("registers project observation tools as read-only tools", () => {
 
 test("registers controlled NGM tools with write or execute risk", () => {
   assert.equal(tool("ngm_project_run_script").riskLevel, "execute");
-  assert.equal(tool("ngm.project.runScript").riskLevel, "execute");
   assert.equal(tool("ngm_file_write").riskLevel, "write");
   assert.equal(tool("ngm_project_stop").riskLevel, "execute");
-  assert.equal(tool("ngm.project.stop").riskLevel, "execute");
   assert.equal(tool("ngm_runtime_set_for_project").riskLevel, "write");
-  assert.equal(tool("ngm.runtime.setForProject").riskLevel, "write");
   assert.equal(tool("ngm_nginx_reload").riskLevel, "execute");
-  assert.equal(tool("ngm.nginx.reload").riskLevel, "execute");
   assert.equal(tool("ngm_nginx_proxy_save").riskLevel, "write");
-  assert.equal(tool("ngm.nginx.proxy.save").riskLevel, "write");
+});
+
+test("registered MCP tool names use only snake_case ngm_ or hub_v2_ prefixes", () => {
+  const validName = /^(ngm|hub_v2)_[a-z0-9_]+$/;
+  for (const item of allTools()) {
+    assert.match(item.name, validName, `${item.name} should use snake_case ngm_ or hub_v2_ naming`);
+  }
+  for (const item of toolCatalog) {
+    assert.match(item.name, validName, `${item.name} should use snake_case ngm_ or hub_v2_ catalog naming`);
+  }
 });
 
 test("ngm_project_list reads compact projects from the registry without workspace scanning", async () => {
@@ -1268,8 +1274,8 @@ test("ngm_nginx_proxy_save rejects Nginx injection characters", async () => {
   assert.match(result.data.error, /unsafe Nginx control characters/);
 });
 
-test("ngm.routeTask routes workspace and package capability requests to ngm-workspace", async () => {
-  const result = await tool("ngm.routeTask").handler({
+test("ngm_route_task routes workspace and package capability requests to ngm-workspace", async () => {
+  const result = await tool("ngm_route_task").handler({
     query: "帮我看 packages/node-runtime 是否应该暴露给 MCP",
   }, {});
 
@@ -1279,18 +1285,18 @@ test("ngm.routeTask routes workspace and package capability requests to ngm-work
   assert.equal(result.data.skills.includes("ngm-code"), false);
 });
 
-test("ngm.routeTask routes API debugging and MCP tool questions to ngm-workspace", async () => {
-  const result = await tool("ngm.routeTask").handler({
+test("ngm_route_task routes API debugging and MCP tool questions to ngm-workspace", async () => {
+  const result = await tool("ngm_route_task").handler({
     query: "检查 ng-manager API 调试能力和 MCP tools 是否覆盖",
   }, {});
 
   assert.equal(result.ok, true);
   assert.ok(result.data.skills.includes("ngm-workspace"));
-  assert.ok(result.data.tools.includes("ngm.workspace.mcpTools"));
+  assert.ok(result.data.tools.includes("ngm_workspace_mcp_tools"));
 });
 
-test("ngm.routeTask keeps Hub V2 document requests on Hub V2 skills", async () => {
-  const result = await tool("ngm.routeTask").handler({
+test("ngm_route_task keeps Hub V2 document requests on Hub V2 skills", async () => {
+  const result = await tool("ngm_route_task").handler({
     query: "帮我查一下某个研发项的需求文档",
   }, {});
 

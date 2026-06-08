@@ -54,7 +54,37 @@ ng-manager 本地能力应优先走 `packages/core`。Hub V2 MCP tools 允许调
 
 MCP Server 不允许提供任意 shell 执行、系统环境变更、远程执行客户端命令、任意文件读写或绕过 Hub V2 权限模型的能力。
 
-## 3. 配置读取策略
+## 3. MCP Tool 命名口径
+
+Agent、Skill 文档和 MCP Inspector 中展示的 tool name 统一使用 snake_case：
+
+```text
+<prefix>_<domain>_<resource?>_<action>
+```
+
+当前只使用两个前缀：
+
+| 前缀 | 含义 |
+| --- | --- |
+| `ngm_` | ng-manager 本地控制面能力，例如 project、runtime、nginx、workspace |
+| `hub_v2_` | Hub V2 平台 API 能力，例如 project、doc、issue、rd、upload |
+
+不再新增或文档化以下命名风格：
+
+```text
+hubv2_
+sl_hub_v2_
+ng_manager_
+ngmLocal
+ngm.project.runScript
+project.runScript
+projectRunScript
+runProjectScript
+```
+
+如果历史对话或旧 Skill 中出现上述名称，Agent 应以本节和下方“当前 MCP 工具”列表为准，改用实际注册的 snake_case tool name。
+
+## 4. 配置读取策略
 
 配置优先级：
 
@@ -73,7 +103,7 @@ HUB_V2_CONFIG explicit config path
 - `HUB_V2_CONFIG` 用于测试、临时调试或 MCP client 注入自定义配置文件
 - 默认持久配置文件固定为 `~/.ng-manager/agent-connections.json`
 
-## 4. 支持的环境变量
+## 5. 支持的环境变量
 
 当前只支持以下环境变量：
 
@@ -153,7 +183,7 @@ Claude settings 自动配置扫描
 ~/.openclaw/sl-hub-v2.json
 ```
 
-## 5. agent-connections.json 格式
+## 6. agent-connections.json 格式
 
 推荐持久配置文件：
 
@@ -212,7 +242,7 @@ Claude settings 自动配置扫描
 multiple projects configured; pass project
 ```
 
-## 6. Token 使用边界
+## 7. Token 使用边界
 
 Hub V2 MCP tools 的 token 使用规则：
 
@@ -230,7 +260,7 @@ Hub V2 MCP tools 的 token 使用规则：
 - project summary 只能返回 `hasProjectToken`、`hasPersonalToken` 等布尔信息
 - HTTP 错误转换不得包含 Authorization header
 
-## 6.1 Server 本地 Agent Connections 管理 API
+## 7.1 Server 本地 Agent Connections 管理 API
 
 `packages/server` 提供本地配置管理 API（仅管理 `hubV2` 节点）：
 
@@ -263,7 +293,7 @@ PUT token 字段语义（用于 UI 编辑时避免误清空）：
 
 下一阶段 UI 页面将直接接入上述 server API，不在前端拼接底层文件逻辑。
 
-## 7. 写工具确认与 policy
+## 8. 写工具确认与 policy
 
 MCP Server 对工具使用 risk level：
 
@@ -332,9 +362,9 @@ MCP Client 配置示例：
 
 `ngm mcp doctor` 可用于检查当前 MCP Server 进程能看到的 policy 状态。若写操作返回 `write tools are disabled`，说明当前启动该 MCP Server 的环境中没有设置 `NGM_MCP_ALLOW_WRITE=true`，或 MCP Client 修改配置后尚未重启 server。execute/dangerous 同理分别由 `NGM_MCP_ALLOW_EXECUTE`、`NGM_MCP_ALLOW_DANGEROUS` 控制。
 
-## 8. 当前 MCP 工具
+## 9. 当前 MCP 工具
 
-### 8.1 NGM 本地工具
+### 9.1 NGM 本地工具
 
 发现与路由：
 
@@ -460,7 +490,7 @@ ngm_proxy_validate
 系统 PATH、nvm 配置或 shell profile 修改
 ```
 
-### 8.2 Hub V2 工具
+### 9.2 Hub V2 工具
 
 项目配置：
 
@@ -569,7 +599,7 @@ hub_v2_file_upload
 sl_hub_v2.*
 ```
 
-## 9. Markdown 图片上传流程
+## 10. Markdown 图片上传流程
 
 `hub_v2_upload_markdown_image` 用于给文档正文、RD 描述、RD 阶段任务描述、Issue 描述和 Issue 评论插入 Markdown 图片。
 
@@ -598,7 +628,7 @@ sl_hub_v2.*
 - 默认只 preview，不读取大文件、不上传
 - 只有 `confirm=true` 且写 policy 放行时才上传
 
-## 10. 错误与输出治理
+## 11. 错误与输出治理
 
 Hub V2 HTTP 错误会转换为结构化 MCP error：
 
@@ -629,7 +659,7 @@ MCP 输出大小限制：
 - 默认值：`120000`
 - 超出时返回 `truncated: true` 和 `originalLength`
 
-## 11. 本地调试
+## 12. 本地调试
 
 构建和测试：
 
@@ -664,7 +694,7 @@ Command: node
 Arguments: D:/ng-manager/packages/mcp-server/lib/index.js
 ```
 
-## 12. 验收口径
+## 13. 验收口径
 
 代码层验收：
 
@@ -683,7 +713,7 @@ npm.cmd run build
 - project summary 不包含 token 原文
 - legacy 配置入口不再生效
 
-## 13. 后续演进
+## 14. 后续演进
 
 当前阶段不让 MCP Server 读取 `packages/server` SQLite。
 

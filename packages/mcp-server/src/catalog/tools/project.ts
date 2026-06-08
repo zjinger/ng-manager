@@ -51,25 +51,11 @@ export const projectTools: ToolCatalogEntry[] = [
     description: "Preview or run an existing package.json script for a registered projectId through the local ng-manager server runtime; preferred over direct shell so task state, logs, and audit stay unified.",
   },
   {
-    name: "ngm_project_run_script",
-    skill: "ngm-project",
-    capability: "project",
-    riskLevel: "execute",
-    description: "Dotted alias for ngm_project_run_script.",
-  },
-  {
     name: "ngm_project_stop",
     skill: "ngm-project",
     capability: "project",
     riskLevel: "execute",
     description: "Preview or stop a ng-manager managed task by taskId or projectId through the local server runtime; preferred over killing PIDs and audit logged when confirmed.",
-  },
-  {
-    name: "ngm_project_stop",
-    skill: "ngm-project",
-    capability: "project",
-    riskLevel: "execute",
-    description: "Dotted alias for ngm_project_stop.",
   },
   {
     name: "ngm_file_write",

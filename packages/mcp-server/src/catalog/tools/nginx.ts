@@ -58,25 +58,11 @@ export const nginxTools: ToolCatalogEntry[] = [
     description: "Validate and preview or reload the ng-manager managed local Nginx instance; preferred over direct nginx commands and audit logged when confirmed.",
   },
   {
-    name: "ngm_nginx_reload",
-    skill: "ngm-nginx",
-    capability: "nginx",
-    riskLevel: "execute",
-    description: "Dotted alias for ngm_nginx_reload.",
-  },
-  {
     name: "ngm_nginx_proxy_save",
     skill: "ngm-nginx",
     capability: "nginx",
     riskLevel: "write",
     description: "Preview or save a ng-manager managed Nginx proxy server block; validates inputs, avoids arbitrary file writes, and audit logs confirmed saves.",
-  },
-  {
-    name: "ngm_nginx_proxy_save",
-    skill: "ngm-nginx",
-    capability: "nginx",
-    riskLevel: "write",
-    description: "Dotted alias for ngm_nginx_proxy_save.",
   },
   {
     name: "ngm_proxy_list",
