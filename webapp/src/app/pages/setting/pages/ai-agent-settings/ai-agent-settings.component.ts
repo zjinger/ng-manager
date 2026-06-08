@@ -102,6 +102,18 @@ export class AiAgentSettingsComponent implements OnInit {
 
   readonly createVisible = signal(false);
   readonly editVisible = signal(false);
+  readonly mcpServerConfigExample = JSON.stringify(
+    {
+      mcpServers: {
+        'ng-manager': {
+          command: 'ngm',
+          args: ['mcp'],
+        },
+      },
+    },
+    null,
+    2
+  );
   createForm: CreateFormModel = createInitialForm();
   editForm: EditFormModel = createInitialEditForm();
   readonly editingItem = signal<HubV2AgentConnectionSummary | null>(null);
