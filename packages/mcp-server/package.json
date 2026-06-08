@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/mcp-server",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Local MCP stdio server for ng-manager core capabilities.",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
