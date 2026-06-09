@@ -2,6 +2,7 @@
   display: grid;
   grid-template-columns: 220px 1fr;
   min-height: calc(100vh - 64px);
+  height: 100%;
 }
 
 .settings-sidebar {
@@ -40,4 +41,11 @@
 .settings-content {
   padding: 16px;
   min-width: 0;
+  overflow: auto;
+}
+
+:host{
+  display: block;
+  height: 100%;
+  overflow: hidden;
 }

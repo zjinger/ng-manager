@@ -79,6 +79,7 @@ export interface RdItemProgress {
   progress: number;
   note: string | null;
   updatedAt: string;
+  stageTaskId?: string;
 }
 
 export interface RdProgressHistory {
@@ -187,10 +188,71 @@ export interface ProjectMemberEntity {
 export interface UpdateRdItemProgressInput {
   progress: number;
   note?: string;
+  stageTaskId?: string;
+  blockReason?: string;
+  resolveBlockId?: string;
 }
 
 export interface ListRdProgressQuery {
   itemId: string;
+}
+
+export type RdMemberBlockStatus = 'active' | 'resolved';
+
+export interface RdMemberBlockEntity {
+  id: string;
+  projectId: string;
+  itemId: string;
+  userId: string;
+  userName: string | null;
+  reason: string;
+  status: RdMemberBlockStatus;
+  blockedAt: string;
+  resolvedAt: string | null;
+  resolvedById: string | null;
+  resolvedByName: string | null;
+  resolveNote: string | null;
+}
+
+export type RdStageTaskStatus = 'pending' | 'in_progress' | 'done' | 'blocked' | 'cancelled';
+
+export interface RdStageTaskOwnerEntity {
+  id: string;
+  taskId: string;
+  projectId: string;
+  itemId: string;
+  userId: string;
+  userName: string | null;
+  status: RdStageTaskStatus;
+  progress: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RdStageTaskEntity {
+  id: string;
+  projectId: string;
+  itemId: string;
+  stageKey: string;
+  title: string;
+  description: string | null;
+  status: RdStageTaskStatus;
+  ownerId: string | null;
+  ownerName: string | null;
+  ownerIds: string[];
+  ownerNames: string[];
+  progress: number;
+  plannedStartAt: string | null;
+  plannedEndAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  sortOrder: number;
+  remark: string | null;
+  createdAt: string;
+  updatedAt: string;
+  ownerProgresses: RdStageTaskOwnerEntity[];
 }
 
 export interface RdStageHistoryEntry {
@@ -223,4 +285,25 @@ export interface RdStageHistorySnapshot {
   actualStartAt: string | null;
   actualEndAt: string | null;
   blockerReason: string | null;
+}
+
+export const RD_STAGE_DEFINITIONS: Array<{ key: string; name: string }> = [
+  { key: 'requirement_confirmation', name: '需求确认' },
+  { key: 'solution_design', name: '方案设计' },
+  { key: 'feature_dev', name: '功能开发' },
+  { key: 'testing_validation', name: '测试验证' },
+  { key: 'delivery_launch', name: '交付上线' },
+  { key: 'project_closure', name: '项目结项' },
+];
+
+const RD_STAGE_KEY_BY_NAME = new Map(RD_STAGE_DEFINITIONS.map((stage) => [stage.name, stage.key]));
+
+export function resolveRdStageKey(stage: Pick<RdStageEntity, 'id' | 'name'> | string | null | undefined): string {
+  if (!stage) {
+    return 'unknown';
+  }
+  if (typeof stage === 'string') {
+    return RD_STAGE_KEY_BY_NAME.get(stage.trim()) ?? stage.trim();
+  }
+  return RD_STAGE_KEY_BY_NAME.get(stage.name.trim()) ?? stage.id;
 }

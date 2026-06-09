@@ -9,8 +9,10 @@ import {
   RdItemProgress,
   RdListQuery,
   RdLogEntity,
+  RdMemberBlockEntity,
   RdStageEntity,
   RdStageHistoryEntry,
+  RdStageTaskEntity,
   UpdateRdItemInput,
   UpdateRdItemProgressInput,
   UpdateRdStageInput,
@@ -34,6 +36,8 @@ export class RdStore {
   private readonly currentRdLogsState = signal<RdLogEntity[]>([]);
   private readonly currentRdProgressState = signal<RdItemProgress[]>([]);
   private readonly currentRdStageHistoryState = signal<RdStageHistoryEntry[]>([]);
+  private readonly currentRdStageTasksState = signal<RdStageTaskEntity[]>([]);
+  private readonly currentRdMemberBlocksState = signal<RdMemberBlockEntity[]>([]);
 
   private readonly stagesState = signal<RdStageEntity[]>([]);
   private readonly projectMembersState = this.projectContextStore.currentProjectMembers;
@@ -56,6 +60,8 @@ export class RdStore {
   readonly currentRdLogs = computed(() => this.currentRdLogsState());
   readonly currentRdProgress = computed(() => this.currentRdProgressState());
   readonly currentRdStageHistory = computed(() => this.currentRdStageHistoryState());
+  readonly currentRdStageTasks = computed(() => this.currentRdStageTasksState());
+  readonly currentRdMemberBlocks = computed(() => this.currentRdMemberBlocksState());
   readonly stages = computed(() => this.stagesState());
   readonly rdItemsCount = computed(() => this.rdItemsCountState());
   readonly rdItemsPageList = computed(() => this.rdItemsPageListState());
@@ -106,20 +112,26 @@ export class RdStore {
     if (!projectId) return;
     this.currentRdLoadingState.set(true);
     try {
-      // TODO: 改成并行发送
-      const itemRes = await this.rdApi.getRdItem(projectId, itemId);
-      this.currentRdItemState.set(itemRes);
-      const logsRes = await this.rdApi.getRdItemLogs(projectId, itemId);
-      this.currentRdLogsState.set(logsRes.items);
-      // TODO: 接口开放时候解开
-      const progressRes = await this.rdApi.getRdProgress(projectId, itemId);
-      const stageHistoryRes = await this.rdApi.getRdStageHistory(projectId, itemId);
-      this.currentRdProgressState.set(progressRes.items);
-      this.currentRdStageHistoryState.set(stageHistoryRes.items);
+      const [itemRes, logsRes, progressRes, stageHistoryRes, stageTasksRes, memberBlocksRes] =
+        await Promise.allSettled([
+          this.rdApi.getRdItem(projectId, itemId),
+          this.rdApi.getRdItemLogs(projectId, itemId),
+          this.rdApi.getRdProgress(projectId, itemId),
+          this.rdApi.getRdStageHistory(projectId, itemId),
+          this.rdApi.getRdStageTasks(projectId, itemId),
+          this.rdApi.getRdMemberBlocks(projectId, itemId),
+        ]);
+
+      if (itemRes.status === 'fulfilled') {
+        this.currentRdItemState.set(itemRes.value);
+      }
+      this.currentRdLogsState.set(logsRes.status === 'fulfilled' ? logsRes.value.items : []);
+      this.currentRdProgressState.set(progressRes.status === 'fulfilled' ? progressRes.value.items : []);
+      this.currentRdStageHistoryState.set(stageHistoryRes.status === 'fulfilled' ? stageHistoryRes.value.items : []);
+      this.currentRdStageTasksState.set(stageTasksRes.status === 'fulfilled' ? stageTasksRes.value.items : []);
+      this.currentRdMemberBlocksState.set(memberBlocksRes.status === 'fulfilled' ? memberBlocksRes.value.items : []);
+    } finally {
       this.currentRdLoadingState.set(false);
-    } catch (e) {
-      this.currentRdLoadingState.set(false);
-      throw new Error("load current rd item error");
     }
   }
 
@@ -189,6 +201,20 @@ export class RdStore {
 
     if (!projectId) return;
     this.runAction(() => this.rdApi.close(projectId, itemId, summary));
+  }
+
+  async resolveMemberBlock(itemId: string, blockId: string, note?: string): Promise<void> {
+    const projectId = this.projectId();
+    if (!projectId) return;
+    this.busyState.set(true);
+    try {
+      await this.rdApi.resolveMemberBlock(projectId, itemId, blockId, note);
+      await this.loadCurrentRdItem(itemId);
+      await this.loadRdItems();
+      this.busyState.set(false);
+    } catch {
+      this.busyState.set(false);
+    }
   }
 
   delete(itemId: string): void {

@@ -12,8 +12,10 @@ import {
   RdItemProgress,
   RdItemStatus,
   RdLogEntity,
+  RdMemberBlockEntity,
   RdStageEntity,
   RdStageHistoryEntry,
+  RdStageTaskEntity,
 } from '@pages/rd/models/rd.model';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
@@ -94,7 +96,11 @@ import { RdDescriptionAreaComponent } from './rd-description-area/rd-description
                 [item]="rdItem"
                 [progressList]="progressList()"
                 [members]="members()"
+                [stageTasks]="stageTasks()"
+                [stages]="stages()"
+                [memberBlocks]="memberBlocks()"
                 (updateProgressClick)="updateProgressClick.emit($event)"
+                (resolveMemberBlockClick)="resolveMemberBlockClick.emit($event)"
               ></app-rd-progress-area>
 
               <!-- 研发描述 -->
@@ -200,11 +206,14 @@ export class RdDetailComponent {
   readonly stages = input<RdStageEntity[]>([]);
   readonly progressList = input<RdItemProgress[]>([]);
   readonly stageHistory = input<RdStageHistoryEntry[]>([]);
+  readonly stageTasks = input<RdStageTaskEntity[]>([]);
+  readonly memberBlocks = input<RdMemberBlockEntity[]>([]);
   readonly projectId = input<string>('');
 
   readonly close = output();
   readonly actionClick = output<'start' | 'block' | 'resume' | 'complete' | 'advance'>();
   readonly updateProgressClick = output<RdItemProgress>();
+  readonly resolveMemberBlockClick = output<{ blockId: string }>();
   readonly deleteClick = output<void>();
 
   readonly subtitleText = computed(() => this.rdItem()?.rdNo || '');

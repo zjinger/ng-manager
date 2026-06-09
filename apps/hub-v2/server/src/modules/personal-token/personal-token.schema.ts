@@ -77,6 +77,12 @@ export const personalRdItemIdParamSchema = z.object({
   itemId: z.string().trim().min(1)
 });
 
+export const personalRdMemberBlockParamSchema = z.object({
+  projectKey: z.string().trim().min(1).max(80),
+  itemId: z.string().trim().min(1),
+  blockId: z.string().trim().min(1)
+});
+
 export const personalDocumentProjectParamSchema = z.object({
   projectKey: z.string().trim().min(1).max(80)
 });

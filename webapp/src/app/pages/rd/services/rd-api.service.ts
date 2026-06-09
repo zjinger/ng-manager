@@ -8,8 +8,10 @@ import {
   RdListQuery,
   RdListResult,
   RdLogEntity,
+  RdMemberBlockEntity,
   RdStageEntity,
   RdStageHistoryEntry,
+  RdStageTaskEntity,
   UpdateRdItemInput,
 } from '../models/rd.model';
 import { RdTokenApiService } from './rd-token-api.service';
@@ -153,6 +155,29 @@ export class RdApiService {
     return await this.apiClient.hubRequestWithPrjId<{ items: RdStageHistoryEntry[] }>({
       projectId: projectId,
       path: `/rd-items/${rdItemId}/stage-history`,
+    });
+  }
+
+  async getRdStageTasks(projectId: string, rdItemId: string) {
+    return await this.apiClient.hubRequestWithPrjId<{ items: RdStageTaskEntity[] }>({
+      projectId: projectId,
+      path: `/rd-items/${rdItemId}/stage-tasks`,
+    });
+  }
+
+  async getRdMemberBlocks(projectId: string, rdItemId: string) {
+    return await this.apiClient.hubRequestWithPrjId<{ items: RdMemberBlockEntity[] }>({
+      projectId: projectId,
+      path: `/rd-items/${rdItemId}/member-blocks`,
+    });
+  }
+
+  async resolveMemberBlock(projectId: string, itemId: string, blockId: string, note?: string): Promise<RdMemberBlockEntity> {
+    return await this.apiClient.hubRequestWithPersonalToken<RdMemberBlockEntity>({
+      projectId,
+      method: 'POST',
+      path: `/rd-items/${itemId}/member-blocks/${blockId}/resolve`,
+      payload: { note },
     });
   }
 }

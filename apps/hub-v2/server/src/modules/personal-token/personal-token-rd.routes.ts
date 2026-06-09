@@ -11,6 +11,8 @@ import {
   blockRdItemSchema,
   closeRdItemSchema,
   completeRdItemSchema,
+  createRdMemberBlockSchema,
+  resolveRdMemberBlockSchema,
   updateRdItemProgressSchema,
   updateRdItemSchema
 } from "../rd/rd.schema";
@@ -18,7 +20,8 @@ import {
   createPersonalRdItemSchema,
   createPersonalRdStageTaskSchema,
   personalProjectParamSchema,
-  personalRdItemIdParamSchema
+  personalRdItemIdParamSchema,
+  personalRdMemberBlockParamSchema
 } from "./personal-token.schema";
 
 export default async function personalTokenRdRoutes(app: FastifyInstance) {
@@ -115,6 +118,22 @@ export default async function personalTokenRdRoutes(app: FastifyInstance) {
     await assertRdProjectAccess(app, params.projectKey, params.itemId, ctx);
     const body = updateRdItemSchema.parse(request.body);
     return ok(await app.container.rdCommand.updateItem(params.itemId, body, ctx));
+  });
+
+  app.post("/projects/:projectKey/rd-items/:itemId/member-blocks", async (request, reply) => {
+    const ctx = requirePersonalTokenAuth(request, "rd:progress:write");
+    const params = personalRdItemIdParamSchema.parse(request.params);
+    await assertRdProjectAccess(app, params.projectKey, params.itemId, ctx);
+    const body = createRdMemberBlockSchema.parse(request.body);
+    return reply.status(201).send(ok(await app.container.rdCommand.createMemberBlock(params.itemId, body, ctx), "rd member block created"));
+  });
+
+  app.post("/projects/:projectKey/rd-items/:itemId/member-blocks/:blockId/resolve", async (request) => {
+    const ctx = requirePersonalTokenAuth(request, "rd:progress:write");
+    const params = personalRdMemberBlockParamSchema.parse(request.params);
+    await assertRdProjectAccess(app, params.projectKey, params.itemId, ctx);
+    const body = resolveRdMemberBlockSchema.parse(request.body);
+    return ok(await app.container.rdCommand.resolveMemberBlock(params.itemId, params.blockId, body, ctx), "rd member block resolved");
   });
 
 }

@@ -70,7 +70,7 @@ export class RdComponent {
   protected readonly fb = inject(NonNullableFormBuilder);
   protected readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly userStore = inject(UserStore);
+  protected readonly userStore = inject(UserStore);
 
   // 视图模式
   protected readonly viewType = signal<viewType>('list');
@@ -106,6 +106,8 @@ export class RdComponent {
   protected readonly currentRdLogs = this.rdStore.currentRdLogs;
   protected readonly currentRdProgress = this.rdStore.currentRdProgress;
   protected readonly currentRdStageHistory = this.rdStore.currentRdStageHistory;
+  protected readonly currentRdStageTasks = this.rdStore.currentRdStageTasks;
+  protected readonly currentRdMemberBlocks = this.rdStore.currentRdMemberBlocks;
   protected readonly stages = this.rdStore.stages;
   protected readonly total = this.rdStore.rdItemsCount;
   protected readonly busy = this.rdStore.busy;
@@ -239,9 +241,14 @@ export class RdComponent {
     if (this.currentRdItem()?.status === 'closed') {
       return;
     }
-    if (rdProgress.progress === 0) {
-      // 如果刚开始则直接提交
-      this.confirmProgressUpdate({ progress: 1, note: '' });
+    // 快速开始阶段任务：progress 为 0 或 1 且携带 stageTaskId 时直接提交，不弹窗
+    const stageTaskId = (rdProgress as RdItemProgress & { stageTaskId?: string }).stageTaskId;
+    if (rdProgress.progress <= 1 && stageTaskId) {
+      this.rdStore.updateProgress({
+        progress: 1,
+        note: '',
+        stageTaskId,
+      });
       return;
     }
     this.progressUpdateItem.set(rdProgress);
@@ -252,6 +259,15 @@ export class RdComponent {
     this.rdStore.updateProgress(draft);
     this.progressUpdateOpen.set(false);
     this.progressUpdateItem.set(null);
+  }
+
+  // 解除成员阻塞
+  resolveMemberBlock(event: { blockId: string }): void {
+    const current = this.currentRdItem();
+    if (!current) {
+      return;
+    }
+    this.rdStore.resolveMemberBlock(current.id, event.blockId);
   }
 
   // 阻塞处理

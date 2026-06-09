@@ -43,6 +43,7 @@ import type {
   TokenRdListQuery,
   TokenRdListResult,
   TokenRdLogsResult,
+  TokenRdMemberBlocksResult,
   TokenRdProgressHistoryResult,
   TokenRdProgressResult,
   TokenRdStageHistoryResult,
@@ -295,6 +296,11 @@ export class ApiTokenService implements ApiTokenCommandContract, ApiTokenQueryCo
   async listRdProgress(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdProgressResult> {
     const item = await this.requireTokenRdItem(projectKey, itemId, ctx);
     return { items: await this.rdQuery.listProgress(item.id, ctx) };
+  }
+
+  async listRdMemberBlocks(projectKey: string, itemId: string, ctx: RequestContext): Promise<TokenRdMemberBlocksResult> {
+    const item = await this.requireTokenRdItem(projectKey, itemId, ctx);
+    return { items: await this.rdQuery.listMemberBlocks(item.id, ctx) };
   }
 
   async listRdProgressHistory(

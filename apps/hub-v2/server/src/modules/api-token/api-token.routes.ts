@@ -168,6 +168,12 @@ export default async function apiTokenRoutes(app: FastifyInstance) {
     return ok(await app.container.apiTokenQuery.listRdProgressHistory(params.projectKey, params.itemId, ctx));
   });
 
+  app.get("/projects/:projectKey/rd-items/:itemId/member-blocks", async (request) => {
+    const ctx = requireTokenAuth(request, "rd:read");
+    const params = rdItemIdParamSchema.parse(request.params);
+    return ok(await app.container.apiTokenQuery.listRdMemberBlocks(params.projectKey, params.itemId, ctx));
+  });
+
   app.get("/projects/:projectKey/rd-items/:itemId/uploads/:uploadId/raw", async (request, reply) => {
     const ctx = requireTokenAuth(request, "rd:read");
     const params = rdUploadRawParamSchema.parse(request.params);
