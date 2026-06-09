@@ -66,7 +66,7 @@ export function registerTools(server: McpServer, context: ToolContext): void {
           const parsedArgs = parsed as Record<string, unknown>;
           confirmed = tool.isConfirmed?.(parsedArgs) ?? true;
           const isAllowedPreview = tool.allowPreviewWhenBlocked === true && (!confirmed || tool.deferPolicyToHandler === true);
-          if (!isAllowedPreview) {
+          if (!tool.skipLocalPolicy && !isAllowedPreview) {
             assertToolPolicy(policy, tool.name, tool.riskLevel);
           }
           result = await tool.handler(parsedArgs, context);

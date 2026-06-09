@@ -148,9 +148,9 @@ NGM_MCP_ALLOW_EXECUTE=true
 NGM_MCP_ALLOW_DANGEROUS=true
 ```
 
-当前 MCP Server 默认允许 read 工具。write、execute、dangerous 默认阻断。部分 NGM 本地工具已经提供受控写入/执行能力，但默认只返回 preview；只有 `confirm=true` 且对应 policy 环境变量放行时才执行真实操作。即使启用 execute，也不会获得任意 shell、任意 PID kill、任意文件写入或系统级 Node/Nginx 修改能力。
+当前 MCP Server 默认允许 read 工具。`ngm_` 本地控制面 write、execute、dangerous 默认阻断。部分 NGM 本地工具已经提供受控写入/执行能力，但默认只返回 preview；只有 `confirm=true` 且对应 policy 环境变量放行时才执行真实本地操作。即使启用 execute，也不会获得任意 shell、任意 PID kill、任意文件写入或系统级 Node/Nginx 修改能力。
 
-这些变量只控制 MCP Server policy 是否放行对应 risk level，不提供 Hub V2 业务权限。真实写操作仍必须同时满足：
+这些变量只控制本地 `ngm_` MCP tools 的 policy，不提供 Hub V2 业务权限，也不拦截 `hub_v2_` tools。Hub V2 写操作通过本地 Hub V2 服务端的 Personal Token API 完成，真实执行必须同时满足：
 
 - tool call 传入 `confirm=true`
 - 已配置 `HUB_V2_PERSONAL_TOKEN` 或 `agent-connections.json` 中的 `personalToken`
@@ -164,9 +164,9 @@ NGM_MCP_ALLOW_DANGEROUS=true
 | `NGM_MCP_UPLOAD_ROOT` | 未设置 | Hub V2 Markdown 图片上传额外允许根目录 |
 | `NGM_MCP_MAX_UPLOAD_BYTES` | `5242880` | Markdown 图片上传最大字节数 |
 | `NGM_MCP_MAX_RESULT_CHARS` | `120000` | MCP text result 最大字符数，超出会截断 |
-| `NGM_MCP_ALLOW_WRITE` | `false` | 是否允许已确认的 write 工具执行 |
-| `NGM_MCP_ALLOW_EXECUTE` | `false` | 是否允许已确认的 execute 工具执行 |
-| `NGM_MCP_ALLOW_DANGEROUS` | `false` | 是否允许 dangerous 工具执行；当前高危工具未开放 |
+| `NGM_MCP_ALLOW_WRITE` | `false` | 是否允许已确认的本地 `ngm_` write 工具执行 |
+| `NGM_MCP_ALLOW_EXECUTE` | `false` | 是否允许已确认的本地 `ngm_` execute 工具执行 |
+| `NGM_MCP_ALLOW_DANGEROUS` | `false` | 是否允许本地 dangerous 工具执行；当前高危工具未开放 |
 
 不再支持：
 
@@ -313,7 +313,7 @@ execute   blocked
 dangerous blocked
 ```
 
-`packages/mcp-server/src/policy/tool-policy.ts` 中的 policy 环境变量对应关系：
+`packages/mcp-server/src/policy/tool-policy.ts` 中的 policy 环境变量对应关系只用于本地 `ngm_` 控制面工具：
 
 | risk level | 默认 | 环境变量 |
 | --- | --- | --- |
@@ -322,7 +322,7 @@ dangerous blocked
 | `execute` | blocked | `NGM_MCP_ALLOW_EXECUTE=true` |
 | `dangerous` | blocked | `NGM_MCP_ALLOW_DANGEROUS=true` |
 
-受控工具执行规则：
+本地 `ngm_` 受控工具执行规则：
 
 - `confirm` 缺省或 `confirm=false`：只返回 preview
 - `confirm=true` 且 `NGM_MCP_ALLOW_WRITE=false`：返回 policy blocked
@@ -330,7 +330,7 @@ dangerous blocked
 - `confirm=true` 且 `NGM_MCP_ALLOW_EXECUTE=false`：返回 policy blocked
 - `confirm=true` 且 `NGM_MCP_ALLOW_EXECUTE=true`：执行真实受控执行请求
 
-这保证 Agent 可以先生成可审核的操作预览，只有用户确认且 MCP policy 放行时才执行写入或执行操作。
+这保证 Agent 可以先生成可审核的操作预览，只有用户确认且本地 MCP policy 放行时才执行本机写入或执行操作。`hub_v2_` tools 不操作用户本机，不走这些本地 policy flags；它们仍需要 preview/confirm、Personal Token 和 Hub V2 服务端 scope/业务权限校验。
 
 本地临时启用写入和执行工具：
 
@@ -360,7 +360,7 @@ MCP Client 配置示例：
 }
 ```
 
-`ngm mcp doctor` 可用于检查当前 MCP Server 进程能看到的 policy 状态。若写操作返回 `write tools are disabled`，说明当前启动该 MCP Server 的环境中没有设置 `NGM_MCP_ALLOW_WRITE=true`，或 MCP Client 修改配置后尚未重启 server。execute/dangerous 同理分别由 `NGM_MCP_ALLOW_EXECUTE`、`NGM_MCP_ALLOW_DANGEROUS` 控制。
+`ngm mcp doctor` 可用于检查当前 MCP Server 进程能看到的本地 policy 状态。若本地 `ngm_` 写操作返回 `write tools are disabled`，说明当前启动该 MCP Server 的环境中没有设置 `NGM_MCP_ALLOW_WRITE=true`，或 MCP Client 修改配置后尚未重启 server。execute/dangerous 同理分别由 `NGM_MCP_ALLOW_EXECUTE`、`NGM_MCP_ALLOW_DANGEROUS` 控制。若 `hub_v2_` 写操作失败，应优先检查 `confirm=true`、Personal Token 配置、scope、项目权限和 Hub V2 服务端返回的业务错误。
 
 ## 9. 当前 MCP 工具
 
@@ -587,9 +587,9 @@ hub_v2_file_upload
 | issue read detail/raw | `hub_v2_issues_logs_list`, `hub_v2_issues_comments_list`, `hub_v2_issues_participants_list`, `hub_v2_issues_attachments_list`, `hub_v2_issues_branches_list`, `hub_v2_issues_attachment_raw_get`, `hub_v2_issues_upload_raw_get` | 已实现，使用 Project Token；raw 工具返回受限 base64 元数据。 |
 | issue lifecycle | `hub_v2_issues_claim`, `hub_v2_issues_start`, `hub_v2_issues_wait_update`, `hub_v2_issues_resolve`, `hub_v2_issues_verify`, `hub_v2_issues_reopen`, `hub_v2_issues_close` | 已实现，使用 Personal Token。 |
 | issue collaboration branch | `hub_v2_issues_participant_add`, `hub_v2_issues_participant_remove`, `hub_v2_issues_branch_create`, `hub_v2_issues_branch_start_mine`, `hub_v2_issues_branch_start`, `hub_v2_issues_branch_complete` | 已实现，使用 Personal Token。Issue 协作分支不是 RD。 |
-| doc create | `hub_v2_docs_create` | 已实现，使用 Personal Token，默认 preview，确认写入需要 `confirm=true` + `NGM_MCP_ALLOW_WRITE=true`。 |
-| doc update | `hub_v2_docs_update` | 已实现，使用 Personal Token，默认 preview，确认写入需要 `confirm=true` + `NGM_MCP_ALLOW_WRITE=true`。 |
-| doc publish | `hub_v2_docs_publish` | 已实现，使用 Personal Token，默认 preview，确认写入需要 `confirm=true` + `NGM_MCP_ALLOW_WRITE=true`。 |
+| doc create | `hub_v2_docs_create` | 已实现，使用 Personal Token，默认 preview；确认写入需要 `confirm=true` + 对应 Personal Token scope。 |
+| doc update | `hub_v2_docs_update` | 已实现，使用 Personal Token，默认 preview；确认写入需要 `confirm=true` + 对应 Personal Token scope。 |
+| doc publish | `hub_v2_docs_publish` | 已实现，使用 Personal Token，默认 preview；确认写入需要 `confirm=true` + `doc:publish:write` scope。 |
 | rd read detail/raw | `hub_v2_rd_stages_list`, `hub_v2_rd_logs_list`, `hub_v2_rd_stage_history_list`, `hub_v2_rd_progress_list`, `hub_v2_rd_progress_history_list`, `hub_v2_rd_upload_raw_get` | 已实现，使用 Project Token；raw 工具返回受限 base64 元数据。 |
 | rd lifecycle/edit | `hub_v2_rd_start`, `hub_v2_rd_block`, `hub_v2_rd_resume`, `hub_v2_rd_complete`, `hub_v2_rd_accept`, `hub_v2_rd_reopen`, `hub_v2_rd_close`, `hub_v2_rd_update` | 已实现，使用 Personal Token。 |
 
@@ -626,7 +626,7 @@ sl_hub_v2.*
 - 默认最大上传大小为 5MB
 - 可通过 `NGM_MCP_MAX_UPLOAD_BYTES` 调整
 - 默认只 preview，不读取大文件、不上传
-- 只有 `confirm=true` 且写 policy 放行时才上传
+- 只有 `confirm=true` 且 Personal Token 具备对应 upload scope 时才上传
 
 ## 11. 错误与输出治理
 

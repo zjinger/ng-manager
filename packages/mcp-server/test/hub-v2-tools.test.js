@@ -464,9 +464,17 @@ test("new Hub V2 issue write tools preview and execute with Personal Token", asy
   });
 });
 
-test("registered write tools preview when write policy is disabled and block confirmed writes", async () => {
+test("registered Hub V2 write tools do not depend on local NGM write policy", async () => {
   await withCleanEnv(async () => {
     delete process.env.NGM_MCP_ALLOW_WRITE;
+    process.env.HUB_V2_BASE_URL = "http://hub.test";
+    process.env.HUB_V2_PROJECT_KEY = "demo";
+    process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "iss_1" } }), { status: 201 });
+    };
 
     const preview = await callRegisteredTool("hub_v2_issues_create", {
       title: "Preview issue",
@@ -475,13 +483,15 @@ test("registered write tools preview when write policy is disabled and block con
     assert.equal(preview.ok, true);
     assert.equal(preview.data.code, "PREVIEW");
 
-    const blocked = await callRegisteredTool("hub_v2_issues_create", {
+    const executed = await callRegisteredTool("hub_v2_issues_create", {
       title: "Confirmed issue",
       confirm: true,
     });
 
-    assert.equal(blocked.ok, false);
-    assert.match(blocked.error, /blocked by policy/);
+    assert.equal(executed.ok, true);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/issues");
+    assert.equal(calls[0].init.headers.Authorization, "Bearer personal-secret");
   });
 });
 
@@ -502,26 +512,28 @@ test("hub_v2_issues_update previews instead of policy blocking by default", asyn
   });
 });
 
-test("registered write tools execute confirmed writes only when write policy is enabled", async () => {
+test("registered Hub V2 docs update executes confirmed writes without local NGM write policy", async () => {
   await withCleanEnv(async () => {
-    process.env.NGM_MCP_ALLOW_WRITE = "true";
+    delete process.env.NGM_MCP_ALLOW_WRITE;
     process.env.HUB_V2_BASE_URL = "http://hub.test";
     process.env.HUB_V2_PROJECT_KEY = "demo";
     process.env.HUB_V2_PERSONAL_TOKEN = "personal-secret";
     const calls = [];
     global.fetch = async (url, init) => {
       calls.push({ url: String(url), init });
-      return new Response(JSON.stringify({ code: "OK", data: { id: "iss_1" } }), { status: 201 });
+      return new Response(JSON.stringify({ code: "OK", data: { id: "doc_1" } }), { status: 200 });
     };
 
-    const result = await callRegisteredTool("hub_v2_issues_create", {
-      title: "Confirmed issue",
+    const result = await callRegisteredTool("hub_v2_docs_update", {
+      docId: "doc_1",
+      title: "Confirmed update",
       confirm: true,
     });
 
     assert.equal(result.ok, true);
     assert.equal(calls.length, 1);
-    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/issues");
+    assert.equal(calls[0].url, "http://hub.test/api/personal/projects/demo/docs/doc_1");
+    assert.equal(calls[0].init.method, "PATCH");
   });
 });
 

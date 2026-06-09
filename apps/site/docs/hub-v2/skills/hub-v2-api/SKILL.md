@@ -72,7 +72,7 @@ Use these MCP tools first:
 
 ## Write Workflow
 
-- Write tools use Personal Token and require MCP server write policy: `NGM_MCP_ALLOW_WRITE=true`.
+- Hub V2 write tools use Personal Token and do not require local NGM MCP policy flags such as `NGM_MCP_ALLOW_WRITE` or `NGM_MCP_ALLOW_EXECUTE`.
 - Never ask the user to paste tokens into chat or tool arguments.
 - For Document create/update/publish, Issue create/update/comment/assign/lifecycle/collaboration, RD create/edit/stage advance/stage-task/progress/lifecycle, or any operation that alters workflow state, preview first when the tool supports preview, then execute only after explicit user confirmation.
 - For Markdown images, first call `hub_v2_upload_markdown_image` with either `filePath` or `contentBase64 + fileName`, then insert the returned `markdown` into the target `description` or `content`.
@@ -92,7 +92,7 @@ Use these MCP tools first:
 - When advancing an RD stage, include `stageTasks` or `stageTaskTemplates` if the next stage should start with assigned tasks.
 - When updating RD progress and the RD has active stage tasks, pass `stageTaskId`; otherwise tell the user to choose a stage task first.
 - For RD lifecycle actions, use the matching tool directly: `hub_v2_rd_start`, `hub_v2_rd_block`, `hub_v2_rd_resume`, `hub_v2_rd_complete`, `hub_v2_rd_accept`, `hub_v2_rd_reopen`, or `hub_v2_rd_close`. Use `hub_v2_rd_update` for basic field edits with the current `version`.
-- If a confirmed write tool is blocked by policy, tell the user to set `NGM_MCP_ALLOW_WRITE=true` in the MCP server environment or MCP client server `env`, then restart the MCP server. Do not retry through direct HTTP.
+- If a confirmed Hub V2 write fails, inspect the structured MCP error for missing `confirm`, missing Personal Token, missing scope, project permission, or workflow-state validation. Do not retry through direct HTTP.
 
 ## Error Handling
 

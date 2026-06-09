@@ -57,15 +57,15 @@ HUB_V2_SOURCE=agent
 HUB_V2_CONFIG=C:/Users/you/.ng-manager/agent-connections.json
 ```
 
-Write policy variable:
+Hub V2 write behavior:
 
 ```text
-NGM_MCP_ALLOW_WRITE=true
+confirm=true
+Personal Token with required scope
+Hub V2 project permission
 ```
 
-Write tools are blocked by default. Setting `NGM_MCP_ALLOW_WRITE=true` only enables confirmed MCP write execution; the tool call still needs `confirm: true`, and Hub V2 still requires a configured Personal Token with the required scope.
-
-If a confirmed write returns `write tools are disabled`, set `NGM_MCP_ALLOW_WRITE=true` in the MCP server process environment or MCP client server `env`, restart the MCP server, then run `ngm mcp doctor` to verify the policy state.
+`hub_v2_` tools call Hub V2 Token HTTP APIs and do not depend on local NGM MCP policy flags such as `NGM_MCP_ALLOW_WRITE` or `NGM_MCP_ALLOW_EXECUTE`. If a confirmed Hub V2 write fails, inspect the structured error for missing token, missing scope, project permission, or workflow-state validation.
 
 Project selection:
 

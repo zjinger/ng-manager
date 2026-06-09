@@ -66,7 +66,7 @@ This reference describes Agent-facing MCP tools, not Hub V2 REST endpoints.
 - `hub_v2_rd_close`: preview or close an RD item using Personal Token with `rd:transition:write`.
 - `hub_v2_rd_update`: preview or update RD item basic fields using Personal Token with `rd:edit:write`; pass the current `version`.
 
-Write tools are disabled by default MCP policy. Set `NGM_MCP_ALLOW_WRITE=true` in the MCP server environment or MCP client server `env`, then restart the MCP server to allow confirmed writes. Even when enabled, workflow-state writes must be previewed first when the tool supports preview, then executed only after explicit user confirmation with `confirm: true`.
+Hub V2 write tools default to preview and execute only after explicit user confirmation with `confirm: true`. They use Personal Token scopes and Hub V2 server-side permissions, and do not require local NGM MCP policy flags such as `NGM_MCP_ALLOW_WRITE`.
 
 ## Markdown Image Workflow
 

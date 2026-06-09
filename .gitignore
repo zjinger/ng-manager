@@ -76,3 +76,4 @@ docs/ui/
 .codex-tmp/
 .agents/
 outputs/
+.ng-manager/

@@ -59,7 +59,7 @@
 
 Token API 是 Hub V2 后端接口契约，MCP tools 是面向 AI Agent 的受控子集。`hub-v2-api` skill 只能推荐当前已暴露的 MCP tool；Token route 已存在但 MCP tool 未开放的能力，不应在 Agent 回复中承诺可执行，也不应改用评论、RD 项等近似操作代替。
 
-MCP 写入类工具仍遵循 MCP Server 的安全口径：默认 preview，真实执行需要 `confirm=true` 与 `NGM_MCP_ALLOW_WRITE=true`，并由 Hub V2 Personal Token 继续校验 scope、项目成员关系、业务权限与状态机。
+Hub V2 MCP 写入类工具仍遵循 Agent 安全口径：默认 preview，真实执行需要 `confirm=true`，并由 Hub V2 Personal Token 校验 scope、项目成员关系、业务权限与状态机。`hub_v2_` tools 调用本地 Hub V2 服务端的 Token HTTP API，不操作用户本机，因此不走 `NGM_MCP_ALLOW_WRITE` / `NGM_MCP_ALLOW_EXECUTE` 这类本地 NGM 控制面 policy。
 
 当前 MCP 已暴露能力如下：
 
@@ -689,7 +689,7 @@ curl -X PATCH "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DO
 
 ### 9.13 Personal Token 发布文档
 
-Token API 与 MCP 均已支持发布文档；MCP 对应 `hub_v2_docs_publish`，仍需要 preview、`confirm=true` 与 `NGM_MCP_ALLOW_WRITE=true`。
+Token API 与 MCP 均已支持发布文档；MCP 对应 `hub_v2_docs_publish`，仍需要 preview、`confirm=true` 与 Personal Token 的 `doc:publish:write` scope。
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DOC_ID>/publish" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"source\":\"cli\"}"

@@ -202,8 +202,9 @@ export function capabilityTools(): McpToolDefinition[] {
           },
           notes: [
             "Read tools are enabled by default.",
-            "Confirmed write tools require NGM_MCP_ALLOW_WRITE=true.",
-            "Confirmed execute tools require NGM_MCP_ALLOW_EXECUTE=true.",
+            "Confirmed local ngm_ write tools require NGM_MCP_ALLOW_WRITE=true.",
+            "Confirmed local ngm_ execute tools require NGM_MCP_ALLOW_EXECUTE=true.",
+            "Hub V2 hub_v2_ write tools require confirm=true plus Hub V2 Personal Token scopes, not local ngm_ policy flags.",
           ],
         });
       },

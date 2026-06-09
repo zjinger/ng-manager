@@ -28,6 +28,7 @@ export type McpToolDefinition<TSchema extends z.AnyZodObject = z.AnyZodObject> =
   inputSchema: TSchema;
   allowPreviewWhenBlocked?: boolean;
   deferPolicyToHandler?: boolean;
+  skipLocalPolicy?: boolean;
   isConfirmed?: (args: z.infer<TSchema>) => boolean;
   handler(args: z.infer<TSchema>, context: ToolContext): Promise<ToolResult> | ToolResult;
 };

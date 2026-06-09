@@ -28,7 +28,7 @@ This reference describes Agent-facing MCP tools, not Hub V2 REST endpoints.
 - Project Token is required for document reads.
 - Personal Token is required for document create/update/publish writes.
 - Tool arguments must not include token values.
-- Write tools are disabled by default MCP policy. Set `NGM_MCP_ALLOW_WRITE=true` in the MCP server environment and pass `confirm: true` after preview to execute.
+- Document write tools default to preview and execute only after `confirm: true`; they require Personal Token scopes and Hub V2 permissions, not local NGM MCP policy flags such as `NGM_MCP_ALLOW_WRITE`.
 
 ## Common Errors
 

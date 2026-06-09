@@ -71,7 +71,7 @@ Use these MCP tools first:
 
 ## Write Boundary
 
-- Document create/update tools use Personal Token and require MCP server write policy: `NGM_MCP_ALLOW_WRITE=true`.
+- Document create/update/publish tools use Personal Token and do not require local NGM MCP policy flags such as `NGM_MCP_ALLOW_WRITE`.
 - Preview document create/update first when the tool supports preview, then execute only after explicit user confirmation with `confirm: true`.
 - Publishing documents is exposed as `hub_v2_docs_publish` and must be previewed and confirmed like other write tools. Archiving documents is not exposed by the current MCP tools.
 - Never ask the user to paste tokens into chat or tool arguments.

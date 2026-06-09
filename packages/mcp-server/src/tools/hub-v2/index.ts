@@ -7,7 +7,7 @@ import { hubV2RdTools } from "./rd.tools";
 import { hubV2UploadTools } from "./upload.tools";
 
 export function hubV2Tools(): McpToolDefinition[] {
-  return [
+  const tools = [
     ...hubV2ProjectsTools(),
     ...hubV2DocsTools(),
     ...hubV2IssuesTools(),
@@ -15,4 +15,8 @@ export function hubV2Tools(): McpToolDefinition[] {
     ...hubV2RdTools(),
     ...hubV2UploadTools(),
   ];
+  return tools.map((tool) => ({
+    ...tool,
+    skipLocalPolicy: true,
+  }));
 }
