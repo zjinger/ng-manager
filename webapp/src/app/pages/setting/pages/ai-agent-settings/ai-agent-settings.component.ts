@@ -4,14 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzCardModule } from 'ng-zorro-antd/card';
+import { CollapsibleCardComponent } from '@app/shared/components/collapsible-card/collapsible-card.component';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import {
   AgentConnectionsApiService,
@@ -20,6 +20,7 @@ import {
   type HubV2AgentConnectionSummary,
   type UpdateHubV2AgentConnectionRequest,
 } from '../../services';
+import { ConnectionCardComponent } from './components/connection-card.component';
 
 type CreateFormModel = {
   name: string;
@@ -75,8 +76,8 @@ function createInitialEditForm(name = ''): EditFormModel {
   imports: [
     CommonModule,
     FormsModule,
-    NzCardModule,
-    NzTableModule,
+    CollapsibleCardComponent,
+    ConnectionCardComponent,
     NzButtonModule,
     NzTagModule,
     NzModalModule,
@@ -85,6 +86,7 @@ function createInitialEditForm(name = ''): EditFormModel {
     NzSpinModule,
     NzAlertModule,
     NzEmptyModule,
+    NzIconModule,
   ],
   templateUrl: './ai-agent-settings.component.html',
   styleUrls: ['./ai-agent-settings.component.less'],

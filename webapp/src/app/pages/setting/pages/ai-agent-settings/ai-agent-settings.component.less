@@ -1,6 +1,12 @@
+:host {
+  display: block;
+}
+
 .ai-agent-settings {
   display: grid;
   gap: 16px;
+  max-width: 100%;
+  font-size: 13px;
 }
 
 .description {
@@ -19,26 +25,60 @@
   font-size: 12px;
 }
 
-.connections-card .toolbar {
+.card-actions {
+  margin-right: auto;
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.row-actions {
-  display: flex;
-  gap: 4px;
   align-items: center;
-  flex-wrap: wrap;
+  gap: 8px;
+
+  .refresh-btn {
+    font-size: 15px;
+    cursor: pointer;
+    color: #8c8c8c;
+    transition: color 0.2s;
+
+    &:hover {
+      color: #4096ff;
+    }
+  }
 }
 
+.connection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.add-connection-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 8px;
+  color: #8c8c8c;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+
+  &:hover {
+    border-color: #4096ff;
+    color: #4096ff;
+    background: #f0f5ff;
+  }
+}
 .code-block {
   margin: 8px 0 0;
   padding: 12px;
   border-radius: 8px;
   background: #fafafa;
   border: 1px solid #f0f0f0;
-  overflow: auto;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 12px;
 }
 
 .form-grid {
@@ -61,3 +101,4 @@
   align-items: center;
   gap: 8px;
 }
+

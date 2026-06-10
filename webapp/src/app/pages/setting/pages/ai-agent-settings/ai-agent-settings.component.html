@@ -1,5 +1,5 @@
 <div class="ai-agent-settings">
-  <nz-card nzTitle="AI Agent / MCP 配置">
+  <app-collapsible-card title="AI Agent / MCP 配置">
     <p class="description">
       管理 ng-manager MCP Server 使用的 Agent Connection 配置。MCP Server 通过
       agent-connections.json 读取 Hub V2 Project Token 和 Personal Token。
@@ -7,21 +7,25 @@
     <div class="meta-list">
       <div><strong>MCP 启动命令：</strong><code>ngm mcp</code></div>
       <div><strong>诊断命令：</strong><code>ngm mcp doctor</code></div>
-      <div><strong>配置文件路径：</strong><code>{{ configPath() || '-' }}</code></div>
-      <div class="hint">
-        ngm mcp 是 stdio MCP Server，直接运行时无普通输出是正常现象。
+      <div>
+        <strong>配置文件路径：</strong><code>{{ configPath() || '-' }}</code>
       </div>
+      <div class="hint">ngm mcp 是 stdio MCP Server，直接运行时无普通输出是正常现象。</div>
     </div>
-  </nz-card>
+  </app-collapsible-card>
 
-  <nz-card class="connections-card" nzTitle="Hub V2 Agent Connection 列表">
-    <div class="toolbar">
-      <button nz-button nzType="primary" (click)="openCreate()">新增</button>
-      <button nz-button (click)="refresh(true)" [disabled]="loading() || submitting()">刷新</button>
+  <app-collapsible-card class="connections-card" title="Hub V2 Agent Connection 列表">
+    <div cardActions class="card-actions">
+      <nz-icon
+        class="refresh-btn"
+        nzType="reload"
+        nzTheme="outline"
+        [nzSpin]="loading()"
+        (click)="refresh(true); $event.stopPropagation()"
+      />
     </div>
-
     @if (errorMessage()) {
-      <nz-alert nzType="error" [nzMessage]="errorMessage()"></nz-alert>
+      <nz-alert nzType="error" [nzMessage]="errorMessage()" style="margin-bottom: 12px"></nz-alert>
     }
 
     <nz-spin [nzSpinning]="loading()">
@@ -29,75 +33,33 @@
         <nz-empty
           nzNotFoundContent="暂无 Hub V2 Agent Connection。请新增一个连接，用于 MCP tools 访问 Hub V2 文档、Issue 和研发项。"
         ></nz-empty>
-      } @else {
-        <nz-table [nzData]="items()" [nzFrontPagination]="false" nzSize="small">
-          <thead>
-            <tr>
-              <th>名称</th>
-              <th>Base URL</th>
-              <th>Project Key</th>
-              <th>Project Name</th>
-              <th>Project Token</th>
-              <th>Personal Token</th>
-              <th>默认</th>
-              <th>来源</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of items(); track item.name) {
-              <tr>
-                <td>{{ item.name }}</td>
-                <td>{{ item.baseUrl }}</td>
-                <td>{{ item.projectKey }}</td>
-                <td>{{ item.projectName || '-' }}</td>
-                <td>{{ tokenStatusText(item.hasProjectToken, item.projectTokenPreview) }}</td>
-                <td>{{ tokenStatusText(item.hasPersonalToken, item.personalTokenPreview) }}</td>
-                <td>
-                  @if (item.isDefault) {
-                    <nz-tag nzColor="blue">默认</nz-tag>
-                  } @else {
-                    <span>-</span>
-                  }
-                </td>
-                <td>{{ item.source || '-' }}</td>
-                <td>
-                  <div class="row-actions">
-                    <button nz-button nzType="link" (click)="openEdit(item)">编辑</button>
-                    <button
-                      nz-button
-                      nzType="link"
-                      (click)="setDefault(item)"
-                      [disabled]="item.isDefault || submitting()"
-                    >
-                      设为默认
-                    </button>
-                    <button
-                      nz-button
-                      nzType="link"
-                      nzDanger
-                      (click)="confirmDelete(item)"
-                      [disabled]="submitting()"
-                    >
-                      删除
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </nz-table>
       }
-    </nz-spin>
-  </nz-card>
+      <div class="connection-list">
+        @for (item of items(); track item.name) {
+          <app-connection-card
+            [item]="item"
+            [submitting]="submitting()"
+            (edit)="openEdit($event)"
+            (setDefault)="setDefault($event)"
+            (delete)="confirmDelete($event)"
+          ></app-connection-card>
+        }
 
-  <nz-card nzTitle="使用说明">
+        <div class="add-connection-area" (click)="openCreate()">
+          <nz-icon nzType="plus" />
+          <span>添加连接</span>
+        </div>
+      </div>
+    </nz-spin>
+  </app-collapsible-card>
+
+  <app-collapsible-card title="使用说明" [defaultCollapsed]="false">
     <p>
       该配置用于 AI Agent 通过 ng-manager MCP Server 访问 Hub V2 文档、Issue、研发项等能力。Token
       不会在页面中明文展示。
     </p>
     <pre class="code-block">{{ mcpServerConfigExample }}</pre>
-  </nz-card>
+  </app-collapsible-card>
 </div>
 
 <nz-modal
@@ -166,10 +128,14 @@
             (ngModelChange)="onProjectTokenInput($event)"
             placeholder="留空则不更新；输入新值则覆盖"
           />
-          <button nz-button nzType="default" (click)="clearProjectTokenInEdit()">清除 Project Token</button>
+          <button nz-button nzType="default" (click)="clearProjectTokenInEdit()">
+            清除 Project Token
+          </button>
         </div>
         <div class="token-hint">
-          当前状态：{{ tokenStatusText(editingItem()!.hasProjectToken, editingItem()!.projectTokenPreview) }}
+          当前状态：{{
+            tokenStatusText(editingItem()!.hasProjectToken, editingItem()!.projectTokenPreview)
+          }}
           @if (editForm.clearProjectToken) {
             <nz-tag nzColor="orange">将被清除</nz-tag>
           }
@@ -184,10 +150,14 @@
             (ngModelChange)="onPersonalTokenInput($event)"
             placeholder="留空则不更新；输入新值则覆盖"
           />
-          <button nz-button nzType="default" (click)="clearPersonalTokenInEdit()">清除 Personal Token</button>
+          <button nz-button nzType="default" (click)="clearPersonalTokenInEdit()">
+            清除 Personal Token
+          </button>
         </div>
         <div class="token-hint">
-          当前状态：{{ tokenStatusText(editingItem()!.hasPersonalToken, editingItem()!.personalTokenPreview) }}
+          当前状态：{{
+            tokenStatusText(editingItem()!.hasPersonalToken, editingItem()!.personalTokenPreview)
+          }}
           @if (editForm.clearPersonalToken) {
             <nz-tag nzColor="orange">将被清除</nz-tag>
           }

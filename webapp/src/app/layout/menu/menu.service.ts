@@ -23,7 +23,7 @@ export class MenuService {
     { title: '雪碧图', path: '/sprite', icon: 'smile', level: 1 },
     { title: '研发管理', path: '/rd', icon: 'rocket', level: 1, hidden: true },
     { title: '测试跟踪', path: '/issues', icon: 'bug', level: 1, hidden: true },
-    // { title: '系统设置', path: '/settings', icon: 'setting', level: 1 },
+    { title: 'AI 配置', path: '/settings', icon: 'open-a-i', level: 1 },
   ]);
 
   // 当前菜单（所有）
