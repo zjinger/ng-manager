@@ -662,7 +662,7 @@ export class RdStageFlowService {
     const startAt = Date.parse(plannedStartAt);
     const endAt = Date.parse(plannedEndAt);
     if (Number.isFinite(startAt) && Number.isFinite(endAt) && startAt > endAt) {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task plannedStartAt must be earlier than plannedEndAt", 400);
+      throw new AppError(ERROR_CODES.RD_STAGE_TASK_PLAN_ORDER_INVALID);
     }
   }
 
@@ -677,7 +677,7 @@ export class RdStageFlowService {
       return;
     }
     if (!itemPlanStartAt || !itemPlanEndAt) {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task plan requires rd item plan range", 400);
+      throw new AppError(ERROR_CODES.RD_STAGE_TASK_PLAN_RANGE_REQUIRED);
     }
     const itemStart = Date.parse(itemPlanStartAt);
     const itemEnd = Date.parse(itemPlanEndAt);
@@ -687,10 +687,10 @@ export class RdStageFlowService {
       return;
     }
     if (Number.isFinite(taskStart) && (taskStart! < itemStart || taskStart! > itemEnd)) {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task plannedStartAt must be within rd item plan range", 400);
+      throw new AppError(ERROR_CODES.RD_STAGE_TASK_PLAN_START_OUT_OF_RANGE);
     }
     if (Number.isFinite(taskEnd) && (taskEnd! < itemStart || taskEnd! > itemEnd)) {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task plannedEndAt must be within rd item plan range", 400);
+      throw new AppError(ERROR_CODES.RD_STAGE_TASK_PLAN_END_OUT_OF_RANGE);
     }
   }
 }

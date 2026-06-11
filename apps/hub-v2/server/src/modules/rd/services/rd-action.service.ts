@@ -101,7 +101,7 @@ export class RdActionService {
     const taskOverview = this.createCurrentStageTaskProgressOverview(current);
     const reason = input.reason?.trim() || "";
     if (taskOverview.hasIncomplete) {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, "current stage tasks must be completed before completing rd item", 400);
+      throw new AppError(ERROR_CODES.RD_STAGE_TASKS_INCOMPLETE);
     }
     if (progressOverview.hasIncomplete && !reason) {
       throw new AppError(ERROR_CODES.BAD_REQUEST, "complete reason is required when member progress is incomplete", 400);

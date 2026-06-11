@@ -1056,7 +1056,7 @@ export class RdStageTaskService {
     const startAt = Date.parse(plannedStartAt);
     const endAt = Date.parse(plannedEndAt);
     if (Number.isFinite(startAt) && Number.isFinite(endAt) && startAt > endAt) {
-      throw new AppError(ERROR_CODES.BAD_REQUEST, "rd stage task plannedStartAt must be earlier than plannedEndAt", 400);
+      throw new AppError(ERROR_CODES.RD_STAGE_TASK_PLAN_ORDER_INVALID);
     }
   }
 }
