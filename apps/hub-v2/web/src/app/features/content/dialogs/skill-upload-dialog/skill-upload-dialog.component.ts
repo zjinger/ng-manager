@@ -132,13 +132,14 @@ import type { SkillDetailEntity, SkillUploadInput } from '../../models/skill-hub
                   class="tag-input-field"
                   [ngModel]="tagInput()"
                   name="tagInput"
+                  [maxlength]="maxTagLength"
                   [disabled]="busy() || tags().length >= maxTags"
                   [placeholder]="tags().length ? '' : '输入标签后按 Enter 添加'"
-                  (ngModelChange)="tagInput.set($event)"
+                  (ngModelChange)="onTagInputChange($event)"
                   (keydown)="handleTagKeydown($event)"
                 />
               </div>
-              <div class="form-hint">最多添加 5 个标签，用于帮助用户发现 Skill。</div>
+              <div class="form-hint">最多添加 3 个标签，每个标签不超过 5 个字。</div>
             </nz-form-control>
           </nz-form-item>
 
@@ -276,7 +277,8 @@ export class SkillUploadDialogComponent {
   readonly tags = signal<string[]>([]);
   readonly tagInput = signal('');
   readonly descriptionMd = signal('');
-  readonly maxTags = 5;
+  readonly maxTags = 3;
+  readonly maxTagLength = 5;
   readonly canSubmit = computed(() => this.files().length > 0 && !!this.name().trim() && !this.busy());
   readonly editorConfig = {
     autosave: true,
@@ -330,6 +332,11 @@ export class SkillUploadDialogComponent {
     this.addTag(this.tagInput());
   }
 
+  onTagInputChange(value: string): void {
+    const next = value.length > this.maxTagLength ? value.slice(0, this.maxTagLength) : value;
+    this.tagInput.set(next);
+  }
+
   removeTag(tag: string): void {
     this.tags.update((items) => items.filter((item) => item !== tag));
   }
@@ -337,6 +344,11 @@ export class SkillUploadDialogComponent {
   private addTag(value: string): void {
     const normalized = value.trim();
     if (!normalized) {
+      return;
+    }
+    if (normalized.length > this.maxTagLength) {
+      this.message.warning(`每个标签不超过 ${this.maxTagLength} 个字`);
+      this.tagInput.set(normalized.slice(0, this.maxTagLength));
       return;
     }
     if (this.tags().length >= this.maxTags) {

@@ -36,6 +36,8 @@ const JSZip = require("jszip") as {
 
 const MAX_SKILL_FILES = 500;
 const MAX_FILE_PREVIEW_BYTES = 128 * 1024;
+const MAX_SKILL_TAGS = 3;
+const MAX_SKILL_TAG_LENGTH = 5;
 const DEFAULT_VERSION = "0.1.0";
 const AUTO_APPROVE_SKILL_UPLOADS = true;
 const TEXT_PREVIEW_EXTENSIONS = new Set([
@@ -650,12 +652,12 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
   private normalizeTags(tags: string[] | undefined): string[] {
     const unique = new Set<string>();
     for (const tag of tags ?? []) {
-      const normalized = tag.trim();
+      const normalized = tag.trim().slice(0, MAX_SKILL_TAG_LENGTH);
       if (normalized) {
         unique.add(normalized);
       }
     }
-    return Array.from(unique).slice(0, 20);
+    return Array.from(unique).slice(0, MAX_SKILL_TAGS);
   }
 
   private normalizeDescriptionMd(value: string | undefined): string {

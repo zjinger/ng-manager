@@ -118,7 +118,10 @@ type SkillFilterStatus = Extract<SkillStatus, 'published' | 'archived'>;
                 <nz-icon [nzType]="skillIconType(item)" nzTheme="outline" />
               </div>
               <div class="skill-card-info">
-                <h3 class="skill-card-title">{{ item.name }}</h3>
+                <h3 class="skill-card-title">
+                  <span class="skill-card-title-text">{{ item.name }}</span>
+                  <span class="skill-stat version">{{ item.latestVersion || '未发布' }}</span>
+                </h3>
                 <div class="skill-card-author">
                   <span class="skill-card-author-avatar" [ngClass]="avatarTone(item)">
                     @if (showOwnerAvatarImage(item)) {
@@ -145,24 +148,14 @@ type SkillFilterStatus = Extract<SkillStatus, 'published' | 'archived'>;
             <p class="skill-card-desc">{{ cardDescription(item) }}</p>
             <div class="skill-card-footer">
               <div class="skill-stats">
+                <span class="skill-tag category">{{ skillCategoryLabel(item.category) }}</span>
                 @if (item.tags.length > 0) {
                   @for (tag of item.tags.slice(0, 3); track tag) {
                     <span class="skill-tag" [ngClass]="tagTone(tag)">{{ tag }}</span>
                   }
-                } @else {
-                  <span class="skill-tag cli">{{ item.category || 'general' }}</span>
                 }
-                <span class="skill-stat version">{{ item.latestVersion || '未发布' }}</span>
               </div>
-              <button
-                nz-button
-                nzSize="small"
-                class="skill-install-btn"
-                type="button"
-                (click)="openDetail(item); $event.stopPropagation()"
-              >
-                查看
-              </button>
+              <span class="skill-card-updated">更新 {{ item.updatedAt | date: 'MM-dd HH:mm' }}</span>
             </div>
           </article>
         }
@@ -431,6 +424,11 @@ export class SkillHubPageComponent {
   categoryLabel(value: string, label: string): string {
     const count = this.categories().find((item) => item.name === value)?.count;
     return count === undefined ? label : `${label} (${count})`;
+  }
+
+  skillCategoryLabel(value: string | null | undefined): string {
+    const normalized = value?.trim() || 'general';
+    return SKILL_CATEGORY_OPTIONS.find((item) => item.value === normalized)?.label || normalized;
   }
 
   cardDescription(item: Pick<SkillEntity, 'description' | 'descriptionMd' | 'slug'>): string {

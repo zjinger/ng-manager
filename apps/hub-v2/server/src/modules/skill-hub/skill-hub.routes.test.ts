@@ -147,6 +147,18 @@ describe("skill hub routes", () => {
     assert.equal(response.json().code, "SKILL_PACKAGE_INVALID");
   });
 
+  it("limits skill tags to three items and five characters each", async () => {
+    const ctx = await createTestApp();
+    const zip = createSkillZip("tag-limited-skill", "Tag Limited Skill");
+    const response = await postSkillPackage(ctx, "/api/admin/skills", zip, {
+      version: "0.1.0",
+      tags: "abcdef,二三四五六七,third,fourth"
+    });
+
+    assert.equal(response.statusCode, 201);
+    assert.deepEqual(response.json().data.tags, ["abcde", "二三四五六", "third"]);
+  });
+
   it("uses optional SKILL.md versions and rejects mismatched form versions", async () => {
     const ctx = await createTestApp();
     const zip = createSkillZip("versioned-skill", "Versioned Skill", { version: "2.3.4" });
