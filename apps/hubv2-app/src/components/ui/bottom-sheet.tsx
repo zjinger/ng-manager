@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useImperativeHandle, useRef, forwardRef } from 'react';
+import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -52,7 +52,7 @@ export const BottomSheet = forwardRef<BottomSheetRef, BottomSheetProps>(
       } else {
         translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300 });
       }
-    }, [isOpen, sheetHeight]);
+    }, [isOpen, sheetHeight, translateY]);
 
     const gesture = Gesture.Pan()
       .onStart(() => {

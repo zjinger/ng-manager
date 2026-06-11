@@ -48,6 +48,12 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="todo/[id]"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="messages"
         options={{
           title: t('tabs.messages'),

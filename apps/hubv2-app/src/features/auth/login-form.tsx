@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from './use-auth-store';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/providers/theme-provider';
+import { getApiBaseUrl } from '@/lib/api/client';
 import type { ApiErrorResponse } from '@/lib/api';
 
 export function LoginForm() {
@@ -22,6 +23,7 @@ export function LoginForm() {
   const signIn = useAuthStore((s) => s.signIn);
   const isLoading = useAuthStore((s) => s.isLoading);
   const router = useRouter();
+  const [serverUrl, setServerUrl] = useState(() => getApiBaseUrl());
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
@@ -29,7 +31,12 @@ export function LoginForm() {
   const handleLogin = useCallback(async () => {
     const trimmedUsername = username.trim();
     const trimmedPassword = password.trim();
+    const trimmedServerUrl = serverUrl.trim();
 
+    if (!trimmedServerUrl) {
+      Alert.alert(t('common.error'), t('auth.serverUrl') + ' ' + t('common.required'));
+      return;
+    }
     if (!trimmedUsername) {
       Alert.alert(t('common.error'), t('auth.username') + ' ' + t('common.required'));
       return;
@@ -40,14 +47,14 @@ export function LoginForm() {
     }
 
     try {
-      await signIn(trimmedUsername, trimmedPassword, remember);
+      await signIn(trimmedUsername, trimmedPassword, remember, trimmedServerUrl);
       router.replace('/');
     } catch (error) {
       const apiError = error as ApiErrorResponse;
       const message = apiError?.message || t('auth.loginError');
       Alert.alert(t('common.error'), message);
     }
-  }, [username, password, remember, signIn, router, t]);
+  }, [serverUrl, username, password, remember, signIn, router, t]);
 
   return (
     <KeyboardAvoidingView
@@ -62,7 +69,7 @@ export function LoginForm() {
           {/* Logo / Title */}
           <View className="items-center mb-10">
             <View style={{ backgroundColor: theme.primary }} className="w-20 h-20 rounded-2xl items-center justify-center mb-4">
-              <Text className="text-white text-3xl font-bold">H2</Text>
+              <Text style={{ color: theme.onPrimary }} className="text-3xl font-bold">H2</Text>
             </View>
             <Text style={{ color: theme.text }} className="text-2xl font-bold">
               {t('auth.loginTitle')}
@@ -74,6 +81,34 @@ export function LoginForm() {
 
           {/* Form */}
           <View className="gap-5">
+            <View>
+              <Text style={{ color: theme.text }} className="text-sm font-medium mb-2">
+                {t('auth.serverUrl')}
+              </Text>
+              <TextInput
+                style={{
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                  color: theme.text,
+                  borderRadius: 14,
+                }}
+                className="border px-4 py-3.5 text-base"
+                placeholder={t('auth.serverUrlPlaceholder')}
+                placeholderTextColor={theme.textMuted}
+                value={serverUrl}
+                onChangeText={setServerUrl}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="url"
+                keyboardType="url"
+                editable={!isLoading}
+                returnKeyType="next"
+              />
+              <Text style={{ color: theme.textMuted }} className="text-xs mt-1">
+                {t('auth.serverUrlHint')}
+              </Text>
+            </View>
+
             <View>
               <Text style={{ color: theme.text }} className="text-sm font-medium mb-2">
                 {t('auth.username')}
@@ -136,7 +171,7 @@ export function LoginForm() {
                 className="w-5 h-5 rounded border mr-2 items-center justify-center"
               >
                 {remember && (
-                  <Text className="text-white text-xs font-bold">✓</Text>
+                  <Text style={{ color: theme.onPrimary }} className="text-xs font-bold">✓</Text>
                 )}
               </View>
               <Text style={{ color: theme.textSecondary }} className="text-sm">
@@ -146,16 +181,16 @@ export function LoginForm() {
 
             {/* Login button */}
             <TouchableOpacity
-              style={{ backgroundColor: theme.primary, borderRadius: 14 }}
+              style={{ backgroundColor: theme.primary, borderRadius: 14, opacity: isLoading ? 0.72 : 1 }}
               className="py-3.5 items-center mt-2"
               onPress={handleLogin}
               disabled={isLoading}
               activeOpacity={0.8}
             >
               {isLoading ? (
-                <ActivityIndicator color="white" size="small" />
+                <ActivityIndicator color={theme.onPrimary} size="small" />
               ) : (
-                <Text className="text-white font-semibold text-base">
+                <Text style={{ color: theme.onPrimary }} className="font-semibold text-base">
                   {t('auth.login')}
                 </Text>
               )}

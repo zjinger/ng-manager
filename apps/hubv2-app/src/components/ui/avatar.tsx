@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, type ViewProps } from 'react-native';
+import { Image, View, Text, type ViewProps } from 'react-native';
 
 interface AvatarProps extends ViewProps {
   name?: string;
@@ -19,7 +19,7 @@ const textSizeMap = {
   lg: 'text-2xl',
 };
 
-export function Avatar({ name, size = 'md', className, ...props }: AvatarProps) {
+export function Avatar({ name, url, size = 'md', className, ...props }: AvatarProps) {
   const initial = (name || '?')[0].toUpperCase();
 
   return (
@@ -27,9 +27,16 @@ export function Avatar({ name, size = 'md', className, ...props }: AvatarProps) 
       className={`${sizeMap[size]} bg-primary-100 rounded-full items-center justify-center ${className ?? ''}`}
       {...props}
     >
-      <Text className={`text-primary-600 font-bold ${textSizeMap[size]}`}>
-        {initial}
-      </Text>
+      {url ? (
+        <Image
+          source={{ uri: url }}
+          style={{ width: '100%', height: '100%', borderRadius: 9999 }}
+        />
+      ) : (
+        <Text className={`text-primary-600 font-bold ${textSizeMap[size]}`}>
+          {initial}
+        </Text>
+      )}
     </View>
   );
 }

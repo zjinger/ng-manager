@@ -34,7 +34,7 @@ export function CommentItem({
       ]}
       {...props}
     >
-      <Avatar name={author} size="sm" />
+      <Avatar name={author} url={avatar ?? null} size="sm" />
       <View style={{ flex: 1, marginLeft: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ color: theme.text, fontSize: 14, fontWeight: '600' }}>{author}</Text>

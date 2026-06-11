@@ -18,6 +18,9 @@
   "auth": {
     "login": "Login",
     "logout": "Logout",
+    "serverUrl": "Server URL",
+    "serverUrlPlaceholder": "http://192.168.1.31:7008/api",
+    "serverUrlHint": "Enter the Hub V2 API URL. /api is added automatically when omitted.",
     "username": "Username",
     "password": "Password",
     "loginTitle": "Hub V2",

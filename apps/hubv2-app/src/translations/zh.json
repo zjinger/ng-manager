@@ -18,6 +18,9 @@
   "auth": {
     "login": "登录",
     "logout": "退出登录",
+    "serverUrl": "服务器地址",
+    "serverUrlPlaceholder": "http://192.168.1.31:7008/api",
+    "serverUrlHint": "请输入 Hub V2 服务端 API 地址，未填写 /api 时会自动补齐",
     "username": "用户名",
     "password": "密码",
     "loginTitle": "Hub V2",
