@@ -1,31 +1,37 @@
 import React from 'react';
 import { View, type ViewProps } from 'react-native';
-import { tv, type VariantProps } from 'tailwind-variants';
+import { useTheme } from '@/providers/theme-provider';
 
-const cardVariants = tv({
-  base: 'bg-card border border-border rounded-2xl',
-  variants: {
-    padding: {
-      none: '',
-      sm: 'p-3',
-      md: 'p-4',
-      lg: 'p-6',
-    },
-  },
-  defaultVariants: {
-    padding: 'md',
-  },
-});
-
-type CardVariants = VariantProps<typeof cardVariants>;
-
-interface CardProps extends ViewProps, CardVariants {
+interface CardProps extends ViewProps {
   className?: string;
+  padding?: 'none' | 'sm' | 'md' | 'lg';
 }
 
-export function Card({ padding, className, children, ...props }: CardProps) {
+const paddingMap = {
+  none: 0,
+  sm: 12,
+  md: 16,
+  lg: 24,
+};
+
+export function Card({ padding = 'md', className, children, style, ...props }: CardProps) {
+  const { theme } = useTheme();
+
   return (
-    <View className={cardVariants({ padding, className })} {...props}>
+    <View
+      style={[
+        {
+          backgroundColor: theme.surface,
+          borderColor: theme.border,
+          borderRadius: 16,
+          borderWidth: 1,
+          padding: paddingMap[padding],
+        },
+        style,
+      ]}
+      className={className}
+      {...props}
+    >
       {children}
     </View>
   );

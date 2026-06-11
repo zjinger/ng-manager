@@ -13,10 +13,12 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from './use-auth-store';
 import { useRouter } from 'expo-router';
+import { useTheme } from '@/providers/theme-provider';
 import type { ApiErrorResponse } from '@/lib/api';
 
 export function LoginForm() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const signIn = useAuthStore((s) => s.signIn);
   const isLoading = useAuthStore((s) => s.isLoading);
   const router = useRouter();
@@ -59,13 +61,13 @@ export function LoginForm() {
         <View className="flex-1 justify-center px-6 py-12">
           {/* Logo / Title */}
           <View className="items-center mb-10">
-            <View className="w-20 h-20 bg-primary-600 rounded-2xl items-center justify-center mb-4">
+            <View style={{ backgroundColor: theme.primary }} className="w-20 h-20 rounded-2xl items-center justify-center mb-4">
               <Text className="text-white text-3xl font-bold">H2</Text>
             </View>
-            <Text className="text-foreground text-2xl font-bold">
+            <Text style={{ color: theme.text }} className="text-2xl font-bold">
               {t('auth.loginTitle')}
             </Text>
-            <Text className="text-muted mt-2 text-center">
+            <Text style={{ color: theme.textSecondary }} className="mt-2 text-center">
               {t('auth.loginSubtitle')}
             </Text>
           </View>
@@ -73,13 +75,19 @@ export function LoginForm() {
           {/* Form */}
           <View className="gap-5">
             <View>
-              <Text className="text-foreground text-sm font-medium mb-2">
+              <Text style={{ color: theme.text }} className="text-sm font-medium mb-2">
                 {t('auth.username')}
               </Text>
               <TextInput
-                className="bg-card border border-border rounded-xl px-4 py-3.5 text-foreground text-base"
+                style={{
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                  color: theme.text,
+                  borderRadius: 14,
+                }}
+                className="border px-4 py-3.5 text-base"
                 placeholder={t('auth.username')}
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={theme.textMuted}
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -91,13 +99,19 @@ export function LoginForm() {
             </View>
 
             <View>
-              <Text className="text-foreground text-sm font-medium mb-2">
+              <Text style={{ color: theme.text }} className="text-sm font-medium mb-2">
                 {t('auth.password')}
               </Text>
               <TextInput
-                className="bg-card border border-border rounded-xl px-4 py-3.5 text-foreground text-base"
+                style={{
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                  color: theme.text,
+                  borderRadius: 14,
+                }}
+                className="border px-4 py-3.5 text-base"
                 placeholder={t('auth.password')}
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={theme.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -115,22 +129,25 @@ export function LoginForm() {
               disabled={isLoading}
             >
               <View
-                className={`w-5 h-5 rounded border mr-2 items-center justify-center ${
-                  remember
-                    ? 'bg-primary-600 border-primary-600'
-                    : 'border-border bg-card'
-                }`}
+                style={{
+                  backgroundColor: remember ? theme.primary : theme.surface,
+                  borderColor: remember ? theme.primary : theme.border,
+                }}
+                className="w-5 h-5 rounded border mr-2 items-center justify-center"
               >
                 {remember && (
                   <Text className="text-white text-xs font-bold">✓</Text>
                 )}
               </View>
-              <Text className="text-muted text-sm">{t('auth.remember')}</Text>
+              <Text style={{ color: theme.textSecondary }} className="text-sm">
+                {t('auth.remember')}
+              </Text>
             </TouchableOpacity>
 
             {/* Login button */}
             <TouchableOpacity
-              className="bg-primary-600 rounded-xl py-3.5 items-center mt-2"
+              style={{ backgroundColor: theme.primary, borderRadius: 14 }}
+              className="py-3.5 items-center mt-2"
               onPress={handleLogin}
               disabled={isLoading}
               activeOpacity={0.8}

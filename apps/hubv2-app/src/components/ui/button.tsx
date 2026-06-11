@@ -5,98 +5,114 @@ import {
   ActivityIndicator,
   type TouchableOpacityProps,
 } from 'react-native';
-import { tv, type VariantProps } from 'tailwind-variants';
+import { useTheme } from '@/providers/theme-provider';
 
-const buttonVariants = tv({
-  base: 'flex-row items-center justify-center rounded-xl',
-  variants: {
-    variant: {
-      primary: 'bg-primary-600',
-      secondary: 'bg-card border border-border',
-      destructive: 'bg-destructive',
-      ghost: 'bg-transparent',
-      outline: 'bg-transparent border border-border',
-    },
-    size: {
-      sm: 'px-3 py-2',
-      md: 'px-4 py-3',
-      lg: 'px-6 py-3.5',
-    },
-    disabled: {
-      true: 'opacity-50',
-    },
-    fullWidth: {
-      true: 'w-full',
-    },
-  },
-  defaultVariants: {
-    variant: 'primary',
-    size: 'md',
-  },
-});
+type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost' | 'outline';
+type ButtonSize = 'sm' | 'md' | 'lg';
 
-const buttonTextVariants = tv({
-  base: 'font-semibold text-center',
-  variants: {
-    variant: {
-      primary: 'text-white',
-      secondary: 'text-foreground',
-      destructive: 'text-white',
-      ghost: 'text-foreground',
-      outline: 'text-foreground',
-    },
-    size: {
-      sm: 'text-sm',
-      md: 'text-base',
-      lg: 'text-base',
-    },
-  },
-  defaultVariants: {
-    variant: 'primary',
-    size: 'md',
-  },
-});
-
-type ButtonVariants = VariantProps<typeof buttonVariants>;
-
-interface ButtonProps extends TouchableOpacityProps, ButtonVariants {
+interface ButtonProps extends TouchableOpacityProps {
   title: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
   icon?: React.ReactNode;
-  className?: string;
-  textClassName?: string;
+  fullWidth?: boolean;
 }
+
+const sizeStyles = {
+  sm: { paddingHorizontal: 12, paddingVertical: 8, fontSize: 14 },
+  md: { paddingHorizontal: 16, paddingVertical: 12, fontSize: 16 },
+  lg: { paddingHorizontal: 24, paddingVertical: 14, fontSize: 16 },
+};
 
 export function Button({
   title,
   loading = false,
   icon,
-  variant,
-  size,
+  variant = 'primary',
+  size = 'md',
   disabled,
   fullWidth,
-  className,
-  textClassName,
+  style,
   ...props
 }: ButtonProps) {
+  const { theme } = useTheme();
   const isDisabled = disabled || loading;
+
+  const getVariantStyles = () => {
+    switch (variant) {
+      case 'primary':
+        return {
+          backgroundColor: theme.primary,
+          borderWidth: 0,
+        };
+      case 'secondary':
+        return {
+          backgroundColor: theme.surface,
+          borderWidth: 1,
+          borderColor: theme.border,
+        };
+      case 'destructive':
+        return {
+          backgroundColor: theme.danger,
+          borderWidth: 0,
+        };
+      case 'ghost':
+        return {
+          backgroundColor: 'transparent',
+          borderWidth: 0,
+        };
+      case 'outline':
+        return {
+          backgroundColor: 'transparent',
+          borderWidth: 1,
+          borderColor: theme.border,
+        };
+    }
+  };
+
+  const getTextColor = () => {
+    switch (variant) {
+      case 'primary':
+      case 'destructive':
+        return '#FFFFFF';
+      case 'secondary':
+      case 'ghost':
+      case 'outline':
+        return theme.text;
+    }
+  };
+
+  const sizeStyle = sizeStyles[size];
 
   return (
     <TouchableOpacity
-      className={buttonVariants({ variant, size, disabled: isDisabled, fullWidth, className })}
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 14,
+          opacity: isDisabled ? 0.5 : 1,
+          ...getVariantStyles(),
+          ...sizeStyle,
+        },
+        fullWidth && { width: '100%' },
+        style,
+      ]}
       disabled={isDisabled}
       activeOpacity={0.8}
       {...props}
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === 'primary' || variant === 'destructive' ? 'white' : '#0f172a'}
+          color={variant === 'primary' || variant === 'destructive' ? 'white' : theme.text}
           size="small"
         />
       ) : (
         <>
           {icon && <>{icon}</>}
-          <Text className={buttonTextVariants({ variant, size, className: textClassName })}>
+          <Text style={{ color: getTextColor(), fontWeight: '600', textAlign: 'center' }}>
             {title}
           </Text>
         </>

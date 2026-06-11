@@ -2,10 +2,13 @@ import React from 'react';
 import { Tabs, Redirect } from 'expo-router';
 import { useAuthStore } from '@/features/auth/use-auth-store';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '@/providers/theme-provider';
+import { Feather } from '@expo/vector-icons';
 
 export default function AppLayout() {
   const status = useAuthStore((s) => s.status);
   const { t } = useTranslation();
+  const { theme } = useTheme();
 
   if (status !== 'signIn') {
     return <Redirect href="/login" />;
@@ -14,12 +17,15 @@ export default function AppLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: true,
-        tabBarActiveTintColor: '#2563eb',
-        tabBarInactiveTintColor: '#94a3b8',
+        headerShown: false,
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor: '#e2e8f0',
+          backgroundColor: theme.surface,
+          borderTopColor: theme.border,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 8,
         },
       }}
     >
@@ -27,35 +33,36 @@ export default function AppLayout() {
         name="index"
         options={{
           title: t('tabs.home'),
-          headerTitle: t('tabs.home'),
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="grid" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="issues"
+        name="todo"
         options={{
-          title: t('tabs.issues'),
-          headerTitle: t('issues.title'),
+          title: t('tabs.todo'),
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="check-square" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="rd"
+        name="messages"
         options={{
-          title: t('tabs.rd'),
-          headerTitle: t('rd.title'),
-        }}
-      />
-      <Tabs.Screen
-        name="docs"
-        options={{
-          title: t('tabs.docs'),
-          headerTitle: t('docs.title'),
+          title: t('tabs.messages'),
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="bell" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: t('tabs.profile'),
-          headerTitle: t('profile.title'),
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="user" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>

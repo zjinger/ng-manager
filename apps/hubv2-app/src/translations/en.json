@@ -27,10 +27,9 @@
     "remember": "Remember me"
   },
   "tabs": {
-    "home": "Home",
-    "issues": "Issues",
-    "rd": "R&D",
-    "docs": "Docs",
+    "home": "Dashboard",
+    "todo": "Todo",
+    "messages": "Messages",
     "profile": "Profile"
   },
   "issues": {
@@ -60,5 +59,16 @@
   "profile": {
     "title": "Profile",
     "settings": "Settings"
+  },
+  "dashboard": {
+    "welcome": "Welcome back",
+    "todoStats": "Todo Statistics",
+    "pending": "Pending",
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "recentRD": "Recent R&D Items",
+    "announcements": "Announcements",
+    "quickActions": "Quick Actions",
+    "viewAll": "View All"
   }
 }

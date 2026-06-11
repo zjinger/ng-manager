@@ -27,10 +27,9 @@
     "remember": "记住登录状态"
   },
   "tabs": {
-    "home": "首页",
-    "issues": "问题",
-    "rd": "研发",
-    "docs": "文档",
+    "home": "工作台",
+    "todo": "待办",
+    "messages": "消息",
     "profile": "我的"
   },
   "issues": {
@@ -60,5 +59,16 @@
   "profile": {
     "title": "个人中心",
     "settings": "设置"
+  },
+  "dashboard": {
+    "welcome": "欢迎回来",
+    "todoStats": "待办统计",
+    "pending": "待处理",
+    "inProgress": "进行中",
+    "completed": "已完成",
+    "recentRD": "最近研发项",
+    "announcements": "最新公告",
+    "quickActions": "快捷入口",
+    "viewAll": "查看全部"
   }
 }
