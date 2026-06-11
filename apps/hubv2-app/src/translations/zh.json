@@ -1,0 +1,64 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "error": "出错了",
+    "retry": "重试",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建",
+    "search": "搜索",
+    "noData": "暂无数据",
+    "pullToRefresh": "下拉刷新",
+    "loadMore": "加载更多",
+    "required": "不能为空"
+  },
+  "auth": {
+    "login": "登录",
+    "logout": "退出登录",
+    "username": "用户名",
+    "password": "密码",
+    "loginTitle": "Hub V2",
+    "loginSubtitle": "协作平台 · 登录您的账号",
+    "loginError": "登录失败，请检查账号密码",
+    "networkError": "网络连接失败",
+    "remember": "记住登录状态"
+  },
+  "tabs": {
+    "home": "首页",
+    "issues": "问题",
+    "rd": "研发",
+    "docs": "文档",
+    "profile": "我的"
+  },
+  "issues": {
+    "title": "问题列表",
+    "create": "创建问题",
+    "detail": "问题详情",
+    "status": {
+      "open": "待处理",
+      "in_progress": "处理中",
+      "pending_update": "待更新",
+      "resolved": "已解决",
+      "verified": "已验证",
+      "closed": "已关闭",
+      "reopened": "已重开"
+    }
+  },
+  "rd": {
+    "title": "研发管理",
+    "create": "创建研发项",
+    "detail": "研发详情"
+  },
+  "docs": {
+    "title": "文档",
+    "create": "创建文档",
+    "detail": "文档详情"
+  },
+  "profile": {
+    "title": "个人中心",
+    "settings": "设置"
+  }
+}

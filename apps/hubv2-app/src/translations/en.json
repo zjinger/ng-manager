@@ -1,0 +1,64 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "noData": "No data",
+    "pullToRefresh": "Pull to refresh",
+    "loadMore": "Load more",
+    "required": "is required"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "loginTitle": "Hub V2",
+    "loginSubtitle": "Collaboration Platform · Sign in to your account",
+    "loginError": "Login failed, please check your credentials",
+    "networkError": "Network connection failed",
+    "remember": "Remember me"
+  },
+  "tabs": {
+    "home": "Home",
+    "issues": "Issues",
+    "rd": "R&D",
+    "docs": "Docs",
+    "profile": "Profile"
+  },
+  "issues": {
+    "title": "Issues",
+    "create": "Create Issue",
+    "detail": "Issue Detail",
+    "status": {
+      "open": "Open",
+      "in_progress": "In Progress",
+      "pending_update": "Pending Update",
+      "resolved": "Resolved",
+      "verified": "Verified",
+      "closed": "Closed",
+      "reopened": "Reopened"
+    }
+  },
+  "rd": {
+    "title": "R&D Management",
+    "create": "Create R&D Item",
+    "detail": "R&D Detail"
+  },
+  "docs": {
+    "title": "Documents",
+    "create": "Create Document",
+    "detail": "Document Detail"
+  },
+  "profile": {
+    "title": "Profile",
+    "settings": "Settings"
+  }
+}
