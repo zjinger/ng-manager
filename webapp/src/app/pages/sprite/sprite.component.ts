@@ -79,6 +79,12 @@ import dayjs from 'dayjs';
 
           </div>
           <div class="aside" [class.open]="isDrawerOpen">
+            <div class="aside-header">
+              <span class="aside-title">同步日志</span>
+              <button nz-button nzType="text" nzSize="small" class="aside-close" (click)="isDrawerOpen = false" nz-tooltip nzTooltipTitle="关闭">
+                <nz-icon nzType="close" nzTheme="outline"></nz-icon>
+              </button>
+            </div>
             <app-terminal-view  [style.height.%]="100"></app-terminal-view>
           </div>
       </div>
@@ -115,14 +121,32 @@ import dayjs from 'dayjs';
       width: 0;
       flex: 0 0 auto;
       height: 100%;
-      padding: 16px;
       background: #000;
       transition: transform 0.2s ease;
       transform: translateX(150%);
+      display: flex;
+      flex-direction: column;
     }
     .aside.open {
       width: 400px;
       transform: translateX(0);
+    }
+    .aside-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 4px 4px 12px;
+      flex: 0 0 auto;
+    }
+    .aside-title {
+      color: rgba(255,255,255,0.85);
+      font-size: 13px;
+    }
+    .aside-close {
+      color: rgba(255,255,255,0.65);
+    }
+    .aside-close:hover {
+      color: #fff;
     }
     `
   ],
