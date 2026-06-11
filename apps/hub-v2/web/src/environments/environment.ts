@@ -3,4 +3,5 @@ export const APP_CONFIG = {
   environment: 'LOCAL',
   surveyEnabled: false,
   feedbackEnabled: false,
+  financeEnabled: false,
 };

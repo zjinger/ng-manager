@@ -166,7 +166,7 @@ export class DashboardPageComponent {
   private readonly shortcutItemMap = computed(() => {
     const items = [
       ...(this.canAccessCollaborationWorkspace() ? this.collaborationShortcutItems.filter((item) => this.isShortcutEnabled(item.key)) : []),
-      ...(this.canAccessReimbursementWorkspace() ? this.reimbursementShortcutItems() : []),
+      ...(this.canAccessReimbursementWorkspace() ? this.reimbursementShortcutItems().filter((item) => this.isShortcutEnabled(item.key)) : []),
     ];
     return new Map(items.map((item) => [item.key as DashboardShortcutKey, item]));
   });
@@ -486,10 +486,10 @@ export class DashboardPageComponent {
         next: (preferences) => {
           this.applyPreferences(preferences);
           this.preferencesLoading.set(false);
-          if (preferences.capabilities.canAccessCollaborationWorkspace || preferences.capabilities.canAccessReimbursementWorkspace) {
+          if (this.canAccessCollaborationWorkspace() || this.canAccessReimbursementWorkspace()) {
             this.store.load({ force: true });
           }
-          if (preferences.capabilities.canAccessReimbursementWorkspace) {
+          if (this.canAccessReimbursementWorkspace()) {
             this.loadReimbursementData();
           }
           this.loading.set(false);
@@ -503,9 +503,17 @@ export class DashboardPageComponent {
   }
 
   private applyPreferences(preferences: DashboardPreferences): void {
-    this.canAccessReimbursementWorkspace.set(preferences.capabilities.canAccessReimbursementWorkspace);
+    const canAccessReimbursementWorkspace = FEATURE_FLAGS.finance && preferences.capabilities.canAccessReimbursementWorkspace;
+    this.canAccessReimbursementWorkspace.set(canAccessReimbursementWorkspace);
     this.canAccessCollaborationWorkspace.set(preferences.capabilities.canAccessCollaborationWorkspace);
-    const widgets = [...preferences.widgets].sort((left, right) => left.order - right.order);
+    if (!canAccessReimbursementWorkspace) {
+      this.reimbursementDashboard.set(null);
+      this.reimbursementMonthStats.set(null);
+      this.reimbursementRejectedCount.set(0);
+    }
+    const widgets = [...preferences.widgets]
+      .filter((item) => this.isWidgetEnabled(item.key))
+      .sort((left, right) => left.order - right.order);
     const shortcuts = [...(preferences.shortcuts ?? [])]
       .filter((item) => this.isShortcutEnabled(item.key))
       .sort((left, right) => left.order - right.order);
@@ -515,8 +523,15 @@ export class DashboardPageComponent {
     this.shortcutPreferenceDraft.set(shortcuts.map((item) => ({ ...item })));
   }
 
+  private isWidgetEnabled(key: string): boolean {
+    return !key.startsWith('reimbursement.') || FEATURE_FLAGS.finance;
+  }
+
   private isShortcutEnabled(key: string): boolean {
-    return key !== 'collab.feedbacks' || FEATURE_FLAGS.feedback;
+    if (key === 'collab.feedbacks') {
+      return FEATURE_FLAGS.feedback;
+    }
+    return !key.startsWith('reimbursement.') || FEATURE_FLAGS.finance;
   }
 
   private loadReimbursementData(): void {

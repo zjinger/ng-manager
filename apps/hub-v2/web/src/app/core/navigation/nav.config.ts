@@ -2,6 +2,37 @@ import type { NavSection } from './menu.types';
 import { ANNOUNCEMENT_GLOBAL_MANAGE_PERMISSION, PROJECT_GOVERNANCE_PERMISSIONS, SKILL_HUB_PERMISSIONS, TASK_SHEET_PERMISSIONS } from '../auth/permission.constants';
 import { FEATURE_FLAGS } from '../feature-flags';
 
+const FINANCE_NAV_ITEMS: NavSection['items'] = [
+  {
+    key: 'reimbursements',
+    label: '报销管理',
+    icon: 'profile',
+    route: '/reimbursements',
+    exact: true,
+    permissions: ['expense.review.manage', 'finance.review', 'finance.cashier'],
+    permissionMode: 'any',
+  },
+  {
+    key: 'reimbursements-mine',
+    label: '我的报销',
+    icon: 'account-book',
+    route: '/reimbursements/mine',
+    activeRoutes: ['/reimbursements/mine', '/reimbursements/new/travel', '/reimbursements/new/general'],
+    exact: true,
+    badge: 'Beta',
+    tone: 'info',
+    permissions: ['expense.view.self'],
+  },
+  {
+    key: 'reimbursement-announcements',
+    label: '公告管理',
+    icon: 'notification',
+    route: '/reimbursements/announcements',
+    exact: true,
+    permissions: ['expense.rule.manage'],
+  },
+];
+
 export const NAV_ITEMS: NavSection[] = [
   {
     key: 'workspace',
@@ -109,34 +140,7 @@ export const NAV_ITEMS: NavSection[] = [
     key: 'financing-center',
     label: '财务中心',
     items: [
-      {
-        key: 'reimbursements',
-        label: '报销管理',
-        icon: 'profile',
-        route: '/reimbursements',
-        exact: true,
-        permissions: ['expense.review.manage', 'finance.review', 'finance.cashier'],
-        permissionMode: 'any',
-      },
-      {
-        key: 'reimbursements-mine',
-        label: '我的报销',
-        icon: 'account-book',
-        route: '/reimbursements/mine',
-        activeRoutes: ['/reimbursements/mine', '/reimbursements/new/travel', '/reimbursements/new/general'],
-        exact: true,
-        badge: 'Beta',
-        tone: 'info',
-        permissions: ['expense.view.self'],
-      },
-      {
-        key: 'reimbursement-announcements',
-        label: '公告管理',
-        icon: 'notification',
-        route: '/reimbursements/announcements',
-        exact: true,
-        permissions: ['expense.rule.manage'],
-      },
+      ...(FEATURE_FLAGS.finance ? FINANCE_NAV_ITEMS : []),
     ],
   },
   {
