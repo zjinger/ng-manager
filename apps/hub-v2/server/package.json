@@ -16,12 +16,13 @@
     "uploads:cleanup-issues-orphan:dist": "node dist/scripts/cleanup-issue-orphan-uploads.js",
     "uploads:cleanup-markdown-orphan": "tsx src/scripts/cleanup-markdown-orphan-uploads.ts",
     "uploads:cleanup-markdown-orphan:dist": "node dist/scripts/cleanup-markdown-orphan-uploads.js",
+    "skill-hub:cleanup-data": "tsx src/scripts/cleanup-skill-hub-data.ts",
+    "skill-hub:cleanup-data:dist": "node dist/scripts/cleanup-skill-hub-data.js",
     "db:migrate": "tsx src/db/migrate-cli.ts",
     "issue:move-project": "tsx src/scripts/move-issue-project.ts",
     "issue:move-project:dist": "node dist/scripts/move-issue-project.js",
     "project:normalize-display-code": "tsx src/scripts/normalize-project-display-code.ts",
     "project:normalize-display-code:dist": "node dist/scripts/normalize-project-display-code.js",
-    "rbac:audit": "tsx src/scripts/audit-rbac-consistency.ts",
     "rbac:cleanup-legacy-member-bindings": "node scripts/cleanup-legacy-rbac-member-bindings.cjs"
   },
   "dependencies": {

@@ -178,6 +178,23 @@ export const UPLOAD_TARGETS = {
     ],
     "invalidTypeMessage": "仅支持 .docx 任务单文件",
     "sizeLimitMessage": "单个文件最大 10MB"
+  },
+  "skillPackage": {
+    "bucket": "skills",
+    "category": "package",
+    "visibility": "private",
+    "accept": "application/zip,application/x-zip-compressed,application/octet-stream,.zip",
+    "maxSizeBytes": 10485760,
+    "allowedMimeTypes": [
+      "application/zip",
+      "application/x-zip-compressed",
+      "application/octet-stream"
+    ],
+    "allowedExtensions": [
+      ".zip"
+    ],
+    "invalidTypeMessage": "仅支持上传 zip 格式 skill 包",
+    "sizeLimitMessage": "skill 包大小不能超过 10MB"
   }
 } as const satisfies Record<string, UploadTargetPolicy>;
 

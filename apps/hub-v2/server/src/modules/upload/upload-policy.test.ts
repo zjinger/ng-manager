@@ -104,4 +104,34 @@ describe("upload policy", () => {
       (error) => error instanceof AppError && error.message === "仅支持上传图片或 PDF 文件"
     );
   });
+
+  it("maps skill package uploads to the zip-only policy", () => {
+    const policy = resolveUploadPolicy("skills", "package");
+
+    assert.doesNotThrow(() =>
+      assertUploadAllowed(
+        {
+          fileName: "hub-v2-docs.zip",
+          mimeType: "application/zip",
+          fileSize: 512 * 1024
+        },
+        policy,
+        10 * 1024 * 1024
+      )
+    );
+
+    assert.throws(
+      () =>
+        assertUploadAllowed(
+          {
+            fileName: "hub-v2-docs.md",
+            mimeType: "text/markdown",
+            fileSize: 16 * 1024
+          },
+          policy,
+          10 * 1024 * 1024
+        ),
+      (error) => error instanceof AppError && error.message === "仅支持上传 zip 格式 skill 包"
+    );
+  });
 });

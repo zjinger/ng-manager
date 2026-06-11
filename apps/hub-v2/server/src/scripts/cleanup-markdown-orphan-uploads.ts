@@ -4,6 +4,7 @@
  * 用法示例：
  * - 全部业务桶预览：npm --prefix apps/hub-v2/server run uploads:cleanup-markdown-orphan
  * - 指定 bucket 预览：npm --prefix apps/hub-v2/server run uploads:cleanup-markdown-orphan -- --bucket=rd
+ * - 指定 Skill Hub 预览：npm --prefix apps/hub-v2/server run uploads:cleanup-markdown-orphan -- --bucket=skills
  * - 执行软删：npm --prefix apps/hub-v2/server run uploads:cleanup-markdown-orphan -- --apply
  * - 执行软删+硬删：npm --prefix apps/hub-v2/server run uploads:cleanup-markdown-orphan -- --apply --hard-delete
  */
@@ -78,6 +79,14 @@ const BUCKET_CONFIGS: BucketConfig[] = [
     categorySql: "u.category LIKE 'markdown%'",
     referenceChecks: [
       "EXISTS (SELECT 1 FROM personal_todos pt WHERE pt.description LIKE '%/api/admin/uploads/' || u.id || '/raw%')",
+    ],
+  },
+  {
+    bucket: "skills",
+    categorySql: "(u.category = 'comment' OR u.category LIKE 'markdown%')",
+    referenceChecks: [
+      "EXISTS (SELECT 1 FROM skills s WHERE s.description_md LIKE '%/api/admin/uploads/' || u.id || '/raw%')",
+      "EXISTS (SELECT 1 FROM skill_comments sc WHERE sc.content LIKE '%/api/admin/uploads/' || u.id || '/raw%')",
     ],
   },
 ];

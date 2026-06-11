@@ -146,6 +146,19 @@ export const GENERATED_UPLOAD_POLICIES = {
     ],
     "invalidTypeMessage": "仅支持 .docx 任务单文件",
     "sizeLimitMessage": "单个文件最大 10MB"
+  },
+  "skillPackage": {
+    "maxSizeBytes": 10485760,
+    "allowedMimeTypes": [
+      "application/zip",
+      "application/x-zip-compressed",
+      "application/octet-stream"
+    ],
+    "allowedExtensions": [
+      ".zip"
+    ],
+    "invalidTypeMessage": "仅支持上传 zip 格式 skill 包",
+    "sizeLimitMessage": "skill 包大小不能超过 10MB"
   }
 } as const satisfies Record<string, UploadPolicy>;
 
@@ -185,6 +198,11 @@ export const SERVER_UPLOAD_POLICY_RULES = [
     "target": "taskSheetWordImport",
     "bucket": "task-sheets",
     "category": "word_import"
+  },
+  {
+    "target": "skillPackage",
+    "bucket": "skills",
+    "category": "package"
   }
 ] as const;
 

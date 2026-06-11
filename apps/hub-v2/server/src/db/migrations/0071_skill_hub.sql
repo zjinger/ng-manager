@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS skills (
   slug TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
+  description_md TEXT NOT NULL DEFAULT '',
   category TEXT NOT NULL DEFAULT 'general',
   tags_json TEXT NOT NULL DEFAULT '[]',
   owner_user_id TEXT,
@@ -45,6 +46,20 @@ CREATE TABLE IF NOT EXISTS skill_versions (
 
 CREATE INDEX IF NOT EXISTS idx_skill_versions_skill_status ON skill_versions(skill_id, status, created_at);
 CREATE INDEX IF NOT EXISTS idx_skill_versions_upload ON skill_versions(package_upload_id);
+
+CREATE TABLE IF NOT EXISTS skill_comments (
+  id TEXT PRIMARY KEY,
+  skill_id TEXT NOT NULL,
+  author_id TEXT,
+  author_name TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE,
+  FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_skill_comments_skill_created ON skill_comments(skill_id, created_at);
 
 INSERT OR IGNORE INTO system_permissions (
   id, code, name, group_code, group_name, domain_code, domain_name, description, sort, created_at, updated_at

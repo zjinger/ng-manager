@@ -4,7 +4,11 @@ import { map } from 'rxjs';
 
 import { API_BASE_URL, ApiClientService, type ApiSuccessResponse } from '@core/http';
 import type {
+  SkillCommentEntity,
   SkillDetailEntity,
+  SkillDiscoveryMeta,
+  SkillExportConfig,
+  SkillExportTarget,
   SkillListResult,
   SkillQuery,
   SkillUploadInput,
@@ -19,6 +23,10 @@ export class SkillHubApiService {
 
   list(query: Partial<SkillQuery>) {
     return this.api.get<SkillListResult>('/skills', query);
+  }
+
+  meta(query: Partial<SkillQuery>) {
+    return this.api.get<SkillDiscoveryMeta>('/skills/meta', query);
   }
 
   getById(skillId: string) {
@@ -59,6 +67,37 @@ export class SkillHubApiService {
     return this.api.post<SkillDetailEntity>(`/skills/${skillId}/archive`);
   }
 
+  deleteSkill(skillId: string) {
+    return this.api.delete<{ id: string }>(`/skills/${skillId}`);
+  }
+
+  deleteDraft(skillId: string) {
+    return this.deleteSkill(skillId);
+  }
+
+  setFavorite(skillId: string, favorite: boolean) {
+    return this.api.post<SkillDetailEntity, { favorite: boolean }>(`/skills/${skillId}/favorite`, { favorite });
+  }
+
+  review(skillId: string, rating: number, comment = '') {
+    return this.api.post<SkillDetailEntity, { rating: number; comment?: string }>(`/skills/${skillId}/review`, {
+      rating,
+      comment,
+    });
+  }
+
+  listComments(skillId: string) {
+    return this.api.get<{ items: SkillCommentEntity[] }>(`/skills/${skillId}/comments`);
+  }
+
+  createComment(skillId: string, content: string) {
+    return this.api.post<SkillCommentEntity, { content: string }>(`/skills/${skillId}/comments`, { content });
+  }
+
+  exportConfig(skillId: string, versionId: string, target: SkillExportTarget) {
+    return this.api.get<SkillExportConfig>(`/skills/${skillId}/versions/${versionId}/export`, { target });
+  }
+
   downloadUrl(skillId: string, versionId: string): string {
     const params = new HttpParams().set('t', String(Date.now()));
     return `${this.baseUrl}/skills/${skillId}/versions/${versionId}/download?${params.toString()}`;
@@ -67,9 +106,11 @@ export class SkillHubApiService {
   private buildFormData(input: SkillUploadInput): FormData {
     const form = new FormData();
     form.append('file', input.file);
+    this.appendIfPresent(form, 'name', input.name);
     this.appendIfPresent(form, 'version', input.version);
     this.appendIfPresent(form, 'category', input.category);
     this.appendIfPresent(form, 'tags', input.tags);
+    this.appendIfPresent(form, 'descriptionMd', input.descriptionMd);
     return form;
   }
 

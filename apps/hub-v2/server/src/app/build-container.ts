@@ -340,7 +340,7 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   );
   const sharedConfigRepo = new SharedConfigRepo(db);
   const sharedConfigService = new SharedConfigService(sharedConfigRepo, projectAccess);
-  const skillHubService = new SkillHubService(new SkillHubRepo(db));
+  const skillHubService = new SkillHubService(new SkillHubRepo(db), uploadService);
   const systemRbacService = new SystemRbacService(systemRbacRepo, auditLogService);
   const systemSettingsRepo = new SystemSettingsRepo(db);
   const systemSettingsService = new SystemSettingsService(systemSettingsRepo, auditLogService);

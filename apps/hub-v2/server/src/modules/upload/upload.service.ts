@@ -71,7 +71,7 @@ export class UploadService implements UploadCommandContract, UploadQueryContract
       if (upload.bucket !== "temp") {
         continue;
       }
-      if (!(upload.category.startsWith("markdown") || upload.category === "comment")) {
+      if (!(upload.category.startsWith("markdown") || upload.category === "comment" || upload.category.startsWith("skill_comment"))) {
         continue;
       }
 

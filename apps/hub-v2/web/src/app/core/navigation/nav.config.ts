@@ -75,14 +75,14 @@ export const NAV_ITEMS: NavSection[] = [
         route: '/content',
         permissions: [...PROJECT_GOVERNANCE_PERMISSIONS],
       },
-      // {
-      //   key: 'skill-hub',
-      //   label: 'Skill Hub',
-      //   icon: 'tool',
-      //   route: '/content/skills',
-      //   exact: true,
-      //   permissions: [...SKILL_HUB_PERMISSIONS],
-      // },
+      {
+        key: 'skill-hub',
+        label: 'SKILL HUB',
+        icon: 'tool',
+        route: '/content/skills',
+        exact: true,
+        permissions: [...SKILL_HUB_PERMISSIONS],
+      },
       {
         key: 'global-announcements',
         label: '全局公告',

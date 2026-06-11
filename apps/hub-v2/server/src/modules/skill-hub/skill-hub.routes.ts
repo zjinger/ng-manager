@@ -7,8 +7,10 @@ import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
 import { saveMultipartFile } from "../../shared/storage/file-storage";
-import { assertUploadAllowed } from "../upload/upload-policy";
-import { listSkillsQuerySchema, rejectSkillVersionSchema } from "./skill-hub.schema";
+import { assertUploadAllowed, resolveUploadPolicy } from "../upload/upload-policy";
+import { createSkillCommentSchema, exportSkillQuerySchema, favoriteSkillSchema, listSkillsQuerySchema, rejectSkillVersionSchema, reviewSkillSchema } from "./skill-hub.schema";
+
+const SKILL_PACKAGE_UPLOAD_POLICY = resolveUploadPolicy("skills", "package");
 
 function getFieldValue(field: unknown): string | undefined {
   if (!field) {
@@ -36,6 +38,12 @@ export default async function skillHubRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     const query = listSkillsQuerySchema.parse(request.query);
     return ok(await app.container.skillHubQuery.list(query, ctx));
+  });
+
+  app.get("/skills/meta", async (request) => {
+    const ctx = requireAuth(request);
+    const query = listSkillsQuerySchema.parse(request.query);
+    return ok(await app.container.skillHubQuery.getMeta(query, ctx));
   });
 
   app.get("/skills/:skillId", async (request) => {
@@ -72,10 +80,12 @@ export default async function skillHubRoutes(app: FastifyInstance) {
           packagePath: upload.storagePath,
           packageSize: upload.fileSize,
           checksum: upload.checksum,
+          name: getFieldValue(file.fields.name),
           slug: getFieldValue(file.fields.slug),
           version: getFieldValue(file.fields.version),
           category: getFieldValue(file.fields.category),
-          tags: parseTags(getFieldValue(file.fields.tags))
+          tags: parseTags(getFieldValue(file.fields.tags)),
+          descriptionMd: getFieldValue(file.fields.descriptionMd)
         },
         ctx
       );
@@ -119,9 +129,11 @@ export default async function skillHubRoutes(app: FastifyInstance) {
           packagePath: upload.storagePath,
           packageSize: upload.fileSize,
           checksum: upload.checksum,
+          name: getFieldValue(file.fields.name),
           version: getFieldValue(file.fields.version),
           category: getFieldValue(file.fields.category),
-          tags: parseTags(getFieldValue(file.fields.tags))
+          tags: parseTags(getFieldValue(file.fields.tags)),
+          descriptionMd: getFieldValue(file.fields.descriptionMd)
         },
         ctx
       );
@@ -160,6 +172,40 @@ export default async function skillHubRoutes(app: FastifyInstance) {
     return ok(await app.container.skillHubCommand.archive(params.skillId, ctx), "skill archived");
   });
 
+  app.delete("/skills/:skillId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { skillId: string };
+    return ok(await app.container.skillHubCommand.deleteSkill(params.skillId, ctx), "skill deleted");
+  });
+
+  app.post("/skills/:skillId/favorite", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { skillId: string };
+    const body = favoriteSkillSchema.parse(request.body);
+    return ok(await app.container.skillHubCommand.setFavorite(params.skillId, body.favorite, ctx), body.favorite ? "skill favorited" : "skill unfavorited");
+  });
+
+  app.post("/skills/:skillId/review", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { skillId: string };
+    const body = reviewSkillSchema.parse(request.body);
+    return ok(await app.container.skillHubCommand.review(params.skillId, body, ctx), "skill reviewed");
+  });
+
+  app.get("/skills/:skillId/comments", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { skillId: string };
+    return ok({ items: await app.container.skillHubQuery.listComments(params.skillId, ctx) });
+  });
+
+  app.post("/skills/:skillId/comments", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { skillId: string };
+    const body = createSkillCommentSchema.parse(request.body);
+    const entity = await app.container.skillHubCommand.createComment(params.skillId, body, ctx);
+    return reply.status(201).send(ok(entity, "skill comment created"));
+  });
+
   app.get("/skills/:skillId/versions/:versionId/download", async (request, reply) => {
     const ctx = requireAuth(request);
     const params = request.params as { skillId: string; versionId: string };
@@ -175,6 +221,13 @@ export default async function skillHubRoutes(app: FastifyInstance) {
     reply.header("Content-Disposition", buildAttachmentDisposition(upload.originalName || upload.fileName));
     return reply.send(createReadStream(filePath));
   });
+
+  app.get("/skills/:skillId/versions/:versionId/export", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { skillId: string; versionId: string };
+    const query = exportSkillQuerySchema.parse(request.query);
+    return ok(await app.container.skillHubQuery.getExport(params.skillId, params.versionId, query.target, ctx));
+  });
 }
 
 async function requireSkillPackageFile(request: FastifyRequest): Promise<MultipartFile> {
@@ -188,13 +241,7 @@ async function requireSkillPackageFile(request: FastifyRequest): Promise<Multipa
 async function saveSkillPackage(app: FastifyInstance, file: MultipartFile, skillId: string | null) {
   assertUploadAllowed(
     { fileName: file.filename, mimeType: file.mimetype, fileSize: 0 },
-    {
-      maxSizeBytes: 10 * 1024 * 1024,
-      allowedExtensions: [".zip"],
-      allowedMimeTypes: ["application/zip", "application/x-zip-compressed", "application/octet-stream"],
-      invalidTypeMessage: "仅支持上传 zip 格式 skill 包",
-      sizeLimitMessage: "skill 包大小不能超过 10MB"
-    },
+    SKILL_PACKAGE_UPLOAD_POLICY,
     app.config.uploadMaxFileSize
   );
 
@@ -204,13 +251,7 @@ async function saveSkillPackage(app: FastifyInstance, file: MultipartFile, skill
   const saved = await saveMultipartFile(file, targetDir);
   assertUploadAllowed(
     { fileName: saved.originalName, mimeType: saved.mimeType, fileSize: saved.fileSize },
-    {
-      maxSizeBytes: 10 * 1024 * 1024,
-      allowedExtensions: [".zip"],
-      allowedMimeTypes: ["application/zip", "application/x-zip-compressed", "application/octet-stream"],
-      invalidTypeMessage: "仅支持上传 zip 格式 skill 包",
-      sizeLimitMessage: "skill 包大小不能超过 10MB"
-    },
+    SKILL_PACKAGE_UPLOAD_POLICY,
     app.config.uploadMaxFileSize
   );
   return saved;

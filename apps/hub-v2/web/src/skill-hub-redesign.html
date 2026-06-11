@@ -1,0 +1,1982 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skill Hub — AI 技能市场</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary-50: #EEF2FF; --primary-100: #E0E7FF; --primary-200: #C7D2FE;
+      --primary-300: #A5B4FC; --primary-400: #818CF8; --primary-500: #6366F1;
+      --primary-600: #4F46E5; --primary-700: #4338CA; --primary-800: #3730A3; --primary-900: #312E81;
+      --gray-50: #F8FAFC; --gray-100: #F1F5F9; --gray-200: #E2E8F0; --gray-300: #CBD5E1;
+      --gray-400: #94A3B8; --gray-500: #64748B; --gray-600: #475569; --gray-700: #334155;
+      --gray-800: #1E293B; --gray-900: #0F172A;
+      --success: #10B981; --success-light: #D1FAE5;
+      --warning: #F59E0B; --warning-light: #FEF3C7;
+      --danger: #EF4444; --danger-light: #FEE2E2;
+      --info: #3B82F6; --info-light: #DBEAFE;
+      --rose: #F43F5E; --rose-light: #FFE4E6;
+      --violet: #8B5CF6; --violet-light: #EDE9FE;
+      --cyan: #06B6D4; --cyan-light: #CFFAFE;
+      --amber: #F59E0B; --amber-light: #FEF3C7;
+      --emerald: #10B981; --emerald-light: #D1FAE5;
+      --sidebar-width: 240px; --topbar-height: 56px;
+      --border-radius: 8px; --border-radius-sm: 6px; --border-radius-lg: 12px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+      --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+      --transition: all 0.2s ease;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: var(--gray-50); color: var(--gray-800); font-size: 14px; line-height: 1.5;
+      overflow-x: hidden; min-height: 100vh;
+    }
+
+    /* ===== Layout ===== */
+    .app-layout { display: flex; min-height: 100vh; }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      width: var(--sidebar-width); background: var(--gray-900); display: flex; flex-direction: column;
+      flex-shrink: 0; z-index: 100; position: fixed; top: 0; left: 0; bottom: 0;
+    }
+    .sidebar-brand {
+      height: var(--topbar-height); display: flex; align-items: center; padding: 0 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08); gap: 10px;
+    }
+    .sidebar-brand-icon {
+      width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 16px; flex-shrink: 0;
+    }
+    .sidebar-brand-text { color: #fff; font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+    .sidebar-brand-badge { font-size: 10px; padding: 2px 6px; background: var(--primary-600); color: #fff; border-radius: 10px; font-weight: 500; }
+
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .sidebar-nav::-webkit-scrollbar { width: 4px; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    .nav-section-label {
+      padding: 16px 16px 6px; font-size: 11px; font-weight: 600; color: var(--gray-500);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 8px 16px; color: var(--gray-400);
+      cursor: pointer; transition: var(--transition); font-size: 13px; margin: 1px 8px;
+      border-radius: var(--border-radius-sm);
+    }
+    .nav-item:hover { color: #fff; background: rgba(255,255,255,0.06); }
+    .nav-item.active { color: #fff; background: var(--primary-600); }
+    .nav-item i { width: 18px; text-align: center; font-size: 14px; }
+    .nav-item-badge {
+      margin-left: auto; font-size: 11px; padding: 1px 7px; border-radius: 10px;
+      font-weight: 600; min-width: 20px; text-align: center;
+    }
+    .nav-item-badge.hot { background: var(--danger); color: #fff; }
+
+    .sidebar-footer { padding: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .sidebar-user {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      border-radius: var(--border-radius-sm); cursor: pointer; transition: var(--transition);
+    }
+    .sidebar-user:hover { background: rgba(255,255,255,0.06); }
+    .sidebar-user-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #F59E0B, #EF4444); display: flex;
+      align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: 13px; flex-shrink: 0;
+    }
+    .sidebar-user-info { flex: 1; min-width: 0; }
+    .sidebar-user-name { font-size: 13px; color: #fff; font-weight: 500; }
+    .sidebar-user-role { font-size: 11px; color: var(--gray-400); }
+
+    /* ===== Main Area ===== */
+    .main-area { flex: 1; display: flex; flex-direction: column; margin-left: var(--sidebar-width); }
+
+    .topbar {
+      height: var(--topbar-height); background: #fff; border-bottom: 1px solid var(--gray-200);
+      display: flex; align-items: center; padding: 0 24px; gap: 16px; flex-shrink: 0;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gray-500); }
+    .topbar-breadcrumb a { color: var(--gray-500); text-decoration: none; }
+    .topbar-breadcrumb a:hover { color: var(--primary-600); }
+    .topbar-breadcrumb .current { color: var(--gray-800); font-weight: 500; }
+    .topbar-breadcrumb .separator { color: var(--gray-300); }
+    .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .topbar-search {
+      display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+      background: var(--gray-100); border-radius: var(--border-radius); color: var(--gray-400);
+      font-size: 13px; cursor: pointer; transition: var(--transition); min-width: 200px;
+    }
+    .topbar-search:hover { background: var(--gray-200); }
+    .topbar-search kbd {
+      margin-left: auto; font-size: 11px; padding: 1px 5px; background: #fff;
+      border: 1px solid var(--gray-200); border-radius: 4px; color: var(--gray-400); font-family: inherit;
+    }
+    .topbar-icon-btn {
+      width: 36px; height: 36px; border-radius: var(--border-radius); display: flex;
+      align-items: center; justify-content: center; color: var(--gray-500); cursor: pointer;
+      transition: var(--transition); position: relative; border: none; background: none; font-size: 16px;
+    }
+    .topbar-icon-btn:hover { background: var(--gray-100); color: var(--gray-700); }
+    .topbar-icon-btn .badge-dot {
+      position: absolute; top: 6px; right: 6px; width: 8px; height: 8px;
+      background: var(--danger); border-radius: 50%; border: 2px solid #fff;
+    }
+
+    .content-area { flex: 1; overflow-y: auto; padding: 0; }
+
+    /* ===== Hero Section ===== */
+    .hero-section {
+      background: linear-gradient(135deg, var(--primary-600) 0%, #7C3AED 50%, #EC4899 100%);
+      padding: 40px 32px 32px; position: relative; overflow: hidden;
+    }
+    .hero-bg-pattern {
+      position: absolute; inset: 0; opacity: 0.08;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 640px; }
+    .hero-title { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 8px; letter-spacing: -0.5px; }
+    .hero-subtitle { font-size: 15px; color: rgba(255,255,255,0.85); margin-bottom: 24px; line-height: 1.6; }
+    .hero-search {
+      display: flex; align-items: center; background: #fff; border-radius: 10px;
+      padding: 4px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); max-width: 560px;
+    }
+    .hero-search-input {
+      flex: 1; border: none; outline: none; padding: 12px 16px; font-size: 14px;
+      color: var(--gray-800); background: transparent; font-family: inherit;
+    }
+    .hero-search-input::placeholder { color: var(--gray-400); }
+    .hero-search-btn {
+      padding: 10px 20px; background: var(--primary-600); color: #fff; border: none;
+      border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;
+      transition: var(--transition); display: flex; align-items: center; gap: 6px;
+    }
+    .hero-search-btn:hover { background: var(--primary-700); }
+    .hero-stats {
+      display: flex; gap: 32px; margin-top: 24px;
+    }
+    .hero-stat { text-align: left; }
+    .hero-stat-value { font-size: 24px; font-weight: 700; color: #fff; }
+    .hero-stat-label { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+
+    /* ===== Category Bar ===== */
+    .category-bar {
+      background: #fff; border-bottom: 1px solid var(--gray-200); padding: 0 32px;
+      position: sticky; top: var(--topbar-height); z-index: 40;
+    }
+    .category-tabs {
+      display: flex; align-items: center; gap: 0; overflow-x: auto;
+      scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .category-tabs::-webkit-scrollbar { display: none; }
+    .category-tab {
+      display: flex; align-items: center; gap: 6px; padding: 14px 16px;
+      font-size: 13px; font-weight: 500; color: var(--gray-500); cursor: pointer;
+      border-bottom: 2px solid transparent; transition: var(--transition);
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .category-tab:hover { color: var(--gray-700); }
+    .category-tab.active { color: var(--primary-600); border-bottom-color: var(--primary-600); }
+    .category-tab i { font-size: 14px; }
+    .category-tab .tab-count {
+      font-size: 11px; padding: 1px 6px; background: var(--gray-100);
+      border-radius: 10px; color: var(--gray-400); font-weight: 500;
+    }
+    .category-tab.active .tab-count {
+      background: var(--primary-50); color: var(--primary-600);
+    }
+
+    /* ===== Toolbar ===== */
+    .page-toolbar {
+      display: flex; align-items: center; gap: 12px; padding: 20px 32px 0; flex-wrap: wrap;
+    }
+    .toolbar-left { display: flex; align-items: center; gap: 12px; }
+    .toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+      border-radius: var(--border-radius-sm); font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: var(--transition); border: 1px solid transparent; white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary-600); color: #fff; }
+    .btn-primary:hover { background: var(--primary-700); }
+    .btn-default { background: #fff; border-color: var(--gray-200); color: var(--gray-700); }
+    .btn-default:hover { border-color: var(--gray-300); background: var(--gray-50); }
+    .btn-ghost { background: transparent; color: var(--gray-600); border: none; }
+    .btn-ghost:hover { background: var(--gray-100); }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    .filter-select {
+      padding: 7px 30px 7px 10px; border: 1px solid var(--gray-200);
+      border-radius: var(--border-radius-sm); font-size: 13px;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;
+      appearance: none; cursor: pointer; color: var(--gray-700);
+    }
+    .filter-select:focus { outline: none; border-color: var(--primary-400); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+
+    .sort-pills { display: flex; gap: 4px; background: var(--gray-100); border-radius: var(--border-radius-sm); padding: 2px; }
+    .sort-pill {
+      padding: 5px 12px; border-radius: 4px; cursor: pointer; color: var(--gray-500);
+      font-size: 13px; transition: var(--transition); border: none; background: none; font-weight: 500;
+    }
+    .sort-pill:hover { color: var(--gray-700); }
+    .sort-pill.active { background: #fff; color: var(--gray-800); box-shadow: var(--shadow-sm); }
+
+    .view-toggle { display: flex; background: var(--gray-100); border-radius: var(--border-radius-sm); padding: 2px; }
+    .view-toggle-btn {
+      padding: 5px 10px; border-radius: 4px; cursor: pointer; color: var(--gray-500);
+      font-size: 13px; transition: var(--transition); border: none; background: none;
+    }
+    .view-toggle-btn.active { background: #fff; color: var(--gray-800); box-shadow: var(--shadow-sm); }
+
+    /* ===== Skill Cards Grid ===== */
+    .skills-section { padding: 20px 32px 32px; }
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+    }
+    .section-title { font-size: 16px; font-weight: 600; color: var(--gray-900); display: flex; align-items: center; gap: 8px; }
+    .section-title .count {
+      font-size: 12px; padding: 1px 8px; background: var(--gray-100);
+      border-radius: 10px; color: var(--gray-500); font-weight: 500;
+    }
+    .section-action { font-size: 13px; color: var(--primary-600); cursor: pointer; font-weight: 500; }
+    .section-action:hover { color: var(--primary-700); }
+
+    .skills-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+    .skill-card {
+      background: #fff; border-radius: var(--border-radius-lg); border: 1px solid var(--gray-200);
+      padding: 20px; cursor: pointer; transition: var(--transition);
+      display: flex; flex-direction: column; position: relative; overflow: hidden;
+    }
+    .skill-card:hover {
+      box-shadow: var(--shadow-lg); border-color: var(--primary-200); transform: translateY(-2px);
+    }
+    .skill-card-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .skill-icon {
+      width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 20px; flex-shrink: 0; position: relative;
+    }
+    .skill-icon.blue { background: var(--info-light); color: var(--info); }
+    .skill-icon.purple { background: var(--violet-light); color: var(--violet); }
+    .skill-icon.green { background: var(--emerald-light); color: var(--emerald); }
+    .skill-icon.orange { background: var(--amber-light); color: var(--amber); }
+    .skill-icon.rose { background: var(--rose-light); color: var(--rose); }
+    .skill-icon.cyan { background: var(--cyan-light); color: var(--cyan); }
+    .skill-icon.indigo { background: var(--primary-50); color: var(--primary-600); }
+
+    .skill-card-info { flex: 1; min-width: 0; }
+    .skill-card-title {
+      font-size: 14px; font-weight: 600; color: var(--gray-900); margin-bottom: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .skill-card-author {
+      display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray-400);
+    }
+    .skill-card-author-avatar {
+      width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 8px; font-weight: 600; color: #fff; flex-shrink: 0;
+    }
+    .skill-card-author-avatar.a1 { background: linear-gradient(135deg, #F59E0B, #EF4444); }
+    .skill-card-author-avatar.a2 { background: linear-gradient(135deg, #3B82F6, #8B5CF6); }
+    .skill-card-author-avatar.a3 { background: linear-gradient(135deg, #10B981, #06B6D4); }
+    .skill-card-author-avatar.a4 { background: linear-gradient(135deg, #F43F5E, #EC4899); }
+
+    .skill-card-desc {
+      font-size: 12px; color: var(--gray-500); line-height: 1.6; margin-bottom: 14px;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex: 1;
+    }
+
+    .skill-card-tags { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+    .skill-tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500; white-space: nowrap;
+    }
+    .skill-tag.cli { background: var(--gray-100); color: var(--gray-600); }
+    .skill-tag.web { background: var(--info-light); color: var(--info); }
+    .skill-tag.api { background: var(--violet-light); color: var(--violet); }
+    .skill-tag.auto { background: var(--emerald-light); color: var(--emerald); }
+    .skill-tag.data { background: var(--amber-light); color: var(--amber); }
+    .skill-tag.img { background: var(--rose-light); color: var(--rose); }
+    .skill-tag.new {
+      background: linear-gradient(135deg, var(--primary-500), #7C3AED);
+      color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 10px;
+    }
+
+    .skill-card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 12px; border-top: 1px solid var(--gray-100);
+    }
+    .skill-stats { display: flex; align-items: center; gap: 12px; }
+    .skill-stat {
+      display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--gray-400);
+    }
+    .skill-stat i { font-size: 12px; }
+    .skill-stat.liked i { color: var(--rose); }
+    .skill-install-btn {
+      padding: 4px 10px; background: var(--primary-50); color: var(--primary-600);
+      border: none; border-radius: var(--border-radius-sm); font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: var(--transition);
+    }
+    .skill-install-btn:hover { background: var(--primary-100); }
+
+    /* Featured Banner */
+    .featured-banner {
+      background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 50%, #FCD34D 100%);
+      border-radius: var(--border-radius-lg); padding: 20px 24px; margin-bottom: 24px;
+      display: flex; align-items: center; gap: 16px; border: 1px solid #F59E0B20;
+      position: relative; overflow: hidden;
+    }
+    .featured-banner::after {
+      content: ''; position: absolute; right: -20px; top: -20px; width: 120px; height: 120px;
+      background: rgba(245,158,11,0.1); border-radius: 50%;
+    }
+    .featured-icon {
+      width: 48px; height: 48px; border-radius: 12px; background: rgba(245,158,11,0.2);
+      display: flex; align-items: center; justify-content: center; font-size: 22px; color: #D97706;
+      flex-shrink: 0;
+    }
+    .featured-content { flex: 1; }
+    .featured-label {
+      font-size: 11px; font-weight: 600; color: #92400E; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 4px;
+    }
+    .featured-title { font-size: 16px; font-weight: 600; color: #78350F; }
+    .featured-desc { font-size: 13px; color: #92400E; margin-top: 2px; }
+    .featured-btn {
+      padding: 8px 16px; background: #D97706; color: #fff; border: none;
+      border-radius: var(--border-radius-sm); font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: var(--transition); white-space: nowrap;
+    }
+    .featured-btn:hover { background: #B45309; }
+
+    /* Pagination */
+    .pagination-bar {
+      display: flex; align-items: center; justify-content: space-between; padding: 20px 0;
+    }
+    .pagination-info { font-size: 13px; color: var(--gray-500); }
+    .pagination { display: flex; align-items: center; gap: 4px; }
+    .page-btn {
+      width: 32px; height: 32px; border: 1px solid var(--gray-200); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center; font-size: 13px;
+      cursor: pointer; background: #fff; color: var(--gray-600); transition: var(--transition);
+    }
+    .page-btn:hover { border-color: var(--primary-400); color: var(--primary-600); }
+    .page-btn.active { background: var(--primary-600); color: #fff; border-color: var(--primary-600); }
+
+    /* ===== Skill Detail Drawer ===== */
+    .drawer-overlay {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(3px); z-index: 400; display: none;
+    }
+    .drawer-overlay.show { display: block; }
+
+    .drawer {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: 720px; max-width: 90vw;
+      background: #fff; z-index: 450;
+      display: flex; flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: -8px 0 30px rgba(0,0,0,0.12);
+    }
+    .drawer.show { transform: translateX(0); }
+
+    .drawer-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 20px; border-bottom: 1px solid var(--gray-200);
+      flex-shrink: 0;
+    }
+    .drawer-header-icon {
+      width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 16px; flex-shrink: 0;
+    }
+    .drawer-header-title {
+      font-size: 16px; font-weight: 600; color: var(--gray-900);
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .drawer-header-version {
+      font-size: 12px; font-family: 'SF Mono', 'Fira Code', monospace;
+      padding: 2px 8px; background: var(--gray-100); border-radius: 4px; color: var(--gray-600);
+    }
+    .drawer-close {
+      width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center;
+      justify-content: center; color: var(--gray-400); cursor: pointer; transition: var(--transition);
+      border: none; background: none; font-size: 18px; flex-shrink: 0;
+    }
+    .drawer-close:hover { background: var(--gray-100); color: var(--gray-600); }
+
+    .drawer-body {
+      flex: 1; overflow-y: auto;
+      display: grid; grid-template-columns: 1fr 260px;
+    }
+    .drawer-main {
+      border-right: 1px solid var(--gray-100);
+      overflow-y: auto;
+    }
+    .drawer-sidebar {
+      overflow-y: auto; background: var(--gray-50);
+    }
+
+    /* Drawer Main Content */
+    .drawer-hero {
+      display: flex; align-items: center; gap: 16px; padding: 24px 20px 20px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .drawer-hero-icon {
+      width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center;
+      justify-content: center; font-size: 24px; flex-shrink: 0;
+    }
+    .drawer-hero-info { flex: 1; min-width: 0; }
+    .drawer-hero-title { font-size: 20px; font-weight: 700; color: var(--gray-900); }
+    .drawer-hero-author {
+      display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--gray-500); margin-top: 4px;
+    }
+    .drawer-hero-author-avatar {
+      width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 9px; font-weight: 600; color: #fff; flex-shrink: 0;
+    }
+    .drawer-hero-stats { display: flex; gap: 20px; margin-top: 16px; }
+    .drawer-hero-stat { text-align: center; }
+    .drawer-hero-stat-value { font-size: 18px; font-weight: 700; color: var(--gray-900); }
+    .drawer-hero-stat-label { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+    .drawer-section { padding: 20px; border-bottom: 1px solid var(--gray-100); }
+    .drawer-section:last-child { border-bottom: none; }
+    .drawer-section-title {
+      font-size: 13px; font-weight: 600; color: var(--gray-800); margin-bottom: 12px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .drawer-section-title i { color: var(--gray-400); font-size: 13px; }
+
+    .drawer-desc { font-size: 14px; color: var(--gray-600); line-height: 1.7; }
+
+    .drawer-features { list-style: none; }
+    .drawer-features li {
+      display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--gray-600);
+      border-bottom: 1px solid var(--gray-50);
+    }
+    .drawer-features li:last-child { border-bottom: none; }
+    .drawer-features li .feature-icon {
+      width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 10px; flex-shrink: 0;
+    }
+    .drawer-features li .feature-icon.check { background: var(--success-light); color: var(--success); }
+
+    .drawer-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* Drawer Sidebar Props */
+    .drawer-props { list-style: none; }
+    .drawer-prop {
+      display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--gray-100);
+    }
+    .drawer-prop:last-child { border-bottom: none; }
+    .drawer-prop-label { font-size: 12px; color: var(--gray-500); width: 72px; flex-shrink: 0; }
+    .drawer-prop-value { font-size: 13px; color: var(--gray-800); flex: 1; }
+
+    .drawer-card {
+      background: #fff; border-radius: 0; border-left: none; border-right: none; border-top: none;
+      box-shadow: none; border-bottom: 1px solid var(--gray-100);
+    }
+    .drawer-card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-bottom: 1px solid var(--gray-100);
+    }
+    .drawer-card-title {
+      font-size: 13px; font-weight: 600; color: var(--gray-800); display: flex; align-items: center; gap: 6px;
+    }
+    .drawer-card-title .count {
+      font-size: 11px; padding: 1px 6px; background: var(--gray-100);
+      border-radius: 10px; color: var(--gray-500); font-weight: 500;
+    }
+    .drawer-card-action { font-size: 12px; color: var(--primary-600); cursor: pointer; font-weight: 500; }
+
+    .drawer-install-bar {
+      padding: 16px; border-top: 1px solid var(--gray-200); background: #fff;
+      display: flex; gap: 8px; flex-shrink: 0;
+    }
+    .drawer-install-bar .btn { flex: 1; justify-content: center; }
+
+    /* Review items in drawer */
+    .review-item {
+      padding: 12px 16px; border-bottom: 1px solid var(--gray-50);
+    }
+    .review-item:last-child { border-bottom: none; }
+    .review-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .review-author { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+    .review-stars { font-size: 11px; color: var(--warning); }
+    .review-time { font-size: 11px; color: var(--gray-400); margin-left: auto; }
+    .review-body { font-size: 12px; color: var(--gray-600); line-height: 1.5; }
+
+    /* Drawer Markdown Tabs */
+    .drawer-tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--gray-200); padding: 0 20px;
+    }
+    .drawer-tab {
+      display: flex; align-items: center; gap: 6px; padding: 12px 16px;
+      font-size: 13px; font-weight: 500; color: var(--gray-500); cursor: pointer;
+      border-bottom: 2px solid transparent; transition: var(--transition);
+      margin-bottom: -1px;
+    }
+    .drawer-tab:hover { color: var(--gray-700); }
+    .drawer-tab.active { color: var(--primary-600); border-bottom-color: var(--primary-600); }
+    .drawer-tab i { font-size: 13px; }
+    .drawer-tab-panel { display: none; }
+    .drawer-tab-panel.active { display: block; }
+
+    /* Markdown Rendered Content */
+    .md-content { padding: 24px 20px; font-size: 14px; line-height: 1.75; color: var(--gray-700); }
+    .md-content h1 { font-size: 22px; font-weight: 700; color: var(--gray-900); margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-200); }
+    .md-content h1:first-child { margin-top: 0; }
+    .md-content h2 { font-size: 18px; font-weight: 600; color: var(--gray-900); margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--gray-100); }
+    .md-content h3 { font-size: 15px; font-weight: 600; color: var(--gray-800); margin: 16px 0 8px; }
+    .md-content h4 { font-size: 14px; font-weight: 600; color: var(--gray-800); margin: 12px 0 6px; }
+    .md-content p { margin: 0 0 12px; }
+    .md-content ul, .md-content ol { margin: 0 0 12px; padding-left: 24px; }
+    .md-content li { margin-bottom: 4px; }
+    .md-content li strong { color: var(--gray-800); }
+    .md-content code {
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px;
+      padding: 2px 6px; background: var(--gray-100); border-radius: 4px; color: var(--rose);
+    }
+    .md-content pre {
+      background: var(--gray-900); color: #e2e8f0; padding: 16px; border-radius: var(--border-radius);
+      overflow-x: auto; margin: 0 0 12px; font-size: 13px; line-height: 1.6;
+    }
+    .md-content pre code {
+      background: transparent; color: inherit; padding: 0; font-size: 13px;
+    }
+    .md-content blockquote {
+      border-left: 3px solid var(--primary-300); padding: 8px 16px; margin: 0 0 12px;
+      background: var(--primary-50); border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+      color: var(--gray-600);
+    }
+    .md-content a { color: var(--primary-600); text-decoration: none; }
+    .md-content a:hover { text-decoration: underline; }
+    .md-content hr { border: none; border-top: 1px solid var(--gray-200); margin: 20px 0; }
+    .md-content table { width: 100%; border-collapse: collapse; margin: 0 0 12px; }
+    .md-content th, .md-content td { padding: 8px 12px; border: 1px solid var(--gray-200); text-align: left; font-size: 13px; }
+    .md-content th { background: var(--gray-50); font-weight: 600; color: var(--gray-700); }
+    .md-content img { max-width: 100%; border-radius: var(--border-radius); }
+    .md-content .task-list-item { list-style: none; margin-left: -20px; }
+    .md-content .task-list-item input { margin-right: 6px; }
+
+    /* File Tree */
+    .file-tree { font-size: 13px; }
+    .file-tree-item {
+      display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+      cursor: pointer; transition: var(--transition); border-radius: 0;
+    }
+    .file-tree-item:hover { background: var(--gray-50); }
+    .file-tree-item .file-icon { width: 18px; text-align: center; font-size: 14px; flex-shrink: 0; }
+    .file-tree-item .file-icon.folder { color: var(--warning); }
+    .file-tree-item .file-icon.file { color: var(--gray-400); }
+    .file-tree-item .file-icon.md { color: var(--primary-500); }
+    .file-tree-item .file-icon.js { color: var(--amber); }
+    .file-tree-item .file-icon.json { color: var(--emerald); }
+    .file-tree-item .file-icon.py { color: var(--info); }
+    .file-tree-item .file-icon.sh { color: var(--rose); }
+    .file-tree-item .file-name { flex: 1; color: var(--gray-800); font-weight: 500; }
+    .file-tree-item .file-name a { color: var(--primary-600); text-decoration: none; font-weight: 500; font-size: 12px; margin-left: 8px; opacity: 0; transition: var(--transition); }
+    .file-tree-item:hover .file-name a { opacity: 1; }
+    .file-tree-item .file-size { font-size: 12px; color: var(--gray-400); font-family: 'SF Mono', 'Fira Code', monospace; flex-shrink: 0; }
+    .file-tree-children { padding-left: 24px; }
+    .file-tree-toggle {
+      width: 16px; height: 16px; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: var(--gray-400); flex-shrink: 0; transition: transform 0.15s ease;
+    }
+    .file-tree-toggle.expanded { transform: rotate(90deg); }
+    .file-tree-sep { height: 1px; background: var(--gray-100); margin: 0 16px; }
+
+    /* Sidebar install bar fixed at bottom */
+    .drawer-sidebar-inner { display: flex; flex-direction: column; height: 100%; }
+    .drawer-sidebar-content { flex: 1; overflow-y: auto; }
+    .drawer-sidebar-install { padding: 16px; border-top: 1px solid var(--gray-200); background: #fff; flex-shrink: 0; }
+
+    /* ===== Modal System ===== */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(4px); z-index: 500; display: none;
+      align-items: flex-start; justify-content: center; padding-top: 40px;
+      overflow-y: auto;
+    }
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: #fff; border-radius: 12px; box-shadow: var(--shadow-xl);
+      width: 100%; animation: modalIn 0.2s ease;
+    }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+
+    .modal-sm { max-width: 520px; }
+    .modal-md { max-width: 640px; }
+    .modal-lg { max-width: 780px; }
+
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px; border-bottom: 1px solid var(--gray-100);
+    }
+    .modal-header h2 { font-size: 17px; font-weight: 600; color: var(--gray-900); display: flex; align-items: center; gap: 8px; }
+    .modal-close {
+      width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center;
+      justify-content: center; color: var(--gray-400); cursor: pointer; transition: var(--transition);
+      border: none; background: none; font-size: 18px;
+    }
+    .modal-close:hover { background: var(--gray-100); color: var(--gray-600); }
+
+    .modal-body { padding: 24px; }
+    .modal-footer {
+      display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+      padding: 16px 24px; border-top: 1px solid var(--gray-100); background: var(--gray-50);
+      border-radius: 0 0 12px 12px;
+    }
+
+    /* Form elements */
+    .form-group { margin-bottom: 18px; }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-label {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 13px; font-weight: 500; color: var(--gray-700); margin-bottom: 6px;
+    }
+    .form-label .required { color: var(--danger); }
+    .form-hint { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+
+    .form-input, .form-textarea, .form-select {
+      width: 100%; padding: 8px 12px; border: 1px solid var(--gray-200);
+      border-radius: var(--border-radius-sm); font-size: 13px; color: var(--gray-800);
+      transition: var(--transition); font-family: inherit;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      outline: none; border-color: var(--primary-400);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .form-input::placeholder, .form-textarea::placeholder { color: var(--gray-400); }
+    .form-textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
+    .form-select {
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+      appearance: none; padding-right: 32px;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+    /* Toggle */
+    .form-toggle {
+      display: inline-flex; align-items: center; gap: 10px; cursor: pointer;
+    }
+    .form-toggle input[type="checkbox"] { display: none; }
+    .form-toggle input[type="checkbox"] + span {
+      width: 36px; height: 20px; border-radius: 10px; background: var(--gray-300);
+      position: relative; transition: var(--transition); flex-shrink: 0; display: inline-block;
+    }
+    .form-toggle input[type="checkbox"] + span::after {
+      content: ''; width: 16px; height: 16px; border-radius: 50%; background: #fff;
+      position: absolute; top: 2px; left: 2px; transition: var(--transition);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .form-toggle input[type="checkbox"]:checked + span { background: var(--primary-500); }
+    .form-toggle input[type="checkbox"]:checked + span::after { left: 18px; }
+
+    /* Tag input */
+    .tag-input-wrap {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 10px;
+      border: 1px solid var(--gray-200); border-radius: var(--border-radius-sm);
+      min-height: 38px; align-items: center; cursor: text; transition: var(--transition);
+    }
+    .tag-input-wrap:focus-within {
+      border-color: var(--primary-400); box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .tag-input-tag {
+      display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+      background: var(--primary-50); color: var(--primary-700); border-radius: 4px;
+      font-size: 12px; font-weight: 500;
+    }
+    .tag-input-tag .remove {
+      cursor: pointer; font-size: 10px; opacity: 0.6; width: 14px; height: 14px;
+      display: flex; align-items: center; justify-content: center; border-radius: 50%;
+    }
+    .tag-input-tag .remove:hover { opacity: 1; background: var(--primary-100); }
+    .tag-input-field {
+      border: none; outline: none; font-size: 13px; flex: 1; min-width: 80px;
+      font-family: inherit; color: var(--gray-800); background: transparent;
+    }
+    .tag-input-field::placeholder { color: var(--gray-400); }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed var(--gray-200); border-radius: var(--border-radius);
+      padding: 24px; text-align: center; cursor: pointer; transition: var(--transition);
+    }
+    .upload-zone:hover { border-color: var(--primary-300); background: var(--primary-50); }
+    .upload-zone i { font-size: 24px; color: var(--gray-300); margin-bottom: 8px; }
+    .upload-zone p { font-size: 13px; color: var(--gray-500); }
+    .upload-zone .upload-hint { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+
+    /* Icon picker grid */
+    .icon-picker { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+    .icon-option {
+      width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 18px; cursor: pointer; transition: var(--transition);
+      border: 2px solid var(--gray-200); background: #fff;
+    }
+    .icon-option:hover { border-color: var(--primary-300); }
+    .icon-option.selected { border-color: var(--primary-500); background: var(--primary-50); }
+
+    /* Step indicator */
+    .step-bar { display: flex; align-items: center; gap: 0; margin-bottom: 24px; }
+    .step-item {
+      display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500;
+      color: var(--gray-400); flex: 1; position: relative;
+    }
+    .step-item::after {
+      content: ''; flex: 1; height: 1px; background: var(--gray-200); margin: 0 12px;
+    }
+    .step-item:last-child::after { display: none; }
+    .step-item.active { color: var(--primary-600); }
+    .step-item.done { color: var(--success); }
+    .step-item.done::after { background: var(--success); }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0;
+      background: var(--gray-100); color: var(--gray-400);
+    }
+    .step-item.active .step-num { background: var(--primary-100); color: var(--primary-600); }
+    .step-item.done .step-num { background: var(--success-light); color: var(--success); }
+
+    .step-panel { display: none; }
+    .step-panel.active { display: block; }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .skills-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 900px) {
+      .skills-grid { grid-template-columns: repeat(2, 1fr); }
+      .hero-stats { gap: 20px; }
+    }
+    @media (max-width: 640px) {
+      .skills-grid { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .main-area { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon"><i class="fas fa-cube"></i></div>
+        <span class="sidebar-brand-text">Hub v2</span>
+        <span class="sidebar-brand-badge">Beta</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">概览</div>
+        <div class="nav-item"><i class="fas fa-th-large"></i><span>Dashboard</span></div>
+        <div class="nav-item"><i class="fas fa-exclamation-circle"></i><span>Issues</span><span class="nav-item-badge hot">12</span></div>
+        <div class="nav-item"><i class="fas fa-code-branch"></i><span>研发项</span></div>
+
+        <div class="nav-section-label">生态</div>
+        <div class="nav-item active"><i class="fas fa-puzzle-piece"></i><span>Skill Hub</span><span class="nav-item-badge hot">New</span></div>
+        <div class="nav-item"><i class="fas fa-store"></i><span>插件市场</span></div>
+        <div class="nav-item"><i class="fas fa-book"></i><span>文档中心</span></div>
+
+        <div class="nav-section-label">管理</div>
+        <div class="nav-item"><i class="fas fa-layer-group"></i><span>内容管理</span></div>
+        <div class="nav-item"><i class="fas fa-folder-open"></i><span>项目管理</span></div>
+        <div class="nav-item"><i class="fas fa-cog"></i><span>共享配置</span></div>
+        <div class="nav-item"><i class="fas fa-users"></i><span>用户管理</span></div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-user-avatar">Y</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name">Your Name</div>
+            <div class="sidebar-user-role">管理员</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-area">
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar-breadcrumb">
+          <a href="#">Hub v2</a>
+          <span class="separator">/</span>
+          <span class="current">Skill Hub</span>
+        </div>
+        <div class="topbar-actions">
+          <div class="topbar-search"><i class="fas fa-search"></i>全局搜索…<kbd>⌘K</kbd></div>
+          <button class="topbar-icon-btn"><i class="fas fa-bell"></i><span class="badge-dot"></span></button>
+          <button class="topbar-icon-btn"><i class="fas fa-question-circle"></i></button>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <!-- Hero -->
+        <section class="hero-section">
+          <div class="hero-bg-pattern"></div>
+          <div class="hero-content">
+            <h1 class="hero-title">🎯 Skill Hub</h1>
+            <p class="hero-subtitle">发现、安装和分享 AI 技能。从自动化工作流到智能分析，找到你需要的一切能力。</p>
+            <div class="hero-search">
+              <input type="text" class="hero-search-input" placeholder="搜索技能名称、作者或关键词…">
+              <button class="hero-search-btn"><i class="fas fa-search"></i> 搜索</button>
+            </div>
+            <div class="hero-stats">
+              <div class="hero-stat">
+                <div class="hero-stat-value">2,847</div>
+                <div class="hero-stat-label">技能总数</div>
+              </div>
+              <div class="hero-stat">
+                <div class="hero-stat-value">12.6K</div>
+                <div class="hero-stat-label">累计安装</div>
+              </div>
+              <div class="hero-stat">
+                <div class="hero-stat-value">98%</div>
+                <div class="hero-stat-label">好评率</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Category Bar -->
+        <nav class="category-bar">
+          <div class="category-tabs">
+            <div class="category-tab active"><i class="fas fa-th-large"></i> 全部 <span class="tab-count">2847</span></div>
+            <div class="category-tab"><i class="fas fa-font"></i> 文本处理 <span class="tab-count">423</span></div>
+            <div class="category-tab"><i class="fas fa-chart-bar"></i> 数据分析 <span class="tab-count">318</span></div>
+            <div class="category-tab"><i class="fas fa-code"></i> 编程开发 <span class="tab-count">567</span></div>
+            <div class="category-tab"><i class="fas fa-image"></i> 图像生成 <span class="tab-count">245</span></div>
+            <div class="category-tab"><i class="fas fa-pen-fancy"></i> 内容创作 <span class="tab-count">389</span></div>
+            <div class="category-tab"><i class="fas fa-briefcase"></i> 办公效率 <span class="tab-count">512</span></div>
+            <div class="category-tab"><i class="fas fa-flask"></i> 科研学术 <span class="tab-count">198</span></div>
+            <div class="category-tab"><i class="fas fa-robot"></i> AI Agent <span class="tab-count">195</span></div>
+          </div>
+        </nav>
+
+        <!-- Toolbar -->
+        <div class="page-toolbar">
+          <div class="toolbar-left">
+            <div class="sort-pills">
+              <button class="sort-pill active"><i class="fas fa-fire" style="margin-right:4px"></i>最热</button>
+              <button class="sort-pill"><i class="fas fa-clock" style="margin-right:4px"></i>最新</button>
+              <button class="sort-pill"><i class="fas fa-star" style="margin-right:4px"></i>推荐</button>
+            </div>
+            <select class="filter-select">
+              <option>所有标签</option>
+              <option>CLI</option>
+              <option>Web</option>
+              <option>API</option>
+              <option>自动化</option>
+            </select>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-primary" onclick="openModal('modal-publish-skill')"><i class="fas fa-plus"></i> 发布技能</button>
+            <div class="view-toggle">
+              <button class="view-toggle-btn active"><i class="fas fa-th-large"></i></button>
+              <button class="view-toggle-btn"><i class="fas fa-list"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <section class="skills-section">
+          <!-- Featured -->
+          <div class="featured-banner">
+            <div class="featured-icon"><i class="fas fa-bolt"></i></div>
+            <div class="featured-content">
+              <div class="featured-label">✨ 本周精选</div>
+              <div class="featured-title">Excel 智能分析助手 v3.0</div>
+              <div class="featured-desc">支持自然语言查询、自动生成图表、智能数据清洗，已获 2.3K 安装</div>
+            </div>
+            <button class="featured-btn">立即体验</button>
+          </div>
+
+          <!-- Hot Skills -->
+          <div class="section-header">
+            <div class="section-title"><i class="fas fa-fire" style="color:var(--danger)"></i> 热门技能 <span class="count">24</span></div>
+            <div class="section-action">查看全部 <i class="fas fa-chevron-right" style="font-size:10px"></i></div>
+          </div>
+          <div class="skills-grid">
+            <!-- Card 1 -->
+            <div class="skill-card" onclick="openDrawer()">
+              <div class="skill-card-header">
+                <div class="skill-icon blue"><i class="fas fa-file-excel"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">Excel / XLSX</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a1">L</span>
+                    LumiBot
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">创建、检查和编辑 Excel 工作簿，支持公式、格式、数据验证和模板保持。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag cli">CLI</span>
+                <span class="skill-tag data">数据</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat liked"><i class="fas fa-heart"></i> 1.2K</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 3.4K</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="skill-card">
+              <div class="skill-card-header">
+                <div class="skill-icon purple"><i class="fas fa-chart-line"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">Chart Image</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a2">A</span>
+                    AgentCore
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">生成高质量图表图片，支持折线、柱状、饼图、热力图等多种类型。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag web">Web</span>
+                <span class="skill-tag data">数据</span>
+                <span class="skill-tag new">New</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat"><i class="fas fa-heart"></i> 892</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 2.1K</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="skill-card">
+              <div class="skill-card-header">
+                <div class="skill-icon green"><i class="fas fa-globe"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">Web Fetch</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a3">S</span>
+                    SysBot
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">抓取网页内容并转换为 Markdown，支持 JS 渲染页面和 PDF 解析。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag cli">CLI</span>
+                <span class="skill-tag api">API</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat liked"><i class="fas fa-heart"></i> 2.3K</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 5.8K</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+
+            <!-- Card 4 -->
+            <div class="skill-card">
+              <div class="skill-card-header">
+                <div class="skill-icon orange"><i class="fas fa-palette"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">Frontend Design</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a4">D</span>
+                    DesignBot
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">创建高质量前端界面，生成生产级代码，避免通用 AI 美学。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag web">Web</span>
+                <span class="skill-tag img">设计</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat"><i class="fas fa-heart"></i> 756</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 1.9K</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+
+            <!-- Card 5 -->
+            <div class="skill-card">
+              <div class="skill-card-header">
+                <div class="skill-icon rose"><i class="fas fa-microphone"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">MiMo TTS</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a1">M</span>
+                    MiMo Team
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">文字转语音，支持多语言、情感表达和声音克隆，输出 WAV 文件。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag cli">CLI</span>
+                <span class="skill-tag auto">自动化</span>
+                <span class="skill-tag new">Hot</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat liked"><i class="fas fa-heart"></i> 1.8K</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 4.2K</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+
+            <!-- Card 6 -->
+            <div class="skill-card">
+              <div class="skill-card-header">
+                <div class="skill-icon cyan"><i class="fas fa-shield-alt"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">Health Check</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a3">O</span>
+                    OpenClaw
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">主机安全加固和风险评估，检查防火墙、SSH、系统更新状态。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag cli">CLI</span>
+                <span class="skill-tag auto">自动化</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat"><i class="fas fa-heart"></i> 423</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 987</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+
+            <!-- Card 7 -->
+            <div class="skill-card">
+              <div class="skill-card-header">
+                <div class="skill-icon indigo"><i class="fas fa-video"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">Video Frames</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a2">V</span>
+                    VideoBot
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">从视频中提取帧或短片段，支持 ffmpeg 全部格式和自定义采样率。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag cli">CLI</span>
+                <span class="skill-tag img">媒体</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat"><i class="fas fa-heart"></i> 345</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 712</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+
+            <!-- Card 8 -->
+            <div class="skill-card">
+              <div class="skill-card-header">
+                <div class="skill-icon blue"><i class="fas fa-file-word"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">Word / DOCX</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a1">L</span>
+                    LumiBot
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">创建和编辑 Word 文档，支持样式、编号、表格、修订和模板保持。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag cli">CLI</span>
+                <span class="skill-tag data">数据</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat"><i class="fas fa-heart"></i> 567</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 1.3K</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- New Skills -->
+          <div class="section-header" style="margin-top:32px">
+            <div class="section-title"><i class="fas fa-sparkles" style="color:var(--primary-500)"></i> 最新上架 <span class="count">16</span></div>
+            <div class="section-action">查看全部 <i class="fas fa-chevron-right" style="font-size:10px"></i></div>
+          </div>
+          <div class="skills-grid">
+            <!-- New Card 1 -->
+            <div class="skill-card">
+              <div class="skill-card-header">
+                <div class="skill-icon purple"><i class="fas fa-brain"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">Senior Data Scientist</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a4">D</span>
+                    DataLab
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">世界顶级数据科学家技能，涵盖统计建模、实验设计、因果推断和预测分析。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag api">API</span>
+                <span class="skill-tag data">数据</span>
+                <span class="skill-tag new">New</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat"><i class="fas fa-heart"></i> 128</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 342</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+
+            <!-- New Card 2 -->
+            <div class="skill-card">
+              <div class="skill-card-header">
+                <div class="skill-icon green"><i class="fas fa-file-powerpoint"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">PowerPoint / PPTX</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a1">L</span>
+                    LumiBot
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">创建和编辑 PPT 演示文稿，支持布局、占位符、图表和视觉质量检查。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag cli">CLI</span>
+                <span class="skill-tag data">数据</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat"><i class="fas fa-heart"></i> 89</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 234</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+
+            <!-- New Card 3 -->
+            <div class="skill-card">
+              <div class="skill-card-header">
+                <div class="skill-icon orange"><i class="fas fa-wand-magic-sparkles"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">Animate</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a2">A</span>
+                    AgentCore
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">为功能添加有意义的动画、微交互和动效，提升用户体验和愉悦感。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag web">Web</span>
+                <span class="skill-tag img">设计</span>
+                <span class="skill-tag new">New</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat"><i class="fas fa-heart"></i> 67</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 156</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+
+            <!-- New Card 4 -->
+            <div class="skill-card">
+              <div class="skill-card-header">
+                <div class="skill-icon rose"><i class="fas fa-pen-nib"></i></div>
+                <div class="skill-card-info">
+                  <div class="skill-card-title">Writing Assistant</div>
+                  <div class="skill-card-author">
+                    <span class="skill-card-author-avatar a4">W</span>
+                    WriteBot
+                  </div>
+                </div>
+              </div>
+              <div class="skill-card-desc">AI 写作团队负责人，管理专业写作工具，提供内容策略和写作指导。</div>
+              <div class="skill-card-tags">
+                <span class="skill-tag web">Web</span>
+                <span class="skill-tag auto">自动化</span>
+              </div>
+              <div class="skill-card-footer">
+                <div class="skill-stats">
+                  <span class="skill-stat"><i class="fas fa-heart"></i> 203</span>
+                  <span class="skill-stat"><i class="fas fa-download"></i> 478</span>
+                </div>
+                <button class="skill-install-btn">安装</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <div class="pagination-bar">
+            <div class="pagination-info">显示 1-12 / 共 2,847 个技能</div>
+            <div class="pagination">
+              <button class="page-btn"><i class="fas fa-chevron-left"></i></button>
+              <button class="page-btn active">1</button>
+              <button class="page-btn">2</button>
+              <button class="page-btn">3</button>
+              <button class="page-btn">…</button>
+              <button class="page-btn">238</button>
+              <button class="page-btn"><i class="fas fa-chevron-right"></i></button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Skill Detail Drawer -->
+  <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+  <div class="drawer" id="drawer-skill-detail">
+    <div class="drawer-header">
+      <div class="drawer-header-icon skill-icon blue"><i class="fas fa-file-excel"></i></div>
+      <span class="drawer-header-title">Excel / XLSX</span>
+      <span class="drawer-header-version">v2.1.0</span>
+      <button class="drawer-close" onclick="closeDrawer()"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="drawer-body">
+      <!-- Main Content: Rendered SKILL.md -->
+      <div class="drawer-main">
+        <div class="drawer-tabs">
+          <div class="drawer-tab active" data-dtab="config"><i class="fas fa-cog"></i> 配置</div>
+          <div class="drawer-tab" data-dtab="readme"><i class="fas fa-book-open"></i> SKILL.md</div>
+          <div class="drawer-tab" data-dtab="files"><i class="fas fa-folder-tree"></i> Files</div>
+          <div class="drawer-tab" data-dtab="reviews"><i class="fas fa-star"></i> 评价 <span style="font-size:11px;color:var(--gray-400);margin-left:2px;">156</span></div>
+        </div>
+
+        <!-- Tab: Config (Default) -->
+        <div class="drawer-tab-panel active" id="dtab-config">
+          <div class="md-content">
+            <h2>配置选项</h2>
+            <p>该技能无需额外配置即可使用。以下为可选的高级配置：</p>
+
+            <h3>环境变量</h3>
+            <table>
+              <thead>
+                <tr><th>变量名</th><th>默认值</th><th>说明</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>EXCEL_MAX_ROWS</code></td><td>100000</td><td>最大行数限制</td></tr>
+                <tr><td><code>EXCEL_CACHE_SIZE</code></td><td>50</td><td>缓存的工作簿数量</td></tr>
+                <tr><td><code>EXCEL_DATE_FORMAT</code></td><td>YYYY-MM-DD</td><td>默认日期格式</td></tr>
+              </tbody>
+            </table>
+
+            <h3>SKILL.md 配置</h3>
+            <pre><code>---
+name: excel-xlsx
+description: >
+  创建、检查和编辑 Excel 工作簿和 XLSX 文件
+  支持公式、日期、格式和模板保持
+---</code></pre>
+          </div>
+        </div>
+
+        <!-- Tab: SKILL.md -->
+        <div class="drawer-tab-panel" id="dtab-readme">
+          <div class="md-content">
+            <h1>Excel / XLSX</h1>
+            <p>创建、检查和编辑 Microsoft Excel 工作簿和 XLSX 文件。支持可靠的公式、日期、类型、格式、重新计算和模板保持。适用于数据分析、报表生成、财务建模等场景。</p>
+
+            <h2>使用场景</h2>
+            <ul>
+              <li><strong>数据分析</strong> — 读取、清洗和转换 Excel 数据</li>
+              <li><strong>报表生成</strong> — 自动化创建格式化的 Excel 报表</li>
+              <li><strong>财务建模</strong> — 构建带公式的财务模型</li>
+              <li><strong>数据验证</strong> — 校验数据类型和格式</li>
+            </ul>
+
+            <h2>核心功能</h2>
+            <h3>工作簿操作</h3>
+            <ul>
+              <li>创建新的 XLSX 工作簿</li>
+              <li>读取和解析现有 Excel 文件</li>
+              <li>支持多 Sheet 操作</li>
+              <li>保持模板格式和样式</li>
+            </ul>
+
+            <h3>公式与计算</h3>
+            <ul>
+              <li>支持 Excel 内置函数（SUM、VLOOKUP、IF 等）</li>
+              <li>自动重新计算</li>
+              <li>单元格引用和跨 Sheet 引用</li>
+            </ul>
+
+            <h3>格式与样式</h3>
+            <ul>
+              <li>字体、颜色、对齐方式</li>
+              <li>边框和背景填充</li>
+              <li>列宽行高自适应</li>
+              <li>条件格式</li>
+            </ul>
+
+            <h2>快速开始</h2>
+            <p>安装后，直接在对话中描述你的需求即可：</p>
+            <pre><code># 创建一个包含销售数据的 Excel 文件
+请帮我创建一个 Excel 文件，包含以下列：
+- 产品名称
+- 单价
+- 数量
+- 总价（公式计算）
+
+# 读取并分析现有文件
+请读取 sales-2026.xlsx 并按月份汇总销售额</code></pre>
+
+            <h2>高级用法</h2>
+            <h3>模板保持</h3>
+            <p>使用现有文件作为模板，技能会自动保持原有格式：</p>
+            <pre><code>请使用 template.xlsx 作为模板，
+在 Sheet2 中添加新的数据行</code></pre>
+
+            <h3>数据验证</h3>
+            <p>支持对单元格设置数据验证规则：</p>
+            <pre><code>请在 B2:B100 范围内设置数据验证：
+- 类型：整数
+- 最小值：0
+- 最大值：10000
+- 错误提示：请输入有效的金额</code></pre>
+
+            <h2>注意事项</h2>
+            <blockquote>该技能使用纯 Node.js 预编译二进制完成全部操作，无需外部图形库，适合在各类服务器环境中部署。兼容 Excel 2016 及以上版本。</blockquote>
+
+            <h2>依赖</h2>
+            <ul>
+              <li><code>chart-image</code> — 图表生成（可选）</li>
+              <li><code>summarize</code> — 数据摘要（可选）</li>
+            </ul>
+
+            <h2>许可证</h2>
+            <p>MIT License</p>
+          </div>
+        </div>
+
+        <!-- Tab: Files -->
+        <div class="drawer-tab-panel" id="dtab-files">
+          <div class="file-tree">
+            <div class="file-tree-item">
+              <span class="file-icon md"><i class="fas fa-file-lines"></i></span>
+              <span class="file-name">SKILL.md <a href="#">打开</a></span>
+              <span class="file-size">4.3 KB</span>
+            </div>
+            <div class="file-tree-item">
+              <span class="file-icon json"><i class="fas fa-file-lines"></i></span>
+              <span class="file-name">package.json</span>
+              <span class="file-size">1.2 KB</span>
+            </div>
+            <div class="file-tree-item">
+              <span class="file-icon file"><i class="fas fa-file-lines"></i></span>
+              <span class="file-name">.gitignore</span>
+              <span class="file-size">128 B</span>
+            </div>
+            <div class="file-tree-sep"></div>
+            <div class="file-tree-item" onclick="toggleFolder(this)">
+              <span class="file-tree-toggle expanded"><i class="fas fa-chevron-right"></i></span>
+              <span class="file-icon folder"><i class="fas fa-folder-open"></i></span>
+              <span class="file-name">references/</span>
+              <span class="file-size">3 files</span>
+            </div>
+            <div class="file-tree-children">
+              <div class="file-tree-item">
+                <span class="file-icon md"><i class="fas fa-file-lines"></i></span>
+                <span class="file-name">progressive-disclosure.md <a href="#">打开</a></span>
+                <span class="file-size">2.1 KB</span>
+              </div>
+              <div class="file-tree-item">
+                <span class="file-icon md"><i class="fas fa-file-lines"></i></span>
+                <span class="file-name">skill-structure.md <a href="#">打开</a></span>
+                <span class="file-size">3.8 KB</span>
+              </div>
+              <div class="file-tree-item">
+                <span class="file-icon md"><i class="fas fa-file-lines"></i></span>
+                <span class="file-name">best-practices.md <a href="#">打开</a></span>
+                <span class="file-size">5.2 KB</span>
+              </div>
+            </div>
+            <div class="file-tree-item" onclick="toggleFolder(this)">
+              <span class="file-tree-toggle"><i class="fas fa-chevron-right"></i></span>
+              <span class="file-icon folder"><i class="fas fa-folder"></i></span>
+              <span class="file-name">scripts/</span>
+              <span class="file-size">2 files</span>
+            </div>
+            <div class="file-tree-children" style="display:none;">
+              <div class="file-tree-item">
+                <span class="file-icon py"><i class="fas fa-file-lines"></i></span>
+                <span class="file-name">easyclaw_register_skill.py <a href="#">打开</a></span>
+                <span class="file-size">1.8 KB</span>
+              </div>
+              <div class="file-tree-item">
+                <span class="file-icon py"><i class="fas fa-file-lines"></i></span>
+                <span class="file-name">easyclaw_unzip_skill.py <a href="#">打开</a></span>
+                <span class="file-size">2.4 KB</span>
+              </div>
+            </div>
+            <div class="file-tree-item" onclick="toggleFolder(this)">
+              <span class="file-tree-toggle"><i class="fas fa-chevron-right"></i></span>
+              <span class="file-icon folder"><i class="fas fa-folder"></i></span>
+              <span class="file-name">assets/</span>
+              <span class="file-size">1 file</span>
+            </div>
+            <div class="file-tree-children" style="display:none;">
+              <div class="file-tree-item">
+                <span class="file-icon file"><i class="fas fa-file-image"></i></span>
+                <span class="file-name">logo.png</span>
+                <span class="file-size">24.5 KB</span>
+              </div>
+            </div>
+          </div>
+          <div style="padding:16px 20px;border-top:1px solid var(--gray-100);display:flex;gap:8px;">
+            <button class="btn btn-default btn-sm"><i class="fas fa-download"></i> 下载全部</button>
+            <button class="btn btn-default btn-sm"><i class="fas fa-code-branch"></i> 在 GitHub 查看</button>
+          </div>
+        </div>
+
+        <!-- Tab: Reviews -->
+        <div class="drawer-tab-panel" id="dtab-reviews">
+          <div class="md-content">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+              <div>
+                <div style="font-size:28px;font-weight:700;color:var(--gray-900);">4.9 <i class="fas fa-star" style="color:var(--warning);font-size:18px;"></i></div>
+                <div style="font-size:12px;color:var(--gray-400);margin-top:2px;">基于 156 条评价</div>
+              </div>
+              <button class="btn btn-default btn-sm"><i class="fas fa-pen"></i> 写评价</button>
+            </div>
+
+            <div class="review-item" style="padding:16px 0;border-bottom:1px solid var(--gray-100);">
+              <div class="review-header">
+                <div class="mini-avatar" style="background:linear-gradient(135deg,#3B82F6,#8B5CF6);width:28px;height:28px;font-size:11px;">张</div>
+                <span class="review-author">张明</span>
+                <span class="review-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></span>
+                <span class="review-time">3 天前</span>
+              </div>
+              <div class="review-body" style="margin-top:8px;font-size:13px;line-height:1.6;">非常好用的 Excel 处理技能，公式支持很完善，模板保持效果也很棒。强烈推荐给需要处理报表的同学。</div>
+            </div>
+            <div class="review-item" style="padding:16px 0;border-bottom:1px solid var(--gray-100);">
+              <div class="review-header">
+                <div class="mini-avatar" style="background:linear-gradient(135deg,#10B981,#06B6D4);width:28px;height:28px;font-size:11px;">李</div>
+                <span class="review-author">李伟</span>
+                <span class="review-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i></span>
+                <span class="review-time">1 周前</span>
+              </div>
+              <div class="review-body" style="margin-top:8px;font-size:13px;line-height:1.6;">功能全面，性能也不错。唯一的小建议是希望能支持更多的图表类型。</div>
+            </div>
+            <div class="review-item" style="padding:16px 0;border-bottom:1px solid var(--gray-100);">
+              <div class="review-header">
+                <div class="mini-avatar" style="background:linear-gradient(135deg,#F43F5E,#EC4899);width:28px;height:28px;font-size:11px;">王</div>
+                <span class="review-author">王芳</span>
+                <span class="review-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></span>
+                <span class="review-time">2 周前</span>
+              </div>
+              <div class="review-body" style="margin-top:8px;font-size:13px;line-height:1.6;">终于找到了一个靠谱的 Excel 处理方案，省了我好多时间！</div>
+            </div>
+            <div class="review-item" style="padding:16px 0;">
+              <div class="review-header">
+                <div class="mini-avatar" style="background:linear-gradient(135deg,#F59E0B,#D97706);width:28px;height:28px;font-size:11px;">陈</div>
+                <span class="review-author">陈刚</span>
+                <span class="review-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i></span>
+                <span class="review-time">3 周前</span>
+              </div>
+              <div class="review-body" style="margin-top:8px;font-size:13px;line-height:1.6;">在生产环境用了两个月，很稳定。大数据量下表现也不错。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar: Properties + Install -->
+      <div class="drawer-sidebar">
+        <div class="drawer-sidebar-inner">
+          <div class="drawer-sidebar-content">
+            <!-- Install CTA -->
+            <div style="padding:20px 16px;border-bottom:1px solid var(--gray-100);">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <div class="skill-icon blue" style="width:44px;height:44px;border-radius:12px;font-size:20px;"><i class="fas fa-file-excel"></i></div>
+                <div>
+                  <div style="font-size:15px;font-weight:600;color:var(--gray-900);">Excel / XLSX</div>
+                  <div style="font-size:12px;color:var(--gray-400);">by <span style="color:var(--primary-600);cursor:pointer;">LumiBot</span></div>
+                </div>
+              </div>
+              <button class="btn btn-primary" style="width:100%;justify-content:center;"><i class="fas fa-download"></i> 安装技能</button>
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button class="btn btn-default btn-sm" style="flex:1;justify-content:center;"><i class="fas fa-heart"></i> 收藏</button>
+                <button class="btn btn-default btn-sm" style="flex:1;justify-content:center;"><i class="fas fa-share-nodes"></i> 分享</button>
+              </div>
+            </div>
+
+            <!-- Stats -->
+            <div style="display:flex;border-bottom:1px solid var(--gray-100);">
+              <div style="flex:1;text-align:center;padding:12px 8px;border-right:1px solid var(--gray-100);">
+                <div style="font-size:16px;font-weight:700;color:var(--gray-900);">3.4K</div>
+                <div style="font-size:11px;color:var(--gray-400);">安装</div>
+              </div>
+              <div style="flex:1;text-align:center;padding:12px 8px;border-right:1px solid var(--gray-100);">
+                <div style="font-size:16px;font-weight:700;color:var(--gray-900);">1.2K</div>
+                <div style="font-size:11px;color:var(--gray-400);">收藏</div>
+              </div>
+              <div style="flex:1;text-align:center;padding:12px 8px;">
+                <div style="font-size:16px;font-weight:700;color:var(--gray-900);">4.9 <i class="fas fa-star" style="color:var(--warning);font-size:11px;"></i></div>
+                <div style="font-size:11px;color:var(--gray-400);">评分</div>
+              </div>
+            </div>
+
+            <!-- Properties -->
+            <ul class="drawer-props">
+              <li class="drawer-prop"><span class="drawer-prop-label">版本</span><span class="drawer-prop-value"><span style="font-family:'SF Mono','Fira Code',monospace;font-size:12px;padding:2px 6px;background:var(--gray-100);border-radius:4px;">v2.1.0</span></span></li>
+              <li class="drawer-prop"><span class="drawer-prop-label">更新</span><span class="drawer-prop-value text-sm">2026-06-08</span></li>
+              <li class="drawer-prop"><span class="drawer-prop-label">分类</span><span class="drawer-prop-value"><span class="category-badge process">数据处理</span></span></li>
+              <li class="drawer-prop"><span class="drawer-prop-label">大小</span><span class="drawer-prop-value">245 KB</span></li>
+              <li class="drawer-prop"><span class="drawer-prop-label">许可</span><span class="drawer-prop-value">MIT</span></li>
+              <li class="drawer-prop"><span class="drawer-prop-label">兼容</span><span class="drawer-prop-value">Node 18+</span></li>
+              <li class="drawer-prop"><span class="drawer-prop-label">平台</span><span class="drawer-prop-value">所有平台</span></li>
+            </ul>
+
+            <!-- Links -->
+            <div class="drawer-card">
+              <div class="drawer-card-header"><span class="drawer-card-title">链接</span></div>
+              <ul class="drawer-props">
+                <li class="drawer-prop"><span class="drawer-prop-label">仓库</span><span class="drawer-prop-value" style="color:var(--primary-600);cursor:pointer;font-size:12px;"><i class="fab fa-github" style="margin-right:4px;"></i>GitHub</span></li>
+                <li class="drawer-prop"><span class="drawer-prop-label">文档</span><span class="drawer-prop-value" style="color:var(--primary-600);cursor:pointer;font-size:12px;"><i class="fas fa-book" style="margin-right:4px;"></i>查看文档</span></li>
+                <li class="drawer-prop"><span class="drawer-prop-label">问题</span><span class="drawer-prop-value" style="color:var(--primary-600);cursor:pointer;font-size:12px;"><i class="fas fa-bug" style="margin-right:4px;"></i>3 个开放</span></li>
+              </ul>
+            </div>
+
+            <!-- Dependencies -->
+            <div class="drawer-card" style="border-bottom:none;">
+              <div class="drawer-card-header"><span class="drawer-card-title">依赖 <span class="count">2</span></span></div>
+              <ul class="drawer-props">
+                <li class="drawer-prop"><span class="drawer-prop-label"></span><span class="drawer-prop-value" style="font-size:12px;font-family:'SF Mono','Fira Code',monospace;color:var(--primary-600);cursor:pointer;">chart-image</span></li>
+                <li class="drawer-prop"><span class="drawer-prop-label"></span><span class="drawer-prop-value" style="font-size:12px;font-family:'SF Mono','Fira Code',monospace;color:var(--primary-600);cursor:pointer;">summarize</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Publish Skill Modal -->
+  <div class="modal-overlay" id="modal-publish-skill">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h2><i class="fas fa-rocket" style="color:var(--primary-500);"></i> 发布新技能</h2>
+        <button class="modal-close" onclick="closeModal('modal-publish-skill')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Steps -->
+        <div class="step-bar">
+          <div class="step-item active" data-step="1">
+            <span class="step-num">1</span> 基本信息
+          </div>
+          <div class="step-item" data-step="2">
+            <span class="step-num">2</span> 配置详情
+          </div>
+          <div class="step-item" data-step="3">
+            <span class="step-num">3</span> 发布确认
+          </div>
+        </div>
+
+        <!-- Step 1: Basic Info -->
+        <div class="step-panel active" id="step-1">
+          <div class="form-group">
+            <label class="form-label">技能名称 <span class="required">*</span></label>
+            <input class="form-input" id="skill-name-input" placeholder="例如：Excel 智能分析助手" />
+            <div class="form-hint">技能的唯一标识名称，将作为 SKILL.md 的目录名</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">简短描述 <span class="required">*</span></label>
+            <input class="form-input" placeholder="一句话描述技能的核心能力" />
+            <div class="form-hint">将展示在技能卡片上，建议不超过 50 个字</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">详细说明</label>
+            <textarea class="form-textarea" rows="4" placeholder="详细介绍技能的功能、使用场景和注意事项…&#10;&#10;支持 Markdown 语法"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">分类 <span class="required">*</span></label>
+              <select class="form-select">
+                <option value="">选择分类…</option>
+                <option>文本处理</option>
+                <option>数据分析</option>
+                <option>编程开发</option>
+                <option>图像生成</option>
+                <option>内容创作</option>
+                <option>办公效率</option>
+                <option>科研学术</option>
+                <option>AI Agent</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">版本号 <span class="required">*</span></label>
+              <input class="form-input" placeholder="例如：1.0.0" />
+              <div class="form-hint">遵循语义化版本规范 (SemVer)</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">标签</label>
+            <div class="tag-input-wrap" id="tag-input-wrap">
+              <span class="tag-input-tag">CLI <span class="remove" onclick="this.parentElement.remove()">×</span></span>
+              <span class="tag-input-tag">数据 <span class="remove" onclick="this.parentElement.remove()">×</span></span>
+              <input type="text" class="tag-input-field" id="tag-input" placeholder="输入标签后按 Enter 添加…">
+            </div>
+            <div class="form-hint">最多添加 5 个标签，用于帮助用户发现你的技能</div>
+          </div>
+        </div>
+
+        <!-- Step 2: Configuration -->
+        <div class="step-panel" id="step-2">
+          <div class="form-group">
+            <label class="form-label">技能图标</label>
+            <div class="icon-picker">
+              <div class="icon-option selected" style="background:var(--info-light);color:var(--info);"><i class="fas fa-file-excel"></i></div>
+              <div class="icon-option" style="background:var(--violet-light);color:var(--violet);"><i class="fas fa-chart-line"></i></div>
+              <div class="icon-option" style="background:var(--emerald-light);color:var(--emerald);"><i class="fas fa-globe"></i></div>
+              <div class="icon-option" style="background:var(--amber-light);color:var(--amber);"><i class="fas fa-palette"></i></div>
+              <div class="icon-option" style="background:var(--rose-light);color:var(--rose);"><i class="fas fa-microphone"></i></div>
+              <div class="icon-option" style="background:var(--cyan-light);color:var(--cyan);"><i class="fas fa-shield-alt"></i></div>
+              <div class="icon-option" style="background:var(--info-light);color:var(--info);"><i class="fas fa-code"></i></div>
+              <div class="icon-option" style="background:var(--violet-light);color:var(--violet);"><i class="fas fa-brain"></i></div>
+              <div class="icon-option" style="background:var(--emerald-light);color:var(--emerald);"><i class="fas fa-database"></i></div>
+              <div class="icon-option" style="background:var(--amber-light);color:var(--amber);"><i class="fas fa-wand-magic-sparkles"></i></div>
+              <div class="icon-option" style="background:var(--rose-light);color:var(--rose);"><i class="fas fa-pen-nib"></i></div>
+              <div class="icon-option" style="background:var(--cyan-light);color:var(--cyan);"><i class="fas fa-terminal"></i></div>
+            </div>
+            <div class="form-hint" style="margin-top:8px;">选择一个图标代表你的技能</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">技能包上传 <span class="required">*</span></label>
+            <div class="upload-zone">
+              <i class="fas fa-cloud-arrow-up"></i>
+              <p>点击或拖拽 SKILL.md 文件到此区域上传</p>
+              <div class="upload-hint">支持 .md 格式，单个文件最大 500KB</div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">兼容环境</label>
+              <select class="form-select">
+                <option>所有平台</option>
+                <option>macOS / Linux</option>
+                <option>仅 Linux</option>
+                <option>仅 macOS</option>
+                <option>仅 Windows</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">最低 Node 版本</label>
+              <select class="form-select">
+                <option>Node 18+</option>
+                <option>Node 20+</option>
+                <option>Node 22+</option>
+                <option>无要求</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">许可证</label>
+              <select class="form-select">
+                <option>MIT</option>
+                <option>Apache-2.0</option>
+                <option>GPL-3.0</option>
+                <option>BSD-3-Clause</option>
+                <option>私有</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">仓库地址</label>
+              <input class="form-input" placeholder="https://github.com/..." />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">依赖的其他技能</label>
+            <select class="form-select">
+              <option value="">选择依赖的技能…</option>
+              <option>chart-image</option>
+              <option>summarize</option>
+              <option>web-fetch</option>
+              <option>excel-xlsx</option>
+            </select>
+            <div class="form-hint">你的技能依赖的其他 Skill Hub 技能（可选）</div>
+          </div>
+        </div>
+
+        <!-- Step 3: Confirm -->
+        <div class="step-panel" id="step-3">
+          <div style="text-align:center;padding:20px 0 24px;">
+            <div style="width:64px;height:64px;border-radius:16px;background:var(--success-light);color:var(--success);display:inline-flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:16px;">
+              <i class="fas fa-check"></i>
+            </div>
+            <h3 style="font-size:18px;font-weight:600;color:var(--gray-900);margin-bottom:8px;">确认发布信息</h3>
+            <p style="font-size:13px;color:var(--gray-500);">请检查以下信息，确认无误后点击发布</p>
+          </div>
+          <div style="background:var(--gray-50);border-radius:var(--border-radius);padding:16px 20px;margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+              <div class="skill-icon blue" style="width:40px;height:40px;border-radius:10px;font-size:18px;" id="confirm-icon"><i class="fas fa-puzzle-piece"></i></div>
+              <div>
+                <div style="font-size:15px;font-weight:600;color:var(--gray-900);" id="confirm-name">技能名称</div>
+                <div style="font-size:12px;color:var(--gray-500);" id="confirm-desc">技能描述</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+              <div><span style="color:var(--gray-400);">分类：</span><span id="confirm-category">—</span></div>
+              <div><span style="color:var(--gray-400);">版本：</span><span id="confirm-version">—</span></div>
+              <div><span style="color:var(--gray-400);">许可证：</span><span id="confirm-license">MIT</span></div>
+              <div><span style="color:var(--gray-400);">平台：</span><span id="confirm-platform">所有平台</span></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:var(--info-light);border-radius:var(--border-radius-sm);font-size:12px;color:var(--info);">
+            <i class="fas fa-info-circle" style="margin-top:2px;flex-shrink:0;"></i>
+            <div>发布后技能将进入审核队列，审核通过后将自动上架 Skill Hub。审核通常在 24 小时内完成。</div>
+          </div>
+          <div class="form-group" style="margin-top:16px;">
+            <label class="form-toggle">
+              <input type="checkbox" checked>
+              <span></span>
+              <span style="font-size:13px;color:var(--gray-700);">我已阅读并同意 <a href="#" style="color:var(--primary-600);">Skill Hub 发布协议</a></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-default" onclick="closeModal('modal-publish-skill')">取消</button>
+        <button class="btn btn-default" id="btn-prev-step" style="display:none;" onclick="prevStep()"><i class="fas fa-arrow-left"></i> 上一步</button>
+        <button class="btn btn-primary" id="btn-next-step" onclick="nextStep()">下一步 <i class="fas fa-arrow-right"></i></button>
+        <button class="btn btn-success" id="btn-publish" style="display:none;" onclick="publishSkill()"><i class="fas fa-paper-plane"></i> 发布技能</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Category tab switching
+    document.querySelectorAll('.category-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+      });
+    });
+
+    // Sort pill switching
+    document.querySelectorAll('.sort-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.sort-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+      });
+    });
+
+    // View toggle
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // Pagination
+    document.querySelectorAll('.page-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.querySelector('i')) return; // skip arrows
+        document.querySelectorAll('.page-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // Drawer
+    function openDrawer() {
+      document.getElementById('drawer-overlay').classList.add('show');
+      document.getElementById('drawer-skill-detail').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeDrawer() {
+      document.getElementById('drawer-overlay').classList.remove('show');
+      document.getElementById('drawer-skill-detail').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (document.getElementById('drawer-skill-detail').classList.contains('show')) closeDrawer();
+        if (document.querySelector('.modal-overlay.show')) closeModal('modal-publish-skill');
+      }
+    });
+
+    // Modal
+    function openModal(id) {
+      document.getElementById(id).classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+      document.body.style.overflow = '';
+      // Reset steps
+      currentStep = 1;
+      updateSteps();
+    }
+    // Close modal on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.classList.remove('show');
+          document.body.style.overflow = '';
+          currentStep = 1;
+          updateSteps();
+        }
+      });
+    });
+
+    // Step navigation
+    let currentStep = 1;
+    const totalSteps = 3;
+
+    function updateSteps() {
+      // Update step bar
+      document.querySelectorAll('.step-item').forEach(item => {
+        const step = parseInt(item.dataset.step);
+        item.classList.remove('active', 'done');
+        if (step === currentStep) item.classList.add('active');
+        else if (step < currentStep) item.classList.add('done');
+      });
+      // Update panels
+      document.querySelectorAll('.step-panel').forEach(panel => panel.classList.remove('active'));
+      document.getElementById('step-' + currentStep).classList.add('active');
+      // Update buttons
+      document.getElementById('btn-prev-step').style.display = currentStep > 1 ? '' : 'none';
+      document.getElementById('btn-next-step').style.display = currentStep < totalSteps ? '' : 'none';
+      document.getElementById('btn-publish').style.display = currentStep === totalSteps ? '' : 'none';
+      // Populate confirm page
+      if (currentStep === 3) populateConfirm();
+    }
+
+    function nextStep() {
+      if (currentStep < totalSteps) { currentStep++; updateSteps(); }
+    }
+    function prevStep() {
+      if (currentStep > 1) { currentStep--; updateSteps(); }
+    }
+
+    function populateConfirm() {
+      const name = document.getElementById('skill-name-input').value || '未命名技能';
+      document.getElementById('confirm-name').textContent = name;
+    }
+
+    function publishSkill() {
+      const btn = document.getElementById('btn-publish');
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发布中…';
+      btn.disabled = true;
+      setTimeout(() => {
+        closeModal('modal-publish-skill');
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> 发布技能';
+        btn.disabled = false;
+        // Show success toast
+        showToast('技能已成功提交审核！');
+      }, 1500);
+    }
+
+    // Toast notification
+    function showToast(msg) {
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;top:24px;right:24px;z-index:600;background:var(--success);color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:8px;animation:modalIn 0.2s ease;';
+      toast.innerHTML = '<i class="fas fa-check-circle"></i> ' + msg;
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    // Tag input
+    document.getElementById('tag-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && this.value.trim()) {
+        e.preventDefault();
+        const tag = document.createElement('span');
+        tag.className = 'tag-input-tag';
+        tag.innerHTML = this.value.trim() + ' <span class="remove" onclick="this.parentElement.remove()">×</span>';
+        this.parentElement.insertBefore(tag, this);
+        this.value = '';
+      }
+    });
+    document.getElementById('tag-input-wrap').addEventListener('click', function() {
+      document.getElementById('tag-input').focus();
+    });
+
+    // Icon picker
+    document.querySelectorAll('.icon-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.icon-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+      });
+    });
+
+    // Drawer tabs
+    document.querySelectorAll('.drawer-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.drawer-tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('dtab-' + tab.dataset.dtab).classList.add('active');
+      });
+    });
+
+    // File tree folder toggle
+    function toggleFolder(item) {
+      const toggle = item.querySelector('.file-tree-toggle');
+      const children = item.nextElementSibling;
+      const icon = item.querySelector('.file-icon.folder i');
+      if (toggle.classList.contains('expanded')) {
+        toggle.classList.remove('expanded');
+        children.style.display = 'none';
+        icon.className = 'fas fa-folder';
+      } else {
+        toggle.classList.add('expanded');
+        children.style.display = 'block';
+        icon.className = 'fas fa-folder-open';
+      }
+    }
+
+    // Publish button in toolbar
+    document.querySelector('.btn-primary[onclick]')?.addEventListener('click', function(e) {
+      // handled by inline onclick
+    });
+
+    // Install button hover effect
+    document.querySelectorAll('.skill-install-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        btn.textContent = '已安装 ✓';
+        btn.style.background = 'var(--success-light)';
+        btn.style.color = 'var(--success)';
+      });
+    });
+
+    // Like toggle
+    document.querySelectorAll('.skill-stat').forEach(stat => {
+      if (stat.querySelector('.fa-heart')) {
+        stat.style.cursor = 'pointer';
+        stat.addEventListener('click', (e) => {
+          e.stopPropagation();
+          stat.classList.toggle('liked');
+        });
+      }
+    });
+  </script>
+</body>
+</html>

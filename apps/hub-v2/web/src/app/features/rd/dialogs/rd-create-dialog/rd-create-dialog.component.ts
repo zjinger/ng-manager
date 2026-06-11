@@ -198,7 +198,7 @@ const DEFAULT_DRAFT: Draft = {
             <div nz-col nzSpan="12">
               <nz-form-item>
                 <nz-form-label nzFor="planStartAt">计划开始</nz-form-label>
-                <nz-form-control [nzValidateStatus]="hasInvalidPlanRange() ? 'error' : ''">
+                <nz-form-control [nzValidateStatus]="hasInvalidPlanRange() || hasMissingItemPlanRangeForStageTaskPlan() ? 'error' : ''">
                   <nz-date-picker
                     style="width:100%"
                     nzPlaceHolder="请选择日期"
@@ -215,7 +215,7 @@ const DEFAULT_DRAFT: Draft = {
               <nz-form-item>
                 <nz-form-label nzFor="planEndAt">计划结束</nz-form-label>
                 <nz-form-control
-                  [nzValidateStatus]="hasInvalidPlanRange() ? 'error' : ''"
+                  [nzValidateStatus]="hasInvalidPlanRange() || hasMissingItemPlanRangeForStageTaskPlan() ? 'error' : ''"
                   nzErrorTip="计划开始不能晚于计划结束。"
                 >
                   <nz-date-picker
@@ -248,7 +248,7 @@ const DEFAULT_DRAFT: Draft = {
                 emptyText="选择分配执行人后，可按执行人新增当前阶段任务。"
                 noTemplateText="当前阶段未配置任务模板，可直接手动输入阶段任务。"
                 [missingTitleError]="showMissingStageTaskTitleError() ? '请为每位执行人选择或填写阶段任务标题。' : ''"
-                [planError]="showStageTaskPlanError() ? '阶段任务计划时间需在研发项计划周期内，且开始不能晚于结束。' : ''"
+                [planError]="showStageTaskPlanError() ? stageTaskPlanErrorTip() : ''"
                 (taskTitleChange)="setMemberTaskTitle($event.userId, $event.value)"
                 (taskTitleBlur)="markMemberTaskTitleTouched($event)"
                 (taskPlanDateChange)="setMemberTaskPlanDate($event.userId, $event.key, $event.value)"
@@ -482,26 +482,23 @@ export class RdCreateDialogComponent {
   }
 
   hasInvalidMemberTaskPlanRange(userId: string): boolean {
-    const start = this.memberTaskPlanStartDate(userId);
-    const end = this.memberTaskPlanEndDate(userId);
+    const start = this.toDateOnlyValue(this.memberTaskPlanStartDate(userId));
+    const end = this.toDateOnlyValue(this.memberTaskPlanEndDate(userId));
     if (!start && !end) {
       return false;
     }
-    if (start && end && start.getTime() > end.getTime()) {
+    if (start && end && start > end) {
       return true;
     }
-    const itemStart = this.planStartDate();
-    const itemEnd = this.planEndDate();
-    if (itemStart && start && start.getTime() < itemStart.getTime()) {
+    const itemStart = this.toDateOnlyValue(this.planStartDate());
+    const itemEnd = this.toDateOnlyValue(this.planEndDate());
+    if (!itemStart || !itemEnd) {
       return true;
     }
-    if (itemEnd && start && start.getTime() > itemEnd.getTime()) {
+    if (start && (start < itemStart || start > itemEnd)) {
       return true;
     }
-    if (itemStart && end && end.getTime() < itemStart.getTime()) {
-      return true;
-    }
-    return !!itemEnd && !!end && end.getTime() > itemEnd.getTime();
+    return !!end && (end < itemStart || end > itemEnd);
   }
 
   hasMissingStageTaskTitle(): boolean {
@@ -518,9 +515,23 @@ export class RdCreateDialogComponent {
       return '请为每位执行人选择或填写阶段任务标题。';
     }
     if (this.hasInvalidStageTaskPlanRange()) {
-      return '阶段任务计划时间必须在研发项计划开始和计划结束之间，且开始不能晚于结束。';
+      return this.stageTaskPlanErrorTip();
     }
     return '';
+  }
+
+  stageTaskPlanErrorTip(): string {
+    if (this.hasMissingItemPlanRangeForStageTaskPlan()) {
+      return '请先选择研发项计划开始和计划结束，再填写阶段任务计划时间。';
+    }
+    return '阶段任务计划时间需在研发项计划周期内，且开始不能晚于结束。';
+  }
+
+  hasMissingItemPlanRangeForStageTaskPlan(): boolean {
+    const hasTaskPlanDate = this.assignedExecutorMembers().some((member) =>
+      !!this.memberTaskPlanStartDate(member.userId) || !!this.memberTaskPlanEndDate(member.userId)
+    );
+    return hasTaskPlanDate && (!this.planStartDate() || !this.planEndDate());
   }
 
   showMemberTaskTitleError(userId: string): boolean {
@@ -585,6 +596,13 @@ export class RdCreateDialogComponent {
     }
 
     return null;
+  }
+
+  private toDateOnlyValue(value: Date | null): number | null {
+    if (!value) {
+      return null;
+    }
+    return value.getFullYear() * 10000 + (value.getMonth() + 1) * 100 + value.getDate();
   }
 
   submitForm(): void {

@@ -3,18 +3,25 @@ import path from "node:path";
 import { AppError } from "../../shared/errors/app-error";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
 import type { RequestContext } from "../../shared/context/request-context";
+import type { UploadCommandContract } from "../upload/upload.contract";
 import { genId } from "../../shared/utils/id";
 import { nowIso } from "../../shared/utils/time";
 import { requirePermission } from "../utils/require-permission";
 import type { SkillHubCommandContract, SkillHubQueryContract } from "./skill-hub.contract";
 import { SkillHubRepo } from "./skill-hub.repo";
 import type {
+  CreateSkillCommentInput,
   CreateSkillInput,
   CreateSkillVersionInput,
   ListSkillsQuery,
   RejectSkillVersionInput,
+  ReviewSkillInput,
+  SkillDiscoveryMeta,
   SkillDetailEntity,
   SkillEntity,
+  SkillExportConfig,
+  SkillExportTarget,
+  SkillCommentEntity,
   SkillListResult,
   SkillPackageManifest,
   SkillUploadInput,
@@ -28,19 +35,57 @@ const JSZip = require("jszip") as {
 };
 
 const MAX_SKILL_FILES = 500;
+const MAX_FILE_PREVIEW_BYTES = 128 * 1024;
 const DEFAULT_VERSION = "0.1.0";
+const AUTO_APPROVE_SKILL_UPLOADS = true;
+const TEXT_PREVIEW_EXTENSIONS = new Set([
+  ".md",
+  ".mdx",
+  ".txt",
+  ".json",
+  ".jsonc",
+  ".yaml",
+  ".yml",
+  ".toml",
+  ".ini",
+  ".conf",
+  ".config",
+  ".xml",
+  ".html",
+  ".css",
+  ".scss",
+  ".less",
+  ".js",
+  ".jsx",
+  ".ts",
+  ".tsx",
+  ".mjs",
+  ".cjs",
+  ".py",
+  ".sh",
+  ".ps1",
+  ".bat",
+  ".cmd",
+  ".env",
+  ".gitignore"
+]);
 
 type ParsedSkillPackage = {
   manifest: SkillPackageManifest;
   readmeMd: string;
+  packageVersion: string | null;
 };
 
 export class SkillHubService implements SkillHubCommandContract, SkillHubQueryContract {
-  constructor(private readonly repo: SkillHubRepo) {}
+  constructor(
+    private readonly repo: SkillHubRepo,
+    private readonly uploadCommand: UploadCommandContract
+  ) {}
 
   async create(input: CreateSkillInput, ctx: RequestContext): Promise<SkillDetailEntity> {
     this.requireCreatePermission(ctx);
     const parsed = this.parsePackage(input);
+    const skillName = this.normalizeSkillName(input.name || parsed.manifest.name);
     const slug = this.normalizeSlug(input.slug || parsed.manifest.name);
     const existing = this.repo.findBySlug(slug);
     if (existing) {
@@ -49,28 +94,31 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
 
     const now = nowIso();
     const skillId = genId("skl");
-    const version = this.normalizeVersion(input.version, DEFAULT_VERSION);
+    const version = this.resolveVersion(input.version, parsed.packageVersion, DEFAULT_VERSION);
     const tags = this.normalizeTags(input.tags);
-    const versionEntity = this.buildVersion(skillId, version, input, parsed, ctx, now);
+    const descriptionMd = this.normalizeDescriptionMd(input.descriptionMd);
+    const versionEntity = this.applyUploadApprovalStrategy(this.buildVersion(skillId, version, input, parsed, ctx, now), ctx, now);
 
     this.repo.runInTransaction(() => {
       this.repo.createSkill({
         id: skillId,
         slug,
-        name: parsed.manifest.name,
+        name: skillName,
         description: parsed.manifest.description,
+        descriptionMd,
         category: input.category?.trim() || "general",
         tags,
         ownerUserId: this.actorUserId(ctx),
-        status: "draft",
-        latestVersionId: null,
+        status: versionEntity.status === "published" ? "published" : "draft",
+        latestVersionId: versionEntity.status === "published" ? versionEntity.id : null,
         createdAt: now,
         updatedAt: now
       });
       this.repo.createVersion(versionEntity);
     });
+    await this.promoteTempMarkdownUploads(skillId, descriptionMd, ctx);
 
-    return this.requireDetail(skillId);
+    return this.requireDetail(skillId, this.actorUserId(ctx));
   }
 
   async createVersion(skillId: string, input: CreateSkillVersionInput, ctx: RequestContext): Promise<SkillDetailEntity> {
@@ -79,24 +127,35 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
     this.requireOwner(skill, ctx, "create skill version");
 
     const parsed = this.parsePackage(input);
-    if (parsed.manifest.name.trim() !== skill.name.trim()) {
-      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "skill package name must match the existing skill", 400);
+    const packageName = parsed.manifest.name.trim();
+    const allowedNames = new Set([skill.name.trim(), skill.slug.trim()].filter(Boolean));
+    if (!allowedNames.has(packageName)) {
+      throw new AppError(
+        ERROR_CODES.SKILL_PACKAGE_INVALID,
+        `上传包声明的 Skill 名称为「${packageName}」，必须与当前 Skill「${skill.name.trim()}」或 slug「${skill.slug.trim()}」一致。请确认 zip 包内 SKILL.md 的 name 字段。`,
+        400
+      );
     }
-    const version = this.normalizeVersion(input.version, this.nextDefaultVersion(skill));
+    const version = this.resolveVersion(input.version, parsed.packageVersion, this.nextDefaultVersion(skill));
     this.assertVersionCanBeAdded(skill.id, version);
     const now = nowIso();
-    const versionEntity = this.buildVersion(skill.id, version, input, parsed, ctx, now);
+    const versionEntity = this.applyUploadApprovalStrategy(this.buildVersion(skill.id, version, input, parsed, ctx, now), ctx, now);
+    const descriptionMd = input.descriptionMd !== undefined ? this.normalizeDescriptionMd(input.descriptionMd) : skill.descriptionMd;
 
     this.repo.runInTransaction(() => {
       this.repo.createVersion(versionEntity);
       this.repo.updateSkill(skill.id, {
+        descriptionMd,
         category: input.category?.trim() || skill.category,
         tags: input.tags?.length ? this.normalizeTags(input.tags) : skill.tags,
+        status: versionEntity.status === "published" ? "published" : skill.status,
+        latestVersionId: versionEntity.status === "published" ? versionEntity.id : skill.latestVersionId,
         updatedAt: now
       });
     });
+    await this.promoteTempMarkdownUploads(skill.id, descriptionMd, ctx);
 
-    return this.requireDetail(skill.id);
+    return this.requireDetail(skill.id, this.actorUserId(ctx));
   }
 
   async submitVersion(skillId: string, versionId: string, ctx: RequestContext): Promise<SkillVersionEntity> {
@@ -141,7 +200,7 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
       });
     });
 
-    return this.requireDetail(skill.id);
+    return this.requireDetail(skill.id, this.actorUserId(ctx));
   }
 
   async rejectVersion(
@@ -179,6 +238,87 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
     return this.requireSkill(skill.id);
   }
 
+  async deleteSkill(skillId: string, ctx: RequestContext): Promise<{ id: string }> {
+    const skill = this.requireSkill(skillId);
+    if (skill.status === "archived") {
+      this.requireManagePermission(ctx);
+    } else {
+      this.requireOwner(skill, ctx, "delete skill draft");
+    }
+    const versions = this.repo.listVersions(skill.id);
+    const hasReviewedOrSubmittedVersion = versions.some((item) => item.status === "submitted" || item.status === "published");
+    if (skill.status === "draft" && hasReviewedOrSubmittedVersion) {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "only pure draft skills can be deleted", 400);
+    }
+    if (skill.status !== "draft" && skill.status !== "archived") {
+      throw new AppError(ERROR_CODES.BAD_REQUEST, "only draft or archived skills can be deleted", 400);
+    }
+
+    const uploadIds = Array.from(new Set(versions.map((item) => item.packageUploadId).filter(Boolean)));
+    this.repo.runInTransaction(() => {
+      this.repo.deleteSkill(skill.id);
+    });
+
+    for (const uploadId of uploadIds) {
+      await this.uploadCommand.deactivateUpload(uploadId, ctx);
+    }
+
+    return { id: skill.id };
+  }
+
+  async deleteDraft(skillId: string, ctx: RequestContext): Promise<{ id: string }> {
+    return this.deleteSkill(skillId, ctx);
+  }
+
+  async setFavorite(skillId: string, favorite: boolean, ctx: RequestContext): Promise<SkillDetailEntity> {
+    this.requireViewPermission(ctx);
+    const skill = this.requirePublishedSkill(skillId);
+    const userId = this.requireActorUserId(ctx);
+    this.repo.setFavorite(skill.id, userId, favorite, nowIso());
+    return this.requireDetail(skill.id, userId);
+  }
+
+  async review(skillId: string, input: ReviewSkillInput, ctx: RequestContext): Promise<SkillDetailEntity> {
+    this.requireViewPermission(ctx);
+    const skill = this.requirePublishedSkill(skillId);
+    const userId = this.requireActorUserId(ctx);
+    this.repo.upsertReview({
+      id: genId("skr"),
+      skillId: skill.id,
+      userId,
+      rating: input.rating,
+      comment: input.comment?.trim() || null,
+      now: nowIso()
+    });
+    return this.requireDetail(skill.id, userId);
+  }
+
+  async createComment(skillId: string, input: CreateSkillCommentInput, ctx: RequestContext): Promise<SkillCommentEntity> {
+    this.requireViewPermission(ctx);
+    const detail = this.requireDetail(skillId, this.actorUserId(ctx));
+    this.requireCanReadSkill(detail, ctx);
+    const now = nowIso();
+    const entity: SkillCommentEntity = {
+      id: genId("skc"),
+      skillId: detail.id,
+      authorId: this.actorUserId(ctx),
+      authorName: ctx.nickname?.trim() || ctx.userId?.trim() || ctx.accountId,
+      content: input.content.trim(),
+      createdAt: now,
+      updatedAt: now
+    };
+    this.repo.createComment(entity);
+    await this.uploadCommand.promoteMarkdownUploads(
+      {
+        content: entity.content,
+        bucket: "skills",
+        entityId: detail.id
+      },
+      ctx
+    );
+    return entity;
+  }
+
   async list(query: ListSkillsQuery, ctx: RequestContext): Promise<SkillListResult> {
     return this.repo.list(query, {
       userId: this.actorUserId(ctx),
@@ -186,10 +326,24 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
     });
   }
 
+  async getMeta(query: ListSkillsQuery, ctx: RequestContext): Promise<SkillDiscoveryMeta> {
+    return this.repo.getMeta(query, {
+      userId: this.actorUserId(ctx),
+      canReview: this.canReview(ctx)
+    });
+  }
+
   async getById(skillId: string, ctx: RequestContext): Promise<SkillDetailEntity> {
-    const detail = this.requireDetail(skillId);
+    const detail = this.requireDetail(skillId, this.actorUserId(ctx));
     this.requireCanReadSkill(detail, ctx);
     return detail;
+  }
+
+  async listComments(skillId: string, ctx: RequestContext): Promise<SkillCommentEntity[]> {
+    this.requireViewPermission(ctx);
+    const detail = this.requireDetail(skillId, this.actorUserId(ctx));
+    this.requireCanReadSkill(detail, ctx);
+    return this.repo.listComments(detail.id);
   }
 
   async getDownload(skillId: string, versionId: string, _ctx: RequestContext): Promise<SkillVersionEntity> {
@@ -202,6 +356,31 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
       throw new AppError(ERROR_CODES.SKILL_VERSION_NOT_FOUND, "skill version not found", 404);
     }
     return version;
+  }
+
+  async getExport(skillId: string, versionId: string, target: SkillExportTarget, ctx: RequestContext): Promise<SkillExportConfig> {
+    const skill = this.requirePublishedSkill(skillId);
+    const version = await this.getDownload(skill.id, versionId, ctx);
+    const downloadUrl = `/api/admin/skills/${encodeURIComponent(skill.id)}/versions/${encodeURIComponent(version.id)}/download`;
+    const base = {
+      id: skill.id,
+      slug: skill.slug,
+      name: skill.name,
+      description: skill.description,
+      version: version.version,
+      category: skill.category,
+      tags: skill.tags,
+      downloadUrl,
+      skillMdPath: version.manifest.validation.skillMdPath,
+      rootPrefix: version.manifest.rootPrefix
+    };
+    const content = this.buildExportContent(target, base);
+    return {
+      target,
+      fileName: `${skill.slug}-${target}.json`,
+      contentType: "application/json",
+      content
+    };
   }
 
   private buildVersion(
@@ -228,6 +407,22 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
       reviewComment: null,
       publishedAt: null,
       createdAt: now,
+      updatedAt: now
+    };
+  }
+
+  private applyUploadApprovalStrategy(version: SkillVersionEntity, ctx: RequestContext, now: string): SkillVersionEntity {
+    if (!AUTO_APPROVE_SKILL_UPLOADS) {
+      return version;
+    }
+    const actor = this.actorUserId(ctx);
+    return {
+      ...version,
+      status: "published",
+      submittedByUserId: actor,
+      reviewedByUserId: actor,
+      reviewComment: null,
+      publishedAt: now,
       updatedAt: now
     };
   }
@@ -271,6 +466,7 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
     const frontMatter = this.parseFrontMatter(readmeMd);
     const name = frontMatter.name?.trim();
     const description = frontMatter.description?.trim();
+    const packageVersion = frontMatter.version?.trim() || null;
     if (!name || !description) {
       throw new AppError(ERROR_CODES.SKILL_PACKAGE_INVALID, "SKILL.md front matter must include name and description", 400);
     }
@@ -281,7 +477,11 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
       description,
       rootPrefix,
       files: normalizedFiles
-        .map((entry) => ({ path: entry.path, size: entry.size }))
+        .map((entry) => ({
+          path: entry.path,
+          size: entry.size,
+          ...this.buildFilePreview(entry.path, entry.size, entry.original)
+        }))
         .sort((a, b) => a.path.localeCompare(b.path)),
       validation: {
         skillMdPath,
@@ -289,7 +489,30 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
         packageSize: input.packageSize
       }
     };
-    return { manifest, readmeMd };
+    return { manifest, readmeMd, packageVersion };
+  }
+
+  private buildFilePreview(pathName: string, size: number, entry: { asText(): string }): { content?: string; contentTruncated?: boolean } {
+    if (!this.canPreviewTextFile(pathName, size)) {
+      return {};
+    }
+    const content = entry.asText();
+    if (content.length <= MAX_FILE_PREVIEW_BYTES) {
+      return { content };
+    }
+    return {
+      content: content.slice(0, MAX_FILE_PREVIEW_BYTES),
+      contentTruncated: true
+    };
+  }
+
+  private canPreviewTextFile(pathName: string, size: number): boolean {
+    if (size > MAX_FILE_PREVIEW_BYTES * 2) {
+      return false;
+    }
+    const baseName = path.basename(pathName);
+    const ext = path.extname(baseName).toLowerCase();
+    return TEXT_PREVIEW_EXTENSIONS.has(ext) || TEXT_PREVIEW_EXTENSIONS.has(baseName.toLowerCase());
   }
 
   private normalizeZipPath(rawPath: string): string {
@@ -368,8 +591,17 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
     return `${parts[0]}.${parts[1]}.${parts[2] + 1}`;
   }
 
-  private normalizeVersion(input: string | undefined, fallback: string): string {
-    const version = input?.trim() || fallback;
+  private resolveVersion(input: string | undefined, packageVersion: string | null, fallback: string): string {
+    const uploadedVersion = input?.trim() || "";
+    const declaredVersion = packageVersion?.trim() || "";
+    if (uploadedVersion && declaredVersion && uploadedVersion !== declaredVersion) {
+      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "uploaded version must match SKILL.md version", 400);
+    }
+    return this.normalizeVersion(uploadedVersion || declaredVersion || fallback);
+  }
+
+  private normalizeVersion(input: string): string {
+    const version = input.trim();
     if (!this.parseVersionParts(version)) {
       throw new AppError(ERROR_CODES.VALIDATION_ERROR, "version must use x.y.z format", 400);
     }
@@ -407,6 +639,14 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
     return normalized;
   }
 
+  private normalizeSkillName(input: string): string {
+    const normalized = input.trim();
+    if (!normalized) {
+      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "skill name is required", 400);
+    }
+    return normalized.slice(0, 120);
+  }
+
   private normalizeTags(tags: string[] | undefined): string[] {
     const unique = new Set<string>();
     for (const tag of tags ?? []) {
@@ -418,6 +658,21 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
     return Array.from(unique).slice(0, 20);
   }
 
+  private normalizeDescriptionMd(value: string | undefined): string {
+    return value?.trim().slice(0, 20000) || "";
+  }
+
+  private async promoteTempMarkdownUploads(skillId: string, descriptionMd: string, ctx: RequestContext): Promise<void> {
+    await this.uploadCommand.promoteMarkdownUploads(
+      {
+        content: descriptionMd,
+        bucket: "skills",
+        entityId: skillId
+      },
+      ctx
+    );
+  }
+
   private requireSkill(skillId: string): SkillEntity {
     const skill = this.repo.findById(skillId.trim());
     if (!skill) {
@@ -426,8 +681,16 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
     return skill;
   }
 
-  private requireDetail(skillId: string): SkillDetailEntity {
-    const detail = this.repo.findDetailById(skillId.trim());
+  private requirePublishedSkill(skillId: string): SkillEntity {
+    const skill = this.requireSkill(skillId);
+    if (skill.status !== "published") {
+      throw new AppError(ERROR_CODES.SKILL_NOT_FOUND, "skill not found", 404);
+    }
+    return skill;
+  }
+
+  private requireDetail(skillId: string, userId?: string | null): SkillDetailEntity {
+    const detail = this.repo.findDetailById(skillId.trim(), userId);
     if (!detail) {
       throw new AppError(ERROR_CODES.SKILL_NOT_FOUND, `skill not found: ${skillId}`, 404);
     }
@@ -467,6 +730,10 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
     requirePermission(ctx, ["skill.create", "skill.manage"]);
   }
 
+  private requireViewPermission(ctx: RequestContext): void {
+    requirePermission(ctx, ["skill.view", "skill.create", "skill.review", "skill.manage"]);
+  }
+
   private requireReviewPermission(ctx: RequestContext): void {
     requirePermission(ctx, ["skill.review", "skill.manage"]);
   }
@@ -486,5 +753,87 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
 
   private actorUserId(ctx: RequestContext): string | null {
     return ctx.userId?.trim() || ctx.accountId?.trim() || null;
+  }
+
+  private requireActorUserId(ctx: RequestContext): string {
+    const userId = this.actorUserId(ctx);
+    if (!userId) {
+      throw new AppError(ERROR_CODES.AUTH_UNAUTHORIZED, "user identity is required", 401);
+    }
+    return userId;
+  }
+
+  private buildExportContent(target: SkillExportTarget, skill: {
+    id: string;
+    slug: string;
+    name: string;
+    description: string;
+    version: string;
+    category: string;
+    tags: string[];
+    downloadUrl: string;
+    skillMdPath: string;
+    rootPrefix: string;
+  }): string {
+    if (target === "claude") {
+      return JSON.stringify(
+        {
+          skill: {
+            name: skill.slug,
+            title: skill.name,
+            description: skill.description,
+            version: skill.version,
+            source: {
+              type: "hub-v2-skill-hub",
+              downloadUrl: skill.downloadUrl,
+              skillMdPath: skill.skillMdPath,
+              rootPrefix: skill.rootPrefix
+            }
+          }
+        },
+        null,
+        2
+      );
+    }
+
+    if (target === "opencode") {
+      return JSON.stringify(
+        {
+          skills: [
+            {
+              name: skill.slug,
+              description: skill.description,
+              version: skill.version,
+              tags: skill.tags,
+              source: skill.downloadUrl
+            }
+          ]
+        },
+        null,
+        2
+      );
+    }
+
+    return JSON.stringify(
+      {
+        codexSkills: {
+          [skill.slug]: {
+            title: skill.name,
+            description: skill.description,
+            version: skill.version,
+            category: skill.category,
+            tags: skill.tags,
+            source: {
+              type: "hub-v2-skill-hub",
+              downloadUrl: skill.downloadUrl,
+              skillMdPath: skill.skillMdPath,
+              rootPrefix: skill.rootPrefix
+            }
+          }
+        }
+      },
+      null,
+      2
+    );
   }
 }

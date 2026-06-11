@@ -4,6 +4,7 @@
     "image": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"],
     "inlineVideo": [".mp4", ".webm", ".mov", ".m4v"],
     "video": [".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v", ".flv", ".wmv"],
+    "skillPackage": [".zip"],
     "taskSheetAttachment": [".doc", ".docx", ".pdf", ".jpg", ".jpeg", ".png"]
   },
   "targets": {
@@ -109,6 +110,17 @@
       "allowedExtensions": [".docx"],
       "invalidTypeMessage": "仅支持 .docx 任务单文件",
       "sizeLimitMessage": "单个文件最大 10MB"
+    },
+    "skillPackage": {
+      "bucket": "skills",
+      "category": "package",
+      "visibility": "private",
+      "accept": ["application/zip", "application/x-zip-compressed", "application/octet-stream", "$skillPackage"],
+      "maxSizeMb": 10,
+      "allowedMimeTypes": ["application/zip", "application/x-zip-compressed", "application/octet-stream"],
+      "allowedExtensions": "$skillPackage",
+      "invalidTypeMessage": "仅支持上传 zip 格式 skill 包",
+      "sizeLimitMessage": "skill 包大小不能超过 10MB"
     }
   },
   "serverPolicyRules": [
@@ -119,7 +131,8 @@
     { "target": "issueAttachment", "bucket": "issues", "category": "attachment" },
     { "target": "reimbursementAttachment", "bucket": "reimbursements", "category": "attachment" },
     { "target": "taskSheetAttachment", "bucket": "task-sheets", "category": "attachment" },
-    { "target": "taskSheetWordImport", "bucket": "task-sheets", "category": "word_import" }
+    { "target": "taskSheetWordImport", "bucket": "task-sheets", "category": "word_import" },
+    { "target": "skillPackage", "bucket": "skills", "category": "package" }
   ],
   "allowedBuckets": [
     "avatars",

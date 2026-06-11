@@ -81,6 +81,8 @@ function listSoftDeleteCandidates(db: Database.Database, keepDays: number, limit
       AND NOT EXISTS (SELECT 1 FROM rd_stage_history rh WHERE rh.snapshot_json LIKE '%/api/admin/uploads/' || u.id || '/raw%')
       AND NOT EXISTS (SELECT 1 FROM documents d WHERE d.content_md LIKE '%/api/admin/uploads/' || u.id || '/raw%')
       AND NOT EXISTS (SELECT 1 FROM personal_todos pt WHERE pt.description LIKE '%/api/admin/uploads/' || u.id || '/raw%')
+      AND NOT EXISTS (SELECT 1 FROM skills s WHERE s.description_md LIKE '%/api/admin/uploads/' || u.id || '/raw%')
+      AND NOT EXISTS (SELECT 1 FROM skill_comments sc WHERE sc.content LIKE '%/api/admin/uploads/' || u.id || '/raw%')
       AND NOT EXISTS (SELECT 1 FROM announcements a WHERE a.content_md LIKE '%/api/admin/uploads/' || u.id || '/raw%')
       AND NOT EXISTS (SELECT 1 FROM releases re WHERE re.notes LIKE '%/api/admin/uploads/' || u.id || '/raw%')
     ORDER BY datetime(u.created_at) ASC, u.id ASC
