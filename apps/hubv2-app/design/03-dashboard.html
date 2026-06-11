@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hub V2 Mobile — 工作台</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #6366F1;
+      --primary-light: #818CF8;
+      --primary-dark: #4F46E5;
+      --bg: #0F1117;
+      --surface: #161822;
+      --surface-elevated: #1C1F2E;
+      --text: #E4E6ED;
+      --text-secondary: #8B8FA3;
+      --text-muted: #5C5F73;
+      --border: #252836;
+      --success: #10B981;
+      --warning: #F59E0B;
+      --danger: #EF4444;
+      --info: #3B82F6;
+      --radius-card: 16px;
+      --radius-badge: 8px;
+      --tab-height: 56px;
+      --header-height: 56px;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .frame {
+      width: 390px;
+      height: 844px;
+      background: var(--bg);
+      position: relative;
+      overflow: hidden;
+      border-radius: 40px;
+      border: 3px solid #2A2D3A;
+    }
+
+    /* Status bar */
+    .status-bar {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .status-bar-right { display: flex; gap: 6px; align-items: center; }
+
+    /* Header */
+    .header {
+      height: var(--header-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .header-project {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--surface);
+      border-radius: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .header-project-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    /* Scrollable content */
+    .scroll-content {
+      height: calc(844px - 44px - var(--header-height) - var(--tab-height));
+      overflow-y: auto;
+      padding: 0 16px 16px;
+    }
+    .scroll-content::-webkit-scrollbar { display: none; }
+
+    /* Section */
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 20px 0 10px 4px;
+    }
+    .section-title:first-child { margin-top: 8px; }
+
+    /* Todo stat cards */
+    .stat-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .stat-card-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+    .stat-card-icon.issue { background: rgba(99,102,241,0.15); color: var(--primary-light); }
+    .stat-card-icon.verify { background: rgba(16,185,129,0.15); color: var(--success); }
+    .stat-card-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .stat-card-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+
+    /* RD progress cards */
+    .rd-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .rd-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .rd-card-info { flex: 1; min-width: 0; }
+    .rd-card-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .rd-card-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .rd-card-progress {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .rd-card-pct {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary-light);
+      font-variant-numeric: tabular-nums;
+    }
+    .progress-bar {
+      width: 56px;
+      height: 4px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 2px;
+      transition: width 0.3s;
+    }
+
+    /* Announcement */
+    .announce-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .announce-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(245,158,11,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .announce-info { flex: 1; min-width: 0; }
+    .announce-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .announce-time {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .announce-arrow {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* Quick actions */
+    .quick-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+    .quick-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .quick-item:hover { border-color: var(--primary); }
+    .quick-item-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .quick-item-icon.q1 { background: rgba(99,102,241,0.12); color: var(--primary-light); }
+    .quick-item-icon.q2 { background: rgba(59,130,246,0.12); color: var(--info); }
+    .quick-item-icon.q3 { background: rgba(16,185,129,0.12); color: var(--success); }
+    .quick-item-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    /* Tab bar */
+    .tab-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--tab-height);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+    }
+    .tab-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 6px 0;
+      cursor: pointer;
+    }
+    .tab-item-icon {
+      font-size: 20px;
+      color: var(--text-muted);
+      line-height: 1;
+    }
+    .tab-item-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .tab-item.active .tab-item-icon { color: var(--primary-light); }
+    .tab-item.active .tab-item-label { color: var(--primary-light); }
+    .tab-badge {
+      position: absolute;
+      top: -2px;
+      right: -6px;
+      min-width: 16px;
+      height: 16px;
+      background: var(--danger);
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+    }
+    .tab-icon-wrap {
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="status-bar-right">
+        <span>⦿</span>
+        <span>⦿</span>
+        <span>⦿</span>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-title">工作台</div>
+      <div class="header-project">
+        <span class="header-project-dot"></span>
+        ng-manager
+      </div>
+    </div>
+
+    <!-- Scrollable Content -->
+    <div class="scroll-content">
+      <!-- My Todos -->
+      <div class="section-title">我的待办</div>
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-card-icon issue">📋</div>
+          <div class="stat-card-label">待处理 Issue</div>
+          <div class="stat-card-value">12</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-icon verify">✅</div>
+          <div class="stat-card-label">待我验证</div>
+          <div class="stat-card-value">4</div>
+        </div>
+      </div>
+
+      <!-- My RD Items -->
+      <div class="section-title">我的研发项</div>
+      <div class="rd-list">
+        <div class="rd-card">
+          <div class="rd-card-info">
+            <div class="rd-card-title">用户权限重构</div>
+            <div class="rd-card-meta">RDI-021 · 进行中</div>
+          </div>
+          <div class="rd-card-progress">
+            <div class="rd-card-pct">60%</div>
+            <div class="progress-bar"><div class="progress-bar-fill" style="width:60%"></div></div>
+          </div>
+        </div>
+        <div class="rd-card">
+          <div class="rd-card-info">
+            <div class="rd-card-title">WebSocket 重连机制</div>
+            <div class="rd-card-meta">RDI-018 · 进行中</div>
+          </div>
+          <div class="rd-card-progress">
+            <div class="rd-card-pct">75%</div>
+            <div class="progress-bar"><div class="progress-bar-fill" style="width:75%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Announcements -->
+      <div class="section-title">最新公告</div>
+      <div class="announce-card">
+        <div class="announce-icon">📢</div>
+        <div class="announce-info">
+          <div class="announce-title">v2.3 发布通知</div>
+          <div class="announce-time">2 小时前</div>
+        </div>
+        <div class="announce-arrow">›</div>
+      </div>
+      <div class="announce-card" style="margin-top:8px">
+        <div class="announce-icon">🔧</div>
+        <div class="announce-info">
+          <div class="announce-title">服务器维护公告</div>
+          <div class="announce-time">昨天</div>
+        </div>
+        <div class="announce-arrow">›</div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="section-title">快捷入口</div>
+      <div class="quick-grid">
+        <div class="quick-item">
+          <div class="quick-item-icon q1">📋</div>
+          <div class="quick-item-label">我的待办</div>
+        </div>
+        <div class="quick-item">
+          <div class="quick-item-icon q2">💬</div>
+          <div class="quick-item-label">消息中心</div>
+        </div>
+        <div class="quick-item">
+          <div class="quick-item-icon q3">🔄</div>
+          <div class="quick-item-label">项目切换</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+      <div class="tab-item active">
+        <div class="tab-icon-wrap">
+          <span class="tab-item-icon">🏠</span>
+        </div>
+        <span class="tab-item-label">工作台</span>
+      </div>
+      <div class="tab-item">
+        <div class="tab-icon-wrap">
+          <span class="tab-item-icon">📋</span>
+          <span class="tab-badge">16</span>
+        </div>
+        <span class="tab-item-label">待办</span>
+      </div>
+      <div class="tab-item">
+        <div class="tab-icon-wrap">
+          <span class="tab-item-icon">💬</span>
+          <span class="tab-badge">3</span>
+        </div>
+        <span class="tab-item-label">消息</span>
+      </div>
+      <div class="tab-item">
+        <div class="tab-icon-wrap">
+          <span class="tab-item-icon">👤</span>
+        </div>
+        <span class="tab-item-label">我的</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

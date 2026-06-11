@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hub V2 Mobile — 消息详情</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #6366F1;
+      --primary-light: #818CF8;
+      --primary-dark: #4F46E5;
+      --bg: #0F1117;
+      --surface: #161822;
+      --surface-elevated: #1C1F2E;
+      --text: #E4E6ED;
+      --text-secondary: #8B8FA3;
+      --text-muted: #5C5F73;
+      --border: #252836;
+      --success: #10B981;
+      --warning: #F59E0B;
+      --danger: #EF4444;
+      --info: #3B82F6;
+      --radius-card: 16px;
+      --header-height: 56px;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .frame {
+      width: 390px;
+      height: 844px;
+      background: var(--bg);
+      position: relative;
+      overflow: hidden;
+      border-radius: 40px;
+      border: 3px solid #2A2D3A;
+    }
+    .status-bar {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-bar-right { display: flex; gap: 6px; }
+    .nav-header {
+      height: var(--header-height);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+    }
+    .nav-back {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: var(--text);
+      cursor: pointer;
+      border-radius: 10px;
+    }
+    .nav-back:hover { background: var(--surface); }
+    .nav-title {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .scroll-content {
+      height: calc(844px - 44px - var(--header-height));
+      overflow-y: auto;
+      padding: 0 20px 24px;
+    }
+    .scroll-content::-webkit-scrollbar { display: none; }
+
+    /* Announcement detail */
+    .announce-header {
+      padding: 12px 0 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .announce-type {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(245,158,11,0.12);
+      color: var(--warning);
+      margin-bottom: 10px;
+    }
+    .announce-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.3;
+      margin-bottom: 8px;
+    }
+    .announce-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .announce-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Markdown body */
+    .md-body {
+      padding: 20px 0;
+    }
+    .md-body h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      margin: 24px 0 12px;
+    }
+    .md-body h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 20px 0 8px;
+    }
+    .md-body p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 12px;
+    }
+    .md-body ul {
+      padding-left: 20px;
+      margin-bottom: 12px;
+    }
+    .md-body li {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 4px;
+    }
+    .md-body code {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 13px;
+      font-family: 'SF Mono', ui-monospace, monospace;
+      color: var(--primary-light);
+    }
+    .md-body pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 12px 0;
+      overflow-x: auto;
+    }
+    .md-body pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .md-body blockquote {
+      border-left: 3px solid var(--primary);
+      padding-left: 14px;
+      margin: 12px 0;
+    }
+    .md-body blockquote p {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="status-bar-right"><span>⦿</span><span>⦿</span><span>⦿</span></div>
+    </div>
+
+    <div class="nav-header">
+      <div class="nav-back">‹</div>
+      <div class="nav-title">消息详情</div>
+    </div>
+
+    <div class="scroll-content">
+      <div class="announce-header">
+        <div class="announce-type">公告</div>
+        <div class="announce-title">v2.3 版本发布通知</div>
+        <div class="announce-meta">
+          <span class="announce-meta-item">📅 2025-06-09 14:30</span>
+          <span class="announce-meta-item">👤 系统管理员</span>
+        </div>
+      </div>
+
+      <div class="md-body">
+        <h2>更新内容</h2>
+        <p>Hub V2 v2.3 版本已正式发布，本次更新包含以下重要改进：</p>
+
+        <h3>新功能</h3>
+        <ul>
+          <li>研发项进度可视化看板</li>
+          <li>Issue 批量指派与转移</li>
+          <li>消息中心支持 Markdown 渲染</li>
+          <li>移动端底部导航优化</li>
+        </ul>
+
+        <h3>改进</h3>
+        <ul>
+          <li>登录接口性能提升 40%</li>
+          <li>WebSocket 连接稳定性增强</li>
+          <li>文件上传支持断点续传</li>
+        </ul>
+
+        <h3>修复</h3>
+        <ul>
+          <li>修复了项目切换后数据未刷新的问题</li>
+          <li>修复了消息推送延迟的问题</li>
+          <li>修复了暗色模式下部分文字对比度不足的问题</li>
+        </ul>
+
+        <h2>升级指南</h2>
+        <p>请按照以下步骤完成升级：</p>
+        <pre><code># 拉取最新代码
+git pull origin main
+
+# 安装依赖
+pnpm install
+
+# 执行数据库迁移
+pnpm migrate
+
+# 重启服务
+pnpm restart</code></pre>
+
+        <blockquote>
+          <p>注意：升级前请确保已备份数据库。维护窗口为 6月15日凌晨 2:00-4:00。</p>
+        </blockquote>
+
+        <h3>已知问题</h3>
+        <p>部分用户在 Safari 浏览器上可能遇到样式兼容问题，我们将在 v2.3.1 中修复。</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
