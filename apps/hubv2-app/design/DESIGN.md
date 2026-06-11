@@ -19,6 +19,99 @@ const colors = {
 }
 ```
 
+### Colors (Light Theme)
+
+浅色主题不是重新设计一套产品，而是同一套 Hub V2 Mobile 信息架构在 light mode 下的语义 token。实现端必须用语义变量适配主题，不要把深色稿里的颜色硬编码到组件里。
+
+```typescript
+const lightColors = {
+  primary:    '#6366F1',  // Indigo-500 — 主操作色，保持品牌识别
+  primaryLight: '#818CF8',
+  primaryDark:  '#4F46E5',
+  background: '#F7F8FA',  // App 页面背景
+  surface:    '#FFFFFF',  // 卡片/输入框/底部导航
+  surfaceElevated: '#F3F4F6', // 次级面板/弱分组背景
+  text:       '#111827',  // 主文字
+  textSecondary: '#6B7280', // 次要文字
+  textMuted:  '#9CA3AF',  // 辅助文字/占位符
+  success:    '#10B981',
+  warning:    '#F59E0B',
+  danger:     '#EF4444',
+  info:       '#3B82F6',
+  border:     '#E5E7EB',
+  divider:    '#EEF0F4',
+}
+```
+
+### Theme Contract
+
+```typescript
+type HubTheme = {
+  primary: string
+  primaryLight: string
+  primaryDark: string
+  background: string
+  surface: string
+  surfaceElevated: string
+  text: string
+  textSecondary: string
+  textMuted: string
+  success: string
+  warning: string
+  danger: string
+  info: string
+  border: string
+  divider: string
+}
+
+export const hubThemes = {
+  dark: {
+    primary: '#6366F1',
+    primaryLight: '#818CF8',
+    primaryDark: '#4F46E5',
+    background: '#0F1117',
+    surface: '#161822',
+    surfaceElevated: '#1F2230',
+    text: '#E4E6ED',
+    textSecondary: '#8B8FA3',
+    textMuted: '#666B80',
+    success: '#10B981',
+    warning: '#F59E0B',
+    danger: '#EF4444',
+    info: '#3B82F6',
+    border: '#2A2D3A',
+    divider: '#222635',
+  },
+  light: {
+    primary: '#6366F1',
+    primaryLight: '#818CF8',
+    primaryDark: '#4F46E5',
+    background: '#F7F8FA',
+    surface: '#FFFFFF',
+    surfaceElevated: '#F3F4F6',
+    text: '#111827',
+    textSecondary: '#6B7280',
+    textMuted: '#9CA3AF',
+    success: '#10B981',
+    warning: '#F59E0B',
+    danger: '#EF4444',
+    info: '#3B82F6',
+    border: '#E5E7EB',
+    divider: '#EEF0F4',
+  },
+} satisfies Record<'dark' | 'light', HubTheme>
+```
+
+### Light Theme Rules
+
+- 页面背景使用 `light.background`，卡片、输入框、Bottom Tab 使用 `light.surface`。
+- 二级分组、轻量筛选条、弱状态块使用 `light.surfaceElevated`。
+- 主文字使用 `light.text`，说明文字使用 `light.textSecondary`，占位符和元信息使用 `light.textMuted`。
+- Primary 保持 `#6366F1`，不要因为浅色主题改成蓝色或灰色。
+- 状态色保持与深色主题一致，但状态背景要使用 10% 到 14% 透明度的浅底，例如 `#10B9811A`、`#F59E0B1A`。
+- 边框使用 `light.border`，列表分隔线使用 `light.divider`，不要使用纯黑或高对比灰线。
+- 浅色主题仍然是专业研发协作工具，不要做成营销页、后台表格或大面积品牌渐变。
+
 ### Border Radius
 
 ```typescript
@@ -78,6 +171,17 @@ const badgeVariants = {
 }
 ```
 
+```typescript
+// Light Theme 状态 Badge
+const lightBadgeVariants = {
+  '进行中': { bg: '#F59E0B1A', text: '#B45309', border: '#F59E0B33' },
+  '待处理': { bg: '#6366F11A', text: '#4F46E5', border: '#6366F133' },
+  '待验证': { bg: '#3B82F61A', text: '#2563EB', border: '#3B82F633' },
+  '已完成': { bg: '#10B9811A', text: '#047857', border: '#10B98133' },
+  '阻塞':   { bg: '#EF44441A', text: '#DC2626', border: '#EF444433' },
+}
+```
+
 ### Card
 
 ```typescript
@@ -87,6 +191,16 @@ const cardStyle = {
   padding: spacing.lg,
   borderWidth: 1,
   borderColor: colors.border,
+}
+```
+
+```typescript
+const lightCardStyle = {
+  background: lightColors.surface,
+  borderRadius: radius.card,
+  padding: spacing.lg,
+  borderWidth: 1,
+  borderColor: lightColors.border,
 }
 ```
 
@@ -110,6 +224,24 @@ const buttonStyles = {
 }
 ```
 
+```typescript
+const lightButtonStyles = {
+  primary: {
+    background: lightColors.primary,
+    color: '#FFFFFF',
+    borderRadius: radius.input,
+    height: 48,
+  },
+  secondary: {
+    background: lightColors.surface,
+    color: lightColors.primary,
+    border: `1px solid ${lightColors.border}`,
+    borderRadius: radius.input,
+    height: 48,
+  },
+}
+```
+
 ### Tab Bar
 
 ```typescript
@@ -119,6 +251,16 @@ const tabBar = {
   borderTop: `1px solid ${colors.border}`,
   activeColor: colors.primary,
   inactiveColor: colors.textSecondary,
+}
+```
+
+```typescript
+const lightTabBar = {
+  height: 64,
+  background: lightColors.surface,
+  borderTop: `1px solid ${lightColors.border}`,
+  activeColor: lightColors.primary,
+  inactiveColor: lightColors.textMuted,
 }
 ```
 

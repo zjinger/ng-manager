@@ -47,6 +47,11 @@ src/
 - **Theme**: NativeWind (Tailwind CSS) with CSS custom properties for dark mode
 - **i18n**: i18next with device locale detection
 
+## Design Guidance
+
+- Read `design/DESIGN.md` before implementing UI.
+- The source HTML files in `design/` are dark mode references. Light mode must follow `design/AI_AGENT_LIGHT_THEME.md` and use semantic theme tokens instead of hardcoded dark colors.
+
 ## Environment
 
 Copy `.env.example` to `.env` and configure:
