@@ -15,6 +15,7 @@ import feedbackPublicRoutes from "../modules/feedback/feedback-public.routes";
 import feedbackRoutes from "../modules/feedback/feedback.routes";
 import documentPublicRoutes from "../modules/document/document-public.routes";
 import documentRoutes from "../modules/document/document.routes";
+import mobileRoutes from "../modules/mobile/mobile.routes";
 import notificationRoutes from "../modules/notifications/notification.routes";
 import organizationRoutes from "../modules/organization/organization.routes";
 import personalTodoRoutes from "../modules/personal-todo/personal-todo.routes";
@@ -177,6 +178,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(deliveryWeeklyReportRoutes, { prefix: "/api/admin" });
   await app.register(feedbackRoutes, { prefix: "/api/admin" });
   await app.register(documentRoutes, { prefix: "/api/admin" });
+  await app.register(mobileRoutes, { prefix: "/api/admin" });
   await app.register(notificationRoutes, { prefix: "/api/admin" });
   await app.register(organizationRoutes, { prefix: "/api/admin" });
   await app.register(personalTodoRoutes, { prefix: "/api/admin" });

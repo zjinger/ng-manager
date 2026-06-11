@@ -130,6 +130,8 @@ import { ReimbursementService } from "../modules/reimbursement/reimbursement.ser
 import type { ErrorReportCommandContract, ErrorReportQueryContract } from "../modules/error-report/error-report.contract";
 import { ErrorReportRepo } from "../modules/error-report/error-report.repo";
 import { ErrorReportService } from "../modules/error-report/error-report.service";
+import type { MobileCommandContract, MobileQueryContract } from "../modules/mobile/mobile.contract";
+import { MobileService } from "../modules/mobile/mobile.service";
 
 export type AppContainer = {
   healthQuery: HealthQueryService;
@@ -162,6 +164,8 @@ export type AppContainer = {
   notificationQuery: NotificationQueryContract;
   notificationCommand: NotificationCommandContract;
   notificationIngest: NotificationIngestContract;
+  mobileQuery: MobileQueryContract;
+  mobileCommand: MobileCommandContract;
   organizationCommand: OrganizationCommandContract;
   organizationQuery: OrganizationQueryContract;
   feedbackCommand: FeedbackCommandContract;
@@ -361,6 +365,23 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
   const surveyService = new SurveyService(new SurveyRepo(db));
   const reimbursementService = new ReimbursementService(new ReimbursementRepo(db), eventBus);
   const errorReportService = new ErrorReportService(new ErrorReportRepo(db));
+  const mobileService = new MobileService({
+    config,
+    authQuery: authService,
+    dashboardQuery: dashboardService,
+    projectQuery: projectService,
+    issueQuery: issueService,
+    issueCommand: issueService,
+    issueCommentQuery: issueCommentService,
+    issueCommentCommand: issueCommentService,
+    rdQuery: rdService,
+    rdCommand: rdService,
+    notificationQuery: notificationService,
+    notificationCommand: notificationService,
+    announcementQuery: announcementService,
+    documentQuery: documentService,
+    releaseQuery: releaseService
+  });
 
   return {
     healthQuery: new HealthQueryService(config),
@@ -393,6 +414,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     notificationQuery: notificationService,
     notificationCommand: notificationService,
     notificationIngest: notificationService,
+    mobileQuery: mobileService,
+    mobileCommand: mobileService,
     organizationCommand: organizationService,
     organizationQuery: organizationService,
     feedbackCommand: feedbackService,
