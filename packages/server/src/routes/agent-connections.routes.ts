@@ -37,4 +37,17 @@ export default async function agentConnectionsRoutes(
     const name = parseHubV2NameParam(req.params?.name);
     return service.setDefaultHubV2Connection(name);
   });
+
+  fastify.post<{ Params: { name: string } }>("/hub-v2/:name/test", async (req) => {
+    const name = parseHubV2NameParam(req.params?.name);
+    return service.testHubV2Connection(name);
+  });
+
+  fastify.post("/mcp-check", async () => {
+    return service.checkMcpServer();
+  });
+
+  fastify.post("/mcp-doctor", async () => {
+    return service.runMcpDoctor();
+  });
 }

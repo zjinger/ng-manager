@@ -3,6 +3,9 @@ import { ApiClient } from '@core/api';
 import type {
   CreateHubV2AgentConnectionRequest,
   HubV2AgentConnectionListResponse,
+  McpCheckResult,
+  McpDoctorResult,
+  TestConnectionResult,
   UpdateHubV2AgentConnectionRequest,
 } from './agent-connections.types';
 
@@ -39,6 +42,24 @@ export class AgentConnectionsApiService {
   setDefaultHubV2AgentConnection(name: string) {
     return this.api.post<HubV2AgentConnectionListResponse>(
       `/api/agent-connections/hub-v2/${encodeURIComponent(name)}/set-default`
+    );
+  }
+
+  testHubV2AgentConnection(name: string) {
+    return this.api.post<TestConnectionResult>(
+      `/api/agent-connections/hub-v2/${encodeURIComponent(name)}/test`
+    );
+  }
+
+  checkMcpServer() {
+    return this.api.post<McpCheckResult>(
+      '/api/agent-connections/mcp-check'
+    );
+  }
+
+  runMcpDoctor() {
+    return this.api.post<McpDoctorResult>(
+      '/api/agent-connections/mcp-doctor'
     );
   }
 }

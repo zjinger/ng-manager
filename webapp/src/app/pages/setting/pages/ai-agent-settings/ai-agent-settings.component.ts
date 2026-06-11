@@ -11,6 +11,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzNotificationService } from 'ng-zorro-antd/notification';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import {
@@ -18,6 +19,7 @@ import {
   type CreateHubV2AgentConnectionRequest,
   type HubV2AgentConnectionListResponse,
   type HubV2AgentConnectionSummary,
+  type TestConnectionResult,
   type UpdateHubV2AgentConnectionRequest,
 } from '../../services';
 import { ConnectionCardComponent } from './components/connection-card.component';
@@ -95,9 +97,13 @@ export class AiAgentSettingsComponent implements OnInit {
   private readonly api = inject(AgentConnectionsApiService);
   private readonly message = inject(NzMessageService);
   private readonly modal = inject(NzModalService);
+  private readonly notification = inject(NzNotificationService);
 
   readonly loading = signal(false);
   readonly submitting = signal(false);
+  readonly testingNames = signal<Set<string>>(new Set());
+  readonly mcpCheckLoading = signal(false);
+  readonly mcpDoctorLoading = signal(false);
   readonly errorMessage = signal('');
   readonly items = signal<HubV2AgentConnectionSummary[]>([]);
   readonly configPath = signal('');
@@ -114,7 +120,7 @@ export class AiAgentSettingsComponent implements OnInit {
       },
     },
     null,
-    2
+    2,
   );
   createForm: CreateFormModel = createInitialForm();
   editForm: EditFormModel = createInitialEditForm();
@@ -135,7 +141,7 @@ export class AiAgentSettingsComponent implements OnInit {
       }
     } catch (error) {
       this.errorMessage.set(
-        `加载 Agent Connection 失败，请检查 ngm server 是否正常运行。${this.extractErrorMessage(error)}`
+        `加载 Agent Connection 失败，请检查 ngm server 是否正常运行。${this.extractErrorMessage(error)}`,
       );
     } finally {
       this.loading.set(false);
@@ -231,9 +237,7 @@ export class AiAgentSettingsComponent implements OnInit {
     }
 
     await this.runSubmitting(async () => {
-      const data = await firstValueFrom(
-        this.api.updateHubV2AgentConnection(editing.name, payload)
-      );
+      const data = await firstValueFrom(this.api.updateHubV2AgentConnection(editing.name, payload));
       this.applyList(data);
       this.closeEdit();
       this.message.success('已更新 Agent Connection');
@@ -245,9 +249,7 @@ export class AiAgentSettingsComponent implements OnInit {
       return;
     }
     await this.runSubmitting(async () => {
-      const data = await firstValueFrom(
-        this.api.setDefaultHubV2AgentConnection(item.name)
-      );
+      const data = await firstValueFrom(this.api.setDefaultHubV2AgentConnection(item.name));
       this.applyList(data);
       this.message.success(`已将 ${item.name} 设为默认连接`);
     });
@@ -265,14 +267,98 @@ export class AiAgentSettingsComponent implements OnInit {
       nzCancelText: '取消',
       nzOnOk: async () => {
         await this.runSubmitting(async () => {
-          const data = await firstValueFrom(
-            this.api.deleteHubV2AgentConnection(item.name)
-          );
+          const data = await firstValueFrom(this.api.deleteHubV2AgentConnection(item.name));
           this.applyList(data);
           this.message.success('已删除连接');
         });
       },
     });
+  }
+
+  async testConnection(item: HubV2AgentConnectionSummary): Promise<void> {
+    this.testingNames.update((set) => new Set(set).add(item.name));
+    try {
+      const result = await firstValueFrom(this.api.testHubV2AgentConnection(item.name));
+      const summary = this.formatTestSummary(result);
+
+      const allOk = result.health.ok && result.projectToken.ok && result.personalToken.ok;
+
+      if (allOk) {
+        this.notification.success('连接测试通过', summary, { nzDuration: 5000 });
+      } else if (result.health.ok) {
+        this.notification.warning('连接测试部分通过', summary, { nzDuration: 8000 });
+      } else {
+        this.notification.error('连接测试失败', summary, { nzDuration: 10000 });
+      }
+    } catch (error) {
+      this.notification.error('连接测试失败', this.extractErrorMessage(error));
+    } finally {
+      this.testingNames.update((set) => {
+        const next = new Set(set);
+        next.delete(item.name);
+        return next;
+      });
+    }
+  }
+
+  private formatTestSummary(result: TestConnectionResult): string {
+    const parts: string[] = [];
+    parts.push(this.formatTestPart('Health', result.health));
+    parts.push(this.formatTestPart('ProjectToken', result.projectToken));
+    parts.push(this.formatTestPart('PersonalToken', result.personalToken));
+    
+    return parts.join('</br>');
+  }
+
+  private formatTestPart(
+    label: string,
+    result: { ok: boolean; status: number; error?: string },
+  ): string {
+    const icon = result.ok ? '✓ ' : '✗ ';
+    const statusText = result.status > 0 ? `${result.status}` : 'N/A';
+    return `${icon}${label}:${statusText}`;
+  }
+
+  async checkMcpServer(): Promise<void> {
+    this.mcpCheckLoading.set(true);
+    try {
+      const result = await firstValueFrom(this.api.checkMcpServer());
+      if (result.ok) {
+        this.notification.success('MCP Server 检测通过', 'ngm mcp 进程启动正常', { nzDuration: 5000 });
+      } else {
+        this.notification.error('MCP Server 检测失败', result.error || '未知错误', { nzDuration: 10000 });
+      }
+    } catch (error) {
+      this.notification.error('MCP Server 检测失败', this.extractErrorMessage(error));
+    } finally {
+      this.mcpCheckLoading.set(false);
+    }
+  }
+
+  async runMcpDoctor(): Promise<void> {
+    this.mcpDoctorLoading.set(true);
+    try {
+      const result = await firstValueFrom(this.api.runMcpDoctor());
+      if (result.status === 'OK') {
+        this.notification.success('MCP Doctor 诊断通过', 'ngm mcp doctor 进程启动正常', { nzDuration: 8000 });
+      } else {
+        this.notification.error('MCP Doctor 诊断失败', this.extractDoctorSummary(result.text), { nzDuration: 10000 });
+      }
+    } catch (error) {
+      this.notification.error('MCP Doctor 诊断失败', this.extractErrorMessage(error));
+    } finally {
+      this.mcpDoctorLoading.set(false);
+    }
+  }
+
+  private extractDoctorSummary(text: string): string {
+    const lines = text.split('\n');
+    const statusLine = lines.find((l) => l.trim().startsWith('Status:'));
+    if (statusLine) {
+      return statusLine.trim();
+    }
+    const lastLines = lines.filter((l) => l.trim()).slice(-3);
+    return lastLines.join(' | ');
   }
 
   tokenStatusText(hasToken: boolean, preview?: string): string {

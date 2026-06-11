@@ -13,8 +13,11 @@ import type {
   HubV2ProjectRecord,
   HubV2Record,
   ListHubV2ConnectionsResult,
+  TestConnectionResult,
+  TestEndpointResult,
   UpdateHubV2ConnectionInput,
 } from "./agent-connections.types";
+import { spawn } from "node:child_process";
 
 type AgentConnectionsServiceOptions = {
   dataDir?: string;
@@ -26,6 +29,12 @@ type PreparedConfigState = {
   projects: Record<string, HubV2ProjectRecord>;
   defaultProject?: string;
 };
+
+type McpCheckResult = { ok: boolean; error?: string };
+type McpDoctorResult = { status: string; text: string };
+
+const CLI_PACKAGE = "@yinuo-ngm/cli";
+
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -215,6 +224,111 @@ export class AgentConnectionsService {
     state.defaultProject = name;
     await this.writePreparedState(state);
     return this.toListResult(state);
+  }
+
+  /**
+   * 测试agent-connections.json配置项连接
+   * @param name 配置项名称
+   * @returns Promise<TestConnectionResult>
+   */
+  async testHubV2Connection(name: string): Promise<TestConnectionResult> {
+    const state = await this.readPreparedState();
+    const project = state.projects[name];
+    if (!project) {
+      throw new GlobalError(
+        GlobalErrorCodes.NOT_FOUND,
+        `hub-v2 connection not found: ${name}`
+      );
+    }
+
+    const baseUrl = (project.baseUrl || "").replace(/\/+$/, "");
+    const projectKey = project.projectKey || "";
+    const projectToken = project.projectToken;
+    const personalToken = project.personalToken;
+
+    const [health, personal, projectCheck] = await Promise.all([
+      this.checkEndpoint(`${baseUrl}/api/public/health`),
+      personalToken
+        ? this.checkEndpoint(`${baseUrl}/api/personal/me`, personalToken)
+        : Promise.resolve<TestEndpointResult>({ ok: false, status: 0, error: "personalToken not configured" }),
+      projectToken && projectKey
+        ? this.checkEndpoint(`${baseUrl}/api/token/projects/${encodeURIComponent(projectKey)}/members`, projectToken)
+        : Promise.resolve<TestEndpointResult>({ ok: false, status: 0, error: "projectToken not configured" }),
+    ]);
+
+    return { health, projectToken: projectCheck, personalToken: personal };
+  }
+
+  async checkMcpServer(): Promise<McpCheckResult> {
+    return new Promise((resolve) => {
+      const child = spawn("npx", [CLI_PACKAGE, "mcp"], {
+        shell: true,
+        stdio: ["pipe", "ignore", "ignore"],
+      });
+      let settled = false;
+  
+      child.on("error", (err) => {
+        if (settled) return;
+        settled = true;
+        resolve({ ok: false, error: `spawn error: ${err.message}` });
+      });
+  
+      child.on("close", (code) => {
+        if (settled) return;
+        settled = true;
+        resolve({ ok: false, error: `process exited with code ${code}` });
+      });
+  
+      setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        child.kill();
+        resolve({ ok: true });
+      }, 3000);
+    });
+  }
+  
+  async runMcpDoctor(): Promise<McpDoctorResult> {
+    return new Promise((resolve) => {
+      const child = spawn("npx", [CLI_PACKAGE, "mcp", "doctor"], { shell: true, timeout: 15000 });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (d) => { stdout += d.toString(); });
+      child.stderr.on("data", (d) => { stderr += d.toString(); });
+      child.on("close", (code) => {
+        resolve({
+          status: code === 0 ? "OK" : "ERROR",
+          text: stdout.trim() || stderr.trim() || "no output",
+        });
+      });
+      child.on("error", (err) => {
+        resolve({ status: "ERROR", text: `spawn error: ${err.message}` });
+      });
+    });
+  }
+
+  /**
+   * 检查agent-connections.json配置项连接结果（包含基础URL和Token的有效性）
+   * @param url 
+   * @param token 
+   * @returns 
+   */
+  private async checkEndpoint(url: string, token?: string): Promise<TestEndpointResult> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      const response = await fetch(url, { method: "GET", headers, signal: controller.signal });
+      return { ok: response.ok, status: response.status };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, status: 0, error: message };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   private async readPreparedState(): Promise<PreparedConfigState> {

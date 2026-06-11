@@ -35,3 +35,25 @@ export interface UpdateHubV2AgentConnectionRequest {
   personalToken?: string | null;
   isDefault?: boolean;
 }
+
+export interface TestEndpointResult {
+  ok: boolean;
+  status: number;
+  error?: string;
+}
+
+export interface TestConnectionResult {
+  health: TestEndpointResult;
+  projectToken: TestEndpointResult;
+  personalToken: TestEndpointResult;
+}
+
+export interface McpCheckResult {
+  ok: boolean;
+  error?: string;
+}
+
+export interface McpDoctorResult {
+  status: string;
+  text: string;
+}

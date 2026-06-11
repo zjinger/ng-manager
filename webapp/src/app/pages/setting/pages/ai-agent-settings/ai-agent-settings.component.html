@@ -5,8 +5,24 @@
       agent-connections.json 读取 Hub V2 Project Token 和 Personal Token。
     </p>
     <div class="meta-list">
-      <div><strong>MCP 启动命令：</strong><code>ngm mcp</code></div>
-      <div><strong>诊断命令：</strong><code>ngm mcp doctor</code></div>
+      <div>
+        <strong>MCP 启动命令：</strong><code>ngm mcp</code>
+        <button nz-button nzType="link" nzSize="small" (click)="checkMcpServer()" [disabled]="mcpCheckLoading()">
+          @if (mcpCheckLoading()) {
+            <nz-icon nzType="loading" nzTheme="outline" />
+          }
+          测试
+        </button>
+      </div>
+      <div>
+        <strong>诊断命令：</strong><code>ngm mcp doctor</code>
+        <button nz-button nzType="link" nzSize="small" (click)="runMcpDoctor()" [disabled]="mcpDoctorLoading()">
+          @if (mcpDoctorLoading()) {
+            <nz-icon nzType="loading" nzTheme="outline" />
+          }
+          测试
+        </button>
+      </div>
       <div>
         <strong>配置文件路径：</strong><code>{{ configPath() || '-' }}</code>
       </div>
@@ -39,9 +55,11 @@
           <app-connection-card
             [item]="item"
             [submitting]="submitting()"
+            [testing]="testingNames().has(item.name)"
             (edit)="openEdit($event)"
             (setDefault)="setDefault($event)"
             (delete)="confirmDelete($event)"
+            (test)="testConnection($event)"
           ></app-connection-card>
         }
 

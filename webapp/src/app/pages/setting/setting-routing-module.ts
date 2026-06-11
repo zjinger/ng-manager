@@ -19,6 +19,13 @@ const routes: Routes = [
             (m) => m.AiAgentSettingsComponent
           ),
       },
+      {
+        path: 'skills-hub',
+        loadComponent: () =>
+          import('./pages/skills-hub-settings/skills-hub-settings.component').then(
+            (m) => m.SkillsHubSettingsComponent
+          ),
+      },
     ],
   },
 ];

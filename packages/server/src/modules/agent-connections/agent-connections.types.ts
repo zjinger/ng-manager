@@ -62,3 +62,15 @@ export type UpdateHubV2ConnectionInput = {
 export type AgentConnectionsRoutesOptions = {
   dataDir?: string;
 };
+
+export type TestEndpointResult = {
+  ok: boolean;
+  status: number;
+  error?: string;
+};
+
+export type TestConnectionResult = {
+  health: TestEndpointResult;
+  projectToken: TestEndpointResult;
+  personalToken: TestEndpointResult;
+};
