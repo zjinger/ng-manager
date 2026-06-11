@@ -299,6 +299,17 @@ For `apps/hub-v2` work:
 - Preserve markdown attachment/reference tracking and cleanup strategies.
 - Hub V2 is collaboration platform data; do not treat it as the local command execution control plane.
 
+### Hub V2 Error Code Governance
+
+When changing `apps/hub-v2` backend errors or frontend error tips, follow `apps/site/docs/hub-v2/16-error-code-governance.md`.
+
+- Register every new backend business error in `apps/hub-v2/server/src/shared/errors/error-codes.ts`.
+- Throw registered codes with `new AppError(ERROR_CODES.SOME_CODE)`; do not throw string literal codes such as `new AppError("SOME_CODE", ...)`.
+- Do not rely on English backend `message` text as a frontend translation key.
+- Add user-facing Chinese mappings in `apps/hub-v2/web/src/app/core/http/api-error-messages.ts` by error `code`.
+- For validation/business-rule failures that need product-visible tips, prefer a specific domain code over generic `BAD_REQUEST`.
+- If an existing generic `BAD_REQUEST` needs a special frontend tip, first add a stable error code, update the backend throw site, then add the frontend mapping.
+
 ## Skills And Agent Routing
 
 The repository may include skills under documentation directories, especially for Hub V2 and NGM local capabilities.
