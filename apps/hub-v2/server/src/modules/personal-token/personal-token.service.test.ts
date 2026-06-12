@@ -287,6 +287,25 @@ describe("PersonalTokenService.getProjectCapabilities", () => {
     assert.equal(caps.writable, true);
     assert.equal(caps.readOnlyReason, null);
   });
+
+  it("exposes skill read without marking project capabilities writable", () => {
+    createPersonalTokenSchema.parse({
+      name: "skill reader",
+      scopes: ["skill:read"],
+      expiresAt: null
+    });
+
+    const { service, db } = createServiceWithDb();
+    seedProject(db, "usr_1");
+
+    const ctx = createPersonalTokenContext("usr_1", ["skill:read"]);
+    const caps = service.getProjectCapabilities("project-key", ctx);
+
+    assert.deepEqual(caps.scopes.skill, { canRead: true });
+    assert.deepEqual(caps.scopes.all, ["skill:read"]);
+    assert.equal(caps.writable, false);
+    assert.equal(caps.readOnlyReason, "scope_missing");
+  });
 });
 
 describe("0070_remove_rd_delete_personal_scope migration", () => {

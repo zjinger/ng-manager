@@ -226,6 +226,10 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       canPublish: scopeSet.has("doc:publish:write")
     };
 
+    const skillCaps = {
+      canRead: scopeSet.has("skill:read")
+    };
+
     const hasWriteScope =
       issueCaps.canCreate ||
       issueCaps.canUpdate ||
@@ -275,7 +279,8 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
         all: Array.from(scopeSet),
         issue: issueCaps,
         rd: rdCaps,
-        docs: docsCaps
+        docs: docsCaps,
+        skill: skillCaps
       },
       writable,
       readOnlyReason
@@ -303,6 +308,7 @@ export class PersonalTokenService implements PersonalTokenCommandContract, Perso
       scope === "doc:create:write" ||
       scope === "doc:update:write" ||
       scope === "doc:publish:write" ||
+      scope === "skill:read" ||
       scope === "rd:create:write" ||
       scope === "rd:progress:write" ||
       scope === "rd:stage-task:write" ||

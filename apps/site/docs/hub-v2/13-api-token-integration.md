@@ -260,6 +260,27 @@ Project Token 文档读取接口：
 - 默认列表允许读取 `draft/published`，用于 webapp 内部联动；仍受 Project Token 与项目边界控制
 - 读取接口当前不写入 Token 审计；若后续需要追踪读取行为，可单独开启 `doc.read` 审计
 
+Skill Hub：
+
+- `GET /api/personal/skills`
+
+查询参数：
+
+| 参数 | 说明 |
+|---|---|
+| `page` / `pageSize` | 分页 |
+| `keyword` | 搜索 Skill 名称、描述、slug 或标签 |
+| `category` | 按分类过滤 |
+| `tag` | 按标签过滤 |
+| `sort` | 可选 `updated`、`hot`、`rating` |
+
+权限与安全口径：
+
+- 必须使用 Personal Token，且包含 `skill:read` scope。
+- Skill Hub 是公司全局共享资源，不绑定 `projectKey`。
+- 该接口只返回已发布 Skill；即使调用方传入 `status=draft/submitted/archived`，服务端也会按已发布列表处理。
+- 接口用于外部应用读取系统可用 Skill 列表，不执行 Skill 包内脚本，不提供自动安装能力。
+
 ---
 
 ## 5.3 写入接口
@@ -442,6 +463,7 @@ Markdown 图片上传：
 
 - `me` 用于返回 token 当前身份与 scopes
 - `capabilities` 用于返回项目成员关系、项目状态、可执行动作矩阵（可用于按钮显隐与前置拦截）
+- `capabilities.scopes.skill.canRead` 表示当前 Personal Token 是否具备全局 Skill Hub 已发布列表读取能力
 
 ---
 
@@ -467,6 +489,7 @@ Markdown 图片上传：
 | Docs | 创建文档 | `doc:create:write` |
 | Docs | 编辑文档 | `doc:update:write` |
 | Docs | 发布文档 | `doc:publish:write` |
+| Skill Hub | 已发布 Skill 列表读取 | `skill:read` |
 | RD | 创建研发项 | `rd:create:write` |
 | RD | 更新自己的阶段任务进度 | `rd:progress:write` |
 | RD | 新增当前阶段任务 | `rd:stage-task:write` |
@@ -709,7 +732,15 @@ curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/<DOC_ID>
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/by-slug/<DOC_SLUG>" -H "Authorization: Bearer <PROJECT_TOKEN>"
 ```
 
-### 9.15 Personal Token 上传 Markdown 图片
+### 9.15 Personal Token 读取 Skill Hub 列表
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/personal/skills?page=1&pageSize=20&keyword=hub&sort=updated" -H "Authorization: Bearer <PERSONAL_TOKEN>"
+```
+
+说明：该接口使用 `skill:read` scope，只返回已发布 Skill，不需要 `PROJECT_KEY`。
+
+### 9.16 Personal Token 上传 Markdown 图片
 
 上传接口使用 multipart form-data，字段：
 
@@ -722,7 +753,7 @@ curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/by-slug/
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/uploads/markdown" -H "Authorization: Bearer <PERSONAL_TOKEN>" -F "file=@screenshot.png;type=image/png" -F "alt=登录异常截图"
 ```
 
-### 9.16 Personal Token 上传受控附件文件
+### 9.17 Personal Token 上传受控附件文件
 
 上传接口使用 multipart form-data，字段：
 

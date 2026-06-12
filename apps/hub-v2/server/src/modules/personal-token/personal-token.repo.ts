@@ -12,6 +12,7 @@ const PERSONAL_TOKEN_SCOPES = new Set<string>([
   "doc:create:write",
   "doc:update:write",
   "doc:publish:write",
+  "skill:read",
   "rd:create:write",
   "rd:progress:write",
   "rd:stage-task:write",

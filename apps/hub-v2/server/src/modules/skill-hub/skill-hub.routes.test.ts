@@ -10,8 +10,10 @@ import type { FastifyInstance } from "fastify";
 import { buildContainer } from "../../app/build-container";
 import { registerPlugins } from "../../app/register-plugins";
 import { registerRoutes } from "../../app/register-routes";
+import type { RequestContext } from "../../shared/context/request-context";
 import { runMigrations } from "../../shared/db/migrate";
 import type { AppConfig } from "../../shared/env/env";
+import type { PersonalTokenScope } from "../personal-token/personal-token.types";
 
 const JSZip = require("jszip") as {
   new (): {
@@ -413,6 +415,55 @@ describe("skill hub routes", () => {
     assert.equal(response.statusCode, 401);
     assert.equal(response.json().code, "AUTH_UNAUTHORIZED");
   });
+
+  it("lists published skills through personal token skill scope", async () => {
+    const ctx = await createTestApp();
+    const token = await createPersonalToken(ctx, ["skill:read"]);
+    const zip = createSkillZip("personal-skill-list", "Personal Skill List");
+    const createResponse = await postSkillPackage(ctx, "/api/admin/skills", zip, {
+      version: "0.1.0",
+      category: "automation",
+      tags: "skill,hub"
+    });
+    assert.equal(createResponse.statusCode, 201);
+
+    const response = await ctx.app.inject({
+      method: "GET",
+      url: "/api/personal/skills?keyword=personal&status=draft",
+      headers: { authorization: `Bearer ${token}` }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const payload = response.json().data;
+    assert.equal(payload.total, 1);
+    assert.equal(payload.items[0].slug, "personal-skill-list");
+    assert.equal(payload.items[0].status, "published");
+  });
+
+  it("rejects personal skill list reads without skill scope", async () => {
+    const ctx = await createTestApp();
+    const token = await createPersonalToken(ctx, ["issue:comment:write"]);
+
+    const response = await ctx.app.inject({
+      method: "GET",
+      url: "/api/personal/skills",
+      headers: { authorization: `Bearer ${token}` }
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().code, "TOKEN_SCOPE_FORBIDDEN");
+  });
+
+  it("rejects unauthenticated personal skill list reads", async () => {
+    const ctx = await createTestApp();
+    const response = await ctx.app.inject({
+      method: "GET",
+      url: "/api/personal/skills"
+    });
+
+    assert.equal(response.statusCode, 401);
+    assert.equal(response.json().code, "AUTH_UNAUTHORIZED");
+  });
 });
 
 async function createTestApp(): Promise<TestApp> {
@@ -491,6 +542,30 @@ function adminJwt(ctx: TestApp): string {
     nickname: ctx.admin.nickname,
     role: "admin"
   });
+}
+
+function requestContext(ctx: TestApp): RequestContext {
+  return {
+    accountId: ctx.admin.accountId,
+    userId: ctx.admin.userId,
+    nickname: ctx.admin.nickname,
+    roles: ["admin"],
+    authType: "user",
+    authScopes: ["skill.manage"],
+    source: "http"
+  };
+}
+
+async function createPersonalToken(ctx: TestApp, scopes: PersonalTokenScope[]): Promise<string> {
+  const result = await ctx.app.container.personalTokenCommand.create(
+    {
+      name: `skill-${scopes.join("-")}`,
+      scopes,
+      expiresAt: null
+    },
+    requestContext(ctx)
+  );
+  return result.token;
 }
 
 function createSkillZip(name: string, title: string, options: { version?: string } = {}): Buffer {

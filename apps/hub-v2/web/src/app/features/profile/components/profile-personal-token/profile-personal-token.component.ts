@@ -632,6 +632,13 @@ export class ProfilePersonalTokenComponent {
         { value: 'doc:publish:write', label: '文档发布', desc: '发布项目文档' },
       ],
     },
+    {
+      title: 'Skill Hub',
+      desc: '公司共享 Skill 读取',
+      options: [
+        { value: 'skill:read', label: 'Skill 列表读取', desc: '读取已发布 Skill 列表' },
+      ],
+    },
   ];
   readonly scopeOptions: ScopeOption[] = this.scopeGroups.flatMap((group) => group.options);
 
@@ -681,7 +688,8 @@ export class ProfilePersonalTokenComponent {
         'rd:edit:write',
         'doc:create:write',
         'doc:update:write',
-        'doc:publish:write'
+        'doc:publish:write',
+        'skill:read'
       ]);
     this.expiresAt.set(null);
     this.createOpen.set(true);
