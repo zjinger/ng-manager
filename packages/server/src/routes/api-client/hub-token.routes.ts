@@ -64,8 +64,8 @@ async function resolveHubTokenConfig(
         tokenType === "personal"
             ? body.personalToken?.trim() || body.token?.trim()
             : body.token?.trim();
-    if (inlineBaseUrl && inlineToken) {
-        return { baseUrl: inlineBaseUrl, token: inlineToken };
+    if (inlineToken) {
+        return { baseUrl: inlineBaseUrl || "http://192.168.1.31:7008", token: inlineToken };
     }
 
     if (!body.projectId) {
@@ -150,6 +150,41 @@ export async function apiClientHubTokenRoutes(fastify: FastifyInstance) {
         const { baseUrl, token, projectKey } = await resolveHubTokenConfig(fastify, { projectId }, "project");
         const normalizedPath = normalizeHubTokenPath(`/rd-items/${itemId}/uploads/${uploadId}/raw`, projectKey);
         const response = await requestHubApiRaw(baseUrl, "/api/token", token, "GET", normalizedPath);
+        if (!response.ok) {
+            const payload = await parseJson(response);
+            throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, payload?.message || `hub-v2 request failed (${response.status})`, {
+                status: response.status,
+                response: payload,
+            });
+        }
+
+        copyRawResponseHeaders(response, reply);
+        const body = response.body;
+        if (!body) {
+            return reply.status(response.status).send();
+        }
+        return reply.status(response.status).send(Readable.fromWeb(body as any));
+    });
+
+    fastify.get("/skills/:skillId/versions/:versionId/download", async (req, reply) => {
+        const params = (req.params ?? {}) as { skillId?: string; versionId?: string };
+        const query = (req.query ?? {}) as Record<string, string | undefined>;
+        const skillId = normalizeNonEmptyString(params.skillId, "skillId");
+        const versionId = normalizeNonEmptyString(params.versionId, "versionId");
+        const personalToken = query.personalToken?.trim();
+
+        if (!personalToken) {
+            throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, "personalToken is required for skill download");
+        }
+
+        const { baseUrl, token } = await resolveHubTokenConfig(
+            fastify,
+            { personalToken },
+            "personal"
+        );
+
+        const normalizedPath = `/skills/${skillId}/versions/${versionId}/download`;
+        const response = await requestHubApiRaw(baseUrl, "/api/personal", token, "GET", normalizedPath);
         if (!response.ok) {
             const payload = await parseJson(response);
             throw new GlobalError(GlobalErrorCodes.BAD_REQUEST, payload?.message || `hub-v2 request failed (${response.status})`, {
@@ -379,6 +414,9 @@ function normalizeHubTokenPath(path: string, projectKey?: string): string {
 function normalizeHubPersonalPath(path: string, projectKey?: string): string {
     const p = path.startsWith("/") ? path : `/${path}`;
     if (/^\/me(?:\/|$)/i.test(p)) {
+        return p;
+    }
+    if (/^\/skills(?:\/|$)/i.test(p)) {
         return p;
     }
     return normalizeHubTokenPath(p, projectKey);

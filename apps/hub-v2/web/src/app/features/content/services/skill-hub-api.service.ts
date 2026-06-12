@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map } from 'rxjs';
+import type { Observable } from 'rxjs';
 
 import { API_BASE_URL, ApiClientService, type ApiSuccessResponse } from '@core/http';
 import type {
@@ -98,9 +99,13 @@ export class SkillHubApiService {
     return this.api.get<SkillExportConfig>(`/skills/${skillId}/versions/${versionId}/export`, { target });
   }
 
-  downloadUrl(skillId: string, versionId: string): string {
+  download(skillId: string, versionId: string): Observable<Blob> {
     const params = new HttpParams().set('t', String(Date.now()));
-    return `${this.baseUrl}/skills/${skillId}/versions/${versionId}/download?${params.toString()}`;
+    return this.http.get(`${this.baseUrl}/skills/${skillId}/versions/${versionId}/download`, {
+      params,
+      withCredentials: true,
+      responseType: 'blob',
+    });
   }
 
   private buildFormData(input: SkillUploadInput): FormData {
