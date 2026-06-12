@@ -4,6 +4,7 @@ import {
   StyleSheet,
   type ViewStyle,
   Dimensions,
+  Modal,
   TouchableWithoutFeedback,
 } from 'react-native';
 import Animated, {
@@ -12,8 +13,10 @@ import Animated, {
   withTiming,
   interpolate,
   Extrapolation,
+  runOnJS,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/providers/theme-provider';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -33,6 +36,7 @@ export interface BottomSheetRef {
 export const BottomSheet = forwardRef<BottomSheetRef, BottomSheetProps>(
   ({ children, isOpen, onClose, height = '50%', style }, ref) => {
     const { theme } = useTheme();
+    const insets = useSafeAreaInsets();
     const translateY = useSharedValue(SCREEN_HEIGHT);
     const context = useSharedValue(0);
 
@@ -64,8 +68,9 @@ export const BottomSheet = forwardRef<BottomSheetRef, BottomSheetProps>(
       })
       .onEnd((event) => {
         if (event.translationY > sheetHeight * 0.3) {
-          translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300 });
-          setTimeout(onClose, 300);
+          translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300 }, (finished) => {
+            if (finished) runOnJS(onClose)();
+          });
         } else {
           translateY.value = withTiming(SCREEN_HEIGHT - sheetHeight, { duration: 300 });
         }
@@ -87,48 +92,58 @@ export const BottomSheet = forwardRef<BottomSheetRef, BottomSheetProps>(
     if (!isOpen) return null;
 
     return (
-      <View style={StyleSheet.absoluteFill}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <Animated.View
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: '#000' },
-              backdropStyle,
-            ]}
-          />
-        </TouchableWithoutFeedback>
-        <GestureDetector gesture={gesture}>
-          <Animated.View
-            style={[
-              {
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                height: sheetHeight,
-                backgroundColor: theme.surface,
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
-                paddingTop: 8,
-              },
-              animatedStyle,
-              style,
-            ]}
-          >
-            {/* Handle */}
-            <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-              <View
-                style={{
-                  width: 40,
-                  height: 4,
-                  borderRadius: 2,
-                  backgroundColor: theme.border,
-                }}
+      <Modal
+        visible={isOpen}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={onClose}
+      >
+        <GestureHandlerRootView style={StyleSheet.absoluteFill}>
+          <View style={StyleSheet.absoluteFill}>
+            <TouchableWithoutFeedback onPress={onClose}>
+              <Animated.View
+                style={[
+                  StyleSheet.absoluteFill,
+                  { backgroundColor: '#000' },
+                  backdropStyle,
+                ]}
               />
-            </View>
-            {children}
-          </Animated.View>
-        </GestureDetector>
-      </View>
+            </TouchableWithoutFeedback>
+            <Animated.View
+              style={[
+                {
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  height: sheetHeight,
+                  backgroundColor: theme.surface,
+                  borderTopLeftRadius: 24,
+                  borderTopRightRadius: 24,
+                  paddingTop: 8,
+                  paddingBottom: insets.bottom,
+                },
+                animatedStyle,
+                style,
+              ]}
+            >
+              <GestureDetector gesture={gesture}>
+                <View style={{ alignItems: 'center', paddingVertical: 8, minHeight: 28 }}>
+                  <View
+                    style={{
+                      width: 40,
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: theme.border,
+                    }}
+                  />
+                </View>
+              </GestureDetector>
+              {children}
+            </Animated.View>
+          </View>
+        </GestureHandlerRootView>
+      </Modal>
     );
   }
 );

@@ -23,8 +23,8 @@ export function ProjectSwitchSheet({
   const { theme } = useTheme();
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} height="48%">
-      <View style={{ paddingHorizontal: 20, paddingBottom: 20, gap: 14 }}>
+    <BottomSheet isOpen={isOpen} onClose={onClose} height="64%">
+      <View style={{ flex: 1, paddingHorizontal: 20, paddingBottom: 20, gap: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View>
             <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700' }}>切换项目</Text>
@@ -49,63 +49,67 @@ export function ProjectSwitchSheet({
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
-          <View style={{ gap: 8 }}>
-            {projects.length === 0 && <InlineEmpty title="暂无可访问项目" icon="folder" />}
-            {projects.map((project) => {
-              const selected = project.id === selectedProjectId;
-              const code = project.displayCode || project.projectKey.slice(0, 2).toUpperCase();
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {projects.length === 0 && <InlineEmpty title="暂无可访问项目" icon="folder" />}
+          {projects.map((project) => {
+            const selected = project.id === selectedProjectId;
+            const code = project.displayCode || project.projectKey.slice(0, 2).toUpperCase();
 
-              return (
-                <TouchableOpacity
-                  key={project.id}
-                  onPress={() => onSelect(project.id)}
-                  activeOpacity={0.82}
+            return (
+              <TouchableOpacity
+                key={project.id}
+                onPress={() => onSelect(project.id)}
+                activeOpacity={0.82}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 14,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: selected ? theme.primary : theme.border,
+                  backgroundColor: selected ? theme.primary + '10' : theme.surface,
+                }}
+              >
+                <View
                   style={{
-                    flexDirection: 'row',
+                    width: 38,
+                    height: 38,
+                    borderRadius: 12,
+                    backgroundColor: selected ? theme.primary : theme.surfaceElevated,
                     alignItems: 'center',
-                    gap: 12,
-                    padding: 14,
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: selected ? theme.primary : theme.border,
-                    backgroundColor: selected ? theme.primary + '10' : theme.surface,
+                    justifyContent: 'center',
                   }}
                 >
-                  <View
+                  <Text
                     style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 12,
-                      backgroundColor: selected ? theme.primary : theme.surfaceElevated,
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      color: selected ? theme.onPrimary : theme.textSecondary,
+                      fontSize: 12,
+                      fontWeight: '700',
                     }}
+                    numberOfLines={1}
                   >
-                    <Text
-                      style={{
-                        color: selected ? theme.onPrimary : theme.textSecondary,
-                        fontSize: 12,
-                        fontWeight: '700',
-                      }}
-                      numberOfLines={1}
-                    >
-                      {code}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.text, fontSize: 15, fontWeight: '600' }} numberOfLines={1}>
-                      {project.name}
-                    </Text>
-                    <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
-                      {project.projectKey}
-                    </Text>
-                  </View>
-                  {selected && <Feather name="check-circle" size={18} color={theme.primary} />}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                    {code}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: theme.text, fontSize: 15, fontWeight: '600' }} numberOfLines={1}>
+                    {project.name}
+                  </Text>
+                  <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+                    {project.projectKey}
+                  </Text>
+                </View>
+                {selected && <Feather name="check-circle" size={18} color={theme.primary} />}
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </View>
     </BottomSheet>

@@ -44,6 +44,9 @@ coverage/
 .env
 .env.*
 !.env.example
+!apps/hubv2-app/env/.env.development
+!apps/hubv2-app/env/.env.preview
+!apps/hubv2-app/env/.env.production
 
 # =========================
 # OS / Editor

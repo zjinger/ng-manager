@@ -32,6 +32,23 @@ module.exports = [
     },
   },
   {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        URL: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/ban-ts-comment': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
     ignores: ['node_modules/', '.expo/', 'dist/', 'web-build/', '*.config.js', '*.config.ts'],
   },
 ];

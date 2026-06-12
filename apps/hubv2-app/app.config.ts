@@ -1,16 +1,18 @@
 import type { ExpoConfig } from "expo/config";
 
 const env = process.env.EXPO_PUBLIC_APP_ENV || "development";
+const version = process.env.EXPO_PUBLIC_APP_VERSION || "1.0.0";
+const appName = process.env.EXPO_PUBLIC_APP_NAME || "Hub V2";
 
 type HubExpoConfig = ExpoConfig & {
   newArchEnabled?: boolean;
 };
 
 const config: HubExpoConfig = {
-  name: env === "production" ? "Hub V2" : `Hub V2 (${env})`,
+  name: env === "production" ? appName : `${appName} (${env})`,
   slug: "hubv2-app",
 
-  version: "1.0.0",
+  version,
 
   orientation: "portrait",
 

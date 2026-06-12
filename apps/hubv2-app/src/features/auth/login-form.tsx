@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from './use-auth-store';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/providers/theme-provider';
 import { getApiBaseUrl } from '@/lib/api/client';
 import type { ApiErrorResponse } from '@/lib/api';
@@ -20,6 +21,8 @@ import type { ApiErrorResponse } from '@/lib/api';
 export function LoginForm() {
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
   const signIn = useAuthStore((s) => s.signIn);
   const isLoading = useAuthStore((s) => s.isLoading);
   const router = useRouter();
@@ -56,16 +59,30 @@ export function LoginForm() {
     }
   }, [serverUrl, username, password, remember, signIn, router, t]);
 
+  const scrollToFormEnd = useCallback(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+  }, []);
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1"
     >
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
+        ref={scrollRef}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 24,
+          paddingTop: Math.max(insets.top + 28, 48),
+          paddingBottom: Math.max(insets.bottom + 40, 64),
+        }}
+        keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
       >
-        <View className="flex-1 justify-center px-6 py-12">
+        <View style={{ flexGrow: 1, justifyContent: 'center' }}>
           {/* Logo / Title */}
           <View className="items-center mb-10">
             <View style={{ backgroundColor: theme.primary }} className="w-20 h-20 rounded-2xl items-center justify-center mb-4">
@@ -153,8 +170,14 @@ export function LoginForm() {
                 autoComplete="current-password"
                 editable={!isLoading}
                 returnKeyType="done"
+                onFocus={scrollToFormEnd}
                 onSubmitEditing={handleLogin}
               />
+              {password.length > 0 && (
+                <Text style={{ color: theme.textMuted }} className="text-xs mt-1 text-right">
+                  {password.length} 字符
+                </Text>
+              )}
             </View>
 
             {/* Remember me */}

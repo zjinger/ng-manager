@@ -1,0 +1,26 @@
+{
+  "app": "Hub V2",
+  "platform": "android",
+  "versionName": "1.0.0",
+  "versionCode": 1,
+  "env": "production",
+  "apiUrl": "http://192.168.1.110:19528/api",
+  "applicationId": "com.hubv2.app",
+  "releaseDir": "D:\\ng-manager\\apps\\hubv2-app\\releases\\android\\1.0.0+1",
+  "apkName": "HubV2-android-v1.0.0-1-production-20260612.apk",
+  "signingConfigured": true,
+  "apkPath": "D:\\ng-manager\\apps\\hubv2-app\\releases\\android\\1.0.0+1\\HubV2-android-v1.0.0-1-production-20260612.apk",
+  "apkSizeBytes": 109319091,
+  "apkSha256": "e431116f99747cfbc22a4064fb32f89e16eb61027f1acebfdcb695e78eef37a0",
+  "builtAt": "2026-06-12T05:26:02.857Z",
+  "git": {
+    "commit": "369a2623a060998623b18e131888834cf8a17c6e",
+    "shortCommit": "369a2623",
+    "dirty": true
+  },
+  "verification": {
+    "typeCheck": "passed",
+    "lint": "passed",
+    "assembleRelease": "passed"
+  }
+}

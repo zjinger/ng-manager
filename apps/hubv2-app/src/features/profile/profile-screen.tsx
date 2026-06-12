@@ -355,7 +355,7 @@ function AboutSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} height="58%">
-      <View style={{ flex: 1, paddingHorizontal: 20, paddingBottom: 24 }}>
+      <View style={{ flex: 1, paddingHorizontal: 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 }}>
           <View
             style={{
@@ -392,37 +392,44 @@ function AboutSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
           </TouchableOpacity>
         </View>
 
-        <View
-          style={{
-            backgroundColor: theme.surface,
-            borderWidth: 1,
-            borderColor: theme.border,
-            borderRadius: 16,
-            overflow: 'hidden',
-            marginBottom: 14,
-          }}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={false}
         >
-          <AboutRow icon="tag" label="版本" value={`v${version}`} />
-          <AboutRow icon="activity" label="环境" value={String(env)} />
-          <AboutRow icon="hard-drive" label="存储" value="MMKV" />
-          <AboutRow icon="cpu" label="架构" value="New Architecture" />
-        </View>
+          <View
+            style={{
+              backgroundColor: theme.surface,
+              borderWidth: 1,
+              borderColor: theme.border,
+              borderRadius: 16,
+              overflow: 'hidden',
+              marginBottom: 14,
+            }}
+          >
+            <AboutRow icon="tag" label="版本" value={`v${version}`} />
+            <AboutRow icon="activity" label="环境" value={String(env)} />
+            <AboutRow icon="hard-drive" label="存储" value="MMKV" />
+            <AboutRow icon="cpu" label="架构" value="New Architecture" />
+          </View>
 
-        <View
-          style={{
-            backgroundColor: theme.surface,
-            borderWidth: 1,
-            borderColor: theme.border,
-            borderRadius: 16,
-            padding: 16,
-            gap: 10,
-          }}
-        >
-          <Text style={{ color: theme.text, fontSize: 14, fontWeight: '700' }}>移动端边界</Text>
-          <Text style={{ color: theme.textSecondary, fontSize: 13, lineHeight: 21 }}>
-            使用 Hub V2 Cookie Session 登录态，聚焦工作台、待办、消息和个人协作处理。Personal Token 与 Project Token 不作为生产 App 用户鉴权方式。
-          </Text>
-        </View>
+          <View
+            style={{
+              backgroundColor: theme.surface,
+              borderWidth: 1,
+              borderColor: theme.border,
+              borderRadius: 16,
+              padding: 16,
+              gap: 10,
+            }}
+          >
+            <Text style={{ color: theme.text, fontSize: 14, fontWeight: '700' }}>移动端边界</Text>
+            <Text style={{ color: theme.textSecondary, fontSize: 13, lineHeight: 21 }}>
+              使用 Hub V2 Cookie Session 登录态，聚焦工作台、待办、消息和个人协作处理。Personal Token 与 Project Token 不作为生产 App 用户鉴权方式。
+            </Text>
+          </View>
+        </ScrollView>
       </View>
     </BottomSheet>
   );
