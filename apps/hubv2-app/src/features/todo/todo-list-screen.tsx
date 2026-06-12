@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/providers/theme-provider';
 import { Feather } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TodoCard } from './todo-card';
 import { fetchTodoList } from './todo-service';
 import {
@@ -27,6 +28,7 @@ const filters: TodoFilter[] = ['all', 'issue', 'rd', 'verify'];
 export function TodoListScreen() {
   const { t } = useTranslation();
   const { theme, mode } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<TodoFilter>('all');
   const todoQuery = useQuery({
@@ -45,7 +47,8 @@ export function TodoListScreen() {
       <View
         style={{
           paddingHorizontal: 20,
-          height: 56,
+          paddingTop: insets.top,
+          height: 56 + insets.top,
           justifyContent: 'center',
           backgroundColor: theme.background,
         }}
@@ -103,7 +106,7 @@ export function TodoListScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, flexGrow: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 88 + insets.bottom, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

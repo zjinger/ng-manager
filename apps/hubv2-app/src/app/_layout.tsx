@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import '../../global.css';
 import '@/lib/i18n';
 
@@ -6,6 +7,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Providers } from '@/providers';
 import { useAuthStore } from '@/features/auth/use-auth-store';
 
@@ -52,9 +54,11 @@ export default function RootLayout() {
   }
 
   return (
-    <Providers>
-      <StatusBar style="auto" />
-      <RootLayoutNav />
-    </Providers>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Providers>
+        <StatusBar style="auto" />
+        <RootLayoutNav />
+      </Providers>
+    </GestureHandlerRootView>
   );
 }

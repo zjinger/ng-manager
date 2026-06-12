@@ -2,13 +2,19 @@ import type { ExpoConfig } from "expo/config";
 
 const env = process.env.EXPO_PUBLIC_APP_ENV || "development";
 
-const config: ExpoConfig = {
+type HubExpoConfig = ExpoConfig & {
+  newArchEnabled?: boolean;
+};
+
+const config: HubExpoConfig = {
   name: env === "production" ? "Hub V2" : `Hub V2 (${env})`,
   slug: "hubv2-app",
 
   version: "1.0.0",
 
   orientation: "portrait",
+
+  newArchEnabled: true,
 
   icon: "./assets/icon.png",
 
@@ -42,12 +48,15 @@ const config: ExpoConfig = {
     "expo-font",
     "expo-image",
     "expo-localization",
-    "expo-secure-store",
     "expo-splash-screen",
   ],
 
   experiments: {
     typedRoutes: true,
+  },
+
+  extra: {
+    appEnv: env,
   },
 };
 

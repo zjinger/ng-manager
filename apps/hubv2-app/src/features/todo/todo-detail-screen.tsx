@@ -13,6 +13,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { useTheme } from '@/providers/theme-provider';
 import { statusBadgeTokens } from '@/lib/theme';
@@ -34,6 +35,7 @@ import {
 
 export function TodoDetailScreen() {
   const { theme, mode } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -121,7 +123,8 @@ export function TodoDetailScreen() {
           flexDirection: 'row',
           alignItems: 'center',
           paddingHorizontal: 12,
-          paddingVertical: 12,
+          paddingTop: insets.top + 12,
+          paddingBottom: 12,
           backgroundColor: theme.surface,
           borderBottomWidth: 1,
           borderBottomColor: theme.border,
@@ -169,7 +172,7 @@ export function TodoDetailScreen() {
           >
             <ScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 + insets.bottom }}
               showsVerticalScrollIndicator={false}
             >
               <DetailHeader detail={detail} mode={mode} />
@@ -379,6 +382,7 @@ function BottomActionBar({
   onOpenProgressSheet: () => void;
 }) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const canComment = detail.targetType === 'issue';
   const hasActions = detail.availableActions.length > 0;
 
@@ -388,7 +392,8 @@ function BottomActionBar({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 10,
+        paddingTop: 10,
+        paddingBottom: 10 + insets.bottom,
         backgroundColor: theme.surface,
         borderTopWidth: 1,
         borderTopColor: theme.border,

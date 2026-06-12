@@ -17,7 +17,9 @@ interface TodoCardProps {
 export function TodoCard({ item, onPress }: TodoCardProps) {
   const { theme, mode } = useTheme();
   const statusColor = getStatusColor(item.status, mode);
+  const typeColor = getTypeColor(item.targetType, theme);
   const priorityLabel = getTodoPriorityLabel(item.priority);
+  const progressText = readProgressText(item.summary);
 
   return (
     <TouchableOpacity
@@ -29,6 +31,7 @@ export function TodoCard({ item, onPress }: TodoCardProps) {
         paddingVertical: 14,
         paddingHorizontal: 16,
         marginBottom: 8,
+        minHeight: 92,
       }}
       onPress={() => onPress(item)}
       activeOpacity={0.78}
@@ -36,15 +39,16 @@ export function TodoCard({ item, onPress }: TodoCardProps) {
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
         <View
           style={{
-            backgroundColor: theme.surfaceElevated,
+            backgroundColor: typeColor.bg,
             borderWidth: 1,
-            borderColor: theme.border,
+            borderColor: typeColor.border,
             paddingHorizontal: 8,
             paddingVertical: 3,
             borderRadius: 8,
+            flexShrink: 0,
           }}
         >
-          <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '600' }}>
+          <Text style={{ color: typeColor.text, fontSize: 11, fontWeight: '600' }}>
             {todoTypeLabels[item.targetType]}
           </Text>
         </View>
@@ -63,12 +67,12 @@ export function TodoCard({ item, onPress }: TodoCardProps) {
           </Text>
           <Text
             style={{
-              color: theme.text,
-              fontSize: 14,
-              fontWeight: '600',
-              lineHeight: 20,
-            }}
-            numberOfLines={2}
+            color: theme.text,
+            fontSize: 14,
+            fontWeight: '500',
+            lineHeight: 20,
+          }}
+          numberOfLines={2}
           >
             {item.title}
           </Text>
@@ -106,12 +110,36 @@ export function TodoCard({ item, onPress }: TodoCardProps) {
           </Text>
         )}
 
-        <Text style={{ color: theme.textMuted, fontSize: 12, marginLeft: 'auto' }} numberOfLines={1}>
-          {item.assigneeName ?? formatTime(item.updatedAt)}
-        </Text>
+        {!!progressText && (
+          <Text style={{ color: theme.textSecondary, fontSize: 12, fontVariant: ['tabular-nums'] }}>
+            {progressText}
+          </Text>
+        )}
+
+        {!!item.assigneeName && (
+          <Text style={{ color: theme.textMuted, fontSize: 12, marginLeft: 'auto' }} numberOfLines={1}>
+            {item.assigneeName}
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   );
+}
+
+function getTypeColor(type: MobileTodoItem['targetType'], theme: ReturnType<typeof useTheme>['theme']) {
+  if (type === 'rd') {
+    return {
+      bg: `${theme.success}26`,
+      text: theme.success,
+      border: `${theme.success}33`,
+    };
+  }
+
+  return {
+    bg: `${theme.primary}26`,
+    text: theme.primaryLight,
+    border: `${theme.primary}33`,
+  };
 }
 
 function getStatusColor(status: string, mode: 'dark' | 'light') {
@@ -123,8 +151,8 @@ function getStatusColor(status: string, mode: 'dark' | 'light') {
   return tokens.pending;
 }
 
-function formatTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+function readProgressText(summary: string | null): string | null {
+  const match = summary?.match(/(\d{1,3})\s*%/);
+  if (!match) return null;
+  return `${Math.min(Math.max(Number(match[1]), 0), 100)}%`;
 }

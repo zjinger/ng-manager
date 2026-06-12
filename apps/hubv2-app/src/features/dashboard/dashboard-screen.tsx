@@ -10,15 +10,15 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/providers/theme-provider';
-import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { Progress } from '@/components/ui/progress';
 import { Feather } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   fetchDashboardHomeData,
-  type MobileProjectSummary,
   type MobileTodoItem,
 } from './dashboard-service';
+import { ProjectSwitchSheet } from './project-switch-sheet';
 import type { ApiErrorResponse } from '@/lib/api/client';
 import { encodeTodoRouteId } from '@/features/todo/types';
 
@@ -36,6 +36,7 @@ type QuickActionViewModel = {
 export function DashboardScreen() {
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [projectSheetOpen, setProjectSheetOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -125,7 +126,8 @@ export function DashboardScreen() {
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: 20,
-          paddingVertical: 12,
+          paddingTop: insets.top + 12,
+          paddingBottom: 12,
           backgroundColor: theme.surface,
           borderBottomWidth: 1,
           borderBottomColor: theme.border,
@@ -159,7 +161,7 @@ export function DashboardScreen() {
       {/* Content */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 88 + insets.bottom }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -444,111 +446,6 @@ function formatTime(value: string): string {
 
 function isApiError(error: unknown): error is ApiErrorResponse {
   return typeof error === 'object' && error !== null && 'message' in error && 'statusCode' in error;
-}
-
-function ProjectSwitchSheet({
-  isOpen,
-  projects,
-  selectedProjectId,
-  onClose,
-  onSelect,
-}: {
-  isOpen: boolean;
-  projects: MobileProjectSummary[];
-  selectedProjectId: string | null;
-  onClose: () => void;
-  onSelect: (projectId: string) => void;
-}) {
-  const { theme } = useTheme();
-
-  return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} height="48%">
-      <View style={{ paddingHorizontal: 20, paddingBottom: 20, gap: 14 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View>
-            <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700' }}>切换项目</Text>
-            <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4 }}>
-              选择本次工作台关注的项目
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={onClose}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              backgroundColor: theme.surfaceElevated,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Feather name="x" size={16} color={theme.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
-          <View style={{ gap: 8 }}>
-            {projects.length === 0 && (
-              <InlineEmpty title="暂无可访问项目" icon="folder" />
-            )}
-            {projects.map((project) => {
-              const selected = project.id === selectedProjectId;
-              const code = project.displayCode || project.projectKey.slice(0, 2).toUpperCase();
-
-              return (
-                <TouchableOpacity
-                  key={project.id}
-                  onPress={() => onSelect(project.id)}
-                  activeOpacity={0.82}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: 14,
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: selected ? theme.primary : theme.border,
-                    backgroundColor: selected ? theme.primary + '10' : theme.surface,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 12,
-                      backgroundColor: selected ? theme.primary : theme.surfaceElevated,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: selected ? theme.onPrimary : theme.textSecondary,
-                        fontSize: 12,
-                        fontWeight: '700',
-                      }}
-                      numberOfLines={1}
-                    >
-                      {code}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.text, fontSize: 15, fontWeight: '600' }} numberOfLines={1}>
-                      {project.name}
-                    </Text>
-                    <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
-                      {project.projectKey}
-                    </Text>
-                  </View>
-                  {selected && <Feather name="check-circle" size={18} color={theme.primary} />}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </ScrollView>
-      </View>
-    </BottomSheet>
-  );
 }
 
 function InlineEmpty({ title, icon }: { title: string; icon: FeatherName }) {
