@@ -119,6 +119,12 @@ HUBV2_UPLOAD_KEY_PASSWORD=<key-password>
 npm run android:release
 ```
 
+生产发布默认会建议下一个 patch 版本和下一个 `versionCode`，并在构建前要求确认。需要用于 CI 或自动化时：
+
+```bash
+npm run android:release:production -- --yes
+```
+
 默认读取 `env/.env.production`。测试环境正式包可使用：
 
 ```bash
@@ -134,13 +140,19 @@ npm run android:release -- --api-url http://<内网服务地址>/api
 脚本会执行 `type-check`、`lint`、`assembleRelease`，并把 Gradle 默认产物重命名为规范文件名：
 
 ```text
-HubV2-android-v<versionName>-<versionCode>-<env>-<YYYYMMDD>.apk
+HubV2-v<versionName>+<versionCode>-<env>.apk
 ```
 
 默认版本来自 `package.json` 和 Android Gradle 配置。需要临时指定版本时：
 
 ```bash
 npm run android:release -- --version-name 1.0.1 --version-code 2
+```
+
+需要选择版本递增类型时：
+
+```bash
+npm run android:release:production -- --bump minor
 ```
 
 当前 Android release 允许内网 HTTP 明文访问；后续如果要上架应用商店或外部分发，应切换到 HTTPS 并关闭 cleartext traffic。
@@ -155,7 +167,7 @@ releases/android/<versionName>+<versionCode>/
 
 目录内容：
 
-- `HubV2-android-v<versionName>-<versionCode>-<env>-<YYYYMMDD>.apk`
+- `HubV2-v<versionName>+<versionCode>-<env>.apk`
 - `release.json`
 - `RELEASE.md`
 
@@ -170,7 +182,7 @@ npm run android:release:install
 也可以指定 APK：
 
 ```bash
-npm run android:release:install -- --apk releases/android/1.0.0+1/HubV2-android-v1.0.0-1-production-20260612.apk
+npm run android:release:install -- --apk releases/android/1.0.1+2/HubV2-v1.0.1+2-prod.apk
 ```
 
 安装后请关闭 Metro，再打开 App 验证正式包可以独立启动。

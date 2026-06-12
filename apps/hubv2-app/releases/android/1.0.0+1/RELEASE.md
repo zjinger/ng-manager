@@ -3,13 +3,13 @@
 - App: Hub V2
 - Platform: android
 - Environment: production
-- API URL: http://192.168.1.110:19528/api
+- API URL: http://192.168.1.31:7008/api
 - Application ID: com.hubv2.app
 - APK: HubV2-android-v1.0.0-1-production-20260612.apk
-- Size: 109319091 bytes
-- SHA-256: e431116f99747cfbc22a4064fb32f89e16eb61027f1acebfdcb695e78eef37a0
-- Built At: 2026-06-12T05:26:02.857Z
-- Git Commit: 369a2623
+- Size: 109320667 bytes
+- SHA-256: ba46f1843aa37e3c4bf15af6da4f68e0a94335b1b955edb3acaac310fd11bce9
+- Built At: 2026-06-12T06:27:47.258Z
+- Git Commit: 247954c1
 - Git Dirty: yes
 
 ## Verification

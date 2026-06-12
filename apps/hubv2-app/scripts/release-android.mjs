@@ -1,8 +1,9 @@
 // @ts-nocheck
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -10,8 +11,10 @@ const appRoot = path.resolve(__dirname, '..');
 const androidRoot = path.join(appRoot, 'android');
 const envRoot = path.join(appRoot, 'env');
 const packageJsonPath = path.join(appRoot, 'package.json');
+const packageLockPath = path.join(appRoot, 'package-lock.json');
 const gradlePath = path.join(androidRoot, 'app', 'build.gradle');
 const sourceApkPath = path.join(androidRoot, 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk');
+const releasesRoot = path.join(appRoot, 'releases', 'android');
 
 const signingKeys = [
   'HUBV2_UPLOAD_STORE_FILE',
@@ -20,9 +23,12 @@ const signingKeys = [
   'HUBV2_UPLOAD_KEY_PASSWORD',
 ];
 
-main();
+main().catch((error) => {
+  console.error(error?.message ?? error);
+  process.exit(1);
+});
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
     printHelp();
@@ -31,19 +37,23 @@ function main() {
 
   const packageJson = readJson(packageJsonPath);
   const gradleConfig = readGradleConfig();
-  const versionName = args.versionName ?? packageJson.version ?? gradleConfig.versionName;
-  const versionCode = Number(args.versionCode ?? gradleConfig.versionCode);
   const envName = args.env ?? 'production';
+  const currentVersionName = packageJson.version ?? gradleConfig.versionName;
+  const bump = args.bump ?? (envName === 'production' ? 'patch' : 'none');
+  const latestReleaseVersionCode = readLatestReleaseVersionCode();
+  const versionName = args.versionName ?? bumpVersion(currentVersionName, bump);
+  const versionCode = Number(args.versionCode ?? nextVersionCode(gradleConfig.versionCode, latestReleaseVersionCode));
   const envValues = readEnvFileIfExists(path.join(envRoot, `.env.${envName}`));
   const apiUrl = args.apiUrl ?? envValues.EXPO_PUBLIC_API_URL ?? process.env.EXPO_PUBLIC_API_URL;
 
+  assertBumpValue(bump);
   assertReleaseInputs({ versionName, versionCode, envName, apiUrl });
   const signingStatus = readSigningStatus();
 
   const releaseDate = formatDate(new Date());
   const releaseId = `${versionName}+${versionCode}`;
-  const apkName = `HubV2-android-v${versionName}-${versionCode}-${envName}-${releaseDate}.apk`;
-  const releaseDir = path.join(appRoot, 'releases', 'android', releaseId);
+  const apkName = `HubV2-v${versionName}+${versionCode}-${formatEnvLabel(envName)}.apk`;
+  const releaseDir = path.join(releasesRoot, releaseId);
   const releaseApkPath = path.join(releaseDir, apkName);
   const buildEnv = {
     ...process.env,
@@ -66,6 +76,16 @@ function main() {
     releaseDir,
     apkName,
     signingConfigured: signingStatus.configured,
+    releaseDate,
+    version: {
+      currentVersionName,
+      currentVersionCode: gradleConfig.versionCode,
+      latestReleaseVersionCode,
+      bump,
+      nextVersionName: versionName,
+      nextVersionCode: versionCode,
+      packageVersionWillUpdate: packageJson.version !== versionName,
+    },
   };
 
   if (args.dryRun) {
@@ -74,6 +94,9 @@ function main() {
   }
 
   assertSigningConfig(signingStatus);
+  if (!args.yes) {
+    await confirmReleasePlan(plan);
+  }
 
   if (!args.skipChecks) {
     run(npmCommand(), ['run', 'type-check'], { cwd: appRoot, env: buildEnv });
@@ -90,6 +113,7 @@ function main() {
   copyFileSync(sourceApkPath, releaseApkPath);
 
   const apkStats = statSync(releaseApkPath);
+  const updatedVersionFiles = writeVersionFiles(versionName);
   const releaseInfo = {
     ...plan,
     apkPath: releaseApkPath,
@@ -102,6 +126,7 @@ function main() {
       lint: args.skipChecks ? 'skipped' : 'passed',
       assembleRelease: 'passed',
     },
+    updatedVersionFiles,
   };
 
   writeFileSync(path.join(releaseDir, 'release.json'), `${JSON.stringify(releaseInfo, null, 2)}\n`, 'utf8');
@@ -117,11 +142,15 @@ function parseArgs(argv) {
     const arg = argv[index];
     if (arg === '--help' || arg === '-h') args.help = true;
     else if (arg === '--dry-run') args.dryRun = true;
+    else if (arg === '--yes' || arg === '-y') args.yes = true;
     else if (arg === '--skip-checks') args.skipChecks = true;
     else if (arg === '--api-url') args.apiUrl = readArgValue(argv, ++index, arg);
     else if (arg.startsWith('--api-url=')) args.apiUrl = arg.slice('--api-url='.length);
     else if (arg === '--env') args.env = readArgValue(argv, ++index, arg);
     else if (arg.startsWith('--env=')) args.env = arg.slice('--env='.length);
+    else if (arg === '--bump') args.bump = readArgValue(argv, ++index, arg);
+    else if (arg.startsWith('--bump=')) args.bump = arg.slice('--bump='.length);
+    else if (arg === '--no-version-bump') args.bump = 'none';
     else if (arg === '--version-name') args.versionName = readArgValue(argv, ++index, arg);
     else if (arg.startsWith('--version-name=')) args.versionName = arg.slice('--version-name='.length);
     else if (arg === '--version-code') args.versionCode = readArgValue(argv, ++index, arg);
@@ -157,6 +186,12 @@ function assertReleaseInputs({ versionName, versionCode, envName, apiUrl }) {
   const parsed = new URL(apiUrl);
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error('API URL must start with http:// or https://');
+  }
+}
+
+function assertBumpValue(bump) {
+  if (!['major', 'minor', 'patch', 'none'].includes(bump)) {
+    throw new Error(`Invalid version bump: ${bump}`);
   }
 }
 
@@ -243,6 +278,121 @@ function unquote(value) {
   return value;
 }
 
+function readLatestReleaseVersionCode() {
+  if (!existsSync(releasesRoot)) return null;
+
+  return readdirSync(releasesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const match = entry.name.match(/\+(\d+)$/);
+      return match ? Number(match[1]) : null;
+    })
+    .filter((value) => Number.isInteger(value))
+    .reduce((max, value) => Math.max(max, value), 0) || null;
+}
+
+function nextVersionCode(gradleVersionCode, latestReleaseVersionCode) {
+  return Math.max(Number(gradleVersionCode) || 1, Number(latestReleaseVersionCode) || 0) + 1;
+}
+
+function bumpVersion(versionName, bump) {
+  if (bump === 'none') return versionName;
+
+  const match = versionName.match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) {
+    throw new Error(`Cannot auto bump non-standard version name: ${versionName}`);
+  }
+
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  const patch = Number(match[3]);
+
+  if (bump === 'major') return `${major + 1}.0.0`;
+  if (bump === 'minor') return `${major}.${minor + 1}.0`;
+  return `${major}.${minor}.${patch + 1}`;
+}
+
+function formatEnvLabel(envName) {
+  return {
+    development: 'dev',
+    preview: 'preview',
+    production: 'prod',
+  }[envName] ?? envName;
+}
+
+async function confirmReleasePlan(plan) {
+  if (!process.stdin.isTTY) {
+    throw new Error('Release confirmation required. Pass --yes to run non-interactively.');
+  }
+
+  console.log(renderReleasePlan(plan));
+  const readline = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await readline.question('确认构建该 Android release APK？输入 y 继续: ');
+    if (!/^y(es)?$/i.test(answer.trim())) {
+      throw new Error('Release cancelled.');
+    }
+  } finally {
+    readline.close();
+  }
+}
+
+function renderReleasePlan(plan) {
+  return `
+Android release plan
+
+- App: ${plan.app}
+- Environment: ${plan.env}
+- API URL: ${plan.apiUrl}
+- Current versionName: ${plan.version.currentVersionName}
+- Current Gradle versionCode: ${plan.version.currentVersionCode}
+- Latest release versionCode: ${plan.version.latestReleaseVersionCode ?? 'none'}
+- Bump: ${plan.version.bump}
+- Next versionName: ${plan.version.nextVersionName}
+- Next versionCode: ${plan.version.nextVersionCode}
+- APK: ${plan.apkName}
+- Output: ${plan.releaseDir}
+- Signing configured: ${plan.signingConfigured ? 'yes' : 'no'}
+- package.json will update: ${plan.version.packageVersionWillUpdate ? 'yes' : 'no'}
+`;
+}
+
+function writeVersionFiles(versionName) {
+  const updatedFiles = [];
+  const packageJson = readJson(packageJsonPath);
+
+  if (packageJson.version !== versionName) {
+    packageJson.version = versionName;
+    writeJson(packageJsonPath, packageJson);
+    updatedFiles.push('package.json');
+  }
+
+  if (existsSync(packageLockPath)) {
+    const packageLock = readJson(packageLockPath);
+    let changed = false;
+
+    if (packageLock.version !== versionName) {
+      packageLock.version = versionName;
+      changed = true;
+    }
+    if (packageLock.packages?.['']?.version !== versionName) {
+      packageLock.packages[''].version = versionName;
+      changed = true;
+    }
+
+    if (changed) {
+      writeJson(packageLockPath, packageLock);
+      updatedFiles.push('package-lock.json');
+    }
+  }
+
+  return updatedFiles;
+}
+
+function writeJson(filePath, value) {
+  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
 function run(command, args, options) {
   console.log(`> ${command} ${args.join(' ')}`);
   const result = spawnSync(command, args, {
@@ -306,6 +456,7 @@ function renderReleaseMarkdown(info) {
 - Built At: ${info.builtAt}
 - Git Commit: ${info.git.shortCommit ?? 'unknown'}
 - Git Dirty: ${info.git.dirty ? 'yes' : 'no'}
+- Updated Version Files: ${info.updatedVersionFiles.length > 0 ? info.updatedVersionFiles.join(', ') : 'none'}
 
 ## Verification
 
@@ -322,8 +473,11 @@ function printHelp() {
 Options:
   --api-url <url>          Hub V2 API base URL. Required unless EXPO_PUBLIC_API_URL is set.
   --env <name>             App env. Defaults to production.
-  --version-name <version> Android versionName and Expo app version. Defaults to package.json version.
-  --version-code <number>  Android versionCode. Defaults to android/app/build.gradle.
+  --bump <type>            Auto bump versionName: major, minor, patch, none. Defaults to patch for production, none otherwise.
+  --no-version-bump        Alias for --bump none.
+  --version-name <version> Android versionName and Expo app version. Overrides auto bump.
+  --version-code <number>  Android versionCode. Overrides auto increment.
+  --yes, -y                Skip interactive release confirmation.
   --skip-checks            Skip npm type-check and lint.
   --dry-run                Print release plan without building.
   --help                   Show this help.
