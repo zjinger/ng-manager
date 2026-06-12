@@ -60,8 +60,8 @@ export class ContentTabsComponent {
   readonly valueChange = output<ContentTab>();
 
   protected readonly tabs: Array<{ value: ContentTab; label: string; icon: string }> = [
-    { value: 'announcements', label: '公告管理', icon: 'notification' },
     { value: 'documents', label: '文档管理', icon: 'file-text' },
+    { value: 'announcements', label: '公告管理', icon: 'notification' },
     { value: 'releases', label: '版本发布', icon: 'cloud-upload' },
   ];
 }
