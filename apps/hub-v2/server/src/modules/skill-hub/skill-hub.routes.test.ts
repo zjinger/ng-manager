@@ -440,6 +440,55 @@ describe("skill hub routes", () => {
     assert.equal(payload.items[0].status, "published");
   });
 
+  it("gets skill detail through personal token skill scope", async () => {
+    const ctx = await createTestApp();
+    const token = await createPersonalToken(ctx, ["skill:read"]);
+    const zip = createSkillZip("personal-skill-detail", "Personal Skill Detail");
+    const createResponse = await postSkillPackage(ctx, "/api/admin/skills", zip, {
+      version: "0.1.0",
+      category: "testing",
+      tags: "detail"
+    });
+    assert.equal(createResponse.statusCode, 201);
+    const created = createResponse.json().data;
+
+    const response = await ctx.app.inject({
+      method: "GET",
+      url: `/api/personal/skills/${created.id}`,
+      headers: { authorization: `Bearer ${token}` }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const detail = response.json().data;
+    assert.equal(detail.id, created.id);
+    assert.equal(detail.slug, "personal-skill-detail");
+    assert.equal(detail.status, "published");
+    assert.ok(Array.isArray(detail.versions));
+    assert.ok(detail.versions.length > 0);
+  });
+
+  it("downloads skill package through personal token skill scope", async () => {
+    const ctx = await createTestApp();
+    const token = await createPersonalToken(ctx, ["skill:read"]);
+    const zip = createSkillZip("personal-skill-download", "Personal Skill Download");
+    const createResponse = await postSkillPackage(ctx, "/api/admin/skills", zip, {
+      version: "0.1.0"
+    });
+    assert.equal(createResponse.statusCode, 201);
+    const created = createResponse.json().data;
+
+    const response = await ctx.app.inject({
+      method: "GET",
+      url: `/api/personal/skills/${created.id}/versions/${created.versions[0].id}/download`,
+      headers: { authorization: `Bearer ${token}` }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers["content-type"], "application/zip");
+    assert.ok(Buffer.isBuffer(response.rawPayload));
+    assert.ok(response.rawPayload.length > 0);
+  });
+
   it("rejects personal skill list reads without skill scope", async () => {
     const ctx = await createTestApp();
     const token = await createPersonalToken(ctx, ["issue:comment:write"]);

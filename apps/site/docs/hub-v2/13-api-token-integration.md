@@ -263,8 +263,10 @@ Project Token 文档读取接口：
 Skill Hub：
 
 - `GET /api/personal/skills`
+- `GET /api/personal/skills/:skillId`
+- `GET /api/personal/skills/:skillId/versions/:versionId/download`
 
-查询参数：
+查询参数（列表）：
 
 | 参数 | 说明 |
 |---|---|
@@ -274,12 +276,18 @@ Skill Hub：
 | `tag` | 按标签过滤 |
 | `sort` | 可选 `updated`、`hot`、`rating` |
 
+说明：
+
+- Skill Hub 是公司全局唯一资源，不绑定 `projectKey`，路径中不需要项目标识。
+- 列表接口只返回已发布 Skill；即使调用方传入 `status=draft/submitted/archived`，服务端也会按已发布列表处理。
+- 详情接口返回 Skill 完整信息，包含版本列表（`versions`）、manifest、readmeMd 等。
+- 下载接口返回 Skill 包 zip 文件流，要求 Skill 和对应版本均为 `published` 状态。
+- 接口用于外部应用读取系统可用 Skill 列表与详情，不执行 Skill 包内脚本，不提供自动安装能力。
+
 权限与安全口径：
 
 - 必须使用 Personal Token，且包含 `skill:read` scope。
-- Skill Hub 是公司全局共享资源，不绑定 `projectKey`。
-- 该接口只返回已发布 Skill；即使调用方传入 `status=draft/submitted/archived`，服务端也会按已发布列表处理。
-- 接口用于外部应用读取系统可用 Skill 列表，不执行 Skill 包内脚本，不提供自动安装能力。
+- 列表、详情、下载均使用同一 scope。
 
 ---
 
@@ -732,13 +740,27 @@ curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/<DOC_ID>
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/by-slug/<DOC_SLUG>" -H "Authorization: Bearer <PROJECT_TOKEN>"
 ```
 
-### 9.15 Personal Token 读取 Skill Hub 列表
+### 9.15 Personal Token 读取 Skill Hub
+
+列表：
 
 ```bash
 curl -X GET "http://<HUB_V2_HOST>/api/personal/skills?page=1&pageSize=20&keyword=hub&sort=updated" -H "Authorization: Bearer <PERSONAL_TOKEN>"
 ```
 
-说明：该接口使用 `skill:read` scope，只返回已发布 Skill，不需要 `PROJECT_KEY`。
+详情：
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/personal/skills/<SKILL_ID>" -H "Authorization: Bearer <PERSONAL_TOKEN>"
+```
+
+下载：
+
+```bash
+curl -X GET "http://<HUB_V2_HOST>/api/personal/skills/<SKILL_ID>/versions/<VERSION_ID>/download" -H "Authorization: Bearer <PERSONAL_TOKEN>"
+```
+
+说明：这些接口使用 `skill:read` scope，只返回已发布 Skill。Skill Hub 是全局资源，路径中不包含 `PROJECT_KEY`。
 
 ### 9.16 Personal Token 上传 Markdown 图片
 
