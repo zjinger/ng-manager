@@ -132,6 +132,13 @@ import { ErrorReportRepo } from "../modules/error-report/error-report.repo";
 import { ErrorReportService } from "../modules/error-report/error-report.service";
 import type { MobileCommandContract, MobileQueryContract } from "../modules/mobile/mobile.contract";
 import { MobileService } from "../modules/mobile/mobile.service";
+import type {
+  MobileAppVersionCommandContract,
+  MobileAppVersionQueryContract
+} from "../modules/mobile-app-download/mobile-app-version.contract";
+import { MobileAppVersionRepo } from "../modules/mobile-app-download/mobile-app-version.repo";
+import { MobileAppVersionService } from "../modules/mobile-app-download/mobile-app-version.service";
+import { MobileAppPortalSettingsService } from "../modules/mobile-app-download/mobile-app-portal-settings.service";
 
 export type AppContainer = {
   healthQuery: HealthQueryService;
@@ -166,6 +173,8 @@ export type AppContainer = {
   notificationIngest: NotificationIngestContract;
   mobileQuery: MobileQueryContract;
   mobileCommand: MobileCommandContract;
+  mobileAppVersionQuery: MobileAppVersionQueryContract;
+  mobileAppVersionCommand: MobileAppVersionCommandContract;
   organizationCommand: OrganizationCommandContract;
   organizationQuery: OrganizationQueryContract;
   feedbackCommand: FeedbackCommandContract;
@@ -382,6 +391,16 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     documentQuery: documentService,
     releaseQuery: releaseService
   });
+  const mobileAppPortalSettingsService = new MobileAppPortalSettingsService({
+    sharedConfigQuery: sharedConfigService,
+    sharedConfigCommand: sharedConfigService
+  });
+  const mobileAppVersionService = new MobileAppVersionService({
+    repo: new MobileAppVersionRepo(db),
+    uploadQuery: uploadService,
+    portalSettings: mobileAppPortalSettingsService,
+    projectAccess
+  });
 
   return {
     healthQuery: new HealthQueryService(config),
@@ -416,6 +435,8 @@ export function buildContainer(config: AppConfig, db: Database.Database, options
     notificationIngest: notificationService,
     mobileQuery: mobileService,
     mobileCommand: mobileService,
+    mobileAppVersionQuery: mobileAppVersionService,
+    mobileAppVersionCommand: mobileAppVersionService,
     organizationCommand: organizationService,
     organizationQuery: organizationService,
     feedbackCommand: feedbackService,

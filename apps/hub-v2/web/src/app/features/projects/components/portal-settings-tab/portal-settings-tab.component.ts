@@ -1,28 +1,16 @@
 import { FormsModule } from '@angular/forms';
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
+import { Clipboard } from '@angular/cdk/clipboard';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 
-export interface PortalSettings {
-  logoUrl: string | null;
-  name: string;
-  subtitle: string;
-  description: string;
-  primaryColor: string;
-  accentColor: string;
-  showQrcode: boolean;
-  showInstallGuide: boolean;
-  showVersionHistory: boolean;
-  showSystemRequirements: boolean;
-  showDownloadStats: boolean;
-  bannerEnabled: boolean;
-  bannerText: string;
-  bannerStyle: 'info' | 'success' | 'brand' | 'warning';
-  bannerLink: string;
-}
+import { UPLOAD_TARGETS } from '@shared/constants';
+import { FileUploadDropzoneComponent, PanelCardComponent } from '@shared/ui';
+import { DEFAULT_PORTAL_SETTINGS, type PortalSettings } from '../../models/mobile-app-version.model';
 
 @Component({
   selector: 'app-portal-settings-tab',
@@ -34,14 +22,42 @@ export interface PortalSettings {
     NzInputModule,
     NzSelectModule,
     NzSwitchModule,
+    FileUploadDropzoneComponent,
+    PanelCardComponent,
   ],
   template: `
     <div class="portal-settings">
-      <div class="settings-section">
-        <div class="settings-section-header">
-          <nz-icon nzType="appstore" nzTheme="outline" />
-          <h3>品牌信息</h3>
+      <app-panel-card title="访问链接" titleIcon="link">
+        <div class="settings-section-body">
+          <div class="toggle-row toggle-row--topless">
+            <div class="toggle-info">
+              <div class="toggle-title">启用门户公开访问</div>
+              <div class="toggle-desc">开启并保存后，外部用户才能通过下载页链接访问移动端 APP 门户。</div>
+            </div>
+            <nz-switch [ngModel]="draft().enabled" (ngModelChange)="updateField('enabled', $event)" />
+          </div>
+
+          @if (draft().enabled) {
+            <div class="field-label">门户公开地址</div>
+            <div class="portal-url-row">
+              <div class="portal-url-text">{{ publicUrl() }}</div>
+              <a nz-button nzType="default" [href]="publicUrl()" target="_blank" rel="noopener">
+                <nz-icon nzType="export" nzTheme="outline" />
+                打开
+              </a>
+              <button nz-button nzType="default" type="button" (click)="copyPublicUrl()">
+                <nz-icon nzType="copy" nzTheme="outline" />
+                复制
+              </button>
+            </div>
+            <div class="access-note">保存配置后链接生效；至少发布一个 iOS 或 Android 版本后，下载页才会展示安装包。</div>
+          } @else {
+            <div class="access-disabled">当前未开放公开访问，下载页链接不会对外生效。</div>
+          }
         </div>
+      </app-panel-card>
+
+      <app-panel-card title="品牌信息" titleIcon="appstore">
         <div class="settings-section-body">
           <div class="field-group">
             <div class="field-label">门户 Logo</div>
@@ -54,12 +70,16 @@ export interface PortalSettings {
                   {{ (draft().name || 'H2').slice(0, 2).toUpperCase() }}
                 }
               </div>
-              <div class="upload-area" (click)="logoInput.click()">
-                <input #logoInput type="file" accept="image/png,image/svg+xml" hidden (change)="onLogoPicked($event)" />
-                <nz-icon nzType="upload" nzTheme="outline" />
-                <p>点击上传新 Logo</p>
-                <div class="upload-hint">PNG / SVG，最大 2 MB</div>
-              </div>
+              <app-file-upload-dropzone
+                class="logo-dropzone"
+                [policy]="logoPolicy"
+                [files]="logoFiles()"
+                [multiple]="false"
+                [showPreview]="false"
+                [title]="'拖放 Logo 图片到此处，或点击选择'"
+                [hint]="'PNG / JPG / SVG，最大 10 MB'"
+                (filesChange)="onLogoFilesChange($event)"
+              />
             </div>
           </div>
 
@@ -96,13 +116,9 @@ export interface PortalSettings {
             </div>
           </div>
         </div>
-      </div>
+      </app-panel-card>
 
-      <div class="settings-section">
-        <div class="settings-section-header">
-          <nz-icon nzType="layout" nzTheme="outline" />
-          <h3>页面模块</h3>
-        </div>
+      <app-panel-card title="页面模块" titleIcon="layout">
         <div class="settings-section-body">
           <div class="toggle-row">
             <div class="toggle-info">
@@ -140,13 +156,9 @@ export interface PortalSettings {
             <nz-switch [ngModel]="draft().showDownloadStats" (ngModelChange)="updateField('showDownloadStats', $event)" />
           </div>
         </div>
-      </div>
+      </app-panel-card>
 
-      <div class="settings-section">
-        <div class="settings-section-header">
-          <nz-icon nzType="message" nzTheme="outline" />
-          <h3>公告横幅</h3>
-        </div>
+      <app-panel-card title="公告横幅" titleIcon="message">
         <div class="settings-section-body">
           <div class="toggle-row">
             <div class="toggle-info">
@@ -180,7 +192,7 @@ export interface PortalSettings {
             </div>
           }
         </div>
-      </div>
+      </app-panel-card>
 
       <div class="settings-actions">
         <button nz-button nzType="default" nzDanger (click)="resetToDefault.emit()">
@@ -201,33 +213,6 @@ export interface PortalSettings {
         display: grid;
         gap: 16px;
         padding-top: 16px;
-      }
-
-      .settings-section {
-        background: var(--bg-container);
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
-        overflow: hidden;
-      }
-
-      .settings-section-header {
-        padding: 14px 20px;
-        border-bottom: 1px solid var(--border-color);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .settings-section-header nz-icon {
-        font-size: 16px;
-        color: var(--text-muted);
-      }
-
-      .settings-section-header h3 {
-        margin: 0;
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--text-heading);
       }
 
       .settings-section-body {
@@ -253,8 +238,9 @@ export interface PortalSettings {
       }
 
       .field-label .required {
-        color: var(--danger);
-        font-size: 11px;
+        color: var(--color-danger, #ff4d4f);
+        font-size: 13px;
+        font-weight: 600;
       }
 
       .field-hint {
@@ -267,6 +253,26 @@ export interface PortalSettings {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 16px;
+      }
+
+      .portal-url-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .portal-url-text {
+        flex: 1;
+        min-width: 0;
+        padding: 8px 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-muted);
+        color: var(--text);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 20px;
+        overflow-wrap: anywhere;
       }
 
       .logo-upload-row {
@@ -295,37 +301,32 @@ export interface PortalSettings {
         object-fit: cover;
       }
 
-      .upload-area {
+      .logo-dropzone {
         flex: 1;
-        border: 1.5px dashed var(--border-color);
+        min-width: 0;
+      }
+
+      :host ::ng-deep .logo-dropzone .upload-zone {
+        min-height: 120px;
         border-radius: var(--border-radius);
-        padding: 16px;
-        text-align: center;
-        cursor: pointer;
-        transition: border-color 0.15s, background 0.15s;
       }
 
-      .upload-area:hover {
-        border-color: var(--primary);
-        background: color-mix(in srgb, var(--primary-500) 6%, transparent);
+      :host ::ng-deep .logo-dropzone .upload-zone__icon {
+        width: 38px;
+        height: 38px;
+        margin-bottom: 8px;
       }
 
-      .upload-area nz-icon {
+      :host ::ng-deep .logo-dropzone .upload-zone__icon > span[nz-icon] {
         font-size: 20px;
-        color: var(--text-muted);
-        margin-bottom: 4px;
       }
 
-      .upload-area p {
+      :host ::ng-deep .logo-dropzone .upload-zone__title {
         font-size: 13px;
-        color: var(--text-secondary);
-        margin: 0;
       }
 
-      .upload-hint {
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 4px;
+      :host ::ng-deep .logo-dropzone .upload-zone__hint {
+        font-size: 12px;
       }
 
       .color-row {
@@ -356,6 +357,10 @@ export interface PortalSettings {
         border-bottom: 1px solid var(--border-color);
       }
 
+      .toggle-row--topless {
+        padding-top: 0;
+      }
+
       .toggle-row:last-child {
         border-bottom: none;
       }
@@ -382,6 +387,18 @@ export interface PortalSettings {
         border-top: 1px solid var(--border-color);
       }
 
+      .access-note,
+      .access-disabled {
+        margin-top: 8px;
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .access-disabled {
+        margin-top: 12px;
+      }
+
       .settings-actions {
         display: flex;
         align-items: center;
@@ -395,6 +412,11 @@ export interface PortalSettings {
           grid-template-columns: 1fr;
         }
 
+        .portal-url-row {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
         .logo-upload-row {
           flex-direction: column;
           align-items: flex-start;
@@ -405,41 +427,58 @@ export interface PortalSettings {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PortalSettingsTabComponent {
+  private readonly clipboard = inject(Clipboard);
+  private readonly message = inject(NzMessageService);
+
+  readonly logoPolicy = UPLOAD_TARGETS.projectAvatar;
   readonly settings = input<PortalSettings | null>(null);
+  readonly publicUrl = input('');
 
   readonly save = output<PortalSettings>();
   readonly cancel = output<void>();
   readonly resetToDefault = output<void>();
 
-  readonly draft = signal<PortalSettings>({
-    logoUrl: null,
-    name: 'Hub V2 Mobile',
-    subtitle: '研发协作随身端',
-    description: 'Hub V2 Mobile 是面向研发团队的移动端协作工具，支持查看待办、处理 Issue、跟进研发项和接收通知。',
-    primaryColor: '#6366F1',
-    accentColor: '#10B981',
-    showQrcode: true,
-    showInstallGuide: true,
-    showVersionHistory: true,
-    showSystemRequirements: false,
-    showDownloadStats: false,
-    bannerEnabled: true,
-    bannerText: 'v1.2.0 已发布 — 全新统一待办入口',
-    bannerStyle: 'brand',
-    bannerLink: '',
-  });
+  readonly draft = signal<PortalSettings>({ ...DEFAULT_PORTAL_SETTINGS });
+  readonly logoFiles = signal<File[]>([]);
+
+  constructor() {
+    effect(() => {
+      this.draft.set({ ...(this.settings() ?? DEFAULT_PORTAL_SETTINGS) });
+      this.logoFiles.set([]);
+    });
+  }
 
   updateField<K extends keyof PortalSettings>(key: K, value: PortalSettings[K]): void {
     this.draft.update((current) => ({ ...current, [key]: value }));
   }
 
-  onLogoPicked(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+  onLogoFilesChange(files: File[]): void {
+    this.logoFiles.set(files);
+    const file = files[0] ?? null;
     if (file) {
-      const url = URL.createObjectURL(file);
-      this.updateField('logoUrl', url);
+      this.draft.update((current) => ({
+        ...current,
+        logoFile: file,
+        logoUrl: URL.createObjectURL(file),
+      }));
+      return;
     }
-    input.value = '';
+    this.draft.update((current) => ({
+      ...current,
+      logoFile: null,
+      logoUrl: this.settings()?.logoUrl ?? null,
+    }));
+  }
+
+  copyPublicUrl(): void {
+    const url = this.publicUrl();
+    if (!url) {
+      return;
+    }
+    if (this.clipboard.copy(url)) {
+      this.message.success('门户访问链接已复制');
+      return;
+    }
+    this.message.error('复制失败，请手动复制');
   }
 }

@@ -1,17 +1,14 @@
 import type { RequestContext } from "../../shared/context/request-context";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
-import type { ProjectAccessContract } from "../project/project-access.contract";
-import type { ReleaseQueryContract } from "../release/release.contract";
-import type { ReleaseEntity } from "../release/release.types";
-import type {
-  SharedConfigCommandContract,
-  SharedConfigQueryContract
-} from "../shared-config/shared-config.contract";
-import type { SharedConfigEntity } from "../shared-config/shared-config.types";
-import type { UploadCommandContract, UploadQueryContract } from "../upload/upload.contract";
+import type { UploadQueryContract } from "../upload/upload.contract";
 import type { UploadEntity } from "../upload/upload.types";
-import { mobileAppDownloadConfigSchema, type MobileAppDownloadConfig } from "./mobile-app-download.schema";
+import type {
+  MobileAppVersionCommandContract,
+  MobileAppVersionQueryContract
+} from "./mobile-app-version.contract";
+import { MOBILE_APP_PORTAL_SETTINGS_KEY, MobileAppPortalSettingsService } from "./mobile-app-portal-settings.service";
+import type { MobileAppPortalSettings, MobileAppVersionEntity } from "./mobile-app-version.types";
 import type {
   MobileAppDownloadInfo,
   MobileAppDownloadPlatform,
@@ -21,11 +18,6 @@ import type {
   MobileAppProjectRef
 } from "./mobile-app-download.types";
 
-type MobileAppPlatformConfig = NonNullable<MobileAppDownloadConfig["platforms"]>[number];
-type MobileAppReleaseNoteConfig = NonNullable<MobileAppDownloadConfig["releaseNotes"]>[number];
-
-export const MOBILE_APP_DOWNLOAD_CONFIG_CATEGORY = "mobile-app-download";
-export const MOBILE_APP_DOWNLOAD_CONFIG_KEY = "mobile-app.download";
 export const MOBILE_APP_PACKAGE_BUCKET = "mobile-apps";
 export const MOBILE_APP_PACKAGE_CATEGORY = "package";
 
@@ -46,277 +38,87 @@ const DEFAULT_FAQ = [
 ];
 
 type MobileAppDownloadServiceDeps = {
-  sharedConfigQuery: SharedConfigQueryContract;
-  sharedConfigCommand?: SharedConfigCommandContract;
-  releaseQuery: ReleaseQueryContract;
   uploadQuery: UploadQueryContract;
-  uploadCommand?: UploadCommandContract;
-  projectAccess?: ProjectAccessContract & ProjectMaintainerAccess;
-};
-
-type ProjectMaintainerAccess = {
-  requireProjectMaintainer(projectId: string, ctx: RequestContext, action: string): Promise<void>;
+  portalSettings: MobileAppPortalSettingsService;
+  mobileAppVersionQuery: MobileAppVersionQueryContract;
+  mobileAppVersionCommand: MobileAppVersionCommandContract;
 };
 
 export class MobileAppDownloadService {
   constructor(private readonly deps: MobileAppDownloadServiceDeps) {}
 
-  async getProjectConfig(project: MobileAppProjectRef, ctx: RequestContext): Promise<MobileAppProjectConfigInfo> {
-    await this.deps.projectAccess?.requireProjectAccess(project.id, ctx, "get mobile app config");
-    const selectedConfig = await this.findProjectConfig(project.id, ctx);
-    const config = selectedConfig ? this.parseConfig(selectedConfig) : this.createDefaultConfig(project);
-    return this.buildInfo(project, config, selectedConfig, { publicOnly: false }, ctx);
-  }
-
-  async updateProjectConfig(
-    project: MobileAppProjectRef,
-    input: unknown,
-    ctx: RequestContext
-  ): Promise<MobileAppProjectConfigInfo> {
-    if (!this.deps.sharedConfigCommand) {
-      throw new AppError(ERROR_CODES.INTERNAL_ERROR, "shared config command is not available", 500);
-    }
-    await this.deps.projectAccess?.requireProjectMaintainer(project.id, ctx, "update mobile app config");
-
-    const config = this.parseInputConfig(input);
-    const current = await this.findProjectConfig(project.id, ctx);
-    if (current) {
-      await this.deps.sharedConfigCommand.update(
-        current.id,
-        {
-          configName: `${project.name} 移动端 APP 下载配置`,
-          category: MOBILE_APP_DOWNLOAD_CONFIG_CATEGORY,
-          valueType: "json",
-          configValue: JSON.stringify(config),
-          description: "项目级移动端 APP 下载页配置",
-          status: "active"
-        },
-        ctx
-      );
-    } else {
-      await this.deps.sharedConfigCommand.create(
-        {
-          projectId: project.id,
-          scope: "project",
-          configKey: MOBILE_APP_DOWNLOAD_CONFIG_KEY,
-          configName: `${project.name} 移动端 APP 下载配置`,
-          category: MOBILE_APP_DOWNLOAD_CONFIG_CATEGORY,
-          valueType: "json",
-          configValue: JSON.stringify(config),
-          description: "项目级移动端 APP 下载页配置",
-          isEncrypted: false,
-          priority: 0
-        },
-        ctx
-      );
-    }
-
-    return this.getProjectConfig(project, ctx);
-  }
-
-  async attachPackage(
-    project: MobileAppProjectRef,
-    platform: MobileAppPlatform,
-    upload: UploadEntity,
-    ctx: RequestContext
-  ): Promise<MobileAppProjectConfigInfo> {
-    await this.deps.projectAccess?.requireProjectMaintainer(project.id, ctx, "upload mobile app package");
-    const current = await this.findProjectConfig(project.id, ctx);
-    const config = current ? this.parseConfig(current) : this.createDefaultConfig(project);
-    const next = this.upsertPlatform(config, platform, {
-      platform,
-      enabled: true,
-      packageUploadId: upload.id,
-      packageName: upload.originalName || upload.fileName,
-      versionName: this.findPlatform(config, platform)?.versionName ?? null,
-      versionCode: this.findPlatform(config, platform)?.versionCode ?? null,
-      downloadUrl: null,
-      qrCodeUrl: null,
-      packageSizeBytes: upload.fileSize,
-      minOsVersion: this.findPlatform(config, platform)?.minOsVersion ?? null,
-      checksum: { sha256: upload.checksum ?? null, md5: null },
-      distributionType: this.findPlatform(config, platform)?.distributionType ?? "内测",
-      forceUpdate: this.findPlatform(config, platform)?.forceUpdate ?? false,
-      gray: this.findPlatform(config, platform)?.gray ?? false,
-      minSupportedVersion: this.findPlatform(config, platform)?.minSupportedVersion ?? null
-    });
-
-    return this.updateProjectConfig(project, next, ctx);
-  }
-
-  async removePackage(
-    project: MobileAppProjectRef,
-    platform: MobileAppPlatform,
-    ctx: RequestContext
-  ): Promise<MobileAppProjectConfigInfo> {
-    await this.deps.projectAccess?.requireProjectMaintainer(project.id, ctx, "remove mobile app package");
-    const current = await this.findProjectConfig(project.id, ctx);
-    const config = current ? this.parseConfig(current) : this.createDefaultConfig(project);
-    const currentPlatform = this.findPlatform(config, platform);
-    if (currentPlatform?.packageUploadId) {
-      await this.deps.uploadCommand?.deactivateUpload(currentPlatform.packageUploadId, ctx);
-    }
-    const next = this.upsertPlatform(config, platform, {
-      ...emptyPlatform(platform),
-      enabled: false
-    });
-    return this.updateProjectConfig(project, next, ctx);
-  }
-
   async getPublicDownloadInfo(project: MobileAppProjectRef, ctx: RequestContext): Promise<MobileAppDownloadInfo> {
-    const selectedConfig = await this.findProjectConfig(project.id, ctx);
-    if (!selectedConfig) {
-      throwNotConfigured(project.projectKey);
-    }
-    const config = this.parseConfig(selectedConfig);
-    if (config.enabled !== true) {
-      throwNotConfigured(project.projectKey);
-    }
-    const data = await this.buildInfo(project, config, selectedConfig, { publicOnly: true }, ctx);
-    if (!data.platforms.some((item) => item.enabled && item.packageUploadId && item.downloadUrl)) {
-      throwNotConfigured(project.projectKey);
-    }
-    return data;
+    return this.getVersionBackedPublicDownloadInfo(project, ctx);
   }
 
   async getPublicPackage(
     project: MobileAppProjectRef,
     platform: MobileAppPlatform,
     ctx: RequestContext
-  ): Promise<UploadEntity> {
-    const data = await this.getPublicDownloadInfo(project, ctx);
-    const selected = data.platforms.find((item) => item.platform === platform && item.enabled && item.packageUploadId);
-    if (!selected?.packageUploadId) {
-      throw new AppError(ERROR_CODES.MOBILE_APP_DOWNLOAD_PACKAGE_NOT_FOUND, "mobile app package not found", 404, {
-        projectKey: project.projectKey,
-        platform
-      });
+  ): Promise<{ upload: UploadEntity; versionId: string }> {
+    const settings = await this.getPublicPortalSettings(project, ctx);
+    if (!settings.enabled) {
+      throwNotConfigured(project.projectKey);
     }
-
-    const upload = await this.deps.uploadQuery.getById(selected.packageUploadId, ctx);
+    const version = await this.deps.mobileAppVersionQuery.getLatestPublishedVersion(project.id, platform, ctx);
+    if (!version?.packageUploadId) {
+      throwPackageNotFound(project.projectKey, platform);
+    }
+    const upload = await this.deps.uploadQuery.getById(version.packageUploadId, ctx);
     if (!isActiveMobileAppPackage(upload)) {
-      throw new AppError(ERROR_CODES.MOBILE_APP_DOWNLOAD_PACKAGE_NOT_FOUND, "mobile app package not found", 404, {
-        projectKey: project.projectKey,
-        platform
-      });
+      throwPackageNotFound(project.projectKey, platform);
     }
-    return upload;
+    return { upload, versionId: version.id };
   }
 
-  private async buildInfo(
+  async recordPublicDownload(project: MobileAppProjectRef, versionId: string, ctx: RequestContext): Promise<void> {
+    await this.deps.mobileAppVersionCommand.recordDownload(project.id, versionId, ctx);
+  }
+
+  private async getVersionBackedPublicDownloadInfo(
     project: MobileAppProjectRef,
-    config: MobileAppDownloadConfig,
-    selectedConfig: SharedConfigEntity | null,
-    options: { publicOnly: boolean },
     ctx: RequestContext
   ): Promise<MobileAppProjectConfigInfo> {
-    const releaseChannel = config.releaseChannel?.trim() || config.app?.channel?.trim() || DEFAULT_RELEASE_CHANNEL;
-    const configuredReleaseNotes = normalizeConfiguredReleaseNotes(config.releaseNotes ?? []);
-    const releaseResult =
-      configuredReleaseNotes.length > 0
-        ? null
-        : await this.deps.releaseQuery.listPublic({ channel: releaseChannel, page: 1, pageSize: 10 }, ctx);
-    const platforms = await this.normalizePlatforms(project, config, options, ctx);
-    const primary = this.resolvePrimaryPlatform(platforms);
-    const releaseNotes =
-      configuredReleaseNotes.length > 0 ? configuredReleaseNotes : releaseResult?.items.map(toReleaseNote) ?? [];
+    const settings = await this.getPublicPortalSettings(project, ctx);
+    if (!settings.enabled) {
+      throwNotConfigured(project.projectKey);
+    }
+    const platformVersions = await this.resolvePublishedPlatformVersions(project.id, ctx);
+    const platforms = platformVersions.map(({ platform, version }) => toDownloadPlatform(project, platform, version));
+    if (!platforms.some((item) => item.enabled && item.packageUploadId && item.downloadUrl)) {
+      throwNotConfigured(project.projectKey);
+    }
+
+    const publishedVersions = await this.deps.mobileAppVersionQuery.listPublishedVersions(project.id, ctx);
+    const releaseNotes = publishedVersions.slice(0, 10).map((version) => toVersionReleaseNote(project, version));
+    const primary = resolvePrimaryPlatform(platforms);
+    const channel = primary?.distributionType || DEFAULT_RELEASE_CHANNEL;
 
     return {
       project,
-      enabled: config.enabled === true,
+      enabled: true,
       downloadPageUrl: `/download/${encodeURIComponent(project.projectKey)}`,
       app: {
-        name: config.app?.name?.trim() || project.name,
-        title: config.app?.title?.trim() || `${project.name} APP 下载`,
-        subtitle: config.app?.subtitle?.trim() || "公司内部移动端",
-        description:
-          config.app?.description?.trim() ||
-          "该页面用于下载项目对应的移动端安装包，请按设备系统选择 Android 或 iOS 版本。",
-        channel: releaseChannel
+        name: settings.name || project.name,
+        title: `${settings.name || project.name} APP 下载`,
+        subtitle: settings.subtitle,
+        description: settings.description,
+        channel
       },
       current: {
-        versionName: config.current?.versionName ?? primary?.versionName ?? null,
-        versionCode: config.current?.versionCode ?? primary?.versionCode ?? null,
-        publishedAt: config.current?.publishedAt ?? releaseNotes[0]?.publishedAt ?? null,
-        channel: config.current?.channel?.trim() || releaseChannel,
-        packageSizeBytes: config.current?.packageSizeBytes ?? primary?.packageSizeBytes ?? null,
-        minOsVersion: config.current?.minOsVersion ?? primary?.minOsVersion ?? null,
-        forceUpdate: config.current?.forceUpdate ?? primary?.forceUpdate ?? false,
-        gray: config.current?.gray ?? primary?.gray ?? false,
-        minSupportedVersion: config.current?.minSupportedVersion ?? primary?.minSupportedVersion ?? null
+        versionName: primary?.versionName ?? null,
+        versionCode: primary?.versionCode ?? null,
+        publishedAt: releaseNotes[0]?.publishedAt ?? null,
+        channel,
+        packageSizeBytes: primary?.packageSizeBytes ?? null,
+        minOsVersion: primary?.minOsVersion ?? null,
+        forceUpdate: false,
+        gray: false,
+        minSupportedVersion: null
       },
       platforms,
       releaseNotes,
-      installSteps: config.installSteps?.length ? config.installSteps : DEFAULT_INSTALL_STEPS,
-      faq: config.faq?.length ? config.faq : DEFAULT_FAQ,
-      support: {
-        owner: config.support?.owner?.trim() || "项目负责人",
-        contact: config.support?.contact ?? null,
-        docsUrl: config.support?.docsUrl ?? null
-      },
-      cache: {
-        maxAgeSeconds: config.cache?.maxAgeSeconds ?? DEFAULT_CACHE_SECONDS
-      },
-      configured: !!selectedConfig,
-      source: {
-        configKey: selectedConfig?.configKey ?? MOBILE_APP_DOWNLOAD_CONFIG_KEY,
-        releaseChannel
-      }
-    };
-  }
-
-  private async findProjectConfig(projectId: string, ctx: RequestContext): Promise<SharedConfigEntity | null> {
-    const result = await this.deps.sharedConfigQuery.list(
-      {
-        projectId,
-        category: MOBILE_APP_DOWNLOAD_CONFIG_CATEGORY,
-        page: 1,
-        pageSize: 20
-      },
-      ctx
-    );
-    return result.items.find((item) => item.configKey === MOBILE_APP_DOWNLOAD_CONFIG_KEY && item.status === "active") ?? null;
-  }
-
-  private parseConfig(entity: SharedConfigEntity): MobileAppDownloadConfig {
-    try {
-      const value = JSON.parse(entity.configValue) as unknown;
-      return this.parseInputConfig(value);
-    } catch (_error) {
-      throw new AppError(
-        ERROR_CODES.MOBILE_APP_DOWNLOAD_CONFIG_INVALID,
-        `mobile app download config invalid: ${entity.configKey}`,
-        400,
-        { configKey: entity.configKey }
-      );
-    }
-  }
-
-  private parseInputConfig(input: unknown): MobileAppDownloadConfig {
-    try {
-      const parsed = mobileAppDownloadConfigSchema.parse(input);
-      return {
-        ...parsed,
-        platforms: this.normalizeConfigPlatforms(parsed.platforms ?? []),
-        releaseNotes: normalizeConfigReleaseNotes(parsed.releaseNotes ?? [])
-      };
-    } catch (_error) {
-      throw new AppError(ERROR_CODES.MOBILE_APP_DOWNLOAD_CONFIG_INVALID, "mobile app download config invalid", 400);
-    }
-  }
-
-  private createDefaultConfig(project: MobileAppProjectRef): MobileAppDownloadConfig {
-    return {
-      enabled: false,
-      app: {
-        name: project.name,
-        title: `${project.name} APP 下载`,
-        subtitle: "公司内部移动端",
-        description: ""
-      },
-      platforms: [emptyPlatform("android"), emptyPlatform("ios")],
-      releaseNotes: [],
-      installSteps: DEFAULT_INSTALL_STEPS,
+      installSteps: settings.showInstallGuide ? DEFAULT_INSTALL_STEPS : [],
       faq: DEFAULT_FAQ,
       support: {
         owner: "项目负责人",
@@ -326,107 +128,79 @@ export class MobileAppDownloadService {
       cache: {
         maxAgeSeconds: DEFAULT_CACHE_SECONDS
       },
-      releaseChannel: DEFAULT_RELEASE_CHANNEL
+      configured: true,
+      source: {
+        configKey: MOBILE_APP_PORTAL_SETTINGS_KEY,
+        releaseChannel: channel
+      }
     };
   }
 
-  private normalizeConfigPlatforms(platforms: MobileAppDownloadConfig["platforms"]): MobileAppPlatformConfig[] {
-    return [
-      this.findPlatform({ platforms }, "android") ?? emptyPlatform("android"),
-      this.findPlatform({ platforms }, "ios") ?? emptyPlatform("ios")
-    ];
-  }
-
-  private async normalizePlatforms(
-    project: MobileAppProjectRef,
-    config: MobileAppDownloadConfig,
-    options: { publicOnly: boolean },
-    ctx: RequestContext
-  ): Promise<MobileAppDownloadPlatform[]> {
-    const items: MobileAppDownloadPlatform[] = [];
-    for (const platform of this.normalizeConfigPlatforms(config.platforms ?? [])) {
-      const upload = platform.packageUploadId ? await this.resolveActivePackage(platform.packageUploadId, ctx) : null;
-      const enabled = platform.enabled !== false && (!options.publicOnly || !!upload);
+  private async resolvePublishedPlatformVersions(projectId: string, ctx: RequestContext) {
+    const items: Array<{ platform: MobileAppPlatform; version: MobileAppVersionEntity | null }> = [];
+    for (const platform of ["android", "ios"] as const) {
       items.push({
-        platform: platform.platform,
-        enabled,
-        packageUploadId: upload?.id ?? platform.packageUploadId ?? null,
-        packageName: upload?.originalName ?? platform.packageName ?? null,
-        versionName: platform.versionName ?? null,
-        versionCode: platform.versionCode ?? null,
-        downloadUrl: enabled && upload ? `/api/public/mobile-app/projects/${encodeURIComponent(project.projectKey)}/packages/${platform.platform}/download` : null,
-        qrCodeUrl: platform.qrCodeUrl ?? null,
-        packageSizeBytes: upload?.fileSize ?? platform.packageSizeBytes ?? null,
-        minOsVersion: platform.minOsVersion ?? null,
-        checksum: {
-          sha256: upload?.checksum ?? platform.checksum?.sha256 ?? null,
-          md5: platform.checksum?.md5 ?? null
-        },
-        distributionType: platform.distributionType ?? null,
-        forceUpdate: platform.forceUpdate ?? false,
-        gray: platform.gray ?? false,
-        minSupportedVersion: platform.minSupportedVersion ?? null
+        platform,
+        version: await this.deps.mobileAppVersionQuery.getLatestPublishedVersion(projectId, platform, ctx)
       });
     }
     return items;
   }
 
-  private async resolveActivePackage(uploadId: string, ctx: RequestContext): Promise<UploadEntity | null> {
-    try {
-      const upload = await this.deps.uploadQuery.getById(uploadId, ctx);
-      return isActiveMobileAppPackage(upload) ? upload : null;
-    } catch {
-      return null;
-    }
-  }
-
-  private resolvePrimaryPlatform(platforms: MobileAppDownloadPlatform[]): MobileAppDownloadPlatform | null {
-    return platforms.find((item) => item.enabled && item.downloadUrl) ?? platforms.find((item) => item.enabled) ?? null;
-  }
-
-  private upsertPlatform(
-    config: MobileAppDownloadConfig,
-    platform: MobileAppPlatform,
-    value: MobileAppPlatformConfig
-  ): MobileAppDownloadConfig {
-    const platforms = this.normalizeConfigPlatforms(config.platforms ?? []).map((item) =>
-      item.platform === platform ? value : item
-    );
-    return { ...config, platforms };
-  }
-
-  private findPlatform(config: Pick<MobileAppDownloadConfig, "platforms">, platform: MobileAppPlatform) {
-    return config.platforms?.find((item) => item.platform === platform) ?? null;
+  private async getPublicPortalSettings(
+    project: MobileAppProjectRef,
+    ctx: RequestContext
+  ): Promise<MobileAppPortalSettings> {
+    return this.deps.portalSettings.get(project.id, project.name, ctx);
   }
 }
 
-function normalizeConfigReleaseNotes(items: MobileAppReleaseNoteConfig[]): MobileAppReleaseNoteConfig[] {
-  return items
-    .map((item, index) => ({
-      id: item.id?.trim() || `mobile-app-release-${index + 1}`,
-      version: item.version.trim(),
-      title: item.title.trim(),
-      publishedAt: item.publishedAt?.trim() || null,
-      summary: (item.summary ?? []).map((line) => line.trim()).filter(Boolean),
-      importantNotes: (item.importantNotes ?? []).map((line) => line.trim()).filter(Boolean),
-      downloadUrl: item.downloadUrl?.trim() || null
-    }))
-    .filter((item) => item.version && item.title);
+function toDownloadPlatform(
+  project: MobileAppProjectRef,
+  platform: MobileAppPlatform,
+  version: MobileAppVersionEntity | null
+): MobileAppDownloadPlatform {
+  if (!version) {
+    return emptyDownloadPlatform(platform);
+  }
+  return {
+    platform,
+    enabled: true,
+    packageUploadId: version.packageUploadId,
+    packageName: version.packageName,
+    versionName: version.version,
+    versionCode: parseBuildNumber(version.buildNumber),
+    downloadUrl: `/api/public/mobile-app/projects/${encodeURIComponent(project.projectKey)}/packages/${platform}/download`,
+    qrCodeUrl: null,
+    packageSizeBytes: version.sizeBytes,
+    minOsVersion: version.minOsVersion || null,
+    checksum: {
+      sha256: version.sha256 || null,
+      md5: null
+    },
+    distributionType: version.releaseChannel || null,
+    forceUpdate: false,
+    gray: false,
+    minSupportedVersion: null
+  };
 }
 
-function normalizeConfiguredReleaseNotes(items: MobileAppReleaseNoteConfig[]): MobileAppDownloadReleaseNote[] {
-  return normalizeConfigReleaseNotes(items).map((item, index) => ({
-    id: item.id ?? `mobile-app-release-${index + 1}`,
-    version: item.version,
-    title: item.title,
-    publishedAt: item.publishedAt ?? null,
-    summary: item.summary?.length ? item.summary : [item.title],
-    importantNotes: item.importantNotes ?? [],
-    downloadUrl: item.downloadUrl ?? null
-  }));
+function toVersionReleaseNote(
+  project: MobileAppProjectRef,
+  version: MobileAppVersionEntity
+): MobileAppDownloadReleaseNote {
+  return {
+    id: version.id,
+    version: version.version,
+    title: `${version.platform === "android" ? "Android" : "iOS"} ${version.version}`,
+    publishedAt: version.publishedAt,
+    summary: version.changelog.length ? version.changelog : [`${version.version} 已发布`],
+    importantNotes: version.changelog.filter((line) => /^(重要|注意|warning|important)[:：]/i.test(line)),
+    downloadUrl: `/api/public/mobile-app/projects/${encodeURIComponent(project.projectKey)}/packages/${version.platform}/download`
+  };
 }
 
-function emptyPlatform(platform: MobileAppPlatform): MobileAppPlatformConfig {
+function emptyDownloadPlatform(platform: MobileAppPlatform): MobileAppDownloadPlatform {
   return {
     platform,
     enabled: false,
@@ -446,6 +220,15 @@ function emptyPlatform(platform: MobileAppPlatform): MobileAppPlatformConfig {
   };
 }
 
+function resolvePrimaryPlatform(platforms: MobileAppDownloadPlatform[]): MobileAppDownloadPlatform | null {
+  return platforms.find((item) => item.enabled && item.downloadUrl) ?? platforms.find((item) => item.enabled) ?? null;
+}
+
+function parseBuildNumber(value: string): number | null {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function isActiveMobileAppPackage(upload: UploadEntity): boolean {
   return (
     upload.status === "active" &&
@@ -460,19 +243,9 @@ function throwNotConfigured(projectKey: string): never {
   });
 }
 
-function toReleaseNote(entity: ReleaseEntity): MobileAppDownloadReleaseNote {
-  const lines = (entity.notes ?? "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  return {
-    id: entity.id,
-    version: entity.version,
-    title: entity.title,
-    publishedAt: entity.publishedAt,
-    summary: lines.length ? lines : [entity.title],
-    importantNotes: lines.filter((line) => /^(重要|注意|warning|important)[:：]/i.test(line)),
-    downloadUrl: entity.downloadUrl
-  };
+function throwPackageNotFound(projectKey: string, platform: MobileAppPlatform): never {
+  throw new AppError(ERROR_CODES.MOBILE_APP_DOWNLOAD_PACKAGE_NOT_FOUND, "mobile app package not found", 404, {
+    projectKey,
+    platform
+  });
 }

@@ -7,6 +7,7 @@ import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { ok } from "../../shared/http/response";
 import { ProjectRepo } from "../project/project.repo";
+import { MobileAppPortalSettingsService } from "./mobile-app-portal-settings.service";
 import { MobileAppDownloadService } from "./mobile-app-download.service";
 import type { MobileAppPlatform, MobileAppProjectRef } from "./mobile-app-download.types";
 
@@ -33,7 +34,7 @@ export default async function mobileAppDownloadPublicRoutes(app: FastifyInstance
     const { projectKey, platform } = packageParamsSchema.parse(request.params);
     const project = resolveProjectByKey(app, projectKey);
     const service = createService(app);
-    const upload = await service.getPublicPackage(project, platform as MobileAppPlatform, ctx);
+    const { upload, versionId } = await service.getPublicPackage(project, platform as MobileAppPlatform, ctx);
     const filePath = resolveUploadFilePath(upload.storagePath, upload.fileName, app.config.uploadDir);
     if (!filePath) {
       throw new AppError(ERROR_CODES.MOBILE_APP_DOWNLOAD_PACKAGE_NOT_FOUND, "mobile app package not found", 404, {
@@ -41,6 +42,7 @@ export default async function mobileAppDownloadPublicRoutes(app: FastifyInstance
         platform
       });
     }
+    await service.recordPublicDownload(project, versionId, ctx);
 
     const fileStat = statSync(filePath);
     const rangeHeader = typeof request.headers.range === "string" ? request.headers.range : request.headers.range?.[0];
@@ -64,10 +66,14 @@ export default async function mobileAppDownloadPublicRoutes(app: FastifyInstance
 }
 
 function createService(app: FastifyInstance): MobileAppDownloadService {
+  const portalSettings = new MobileAppPortalSettingsService({
+    sharedConfigQuery: app.container.sharedConfigQuery
+  });
   return new MobileAppDownloadService({
-    sharedConfigQuery: app.container.sharedConfigQuery,
-    releaseQuery: app.container.releaseQuery,
-    uploadQuery: app.container.uploadQuery
+    uploadQuery: app.container.uploadQuery,
+    portalSettings,
+    mobileAppVersionQuery: app.container.mobileAppVersionQuery,
+    mobileAppVersionCommand: app.container.mobileAppVersionCommand
   });
 }
 

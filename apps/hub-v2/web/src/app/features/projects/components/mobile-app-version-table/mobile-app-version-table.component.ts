@@ -38,7 +38,12 @@ import {
       </div>
       <div table-body class="version-table__body">
         @for (item of versions(); track item.id) {
-          <div class="version-row" (click)="viewDetail.emit(item)">
+          <button
+            type="button"
+            class="version-row"
+            [class.is-active]="selectedId() === item.id"
+            (click)="viewDetail.emit(item)"
+          >
             <div class="version-cell version-cell--version">{{ item.version }}</div>
             <div class="version-cell">
               <span class="platform-badge" [attr.data-platform]="item.platform">
@@ -111,7 +116,7 @@ import {
                 </a>
               }
             </div>
-          </div>
+          </button>
         } @empty {
           <div class="version-empty">
             <nz-icon nzType="inbox" nzTheme="outline" />
@@ -123,21 +128,24 @@ import {
   `,
   styles: [
     `
-      .version-table__head {
+      .version-table__head,
+      .version-row {
         display: grid;
         grid-template-columns: 100px 90px 110px 1fr 90px 90px 110px 80px 120px;
-        padding: 0 16px;
-        background: var(--bg-elevated);
-        border-bottom: 1px solid var(--border-color);
+        gap: 12px;
+        align-items: center;
+      }
+
+      .version-table__head {
+        padding: 10px 16px;
+        background: var(--bg-subtle);
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 700;
       }
 
       .version-table__head > div {
-        padding: 12px 8px;
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
+        min-width: 0;
       }
 
       .version-table__body {
@@ -145,28 +153,40 @@ import {
       }
 
       .version-row {
-        display: grid;
-        grid-template-columns: 100px 90px 110px 1fr 90px 90px 110px 80px 120px;
+        width: 100%;
         padding: 0 16px;
+        border: 0;
+        border-bottom: 1px solid var(--border-color-soft);
+        background: transparent;
+        color: inherit;
+        text-align: left;
         cursor: pointer;
-        transition: background 0.15s;
-        border-bottom: 1px solid var(--border-color);
+        transition: var(--transition-base);
       }
 
       .version-row:hover {
-        background: var(--bg-elevated);
+        background: var(--bg-subtle);
+      }
+
+      .version-row.is-active {
+        background:
+          linear-gradient(90deg, rgba(99, 102, 241, 0.14), rgba(99, 102, 241, 0.04)),
+          var(--bg-subtle);
+        box-shadow: inset 3px 0 0 var(--primary-600);
       }
 
       .version-row:last-child {
-        border-bottom: none;
+        border-bottom: 0;
       }
 
       .version-cell {
-        padding: 14px 8px;
+        min-width: 0;
+        padding: 14px 0;
         display: flex;
         align-items: center;
         font-size: 13px;
-        color: var(--text);
+        color: var(--text-primary);
+        overflow: hidden;
       }
 
       .version-cell--version {
@@ -178,6 +198,8 @@ import {
         font-family: var(--font-mono);
         font-size: 12px;
         color: var(--text-secondary);
+        white-space: nowrap;
+        text-overflow: ellipsis;
       }
 
       .version-cell--date {
@@ -282,12 +304,35 @@ import {
       .version-empty nz-icon {
         font-size: 32px;
       }
+
+      @media (max-width: 1180px) {
+        .version-table__head {
+          display: none;
+        }
+
+        .version-row {
+          grid-template-columns: 1fr;
+          gap: 8px;
+          padding: 14px 16px;
+        }
+
+        .version-cell {
+          padding: 0;
+        }
+      }
+
+      :host-context(html[data-theme='dark']) .version-row.is-active {
+        background:
+          linear-gradient(90deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.06)),
+          var(--bg-subtle);
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MobileAppVersionTableComponent {
   readonly versions = input<MobileAppVersion[]>([]);
+  readonly selectedId = input<string | null>(null);
 
   readonly viewDetail = output<MobileAppVersion>();
   readonly edit = output<MobileAppVersion>();

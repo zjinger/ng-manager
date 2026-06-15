@@ -65,7 +65,7 @@ import type {
               <nz-form-item>
                 <nz-form-label nzRequired>平台</nz-form-label>
                 <nz-form-control>
-                  <nz-select [(ngModel)]="platform" name="platform">
+                  <nz-select [ngModel]="platform()" name="platform" (ngModelChange)="onPlatformChange($event)">
                     <nz-option nzValue="ios" nzLabel="iOS"></nz-option>
                     <nz-option nzValue="android" nzLabel="Android"></nz-option>
                   </nz-select>
@@ -90,30 +90,14 @@ import type {
           <div class="row" nz-row [nzGutter]="16">
             <div class="col" nz-col [nzSpan]="24">
               <nz-form-item>
-                <nz-form-label>发布渠道</nz-form-label>
-                <nz-form-control>
-                  <nz-select [(ngModel)]="releaseChannel" name="releaseChannel">
-                    <nz-option nzValue="企业内测 — 全员" nzLabel="企业内测 — 全员"></nz-option>
-                    <nz-option nzValue="企业内测 — 研发组" nzLabel="企业内测 — 研发组"></nz-option>
-                    <nz-option nzValue="灰度发布 — 10%" nzLabel="灰度发布 — 10%"></nz-option>
-                    <nz-option nzValue="灰度发布 — 50%" nzLabel="灰度发布 — 50%"></nz-option>
-                  </nz-select>
-                </nz-form-control>
-              </nz-form-item>
-            </div>
-          </div>
-
-          <div class="row" nz-row [nzGutter]="16">
-            <div class="col" nz-col [nzSpan]="24">
-              <nz-form-item>
                 <nz-form-label>安装包</nz-form-label>
                 <nz-form-control>
                   <app-file-upload-dropzone
                     [policy]="packagePolicy"
                     [files]="packageFiles()"
                     [multiple]="false"
-                    [title]="'点击或拖拽安装包到此区域上传'"
-                    [hint]="'支持 .ipa / .apk 格式'"
+                    [title]="'拖放 .ipa / .apk 文件到此处，或点击选择'"
+                    [hint]="'最大 200 MB'"
                     (filesChange)="onPackageFilesChange($event)"
                   />
                 </nz-form-control>
@@ -124,15 +108,54 @@ import type {
           <div class="row" nz-row [nzGutter]="16">
             <div class="col" nz-col [nzSpan]="24">
               <nz-form-item>
-                <nz-form-label>更新日志（每行一条）</nz-form-label>
+                <nz-form-label>SHA256 校验值</nz-form-label>
+                <nz-form-control>
+                  <input
+                    nz-input
+                    placeholder="上传后自动计算，或手动粘贴"
+                    [(ngModel)]="sha256"
+                    name="sha256"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+
+          <div class="row" nz-row [nzGutter]="16">
+            <div class="col" nz-col [nzSpan]="24">
+              <nz-form-item>
+                <nz-form-label>更新日志</nz-form-label>
                 <nz-form-control>
                   <textarea
                     nz-input
                     rows="4"
-                    placeholder="每行一条更新内容…"
+                    placeholder="每行一条更新内容..."
                     [(ngModel)]="changelogText"
                     name="changelog"
                   ></textarea>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+
+          <div class="row" nz-row [nzGutter]="16">
+            <div class="col" nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label>最低系统版本</nz-form-label>
+                <nz-form-control>
+                  <input nz-input placeholder="例如 iOS 15.0 / Android 10" [(ngModel)]="minOsVersion" name="minOsVersion" />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div class="col" nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label>发布渠道</nz-form-label>
+                <nz-form-control>
+                  <nz-select [(ngModel)]="releaseChannel" name="releaseChannel">
+                    <nz-option nzValue="企业内测 — 全员" nzLabel="企业内测 — 全员"></nz-option>
+                    <nz-option nzValue="企业内测 — 研发组" nzLabel="企业内测 — 研发组"></nz-option>
+                    <nz-option nzValue="正式发布" nzLabel="正式发布"></nz-option>
+                  </nz-select>
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -174,6 +197,8 @@ export class MobileAppVersionFormDialogComponent {
   readonly platform = signal<MobileAppPlatformType>('ios');
   readonly status = signal<MobileAppVersionStatus>('draft');
   readonly releaseChannel = signal('企业内测 — 全员');
+  readonly minOsVersion = signal(defaultMinOsVersion('ios'));
+  readonly sha256 = signal('');
   readonly changelogText = signal('');
   readonly packageFiles = signal<File[]>([]);
 
@@ -187,7 +212,10 @@ export class MobileAppVersionFormDialogComponent {
         this.platform.set(editVersion.platform);
         this.status.set(editVersion.status);
         this.releaseChannel.set(editVersion.releaseChannel);
+        this.minOsVersion.set(editVersion.minOsVersion);
+        this.sha256.set(editVersion.sha256);
         this.changelogText.set(editVersion.changelog.join('\n'));
+        this.packageFiles.set([]);
       } else {
         this.isEditing.set(false);
         this.resetForm();
@@ -196,11 +224,32 @@ export class MobileAppVersionFormDialogComponent {
   }
 
   isValid(): boolean {
-    return !!this.version().trim() && !!this.buildNumber().trim();
+    return !!this.version().trim() && !!this.buildNumber().trim() && (this.isEditing() || this.packageFiles().length > 0);
   }
 
   onPackageFilesChange(files: File[]): void {
     this.packageFiles.set(files);
+    const file = files[0];
+    if (!file) {
+      if (!this.isEditing()) {
+        this.sha256.set('');
+      }
+      return;
+    }
+    void this.calculateSha256(file).then((value) => {
+      if (value && this.packageFiles()[0] === file) {
+        this.sha256.set(value);
+      }
+    });
+  }
+
+  onPlatformChange(platform: MobileAppPlatformType): void {
+    const previousDefault = defaultMinOsVersion(this.platform());
+    const shouldResetMinOs = !this.minOsVersion().trim() || this.minOsVersion().trim() === previousDefault;
+    this.platform.set(platform);
+    if (shouldResetMinOs) {
+      this.minOsVersion.set(defaultMinOsVersion(platform));
+    }
   }
 
   submit(): void {
@@ -220,7 +269,9 @@ export class MobileAppVersionFormDialogComponent {
           platform: this.platform(),
           status: this.status(),
           releaseChannel: this.releaseChannel(),
+          minOsVersion: this.minOsVersion().trim(),
           changelog,
+          packageFile: this.packageFiles()[0] ?? null,
         },
       });
     } else {
@@ -231,7 +282,8 @@ export class MobileAppVersionFormDialogComponent {
         status: this.status(),
         releaseChannel: this.releaseChannel(),
         changelog,
-        minOsVersion: this.platform() === 'ios' ? 'iOS 15.0' : 'Android 10',
+        minOsVersion: this.minOsVersion().trim() || defaultMinOsVersion(this.platform()),
+        packageFile: this.packageFiles()[0] ?? null,
       });
     }
   }
@@ -242,7 +294,23 @@ export class MobileAppVersionFormDialogComponent {
     this.platform.set('ios');
     this.status.set('draft');
     this.releaseChannel.set('企业内测 — 全员');
+    this.minOsVersion.set(defaultMinOsVersion('ios'));
+    this.sha256.set('');
     this.changelogText.set('');
     this.packageFiles.set([]);
   }
+
+  private async calculateSha256(file: File): Promise<string> {
+    if (!globalThis.crypto?.subtle) {
+      return '';
+    }
+    const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
+  }
+}
+
+function defaultMinOsVersion(platform: MobileAppPlatformType): string {
+  return platform === 'ios' ? 'iOS 15.0' : 'Android 10';
 }

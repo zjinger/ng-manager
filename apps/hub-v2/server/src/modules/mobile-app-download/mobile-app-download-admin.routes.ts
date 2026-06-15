@@ -1,134 +1,102 @@
 import type { FastifyInstance } from "fastify";
-import { rmSync } from "node:fs";
-import path from "node:path";
 import { z } from "zod";
 import { requireAuth } from "../../shared/auth/require-auth";
 import { ERROR_CODES } from "../../shared/errors/error-codes";
 import { AppError } from "../../shared/errors/app-error";
 import { ok } from "../../shared/http/response";
-import { saveMultipartFile } from "../../shared/storage/file-storage";
-import type { ProjectAccessContract } from "../project/project-access.contract";
 import { ProjectRepo } from "../project/project.repo";
-import { assertUploadAllowed, resolveUploadPolicy } from "../upload/upload-policy";
-import {
-  MOBILE_APP_PACKAGE_BUCKET,
-  MOBILE_APP_PACKAGE_CATEGORY,
-  MobileAppDownloadService
-} from "./mobile-app-download.service";
-import type { MobileAppPlatform, MobileAppProjectRef } from "./mobile-app-download.types";
-
-type ProjectMaintainerAccess = ProjectAccessContract & {
-  requireProjectMaintainer(projectId: string, ctx: ReturnType<typeof requireAuth>, action: string): Promise<void>;
-};
+import { createMobileAppVersionSchema, updateMobileAppVersionSchema } from "./mobile-app-version.schema";
+import type { MobileAppProjectRef } from "./mobile-app-download.types";
 
 const paramsSchema = z.object({ projectId: z.string().trim().min(1) });
-const platformParamsSchema = z.object({
+const versionParamsSchema = z.object({
   projectId: z.string().trim().min(1),
-  platform: z.enum(["android", "ios"])
+  versionId: z.string().trim().min(1)
 });
 
 export default async function mobileAppDownloadAdminRoutes(app: FastifyInstance) {
-  app.get("/projects/:projectId/mobile-app", async (request) => {
+  app.get("/projects/:projectId/mobile-app/versions", async (request) => {
+    const ctx = requireAuth(request);
+    const { projectId } = paramsSchema.parse(request.params);
+    await resolveProjectById(app, projectId);
+    return ok(await app.container.mobileAppVersionQuery.listVersions(projectId, ctx));
+  });
+
+  app.post("/projects/:projectId/mobile-app/versions", async (request, reply) => {
+    const ctx = requireAuth(request);
+    const { projectId } = paramsSchema.parse(request.params);
+    await resolveProjectById(app, projectId);
+    const input = createMobileAppVersionSchema.parse(request.body);
+    return reply
+      .status(201)
+      .send(ok(await app.container.mobileAppVersionCommand.createVersion(projectId, input, ctx), "mobile app version created"));
+  });
+
+  app.get("/projects/:projectId/mobile-app/versions/:versionId", async (request) => {
+    const ctx = requireAuth(request);
+    const { projectId, versionId } = versionParamsSchema.parse(request.params);
+    await resolveProjectById(app, projectId);
+    return ok(await app.container.mobileAppVersionQuery.getVersion(projectId, versionId, ctx));
+  });
+
+  app.patch("/projects/:projectId/mobile-app/versions/:versionId", async (request) => {
+    const ctx = requireAuth(request);
+    const { projectId, versionId } = versionParamsSchema.parse(request.params);
+    await resolveProjectById(app, projectId);
+    const input = updateMobileAppVersionSchema.parse(request.body);
+    return ok(await app.container.mobileAppVersionCommand.updateVersion(projectId, versionId, input, ctx), "mobile app version updated");
+  });
+
+  app.delete("/projects/:projectId/mobile-app/versions/:versionId", async (request) => {
+    const ctx = requireAuth(request);
+    const { projectId, versionId } = versionParamsSchema.parse(request.params);
+    await resolveProjectById(app, projectId);
+    return ok(await app.container.mobileAppVersionCommand.deleteVersion(projectId, versionId, ctx), "mobile app version deleted");
+  });
+
+  app.post("/projects/:projectId/mobile-app/versions/:versionId/publish", async (request) => {
+    const ctx = requireAuth(request);
+    const { projectId, versionId } = versionParamsSchema.parse(request.params);
+    await resolveProjectById(app, projectId);
+    return ok(await app.container.mobileAppVersionCommand.publishVersion(projectId, versionId, ctx), "mobile app version published");
+  });
+
+  app.post("/projects/:projectId/mobile-app/versions/:versionId/archive", async (request) => {
+    const ctx = requireAuth(request);
+    const { projectId, versionId } = versionParamsSchema.parse(request.params);
+    await resolveProjectById(app, projectId);
+    return ok(await app.container.mobileAppVersionCommand.archiveVersion(projectId, versionId, ctx), "mobile app version archived");
+  });
+
+  app.get("/projects/:projectId/mobile-app/release-logs", async (request) => {
+    const ctx = requireAuth(request);
+    const { projectId } = paramsSchema.parse(request.params);
+    await resolveProjectById(app, projectId);
+    return ok(await app.container.mobileAppVersionQuery.listReleaseRecords(projectId, ctx));
+  });
+
+  app.get("/projects/:projectId/mobile-app/stats", async (request) => {
+    const ctx = requireAuth(request);
+    const { projectId } = paramsSchema.parse(request.params);
+    await resolveProjectById(app, projectId);
+    return ok(await app.container.mobileAppVersionQuery.getStats(projectId, ctx));
+  });
+
+  app.get("/projects/:projectId/mobile-app/portal-settings", async (request) => {
     const ctx = requireAuth(request);
     const { projectId } = paramsSchema.parse(request.params);
     const project = await resolveProjectById(app, projectId);
-    const service = createService(app);
-    return ok(await service.getProjectConfig(project, ctx));
+    return ok(await app.container.mobileAppVersionQuery.getPortalSettings(project.id, project.name, ctx));
   });
 
-  app.put("/projects/:projectId/mobile-app", async (request) => {
+  app.put("/projects/:projectId/mobile-app/portal-settings", async (request) => {
     const ctx = requireAuth(request);
     const { projectId } = paramsSchema.parse(request.params);
     const project = await resolveProjectById(app, projectId);
-    const service = createService(app);
-    return ok(await service.updateProjectConfig(project, request.body, ctx), "mobile app config updated");
-  });
-
-  app.post("/projects/:projectId/mobile-app/packages/:platform", async (request, reply) => {
-    const ctx = requireAuth(request);
-    const { projectId, platform } = platformParamsSchema.parse(request.params);
-    const project = await resolveProjectById(app, projectId);
-    await (app.container.projectAccess as ProjectMaintainerAccess).requireProjectMaintainer(
-      project.id,
-      ctx,
-      "upload mobile app package"
+    return ok(
+      await app.container.mobileAppVersionCommand.updatePortalSettings(project.id, project.name, request.body, ctx),
+      "mobile app portal settings updated"
     );
-
-    const file = await request.file();
-    if (!file) {
-      throw new AppError(ERROR_CODES.VALIDATION_ERROR, "file is required", 400);
-    }
-
-    const uploadPolicy = resolveUploadPolicy(MOBILE_APP_PACKAGE_BUCKET, MOBILE_APP_PACKAGE_CATEGORY);
-    assertUploadAllowed(
-      {
-        fileName: file.filename,
-        mimeType: file.mimetype,
-        fileSize: 0
-      },
-      uploadPolicy,
-      app.config.uploadMaxFileSize
-    );
-
-    const targetDir = path.join(app.config.uploadDir, MOBILE_APP_PACKAGE_BUCKET, project.id);
-    let saved: Awaited<ReturnType<typeof saveMultipartFile>> | null = null;
-    try {
-      saved = await saveMultipartFile(file, targetDir);
-      assertUploadAllowed(
-        {
-          fileName: saved.originalName,
-          mimeType: saved.mimeType,
-          fileSize: saved.fileSize
-        },
-        uploadPolicy,
-        app.config.uploadMaxFileSize
-      );
-
-      const upload = await app.container.uploadCommand.create(
-        {
-          bucket: MOBILE_APP_PACKAGE_BUCKET,
-          category: MOBILE_APP_PACKAGE_CATEGORY,
-          visibility: "private",
-          fileName: saved.fileName,
-          originalName: saved.originalName,
-          fileExt: saved.fileExt,
-          mimeType: saved.mimeType,
-          fileSize: saved.fileSize,
-          checksum: saved.checksum,
-          storagePath: saved.storagePath
-        },
-        ctx
-      );
-
-      const service = createService(app);
-      return reply
-        .status(201)
-        .send(ok(await service.attachPackage(project, platform as MobileAppPlatform, upload, ctx), "mobile app package uploaded"));
-    } catch (error) {
-      if (saved?.storagePath) {
-        cleanupSavedFile(saved.storagePath);
-      }
-      throw error;
-    }
-  });
-
-  app.delete("/projects/:projectId/mobile-app/packages/:platform", async (request) => {
-    const ctx = requireAuth(request);
-    const { projectId, platform } = platformParamsSchema.parse(request.params);
-    const project = await resolveProjectById(app, projectId);
-    const service = createService(app);
-    return ok(await service.removePackage(project, platform as MobileAppPlatform, ctx), "mobile app package removed");
-  });
-}
-
-function createService(app: FastifyInstance): MobileAppDownloadService {
-  return new MobileAppDownloadService({
-    sharedConfigQuery: app.container.sharedConfigQuery,
-    sharedConfigCommand: app.container.sharedConfigCommand,
-    releaseQuery: app.container.releaseQuery,
-    uploadQuery: app.container.uploadQuery,
-    uploadCommand: app.container.uploadCommand,
-    projectAccess: app.container.projectAccess as ProjectMaintainerAccess
   });
 }
 
@@ -143,10 +111,4 @@ async function resolveProjectById(app: FastifyInstance, projectId: string): Prom
     projectKey: project.projectKey,
     name: project.name
   };
-}
-
-function cleanupSavedFile(filePath: string): void {
-  try {
-    rmSync(filePath, { force: true });
-  } catch {}
 }

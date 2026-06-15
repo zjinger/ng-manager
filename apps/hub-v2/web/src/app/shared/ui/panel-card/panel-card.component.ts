@@ -1,12 +1,17 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 @Component({
   selector: 'app-panel-card',
   standalone: true,
+  imports: [NzIconModule],
   template: `
     <section class="panel">
       <header class="panel__header">
         <div class="panel__title">
+          @if (titleIcon()) {
+            <nz-icon class="panel__icon" [nzType]="titleIcon()!" [nzTheme]="titleIconTheme()" />
+          }
           <h3>{{ title() }}</h3>
           @if (count() !== null) {
             <span class="panel__count">{{ count() }}</span>
@@ -70,6 +75,12 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         min-width: 0;
       }
 
+      .panel__icon {
+        color: var(--text-muted);
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+
       .panel__title h3 {
         margin: 0;
         color: var(--text-primary);
@@ -125,6 +136,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 })
 export class PanelCardComponent {
   readonly title = input.required<string>();
+  readonly titleIcon = input<string | null>(null);
+  readonly titleIconTheme = input<'outline' | 'fill' | 'twotone'>('outline');
   readonly count = input<number | string | null>(null);
   readonly empty = input(false);
   readonly emptyText = input('暂无数据');

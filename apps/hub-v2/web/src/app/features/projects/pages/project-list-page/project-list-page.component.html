@@ -76,21 +76,19 @@
 
 <app-project-config-dialog
   [open]="configDialogOpen()"
-  [busy]="configBusy() || configLoading() || mobileAppConfigLoading()"
+  [busy]="configBusy() || configLoading()"
   [project]="configProject()"
   [environments]="environments()"
   [versions]="versions()"
   [stages]="stages()"
   [stageTaskTemplates]="stageTaskTemplates()"
   [apiTokens]="apiTokens()"
-  [mobileAppConfig]="mobileAppConfig()"
   [latestCreatedToken]="latestCreatedToken()"
   [pendingEnvironmentIds]="pendingEnvironmentIds()"
   [pendingVersionIds]="pendingVersionIds()"
   [pendingStageIds]="pendingStageIds()"
   [pendingStageTaskTemplateIds]="pendingStageTaskTemplateIds()"
   [pendingTokenIds]="pendingTokenIds()"
-  [pendingMobileAppPlatforms]="pendingMobileAppPlatforms()"
   [canManageConfig]="isProjectAdmin()"
   (cancel)="closeConfigDialog()"
   (createEnvironment)="createEnvironment($event)"
@@ -107,10 +105,6 @@
   (revokeApiToken)="revokeApiToken($event)"
   (copyLatestToken)="copyLatestToken($event)"
   (clearLatestToken)="clearLatestCreatedToken()"
-  (saveMobileAppConfig)="saveMobileAppConfig($event)"
-  (uploadMobileAppPackage)="uploadMobileAppPackage($event)"
-  (removeMobileAppPackage)="removeMobileAppPackage($event)"
-  (copyMobileAppDownloadPageUrl)="copyMobileAppDownloadPageUrl($event)"
 />
 
 <app-project-module-manage-dialog

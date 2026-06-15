@@ -31,9 +31,14 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   TOKEN_PROJECT_FORBIDDEN: 'Token 无权访问该项目',
   TOKEN_NOT_FOUND: 'Token 不存在或已失效',
   TOKEN_LIMIT_EXCEEDED: '最多创建 5 个 Token，请删除已撤销记录后再创建',
-  MOBILE_APP_DOWNLOAD_CONFIG_INVALID: '移动端 APP 下载配置格式有误',
   MOBILE_APP_DOWNLOAD_NOT_CONFIGURED: '该项目暂未配置移动端 APP 下载页',
   MOBILE_APP_DOWNLOAD_PACKAGE_NOT_FOUND: '移动端 APP 安装包不存在或已失效',
+  MOBILE_APP_VERSION_NOT_FOUND: '移动端 APP 版本不存在或已删除',
+  MOBILE_APP_VERSION_CONFLICT: '该平台下相同版本号和构建号已存在',
+  MOBILE_APP_VERSION_PACKAGE_REQUIRED: '请先上传安装包再创建版本',
+  MOBILE_APP_VERSION_PACKAGE_INVALID: '安装包无效，请上传匹配平台的 APK 或 IPA 文件',
+  MOBILE_APP_VERSION_PUBLISH_FAILED: '版本发布失败，请稍后重试',
+  MOBILE_APP_PORTAL_SETTINGS_INVALID: '移动端 APP 门户配置格式有误',
   INTERNAL_ERROR: '服务暂时不可用，请稍后重试'
 };
 

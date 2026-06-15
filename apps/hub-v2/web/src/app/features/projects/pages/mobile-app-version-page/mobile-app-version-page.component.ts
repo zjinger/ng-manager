@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -17,6 +18,7 @@ import type {
   MobileAppPlatformType,
   CreateMobileAppVersionInput,
   UpdateMobileAppVersionInput,
+  PortalSettings,
 } from '../../models/mobile-app-version.model';
 import { MobileAppVersionApiService } from '../../services/mobile-app-version-api.service';
 import { MobileAppVersionStatsComponent } from '../../components/mobile-app-version-stats/mobile-app-version-stats.component';
@@ -25,7 +27,7 @@ import { MobileAppVersionTableComponent } from '../../components/mobile-app-vers
 import { MobileAppReleaseTimelineComponent } from '../../components/mobile-app-release-timeline/mobile-app-release-timeline.component';
 import { MobileAppVersionDetailDrawerComponent } from '../../components/mobile-app-version-detail-drawer/mobile-app-version-detail-drawer.component';
 import { MobileAppVersionFormDialogComponent } from '../../dialogs/mobile-app-version-form-dialog/mobile-app-version-form-dialog.component';
-import { PortalSettingsTabComponent, type PortalSettings } from '../../components/portal-settings-tab/portal-settings-tab.component';
+import { PortalSettingsTabComponent } from '../../components/portal-settings-tab/portal-settings-tab.component';
 
 @Component({
   selector: 'app-mobile-app-version-page',
@@ -87,6 +89,7 @@ import { PortalSettingsTabComponent, type PortalSettings } from '../../component
 
               <app-mobile-app-version-table
                 [versions]="pagedVersions()"
+                [selectedId]="selectedVersion()?.id ?? null"
                 (viewDetail)="openDetailDrawer($event)"
                 (edit)="openEditDialog($event)"
                 (archive)="archiveVersion($event)"
@@ -121,6 +124,8 @@ import { PortalSettingsTabComponent, type PortalSettings } from '../../component
             <nz-tab nzTitle="门户配置">
               <div class="portal-settings-tab">
                 <app-portal-settings-tab
+                  [settings]="portalSettings()"
+                  [publicUrl]="portalPublicUrl()"
                   (save)="onSavePortalSettings($event)"
                   (cancel)="onCancelPortalSettings()"
                   (resetToDefault)="onResetPortalSettings()"
@@ -211,6 +216,7 @@ export class MobileAppVersionPageComponent {
   readonly stats = signal<MobileAppVersionStats | null>(null);
   readonly versions = signal<MobileAppVersion[]>([]);
   readonly releaseRecords = signal<MobileAppReleaseRecord[]>([]);
+  readonly portalSettings = signal<PortalSettings | null>(null);
 
   readonly keywordInput = signal('');
   readonly keyword = signal('');
@@ -228,6 +234,14 @@ export class MobileAppVersionPageComponent {
   readonly editingVersion = signal<MobileAppVersion | null>(null);
 
   readonly projectId = computed(() => this.projectContext.currentProjectId());
+  readonly portalPublicUrl = computed(() => {
+    const projectKey = this.projectContext.currentProject()?.projectKey?.trim();
+    if (!projectKey) {
+      return '';
+    }
+    const path = `/download/${encodeURIComponent(projectKey)}`;
+    return typeof window === 'undefined' ? path : `${window.location.origin}${path}`;
+  });
   readonly subtitle = computed(() => {
     const projectName = this.projectContext.currentProject()?.name || '请先选择项目';
     const total = this.filteredVersions().length;
@@ -336,8 +350,10 @@ export class MobileAppVersionPageComponent {
   }
 
   createVersion(input: CreateMobileAppVersionInput): void {
+    const projectId = this.projectId();
+    if (!projectId) return;
     this.api
-      .createVersion(input)
+      .createVersion(projectId, input)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (version) => {
@@ -352,8 +368,10 @@ export class MobileAppVersionPageComponent {
   }
 
   updateVersion(event: { id: string; input: UpdateMobileAppVersionInput }): void {
+    const projectId = this.projectId();
+    if (!projectId) return;
     this.api
-      .updateVersion(event.id, event.input)
+      .updateVersion(projectId, event.id, event.input)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (version) => {
@@ -370,8 +388,10 @@ export class MobileAppVersionPageComponent {
   }
 
   archiveVersion(version: MobileAppVersion): void {
+    const projectId = this.projectId();
+    if (!projectId) return;
     this.api
-      .updateVersion(version.id, { status: 'archived' })
+      .archiveVersion(projectId, version.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
@@ -388,8 +408,10 @@ export class MobileAppVersionPageComponent {
   }
 
   deleteVersion(version: MobileAppVersion): void {
+    const projectId = this.projectId();
+    if (!projectId) return;
     this.api
-      .deleteVersion(version.id)
+      .deleteVersion(projectId, version.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (success) => {
@@ -406,8 +428,10 @@ export class MobileAppVersionPageComponent {
   }
 
   publishVersion(version: MobileAppVersion): void {
+    const projectId = this.projectId();
+    if (!projectId) return;
     this.api
-      .updateVersion(version.id, { status: 'published' })
+      .publishVersion(projectId, version.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
@@ -424,16 +448,27 @@ export class MobileAppVersionPageComponent {
   }
 
   viewReleaseDetail(record: MobileAppReleaseRecord): void {
-    const version = this.versions().find((v) => v.id === record.id);
+    const version = this.versions().find((v) => v.id === (record.versionId ?? record.id));
     if (version) {
       this.openDetailDrawer(version);
     }
   }
 
   onSavePortalSettings(settings: PortalSettings): void {
-    // Mock: 暂时只显示成功消息
-    this.message.success('门户配置已保存');
-    console.log('Portal settings saved:', settings);
+    const projectId = this.projectId();
+    if (!projectId) return;
+    this.api
+      .updatePortalSettings(projectId, settings)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (saved) => {
+          this.portalSettings.set(saved);
+          this.message.success('门户配置已保存');
+        },
+        error: () => {
+          this.message.error('门户配置保存失败');
+        },
+      });
   }
 
   onCancelPortalSettings(): void {
@@ -441,7 +476,20 @@ export class MobileAppVersionPageComponent {
   }
 
   onResetPortalSettings(): void {
-    this.message.warning('门户配置已重置为默认值');
+    const projectId = this.projectId();
+    if (!projectId) return;
+    this.api
+      .resetPortalSettings(projectId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (settings) => {
+          this.portalSettings.set(settings);
+          this.message.success('门户配置已重置为默认值');
+        },
+        error: () => {
+          this.message.error('重置门户配置失败');
+        },
+      });
   }
 
   private loadData(projectId: string | null): void {
@@ -452,12 +500,19 @@ export class MobileAppVersionPageComponent {
     this.loading.set(true);
     this.error.set('');
 
-    this.api
-      .listVersions()
+    forkJoin({
+      versions: this.api.listVersions(projectId),
+      stats: this.api.getStats(projectId),
+      releaseRecords: this.api.getReleaseRecords(projectId),
+      portalSettings: this.api.getPortalSettings(projectId),
+    })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (versions) => {
+        next: ({ versions, stats, releaseRecords, portalSettings }) => {
           this.versions.set(versions);
+          this.stats.set(stats);
+          this.releaseRecords.set(releaseRecords);
+          this.portalSettings.set(portalSettings);
           this.loading.set(false);
         },
         error: (err) => {
@@ -465,28 +520,13 @@ export class MobileAppVersionPageComponent {
           this.loading.set(false);
         },
       });
-
-    this.api
-      .getStats()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (stats) => this.stats.set(stats),
-        error: () => {},
-      });
-
-    this.api
-      .getReleaseRecords()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (records) => this.releaseRecords.set(records),
-        error: () => {},
-      });
   }
 
   private resetState(): void {
     this.versions.set([]);
     this.stats.set(null);
     this.releaseRecords.set([]);
+    this.portalSettings.set(null);
     this.keywordInput.set('');
     this.keyword.set('');
     this.statusFilter.set('');

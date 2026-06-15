@@ -88,10 +88,6 @@ export class MobileDownloadPageComponent {
       error: (err: { status?: number; error?: { code?: string; message?: string } }) => {
         this.info.set(null);
         this.loading.set(false);
-        if (err?.error?.code === 'MOBILE_APP_DOWNLOAD_CONFIG_INVALID') {
-          this.error.set('下载门户配置格式有误，请联系 Hub V2 项目组。');
-          return;
-        }
         if (err?.error?.code === 'MOBILE_APP_DOWNLOAD_NOT_CONFIGURED' || err?.status === 404) {
           this.error.set('该项目暂未配置移动端 APP 下载页，请联系项目负责人。');
           return;

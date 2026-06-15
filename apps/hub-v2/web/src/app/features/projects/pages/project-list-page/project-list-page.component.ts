@@ -34,12 +34,10 @@ import type {
   CreateProjectApiTokenInput,
   CreateProjectMetaItemInput,
   CreateProjectVersionItemInput,
-  MobileAppPlatform,
   ProjectApiTokenEntity,
   ProjectMemberCandidate,
   ProjectMemberEntity,
   ProjectMemberRole,
-  ProjectMobileAppConfig,
   ProjectModuleRdLinkEntity,
   ProjectModuleMemberEntity,
   ProjectMetaItem,
@@ -48,7 +46,6 @@ import type {
   ProjectVersionItem,
   UpdateProjectInput,
   UpdateProjectMetaItemInput,
-  UpdateProjectMobileAppConfigInput,
   UpdateProjectVersionItemInput
 } from '../../models/project.model';
 import { ProjectApiService } from '../../services/project-api.service';
@@ -114,7 +111,6 @@ export class ProjectListPageComponent {
   readonly stages = signal<RdStageEntity[]>([]);
   readonly stageTaskTemplates = signal<RdStageTaskTemplateEntity[]>([]);
   readonly apiTokens = signal<ProjectApiTokenEntity[]>([]);
-  readonly mobileAppConfig = signal<ProjectMobileAppConfig | null>(null);
   readonly latestCreatedToken = signal<string | null>(null);
   readonly expandedProjectIds = signal<string[]>([]);
   readonly modulePreviewMap = signal<Record<string, ProjectMetaItem[]>>({});
@@ -123,7 +119,6 @@ export class ProjectListPageComponent {
   readonly moduleLoading = signal(false);
   readonly moduleMembersLoading = signal(false);
   readonly configLoading = signal(false);
-  readonly mobileAppConfigLoading = signal(false);
   readonly membersBusy = signal(false);
   readonly editBusy = signal(false);
   readonly moduleBusy = signal(false);
@@ -138,14 +133,12 @@ export class ProjectListPageComponent {
   readonly pendingStageMap = signal<Record<string, true>>({});
   readonly pendingStageTaskTemplateMap = signal<Record<string, true>>({});
   readonly pendingTokenMap = signal<Record<string, true>>({});
-  readonly pendingMobileAppPlatformMap = signal<Record<string, true>>({});
   readonly pendingModuleIds = computed(() => Object.keys(this.pendingModuleMap()));
   readonly pendingEnvironmentIds = computed(() => Object.keys(this.pendingEnvironmentMap()));
   readonly pendingVersionIds = computed(() => Object.keys(this.pendingVersionMap()));
   readonly pendingStageIds = computed(() => Object.keys(this.pendingStageMap()));
   readonly pendingStageTaskTemplateIds = computed(() => Object.keys(this.pendingStageTaskTemplateMap()));
   readonly pendingTokenIds = computed(() => Object.keys(this.pendingTokenMap()));
-  readonly pendingMobileAppPlatforms = computed(() => Object.keys(this.pendingMobileAppPlatformMap()) as MobileAppPlatform[]);
   readonly previewLoadingIds = computed(() => Object.keys(this.previewLoadingMap()));
   readonly memberPreviewLoadingIds = computed(() => Object.keys(this.memberPreviewLoadingMap()));
   // 项目负责人
@@ -355,7 +348,6 @@ export class ProjectListPageComponent {
     this.configProject.set(project);
     this.configDialogOpen.set(true);
     this.loadProjectMeta(project.id);
-    this.loadProjectMobileAppConfig(project.id);
     this.loadMembers(project.id);
   }
 
@@ -382,14 +374,12 @@ export class ProjectListPageComponent {
     this.stages.set([]);
     this.stageTaskTemplates.set([]);
     this.apiTokens.set([]);
-    this.mobileAppConfig.set(null);
     this.latestCreatedToken.set(null);
     this.pendingEnvironmentMap.set({});
     this.pendingVersionMap.set({});
     this.pendingStageMap.set({});
     this.pendingStageTaskTemplateMap.set({});
     this.pendingTokenMap.set({});
-    this.pendingMobileAppPlatformMap.set({});
   }
 
   toggleProjectExpand(project: ProjectSummary): void {
@@ -902,69 +892,6 @@ export class ProjectListPageComponent {
     });
   }
 
-  saveMobileAppConfig(input: UpdateProjectMobileAppConfigInput): void {
-    this.withConfigProject((projectId) => {
-      this.configBusy.set(true);
-      this.projectApi.updateMobileAppConfig(projectId, input).subscribe({
-        next: (config) => {
-          this.configBusy.set(false);
-          this.mobileAppConfig.set(config);
-          this.message.success('移动端 APP 配置已保存');
-        },
-        error: () => {
-          this.configBusy.set(false);
-          this.message.error('保存移动端 APP 配置失败');
-        }
-      });
-    });
-  }
-
-  uploadMobileAppPackage(event: { platform: MobileAppPlatform; file: File }): void {
-    this.withConfigProject((projectId) => {
-      this.setPending(this.pendingMobileAppPlatformMap, event.platform, true);
-      this.projectApi.uploadMobileAppPackage(projectId, event.platform, event.file).subscribe({
-        next: (config) => {
-          this.setPending(this.pendingMobileAppPlatformMap, event.platform, false);
-          this.mobileAppConfig.set(config);
-          this.message.success(`${event.platform === 'android' ? 'Android' : 'iOS'} 安装包已上传`);
-        },
-        error: () => {
-          this.setPending(this.pendingMobileAppPlatformMap, event.platform, false);
-          this.message.error('上传安装包失败');
-        }
-      });
-    });
-  }
-
-  removeMobileAppPackage(platform: MobileAppPlatform): void {
-    this.withConfigProject((projectId) => {
-      this.setPending(this.pendingMobileAppPlatformMap, platform, true);
-      this.projectApi.removeMobileAppPackage(projectId, platform).subscribe({
-        next: (config) => {
-          this.setPending(this.pendingMobileAppPlatformMap, platform, false);
-          this.mobileAppConfig.set(config);
-          this.message.success('安装包已移除');
-        },
-        error: () => {
-          this.setPending(this.pendingMobileAppPlatformMap, platform, false);
-          this.message.error('移除安装包失败');
-        }
-      });
-    });
-  }
-
-  copyMobileAppDownloadPageUrl(url: string): void {
-    if (!url) {
-      return;
-    }
-    const ok = this.clipboard.copy(url);
-    if (ok) {
-      this.message.success('下载页链接已复制');
-    } else {
-      this.message.error('复制失败，请手动复制');
-    }
-  }
-
   clearLatestCreatedToken(): void {
     this.latestCreatedToken.set(null);
   }
@@ -1143,20 +1070,6 @@ export class ProjectListPageComponent {
         this.stageTaskTemplates.set([]);
         this.apiTokens.set([]);
         this.configLoading.set(false);
-      }
-    });
-  }
-
-  private loadProjectMobileAppConfig(projectId: string): void {
-    this.mobileAppConfigLoading.set(true);
-    this.projectApi.getMobileAppConfig(projectId).subscribe({
-      next: (config) => {
-        this.mobileAppConfig.set(config);
-        this.mobileAppConfigLoading.set(false);
-      },
-      error: () => {
-        this.mobileAppConfig.set(null);
-        this.mobileAppConfigLoading.set(false);
       }
     });
   }

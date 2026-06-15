@@ -32,13 +32,13 @@ export interface MobileAppDownloadReleaseNote {
 }
 
 export interface MobileAppDownloadInfo {
-  project?: {
+  project: {
     id: string;
     projectKey: string;
     name: string;
   };
-  enabled?: boolean;
-  downloadPageUrl?: string;
+  enabled: boolean;
+  downloadPageUrl: string;
   app: {
     name: string;
     title: string;
