@@ -364,7 +364,7 @@ export class MobileAppVersionFormDialogComponent {
     this.version.set('');
     this.buildNumber.set('');
     this.platform.set('android');
-    this.status.set('draft');
+    this.status.set('testing');
     this.releaseChannel.set('企业内测 — 全员');
     this.minOsVersion.set(defaultMinOsVersion('android'));
     this.sha256.set('');
