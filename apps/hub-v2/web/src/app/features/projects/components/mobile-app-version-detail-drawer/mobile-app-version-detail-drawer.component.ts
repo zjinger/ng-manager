@@ -21,8 +21,8 @@ import {
       [nzClosable]="false"
       (nzOnClose)="close.emit()"
     >
-      @if (version(); as v) {
-        <ng-container *nzDrawerContent>
+      <ng-container *nzDrawerContent>
+        @if (version(); as v) {
           <div class="drawer-header">
             <div class="drawer-header-left">
               <span class="drawer-version">{{ v.version }}</span>
@@ -115,18 +115,33 @@ import {
               <button nz-button nzType="primary" (click)="publish.emit(v)">发布到门户</button>
             }
           </div>
-        </ng-container>
-      }
+        }
+      </ng-container>
     </nz-drawer>
   `,
   styles: [
     `
+      :host {
+        display: block;
+      }
+
+      nz-drawer {
+        ::ng-deep {
+          .ant-drawer-body {
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+          }
+        }
+      }
+
       .drawer-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 16px 20px;
         border-bottom: 1px solid var(--border-color);
+        flex-shrink: 0;
       }
 
       .drawer-header-left {
@@ -145,6 +160,7 @@ import {
       .drawer-body {
         padding: 20px;
         overflow-y: auto;
+        flex: 1;
       }
 
       .drawer-section {
@@ -235,16 +251,13 @@ import {
       }
 
       .drawer-footer {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
         padding: 12px 20px;
         border-top: 1px solid var(--border-color);
         background: var(--bg-container);
         display: flex;
         justify-content: flex-end;
         gap: 8px;
+        flex-shrink: 0;
       }
 
       .status-badge {

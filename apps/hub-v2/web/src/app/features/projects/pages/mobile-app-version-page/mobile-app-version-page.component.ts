@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 
 import { ListStateComponent, PageHeaderComponent } from '@shared/ui';
@@ -23,7 +24,8 @@ import { MobileAppVersionToolbarComponent } from '../../components/mobile-app-ve
 import { MobileAppVersionTableComponent } from '../../components/mobile-app-version-table/mobile-app-version-table.component';
 import { MobileAppReleaseTimelineComponent } from '../../components/mobile-app-release-timeline/mobile-app-release-timeline.component';
 import { MobileAppVersionDetailDrawerComponent } from '../../components/mobile-app-version-detail-drawer/mobile-app-version-detail-drawer.component';
-import { MobileAppVersionFormDialogComponent } from '../../components/mobile-app-version-form-dialog/mobile-app-version-form-dialog.component';
+import { MobileAppVersionFormDialogComponent } from '../../dialogs/mobile-app-version-form-dialog/mobile-app-version-form-dialog.component';
+import { PortalSettingsTabComponent, type PortalSettings } from '../../components/portal-settings-tab/portal-settings-tab.component';
 
 @Component({
   selector: 'app-mobile-app-version-page',
@@ -32,6 +34,7 @@ import { MobileAppVersionFormDialogComponent } from '../../components/mobile-app
     FormsModule,
     NzButtonModule,
     NzIconModule,
+    NzPaginationModule,
     NzTabsModule,
     ListStateComponent,
     PageHeaderComponent,
@@ -41,6 +44,7 @@ import { MobileAppVersionFormDialogComponent } from '../../components/mobile-app
     MobileAppReleaseTimelineComponent,
     MobileAppVersionDetailDrawerComponent,
     MobileAppVersionFormDialogComponent,
+    PortalSettingsTabComponent,
   ],
   template: `
     <app-page-header title="版本管理" [subtitle]="subtitle()">
@@ -82,18 +86,44 @@ import { MobileAppVersionFormDialogComponent } from '../../components/mobile-app
               />
 
               <app-mobile-app-version-table
-                [versions]="filteredVersions()"
+                [versions]="pagedVersions()"
                 (viewDetail)="openDetailDrawer($event)"
                 (edit)="openEditDialog($event)"
                 (archive)="archiveVersion($event)"
                 (delete)="deleteVersion($event)"
               />
+
+              @if (filteredVersions().length > 0) {
+                <div class="version-pagination">
+                  <nz-pagination
+                    [nzTotal]="filteredVersions().length"
+                    [nzPageIndex]="page()"
+                    [nzPageSize]="pageSize()"
+                    [nzPageSizeOptions]="[10, 20, 50]"
+                    [nzShowSizeChanger]="true"
+                    [nzShowQuickJumper]="true"
+                    [nzShowTotal]="totalTpl"
+                    (nzPageIndexChange)="onPageIndexChange($event)"
+                    (nzPageSizeChange)="onPageSizeChange($event)"
+                  ></nz-pagination>
+                  <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
+                </div>
+              }
             </nz-tab>
             <nz-tab nzTitle="发布记录">
               <div class="release-tab">
                 <app-mobile-app-release-timeline
                   [records]="releaseRecords()"
                   (viewDetail)="viewReleaseDetail($event)"
+                />
+              </div>
+            </nz-tab>
+            <nz-tab nzTitle="门户配置">
+              <div class="portal-settings-tab">
+                <app-portal-settings-tab
+                  (save)="onSavePortalSettings($event)"
+                  (cancel)="onCancelPortalSettings()"
+                  (resetToDefault)="onResetPortalSettings()"
                 />
               </div>
             </nz-tab>
@@ -156,6 +186,16 @@ import { MobileAppVersionFormDialogComponent } from '../../components/mobile-app
       .release-tab {
         padding-top: 16px;
       }
+
+      .version-pagination {
+        display: flex;
+        justify-content: flex-end;
+        padding: 16px 0 4px;
+      }
+
+      .portal-settings-tab {
+        padding-top: 4px;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -178,6 +218,9 @@ export class MobileAppVersionPageComponent {
   readonly platformFilter = signal<MobileAppPlatformType | ''>('');
   readonly activeTab = signal(0);
 
+  readonly page = signal(1);
+  readonly pageSize = signal(10);
+
   readonly detailDrawerOpen = signal(false);
   readonly selectedVersion = signal<MobileAppVersion | null>(null);
 
@@ -185,7 +228,11 @@ export class MobileAppVersionPageComponent {
   readonly editingVersion = signal<MobileAppVersion | null>(null);
 
   readonly projectId = computed(() => this.projectContext.currentProjectId());
-  readonly subtitle = computed(() => this.projectContext.currentProject()?.name || '请先选择项目');
+  readonly subtitle = computed(() => {
+    const projectName = this.projectContext.currentProject()?.name || '请先选择项目';
+    const total = this.filteredVersions().length;
+    return `${projectName} · 共 ${total} 个版本`;
+  });
 
   readonly filteredVersions = computed(() => {
     let result = this.versions();
@@ -211,6 +258,14 @@ export class MobileAppVersionPageComponent {
     }
 
     return result;
+  });
+
+  readonly pagedVersions = computed(() => {
+    const filtered = this.filteredVersions();
+    const page = this.page();
+    const pageSize = this.pageSize();
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
   });
 
   private keywordTimer: ReturnType<typeof setTimeout> | null = null;
@@ -240,8 +295,18 @@ export class MobileAppVersionPageComponent {
     }
     this.keywordTimer = setTimeout(() => {
       this.keyword.set(value);
+      this.page.set(1);
       this.keywordTimer = null;
     }, 300);
+  }
+
+  onPageIndexChange(page: number): void {
+    this.page.set(page);
+  }
+
+  onPageSizeChange(pageSize: number): void {
+    this.pageSize.set(pageSize);
+    this.page.set(1);
   }
 
   openDetailDrawer(version: MobileAppVersion): void {
@@ -365,6 +430,20 @@ export class MobileAppVersionPageComponent {
     }
   }
 
+  onSavePortalSettings(settings: PortalSettings): void {
+    // Mock: 暂时只显示成功消息
+    this.message.success('门户配置已保存');
+    console.log('Portal settings saved:', settings);
+  }
+
+  onCancelPortalSettings(): void {
+    this.message.info('已取消门户配置修改');
+  }
+
+  onResetPortalSettings(): void {
+    this.message.warning('门户配置已重置为默认值');
+  }
+
   private loadData(projectId: string | null): void {
     if (!projectId) {
       return;
@@ -413,6 +492,8 @@ export class MobileAppVersionPageComponent {
     this.statusFilter.set('');
     this.platformFilter.set('');
     this.activeTab.set(0);
+    this.page.set(1);
+    this.pageSize.set(10);
     this.closeDetailDrawer();
     this.closeFormDialog();
   }

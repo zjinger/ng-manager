@@ -1,41 +1,40 @@
 .page {
-  width: min(1280px, calc(100% - 40px));
+  width: min(920px, calc(100% - 48px));
   margin: 0 auto;
 }
 
 .btn,
 .icon-btn {
-  min-height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   border: 1px solid var(--border);
-  border-radius: 999px;
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
   font: inherit;
   text-decoration: none;
   transition:
-    transform 0.16s ease,
-    border-color 0.16s ease,
-    background 0.16s ease;
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .btn {
+  min-height: 40px;
+  border-radius: 8px;
   padding: 0 16px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .icon-btn {
-  width: 40px;
   padding: 0;
 }
 
 .btn:hover:not(:disabled),
 .icon-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
   border-color: var(--primary);
 }
 
@@ -57,8 +56,7 @@
 
 .btn.block {
   width: 100%;
-  min-height: 52px;
-  border-radius: 14px;
+  min-height: 40px;
 }
 
 .btn:disabled,
@@ -70,53 +68,57 @@
 
 .tag {
   display: inline-flex;
-  min-height: 25px;
+  min-height: 22px;
   align-items: center;
-  padding: 0 9px;
-  border-radius: 999px;
-  background: var(--primary-soft);
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 800;
+  border-radius: 4px;
+  padding: 2px 8px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .card,
 .release-note,
 .support-panel,
-.download-panel,
-.hero-main {
+.dl-card,
+.qr-card,
+.install-card,
+.history-item,
+.state-card {
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
 
 .section {
-  padding: 30px 0;
+  padding: 0 0 40px;
 }
 
 .section-head {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .section-head h2 {
   margin: 0;
-  font-size: 32px;
-  line-height: 1.2;
+  font-size: 18px;
+  line-height: 1.25;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
 .section-head p {
-  margin: 10px 0 0;
+  margin: 6px 0 0;
   color: var(--muted);
-  font-size: 17px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
 @media (max-width: 680px) {
   .page {
-    width: min(100% - 28px, 1280px);
+    width: min(100% - 40px, 920px);
   }
 
   .desktop-only {

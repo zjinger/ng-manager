@@ -1,16 +1,14 @@
 <main class="release-page">
   <header class="topbar">
-    <div class="page nav">
-      <a class="brand" href="#top" aria-label="Hub V2 发布中心">
+    <div class="nav">
+      <a class="nav-left" href="#top" aria-label="Hub V2 Mobile" (click)="scrollToSection('top', $event)">
         <span class="logo">H2</span>
-        <span>
-          <span class="brand-title">Hub V2 发布中心</span>
-          <span class="brand-subtitle">App / Web / 更新公告统一入口</span>
-        </span>
+        <span class="nav-title">Hub V2 Mobile</span>
       </a>
-      <nav class="nav-actions" aria-label="页面导航">
-        <a class="btn desktop-only" href="#changes">更新内容</a>
-        <a class="btn desktop-only" href="#help">安装帮助</a>
+      <nav class="nav-right" aria-label="页面导航">
+        <a class="nav-link desktop-only" href="#install-guide" (click)="scrollToSection('install-guide', $event)">安装指南</a>
+        <a class="nav-link desktop-only" href="#history" (click)="scrollToSection('history', $event)">版本历史</a>
+        <a class="nav-link desktop-only" href="#help" (click)="scrollToSection('help', $event)">安装帮助</a>
         <button class="icon-btn" type="button" aria-label="切换深浅色主题" (click)="toggleTheme()">
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path
@@ -22,7 +20,6 @@
             <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" />
           </svg>
         </button>
-        <a class="btn primary" href="#download">立即下载</a>
       </nav>
     </div>
   </header>
@@ -44,21 +41,23 @@
       </div>
     </section>
   } @else if (info(); as data) {
-    <div id="top" class="page">
-      <section class="hero" aria-labelledby="heroTitle">
-        <app-mobile-download-hero [info]="data" [selectedPlatform]="selectedPlatform()" />
-        <app-mobile-download-panel
-          [info]="data"
-          [selectedPlatform]="selectedPlatform()"
-          [selectedPlatformKey]="selectedPlatformKey()"
-          (platformSelected)="selectPlatform($event)"
-        />
-      </section>
+    <div class="banner">
+      {{ bannerText() }}
+      <a href="#history" (click)="scrollToSection('history', $event)">查看更新日志</a>
+    </div>
+
+    <div id="top" class="page content">
+      <app-mobile-download-hero [info]="data" [selectedPlatform]="selectedPlatform()" />
+
+      <app-mobile-download-panel
+        [info]="data"
+        [selectedPlatform]="selectedPlatform()"
+        (platformSelected)="selectPlatform($event)"
+      />
 
       <app-mobile-download-sections
         [info]="data"
         [selectedPlatform]="selectedPlatform()"
-        (copyChecksum)="copyChecksum($event)"
       />
     </div>
 

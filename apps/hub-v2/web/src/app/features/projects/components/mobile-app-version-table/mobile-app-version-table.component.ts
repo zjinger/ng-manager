@@ -63,47 +63,52 @@ import {
             </div>
             <div class="version-cell version-cell--mono">{{ item.downloadCount }}</div>
             <div class="version-cell version-cell--actions" (click)="$event.stopPropagation()">
-              <button
+              <a
                 nz-button
                 nzType="text"
                 nz-tooltip="查看详情"
+                class="version-action"
+                type="button"
                 (click)="viewDetail.emit(item)"
               >
                 <nz-icon nzType="eye" nzTheme="outline" />
-              </button>
-              <button
+              </a>
+              <a
                 nz-button
                 nzType="text"
                 nz-tooltip="编辑"
+                class="version-action"
+                type="button"
                 (click)="edit.emit(item)"
               >
                 <nz-icon nzType="edit" nzTheme="outline" />
-              </button>
+              </a>
               @if (item.status !== 'archived') {
-                <button
+                <a
                   nz-button
                   nzType="text"
                   nz-tooltip="归档"
+                  class="version-action"
                   nzPopconfirm="确定要归档此版本吗？"
                   nzPopconfirmOkText="确认"
                   nzPopconfirmCancelText="取消"
                   (nzOnConfirm)="archive.emit(item)"
                 >
                   <nz-icon nzType="inbox" nzTheme="outline" />
-                </button>
+                </a>
               } @else {
-                <button
+                <a
                   nz-button
                   nzType="text"
                   nz-tooltip="删除"
+                  class="version-action version-action--danger"
                   nzPopconfirm="确定要永久删除此版本吗？此操作不可撤销。"
                   nzPopconfirmOkText="删除"
                   nzPopconfirmCancelText="取消"
                   (nzOnConfirm)="delete.emit(item)"
-                  class="action-danger"
                 >
                   <nz-icon nzType="delete" nzTheme="outline" />
-                </button>
+                </a>
               }
             </div>
           </div>
@@ -183,24 +188,20 @@ import {
 
       .version-cell--actions {
         display: flex;
-        gap: 4px;
-      }
-
-      .version-cell--actions button {
-        width: 28px;
-        height: 28px;
-        display: flex;
         align-items: center;
-        justify-content: center;
+        flex-wrap: wrap;
+        gap: 2px;
       }
 
-      .action-danger {
-        color: var(--color-danger);
+      .version-action {
+        border: 0;
+        background: transparent;
+        color: var(--primary-600);
+        cursor: pointer;
       }
 
-      .action-danger:hover {
-        color: var(--color-danger);
-        background: var(--color-danger-bg);
+      .version-action--danger {
+        color: var(--danger);
       }
 
       .platform-badge {

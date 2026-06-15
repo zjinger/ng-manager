@@ -54,6 +54,16 @@ export class MobileDownloadPageComponent {
     return platform.platform === 'android' ? '立即下载 APK' : '安装 iOS 企业版';
   });
 
+  readonly bannerText = computed(() => {
+    const data = this.info();
+    if (!data) {
+      return 'Hub V2 Mobile 下载中心';
+    }
+    const version = data.current.versionName || this.selectedPlatform()?.versionName || '最新版';
+    const headline = data.releaseNotes[0]?.summary?.[0] || data.releaseNotes[0]?.title || data.app.subtitle || data.app.description;
+    return `${version} 已发布${headline ? ` - ${headline}` : ''}`;
+  });
+
   constructor() {
     this.load();
   }
@@ -151,6 +161,16 @@ export class MobileDownloadPageComponent {
 
   toggleTheme(): void {
     this.uiStore.toggleTheme();
+  }
+
+  scrollToSection(sectionId: string, event?: Event): void {
+    event?.preventDefault();
+    const target = document.getElementById(sectionId);
+    if (!target) {
+      return;
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.history.replaceState(null, '', `#${sectionId}`);
   }
 
   private pickInitialPlatform(data: MobileAppDownloadInfo): MobileAppPlatform {

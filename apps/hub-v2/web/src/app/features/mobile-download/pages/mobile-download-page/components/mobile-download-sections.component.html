@@ -1,143 +1,139 @@
-<section class="section" aria-labelledby="featuresTitle">
+<section id="install-guide" class="section install-guide-section" aria-labelledby="installGuideTitle">
   <div class="section-head">
-    <h2 id="featuresTitle">移动端主要用途</h2>
-    <p>适用于待办处理、消息接收和项目进度查看。</p>
+    <h2 id="installGuideTitle">安装指南</h2>
   </div>
-  <div class="grid-3">
-    <article class="card">
-      <h3>处理待办</h3>
-      <p>查看待处理事项、待验证任务和指派 Issue，支持移动场景下快速处理。</p>
-      <ul class="mini-list">
-        <li><span class="dot"></span>我的待办</li>
-        <li><span class="dot blue"></span>待验证任务</li>
-      </ul>
+  <div class="guide-grid">
+    <article class="guide-card">
+      <h3>
+        <span class="guide-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path
+              d="M16.5 3.5c-.5 1.8-1.7 3-3.5 3.2-.1-1.7 1.2-3.2 3.5-3.2Z"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M18.3 13.1c0 3.9-2.7 7.4-4.3 7.4-.9 0-1.3-.5-2.2-.5-.9 0-1.5.5-2.2.5-1.7 0-4.4-3.4-4.4-7.4 0-3 1.9-5.4 4.5-5.4 1 0 1.7.5 2.2.5.6 0 1.3-.5 2.5-.5 1.5 0 2.8.7 3.6 1.8-1.3.7-2.1 1.9-2.1 3.3 0 1.5.9 2.8 2.4 3.3Z"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        iOS 安装
+      </h3>
+      <ol class="guide-steps">
+        <li>点击上方「下载安装包」或扫描二维码</li>
+        <li>弹出安装提示时点击「安装」</li>
+        <li>打开 设置 - 通用 - VPN与设备管理</li>
+        <li>找到企业证书，点击「信任」</li>
+        <li>返回桌面打开 Hub V2 Mobile</li>
+      </ol>
     </article>
-    <article class="card">
-      <h3>接收通知</h3>
-      <p>接收公告、评论、指派和进度变更提醒，保持项目状态同步。</p>
-      <ul class="mini-list">
-        <li><span class="dot"></span>公告提醒</li>
-        <li><span class="dot amber"></span>评论 / 指派通知</li>
-      </ul>
-    </article>
-    <article class="card">
-      <h3>跟进项目</h3>
-      <p>查看研发项进度和 Issue 详情，复杂配置请在 Hub V2 Web 端完成。</p>
-      <ul class="mini-list">
-        <li><span class="dot"></span>研发项进度</li>
-        <li><span class="dot blue"></span>Issue 详情</li>
-      </ul>
+
+    <article class="guide-card">
+      <h3>
+        <span class="guide-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path
+              d="M7 10h10v7.5A2.5 2.5 0 0 1 14.5 20h-5A2.5 2.5 0 0 1 7 17.5V10ZM9 6l-1.5-2M15 6l1.5-2M8 10V8a4 4 0 0 1 8 0v2M5 11v5M19 11v5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </span>
+        Android 安装
+      </h3>
+      <ol class="guide-steps">
+        <li>点击上方「下载安装包」或扫描二维码</li>
+        <li>打开下载的 .apk 文件</li>
+        <li>如提示「未知来源」，在设置中允许安装</li>
+        <li>按提示完成安装</li>
+        <li>打开 Hub V2 Mobile 并配置服务器地址</li>
+      </ol>
     </article>
   </div>
 </section>
 
-<section id="changes" class="section" aria-labelledby="changesTitle">
-  <div class="section-head">
-    <h2 id="changesTitle">本次更新</h2>
-    <p>当前版本的更新内容、包信息和校验项如下。</p>
-  </div>
-  <div class="grid-2">
-    <article class="release-note">
-      <div class="release-head">
-        <h3>{{ info().current.versionName || selectedPlatform()?.versionName || '当前版本' }}</h3>
-        <time>{{ info().current.publishedAt ? (info().current.publishedAt | date: 'yyyy-MM-dd') : info().current.channel }}</time>
-      </div>
-      @if (info().releaseNotes.length === 0) {
-        <ul class="change-list">
-          <li>暂无更新记录。</li>
-        </ul>
-      } @else {
-        <ul class="change-list">
-          @for (summary of info().releaseNotes[0].summary; track summary) {
-            <li>{{ summary }}</li>
-          }
-          @for (note of info().releaseNotes[0].importantNotes; track note) {
-            <li>{{ note }}</li>
-          }
-        </ul>
-      }
-    </article>
-    <article class="release-note">
-      <div class="release-head">
-        <h3>发布校验</h3>
-        <time>包信息</time>
-      </div>
-      <ul class="change-list">
-        <li>安装包：{{ selectedPlatform()?.packageName || '-' }}</li>
-        <li>构建号：{{ selectedPlatform()?.versionCode || info().current.versionCode || '-' }}</li>
-        <li>最低系统：{{ info().current.minOsVersion || platformSystem(selectedPlatform()) }}</li>
-      </ul>
-    </article>
+<section id="history" class="section history-section" aria-labelledby="historyTitle">
+  <div class="section-head section-head--inline">
+    <h2 id="historyTitle">版本历史</h2>
+    <a class="section-link" href="#history" aria-disabled="true" (click)="$event.preventDefault()">查看全部历史版本</a>
   </div>
 
-  @if (info().releaseNotes.length > 1) {
-    <div class="history-list">
-      @for (item of info().releaseNotes.slice(1); track trackRelease($index, item)) {
-        <article class="history-item">
-          <div>
-            <strong>{{ item.title }}</strong>
-            <time>{{ item.publishedAt ? (item.publishedAt | date: 'yyyy-MM-dd') : item.version }}</time>
+  @if (info().releaseNotes.length === 0) {
+    <article class="history-item">
+      <div class="version-header">
+        <div class="version-header-left">
+          <span class="version-tag">{{ info().current.versionName || selectedPlatform()?.versionName || '当前版本' }}</span>
+          <span class="version-latest">最新版本</span>
+        </div>
+        <time class="version-date">{{ info().current.publishedAt ? (info().current.publishedAt | date: 'yyyy-MM-dd') : '-' }}</time>
+      </div>
+      <ul class="version-changes">
+        <li>暂无更新记录。</li>
+      </ul>
+    </article>
+  } @else {
+    @for (item of recentReleaseNotes(); track trackRelease($index, item)) {
+      <article class="history-item">
+        <div class="version-header">
+          <div class="version-header-left">
+            <span class="version-tag">{{ item.version || item.title }}</span>
+            @if ($index === 0) {
+              <span class="version-latest">最新版本</span>
+            }
           </div>
+          <time class="version-date">{{ item.publishedAt ? (item.publishedAt | date: 'yyyy-MM-dd') : '-' }}</time>
+        </div>
+        <ul class="version-changes">
           @for (summary of item.summary; track summary) {
-            <p>{{ summary }}</p>
+            <li>{{ summary }}</li>
           }
           @for (note of item.importantNotes; track note) {
-            <p class="history-item__important">{{ note }}</p>
+            <li>{{ note }}</li>
           }
-          @if (item.downloadUrl) {
-            <a class="history-item__link" [href]="item.downloadUrl" target="_blank" rel="noopener noreferrer">
-              查看历史包
-            </a>
+          @if (item.summary.length === 0 && item.importantNotes.length === 0) {
+            <li>{{ item.title || '暂无更新记录。' }}</li>
           }
-        </article>
-      }
-    </div>
+        </ul>
+      </article>
+    }
   }
 </section>
 
-<section id="help" class="section" aria-labelledby="helpTitle">
+<section id="help" class="section help-section" aria-labelledby="helpTitle">
   <div class="section-head">
     <h2 id="helpTitle">安装帮助</h2>
-    <p>按平台要求完成安装授权、证书信任和首次登录。</p>
   </div>
-  <div class="install-tabs">
+  <div class="help-list">
+    @if (info().installSteps.length === 0 && info().faq.length === 0) {
+      <details class="help-item" open>
+        <summary>暂无安装说明</summary>
+        <div class="help-body">请联系项目组确认安装授权、企业证书信任方式和首次登录配置。</div>
+      </details>
+    }
     @for (step of info().installSteps; track trackTextItem($index, step)) {
-      <details class="install-item" [open]="$index === 0">
+      <details class="help-item" [open]="$index === 0">
         <summary>{{ step.title }}</summary>
-        <div class="install-body">{{ step.description }}</div>
+        <div class="help-body">{{ step.description }}</div>
       </details>
     }
     @for (item of info().faq; track trackTextItem($index, item)) {
-      <details class="install-item">
+      <details class="help-item">
         <summary>{{ item.question }}</summary>
-        <div class="install-body">{{ item.answer }}</div>
+        <div class="help-body">{{ item.answer }}</div>
       </details>
-    }
-  </div>
-</section>
-
-<section class="section">
-  <div class="support-panel">
-    <div>
-      <h3>安装支持</h3>
-      <p>请提供错误截图、手机型号、系统版本、下载平台和账号信息。</p>
-    </div>
-    @if (info().support.docsUrl) {
-      <a class="btn primary" [href]="info().support.docsUrl || ''" target="_blank" rel="noopener noreferrer">查看支持文档</a>
-    } @else if (info().support.contact) {
-      <a class="btn primary" [href]="'mailto:' + info().support.contact">联系项目组</a>
-    } @else {
-      <button class="btn primary" type="button" (click)="copyChecksum.emit(selectedPlatform())">复制校验值</button>
     }
   </div>
 </section>
 
 <footer class="footer">
-  <div>{{ info().app.name }} Release Center · 企业内部使用</div>
-  <div>
-    维护：{{ info().support.owner }}
-    @if (info().current.publishedAt) {
-      <span> · 更新时间：{{ info().current.publishedAt | date: 'yyyy-MM-dd' }}</span>
-    }
-  </div>
+  {{ info().app.name || 'Hub V2 Mobile' }} · 研发协作随身端 · 仅供企业内部使用
+  @if (info().support.owner) {
+    <span> · 维护：{{ info().support.owner }}</span>
+  }
 </footer>

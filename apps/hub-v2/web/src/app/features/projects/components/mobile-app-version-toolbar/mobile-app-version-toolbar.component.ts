@@ -2,166 +2,80 @@ import { FormsModule } from '@angular/forms';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSelectModule } from 'ng-zorro-antd/select';
+
+import { PageToolbarComponent, SearchBoxComponent } from '@shared/ui';
 import type { MobileAppVersionStatus, MobileAppPlatformType } from '../../models/mobile-app-version.model';
 
 @Component({
   selector: 'app-mobile-app-version-toolbar',
   standalone: true,
-  imports: [FormsModule, NzButtonModule, NzIconModule, NzInputModule],
+  imports: [FormsModule, NzButtonModule, NzIconModule, NzSelectModule, PageToolbarComponent, SearchBoxComponent],
   template: `
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <div class="search-wrap">
-          <nz-icon nzType="search" nzTheme="outline" />
-          <input
-            nz-input
-            placeholder="搜索版本号、构建号…"
-            [ngModel]="keyword()"
-            (ngModelChange)="keywordChange.emit($event)"
-          />
-        </div>
-        <div class="toolbar-sep"></div>
-        <div class="filter-group">
-          <button
-            nz-button
-            [nzType]="statusFilter() === '' ? 'primary' : 'default'"
-            (click)="statusFilterChange.emit('')"
-          >
-            全部
-          </button>
-          <button
-            nz-button
-            [nzType]="statusFilter() === 'published' ? 'primary' : 'default'"
-            (click)="statusFilterChange.emit('published')"
-          >
-            已发布
-          </button>
-          <button
-            nz-button
-            [nzType]="statusFilter() === 'testing' ? 'primary' : 'default'"
-            (click)="statusFilterChange.emit('testing')"
-          >
-            测试中
-          </button>
-          <button
-            nz-button
-            [nzType]="statusFilter() === 'draft' ? 'primary' : 'default'"
-            (click)="statusFilterChange.emit('draft')"
-          >
-            草稿
-          </button>
-          <button
-            nz-button
-            [nzType]="statusFilter() === 'archived' ? 'primary' : 'default'"
-            (click)="statusFilterChange.emit('archived')"
-          >
-            已归档
-          </button>
-        </div>
-        <div class="toolbar-sep"></div>
-        <div class="filter-group">
-          <button
-            nz-button
-            [nzType]="platformFilter() === '' ? 'primary' : 'default'"
-            (click)="platformFilterChange.emit('')"
-          >
-            全平台
-          </button>
-          <button
-            nz-button
-            [nzType]="platformFilter() === 'ios' ? 'primary' : 'default'"
-            (click)="platformFilterChange.emit('ios')"
-          >
-            iOS
-          </button>
-          <button
-            nz-button
-            [nzType]="platformFilter() === 'android' ? 'primary' : 'default'"
-            (click)="platformFilterChange.emit('android')"
-          >
-            Android
-          </button>
-        </div>
+    <app-page-toolbar>
+      <button toolbar-primary nz-button nzType="primary" (click)="create.emit()">
+        <nz-icon nzType="plus" nzTheme="outline" />
+        新建版本
+      </button>
+
+      <div toolbar-filters class="version-toolbar__filters">
+        <nz-select
+          class="version-toolbar__select"
+          [ngModel]="statusFilter()"
+          (ngModelChange)="statusFilterChange.emit($event)"
+          nzPlaceHolder="发布状态"
+        >
+          <nz-option nzValue="" nzLabel="全部状态"></nz-option>
+          <nz-option nzValue="published" nzLabel="已发布"></nz-option>
+          <nz-option nzValue="testing" nzLabel="测试中"></nz-option>
+          <nz-option nzValue="draft" nzLabel="草稿"></nz-option>
+          <nz-option nzValue="archived" nzLabel="已归档"></nz-option>
+        </nz-select>
+
+        <nz-select
+          class="version-toolbar__select"
+          [ngModel]="platformFilter()"
+          (ngModelChange)="platformFilterChange.emit($event)"
+          nzPlaceHolder="平台"
+        >
+          <nz-option nzValue="" nzLabel="全平台"></nz-option>
+          <nz-option nzValue="ios" nzLabel="iOS"></nz-option>
+          <nz-option nzValue="android" nzLabel="Android"></nz-option>
+        </nz-select>
       </div>
-      <div class="toolbar-right">
-        <button nz-button nzType="primary" (click)="create.emit()">
-          <nz-icon nzType="plus" nzTheme="outline" />
-          新建版本
-        </button>
-      </div>
-    </div>
+
+      <app-search-box
+        toolbar-search
+        class="version-toolbar__search"
+        placeholder="搜索版本号、构建号…"
+        [value]="keyword()"
+        (valueChange)="keywordChange.emit($event)"
+        (submitted)="keywordChange.emit($event)"
+      />
+    </app-page-toolbar>
   `,
   styles: [
     `
-      .toolbar {
+      .version-toolbar__filters {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 12px;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
       }
 
-      .toolbar-left {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
+      .version-toolbar__select {
+        width: 140px;
       }
 
-      .toolbar-right {
-        display: flex;
-        align-items: center;
-        gap: 8px;
+      .version-toolbar__search {
+        min-width: 240px;
+        max-width: 360px;
       }
 
-      .search-wrap {
-        position: relative;
-        display: flex;
-        align-items: center;
-      }
-
-      .search-wrap nz-icon {
-        position: absolute;
-        left: 10px;
-        color: var(--text-muted);
-        z-index: 1;
-      }
-
-      .search-wrap input {
-        padding-left: 32px;
-        width: 240px;
-      }
-
-      .toolbar-sep {
-        width: 1px;
-        height: 24px;
-        background: var(--border-color);
-        margin: 0 4px;
-      }
-
-      .filter-group {
-        display: flex;
-        gap: 4px;
-      }
-
-      @media (max-width: 960px) {
-        .toolbar {
-          flex-direction: column;
-          align-items: stretch;
-        }
-
-        .toolbar-left {
-          flex-wrap: wrap;
-        }
-
-        .search-wrap input {
+      @media (max-width: 720px) {
+        .version-toolbar__select,
+        .version-toolbar__search {
           width: 100%;
-        }
-
-        .toolbar-right {
-          justify-content: flex-end;
+          max-width: none;
         }
       }
     `,

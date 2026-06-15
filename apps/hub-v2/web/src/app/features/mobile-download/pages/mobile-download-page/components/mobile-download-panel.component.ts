@@ -16,44 +16,14 @@ import type {
 export class MobileDownloadPanelComponent {
   readonly info = input.required<MobileAppDownloadInfo>();
   readonly selectedPlatform = input<MobileAppDownloadPlatform | null>(null);
-  readonly selectedPlatformKey = input<MobileAppPlatform>('android');
 
   readonly platformSelected = output<MobileAppPlatform>();
 
-  deviceName(): string {
-    const platform = this.selectedPlatform()?.platform ?? this.selectedPlatformKey();
-    if (platform === 'ios') {
-      return 'iOS 企业版';
-    }
-    return 'Android APK';
-  }
-
-  deviceHint(): string {
-    const platform = this.selectedPlatform()?.platform ?? this.selectedPlatformKey();
-    return platform === 'ios'
-      ? '安装前请确认企业证书信任状态。'
-      : '安装前请确认系统版本和安装权限。';
-  }
-
-  platformLabel(platform: MobileAppDownloadPlatform | null): string {
-    if (!platform) {
-      return '-';
-    }
-    return platform.platform === 'android' ? 'Android APK' : 'iOS 企业包';
-  }
-
-  platformShortLabel(platform: MobileAppDownloadPlatform | null): string {
-    if (!platform) {
-      return '-';
-    }
-    return platform.platform === 'android' ? 'Android' : 'iOS';
-  }
-
-  platformSystem(platform: MobileAppDownloadPlatform | null): string {
-    if (!platform) {
-      return '-';
-    }
-    return platform.minOsVersion || (platform.platform === 'android' ? 'Android 10+' : 'iOS 14+');
+  orderedPlatforms(): MobileAppDownloadPlatform[] {
+    return [...this.info().platforms].sort((a, b) => {
+      const order: Record<MobileAppPlatform, number> = { ios: 0, android: 1 };
+      return order[a.platform] - order[b.platform];
+    });
   }
 
   packageSize(bytes: number | null | undefined): string {
@@ -64,25 +34,11 @@ export class MobileDownloadPanelComponent {
     return `${mb.toFixed(mb >= 100 ? 0 : 1)} MB`;
   }
 
-  checksumText(platform: MobileAppDownloadPlatform | null): string {
-    const sha256 = platform?.checksum.sha256?.trim();
-    if (sha256) {
-      return `SHA256 ${sha256}`;
-    }
-    const md5 = platform?.checksum.md5?.trim();
-    return md5 ? `MD5 ${md5}` : '暂无校验值';
-  }
-
-  downloadText(platform: MobileAppDownloadPlatform | null): string {
-    if (!platform?.downloadUrl) {
-      return '暂无安装包';
-    }
-    return platform.platform === 'android' ? '立即下载 APK' : '安装 iOS 企业版';
-  }
-
-  channelTag(): string {
-    const channel = this.selectedPlatform()?.distributionType || this.info().current.channel || '内测';
-    return channel.endsWith('版') ? channel : `${channel}版`;
+  packageMeta(platform: MobileAppDownloadPlatform): string {
+    const version = platform.versionName || this.info().current.versionName || '最新版';
+    const suffix = platform.platform === 'android' ? 'apk' : 'ipa';
+    const fileName = platform.packageName || `HubV2-${version}.${suffix}`;
+    return `${fileName} · ${this.packageSize(platform.packageSizeBytes)}`;
   }
 
   trackPlatform(_index: number, item: MobileAppDownloadPlatform): string {

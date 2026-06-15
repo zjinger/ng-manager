@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import type {
   MobileAppDownloadInfo,
@@ -19,22 +19,8 @@ export class MobileDownloadSectionsComponent {
   readonly info = input.required<MobileAppDownloadInfo>();
   readonly selectedPlatform = input<MobileAppDownloadPlatform | null>(null);
 
-  readonly copyChecksum = output<MobileAppDownloadPlatform | null>();
-
-  platformSystem(platform: MobileAppDownloadPlatform | null): string {
-    if (!platform) {
-      return '-';
-    }
-    return platform.minOsVersion || (platform.platform === 'android' ? 'Android 10+' : 'iOS 14+');
-  }
-
-  checksumText(platform: MobileAppDownloadPlatform | null): string {
-    const sha256 = platform?.checksum.sha256?.trim();
-    if (sha256) {
-      return `SHA256 ${sha256}`;
-    }
-    const md5 = platform?.checksum.md5?.trim();
-    return md5 ? `MD5 ${md5}` : '暂无校验值';
+  recentReleaseNotes(): MobileAppDownloadReleaseNote[] {
+    return this.info().releaseNotes.slice(0, 3);
   }
 
   trackRelease(_index: number, item: MobileAppDownloadReleaseNote): string {

@@ -95,7 +95,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         margin-top: 8px;
         color: var(--text-disabled);
         font-size: 12px;
-        min-height: 1.2em;
+        min-height: 20px;
       }
       :host-context(html[data-theme='dark']) .stat-card {
         background:
@@ -125,7 +125,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 export class StatCardComponent {
   readonly label = input.required<string>();
   readonly value = input.required<string | number>();
-  readonly hint = input<string>('');
+  readonly hint = input<string>(' ');
   readonly icon = input<string>('bar-chart');
   readonly tone = input<'blue' | 'purple' | 'green' | 'orange' | 'cyan'>('blue');
 }
