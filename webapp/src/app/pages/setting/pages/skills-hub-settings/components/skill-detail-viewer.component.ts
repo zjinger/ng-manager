@@ -9,6 +9,7 @@ import { NzTreeModule, type NzFormatEmitEvent, type NzTreeNodeOptions } from 'ng
 
 import { MarkdownViewerComponent } from '@app/shared/components/markdown-viewer';
 import type { SkillDetailEntity, SkillEntity, SkillVersionEntity } from '../models/skill-hub.model';
+import { avatarText, avatarTone, skillIconTone, skillIconType } from '../utils/skill-icon.util';
 
 type SkillFileEntry = { path: string; size: number; content?: string | null; contentTruncated?: boolean };
 
@@ -309,40 +310,19 @@ export class SkillDetailViewerComponent {
   }
 
   skillIconType(item: Pick<SkillEntity, 'category' | 'tags'>): string {
-    const source = `${item.category} ${item.tags.join(' ')}`.toLowerCase();
-    if (source.includes('api')) return 'api';
-    if (source.includes('data') || source.includes('db')) return 'database';
-    if (source.includes('doc') || source.includes('markdown')) return 'file-text';
-    if (source.includes('image') || source.includes('img')) return 'picture';
-    if (source.includes('cli') || source.includes('shell')) return 'code';
-    return 'appstore';
+    return skillIconType(item);
   }
 
   skillIconTone(item: Pick<SkillEntity, 'id' | 'category' | 'tags'>): string {
-    const source = `${item.category} ${item.tags.join(' ')}`.toLowerCase();
-    if (source.includes('api')) return 'purple';
-    if (source.includes('data') || source.includes('db')) return 'green';
-    if (source.includes('doc') || source.includes('markdown')) return 'blue';
-    if (source.includes('image') || source.includes('img')) return 'rose';
-    if (source.includes('cli') || source.includes('shell')) return 'cyan';
-    return ['blue', 'purple', 'green', 'orange', 'rose', 'cyan', 'indigo'][this.hashText(item.id) % 7];
+    return skillIconTone(item);
   }
 
   avatarTone(item: Pick<SkillEntity, 'ownerUserId' | 'ownerName' | 'id'>): string {
-    return `a${(this.hashText(item.ownerUserId || item.ownerName || item.id) % 4) + 1}`;
+    return avatarTone(item);
   }
 
   avatarText(name: string | null): string {
-    const n = (name || '作者').trim();
-    return n.slice(-1);
-  }
-
-  private ownerAvatarKey(item: Pick<SkillEntity, 'id' | 'ownerUserId'>): string {
-    return item.ownerUserId || item.id;
-  }
-
-  private hashText(value: string): number {
-    return Array.from(value || 'skill').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return avatarText(name);
   }
 
   private toNzTreeNodes(files: SkillFileEntry[]): NzTreeNodeOptions[] {

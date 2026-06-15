@@ -3,7 +3,7 @@ import { catchError, from, of } from 'rxjs';
 import { ApiClient } from '@app/core/api';
 import { LocalStateStore, LS_KEYS } from '@app/core/local-state';
 import { ProjectContextStore } from '@app/core/stores';
-import type { SkillDetailEntity, SkillListResult, SkillQuery } from '../models/skill-hub.model';
+import type { SkillDetailEntity, SkillListResult, SkillQuery } from '../pages/skills-hub-settings/models/skill-hub.model';
 
 @Injectable({ providedIn: 'root' })
 export class SkillHubApiService {

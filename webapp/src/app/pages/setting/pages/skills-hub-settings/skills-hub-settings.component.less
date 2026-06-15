@@ -1,0 +1,55 @@
+:host {
+  display: block;
+  height: 100%;
+  overflow: auto;
+}
+.skill-hub-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+.skill-hub {
+  padding: 0 0 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.skill-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.toolbar-search {
+  max-width: 280px;
+}
+
+.skill-grid-container {
+  height: 100%;
+  overflow: auto;
+}
+
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.skill-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.ant-spin-nested-loading{
+    flex:1;
+    display: flex;
+    flex-direction: column;
+}
+
+::ng-deep .ant-spin-container{
+    flex:1;
+    display: flex;
+    flex-direction: column;
+}
