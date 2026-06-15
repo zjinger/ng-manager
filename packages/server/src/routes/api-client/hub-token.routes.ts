@@ -3,6 +3,7 @@ import { Project } from "@yinuo-ngm/project";
 import { ProjectTokenApiClient } from "@yinuo-ngm/api";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { Readable } from "node:stream";
+import { env } from "src/env";
 
 type HubTokenType = "project" | "personal";
 type HubHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -54,6 +55,7 @@ function readHubTokenConfigFromProject(project: Project): HubProjectConfig {
     };
 }
 
+// 返回的token取决于tokenType； 如果body没有projectId返回对象没有projectKey
 async function resolveHubTokenConfig(
     app: FastifyInstance,
     body: HubTokenRequestBody,
@@ -64,8 +66,10 @@ async function resolveHubTokenConfig(
         tokenType === "personal"
             ? body.personalToken?.trim() || body.token?.trim()
             : body.token?.trim();
-    if (inlineToken) {
-        return { baseUrl: inlineBaseUrl || "http://192.168.1.31:7008", token: inlineToken };
+            
+    // personal token且没有projectId
+    if (inlineToken && !body.projectId) {
+        return { baseUrl: inlineBaseUrl || env.hubV2BaseUrl, token: inlineToken };
     }
 
     if (!body.projectId) {
