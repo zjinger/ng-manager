@@ -21,12 +21,14 @@ import type { UserEntity } from '../../../users/models/user.model';
 import { UserApiService } from '../../../users/services/user-api.service';
 import { SkillDetailDrawerComponent } from '../../components/skill-detail-drawer/skill-detail-drawer.component';
 import { SKILL_CATEGORY_OPTIONS } from '../../constants/skill-hub-options';
+import { SkillEditDialogComponent } from '../../dialogs/skill-edit-dialog/skill-edit-dialog.component';
 import { SkillUploadDialogComponent } from '../../dialogs/skill-upload-dialog/skill-upload-dialog.component';
 import type {
   SkillCommentEntity,
   SkillDetailEntity,
   SkillEntity,
   SkillStatus,
+  SkillUpdateInput,
   SkillUploadInput,
   SkillVersionEntity,
 } from '../../models/skill-hub.model';
@@ -52,6 +54,7 @@ type SkillFilterStatus = Extract<SkillStatus, 'published' | 'archived'>;
     SearchBoxComponent,
     ListStateComponent,
     SkillDetailDrawerComponent,
+    SkillEditDialogComponent,
     SkillUploadDialogComponent,
   ],
   template: `
@@ -147,15 +150,20 @@ type SkillFilterStatus = Extract<SkillStatus, 'published' | 'archived'>;
             </div>
             <p class="skill-card-desc">{{ cardDescription(item) }}</p>
             <div class="skill-card-footer">
-              <div class="skill-stats">
-                <span class="skill-tag category">{{ skillCategoryLabel(item.category) }}</span>
+              <div class="skill-card-meta">
+                <!-- <div class="skill-category-row">
+                  <span class="skill-category-label">分类</span>
+                  <span class="skill-category-value">{{ skillCategoryLabel(item.category) }}</span>
+                </div> -->
                 @if (item.tags.length > 0) {
-                  @for (tag of item.tags.slice(0, 3); track tag) {
-                    <span class="skill-tag" [ngClass]="tagTone(tag)">{{ tag }}</span>
-                  }
+                  <div class="skill-tag-row" aria-label="标签">
+                    @for (tag of item.tags.slice(0, 4); track tag) {
+                      <span class="skill-tag" [ngClass]="tagTone(tag)">{{ tag }}</span>
+                    }
+                  </div>
                 }
               </div>
-              <span class="skill-card-updated">更新 {{ item.updatedAt | date: 'MM-dd HH:mm' }}</span>
+              <span class="skill-card-updated"> {{ item.updatedAt | date: 'MM-dd HH:mm' }}</span>
             </div>
           </article>
         }
@@ -191,6 +199,7 @@ type SkillFilterStatus = Extract<SkillStatus, 'published' | 'archived'>;
       [isOwner]="selectedIsOwner()"
       (close)="closeDetail()"
       (uploadVersion)="openUpload($event)"
+      (editSkill)="openEdit($event)"
       (toggleFavorite)="toggleFavorite($event)"
       (archive)="archive($event)"
       (deleteSkill)="deleteSkill($event)"
@@ -204,6 +213,14 @@ type SkillFilterStatus = Extract<SkillStatus, 'published' | 'archived'>;
       [target]="uploadTarget()"
       (cancel)="closeUpload()"
       (create)="saveUpload($event)"
+    />
+
+    <app-skill-edit-dialog
+      [open]="editOpen()"
+      [busy]="busy()"
+      [skill]="editTarget()"
+      (cancel)="closeEdit()"
+      (save)="saveEdit($event)"
     />
   `,
   styleUrls: ['./skill-hub-page.component.less'],
@@ -231,6 +248,8 @@ export class SkillHubPageComponent {
   readonly detailOpen = signal(false);
   readonly uploadOpen = signal(false);
   readonly uploadTarget = signal<SkillDetailEntity | null>(null);
+  readonly editOpen = signal(false);
+  readonly editTarget = signal<SkillDetailEntity | null>(null);
   readonly comments = signal<SkillCommentEntity[]>([]);
   readonly commentsLoading = signal(false);
   readonly commentBusy = signal(false);
@@ -325,6 +344,7 @@ export class SkillHubPageComponent {
   closeDetail(): void {
     this.detailOpen.set(false);
     this.comments.set([]);
+    this.closeEdit();
   }
 
   openUpload(target: SkillDetailEntity | null): void {
@@ -335,6 +355,16 @@ export class SkillHubPageComponent {
   closeUpload(): void {
     this.uploadOpen.set(false);
     this.uploadTarget.set(null);
+  }
+
+  openEdit(target: SkillDetailEntity): void {
+    this.editTarget.set(target);
+    this.editOpen.set(true);
+  }
+
+  closeEdit(): void {
+    this.editOpen.set(false);
+    this.editTarget.set(null);
   }
 
   saveUpload(payload: SkillUploadInput): void {
@@ -349,7 +379,26 @@ export class SkillHubPageComponent {
         this.detailOpen.set(true);
         this.loadComments(detail.id);
         this.load(true);
-        this.message.success('Skill 已上传并自动发布');
+        this.message.success(target ? 'Skill 新版本已上传并自动发布' : 'Skill 已上传并自动发布');
+      },
+      error: () => this.busy.set(false),
+    });
+  }
+
+  saveEdit(payload: SkillUpdateInput): void {
+    const target = this.editTarget();
+    if (!target) {
+      return;
+    }
+    this.busy.set(true);
+    this.api.update(target.id, payload).subscribe({
+      next: (detail) => {
+        this.busy.set(false);
+        this.closeEdit();
+        this.selected.set(detail);
+        this.replaceListItem(detail);
+        this.load();
+        this.message.success('Skill 信息已保存');
       },
       error: () => this.busy.set(false),
     });

@@ -108,3 +108,9 @@ export interface SkillUploadInput {
   descriptionMd?: string;
 }
 
+export interface SkillUpdateInput {
+  category?: string;
+  tags?: string[];
+  descriptionMd?: string;
+}
+

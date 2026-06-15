@@ -8,7 +8,15 @@ import { requireAuth } from "../../shared/auth/require-auth";
 import { ok } from "../../shared/http/response";
 import { saveMultipartFile } from "../../shared/storage/file-storage";
 import { assertUploadAllowed, resolveUploadPolicy } from "../upload/upload-policy";
-import { createSkillCommentSchema, exportSkillQuerySchema, favoriteSkillSchema, listSkillsQuerySchema, rejectSkillVersionSchema, reviewSkillSchema } from "./skill-hub.schema";
+import {
+  createSkillCommentSchema,
+  exportSkillQuerySchema,
+  favoriteSkillSchema,
+  listSkillsQuerySchema,
+  rejectSkillVersionSchema,
+  reviewSkillSchema,
+  updateSkillSchema
+} from "./skill-hub.schema";
 
 const SKILL_PACKAGE_UPLOAD_POLICY = resolveUploadPolicy("skills", "package");
 
@@ -50,6 +58,13 @@ export default async function skillHubRoutes(app: FastifyInstance) {
     const ctx = requireAuth(request);
     const params = request.params as { skillId: string };
     return ok(await app.container.skillHubQuery.getById(params.skillId, ctx));
+  });
+
+  app.patch("/skills/:skillId", async (request) => {
+    const ctx = requireAuth(request);
+    const params = request.params as { skillId: string };
+    const body = updateSkillSchema.parse(request.body);
+    return ok(await app.container.skillHubCommand.update(params.skillId, body, ctx), "skill updated");
   });
 
   app.post("/skills", async (request, reply) => {
@@ -130,10 +145,7 @@ export default async function skillHubRoutes(app: FastifyInstance) {
           packageSize: upload.fileSize,
           checksum: upload.checksum,
           name: getFieldValue(file.fields.name),
-          version: getFieldValue(file.fields.version),
-          category: getFieldValue(file.fields.category),
-          tags: parseTags(getFieldValue(file.fields.tags)),
-          descriptionMd: getFieldValue(file.fields.descriptionMd)
+          version: getFieldValue(file.fields.version)
         },
         ctx
       );

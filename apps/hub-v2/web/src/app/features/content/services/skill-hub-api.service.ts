@@ -12,6 +12,7 @@ import type {
   SkillExportTarget,
   SkillListResult,
   SkillQuery,
+  SkillUpdateInput,
   SkillUploadInput,
   SkillVersionEntity,
 } from '../models/skill-hub.model';
@@ -40,6 +41,10 @@ export class SkillHubApiService {
         withCredentials: true,
       })
       .pipe(map((response) => response.data));
+  }
+
+  update(skillId: string, input: SkillUpdateInput) {
+    return this.api.patch<SkillDetailEntity, SkillUpdateInput>(`/skills/${skillId}`, input);
   }
 
   createVersion(skillId: string, input: SkillUploadInput) {

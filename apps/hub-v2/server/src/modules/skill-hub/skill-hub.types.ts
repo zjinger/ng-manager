@@ -100,6 +100,12 @@ export interface ReviewSkillInput {
   comment?: string;
 }
 
+export interface UpdateSkillInput {
+  category?: string;
+  tags?: string[];
+  descriptionMd?: string;
+}
+
 export interface CreateSkillCommentInput {
   content: string;
 }

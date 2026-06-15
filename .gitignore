@@ -80,3 +80,4 @@ docs/ui/
 .agents/
 outputs/
 .ng-manager/
+apps/site/docs/hub-v2/skills/*.zip

@@ -25,6 +25,7 @@ import type {
   SkillListResult,
   SkillPackageManifest,
   SkillUploadInput,
+  UpdateSkillInput,
   SkillVersionEntity
 } from "./skill-hub.types";
 
@@ -123,6 +124,26 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
     return this.requireDetail(skillId, this.actorUserId(ctx));
   }
 
+  async update(skillId: string, input: UpdateSkillInput, ctx: RequestContext): Promise<SkillDetailEntity> {
+    const skill = this.requireSkill(skillId);
+    this.requireOwner(skill, ctx, "update skill");
+    if (skill.status === "archived" && !this.canManage(ctx)) {
+      throw new AppError(ERROR_CODES.AUTH_FORBIDDEN, "update archived skill forbidden", 403);
+    }
+
+    const now = nowIso();
+    const descriptionMd = input.descriptionMd !== undefined ? this.normalizeDescriptionMd(input.descriptionMd) : skill.descriptionMd;
+    this.repo.updateSkill(skill.id, {
+      category: input.category?.trim() || skill.category,
+      tags: input.tags ? this.normalizeTags(input.tags) : skill.tags,
+      descriptionMd,
+      updatedAt: now
+    });
+    await this.promoteTempMarkdownUploads(skill.id, descriptionMd, ctx);
+
+    return this.requireDetail(skill.id, this.actorUserId(ctx));
+  }
+
   async createVersion(skillId: string, input: CreateSkillVersionInput, ctx: RequestContext): Promise<SkillDetailEntity> {
     this.requireCreatePermission(ctx);
     const skill = this.requireSkill(skillId);
@@ -142,20 +163,15 @@ export class SkillHubService implements SkillHubCommandContract, SkillHubQueryCo
     this.assertVersionCanBeAdded(skill.id, version);
     const now = nowIso();
     const versionEntity = this.applyUploadApprovalStrategy(this.buildVersion(skill.id, version, input, parsed, ctx, now), ctx, now);
-    const descriptionMd = input.descriptionMd !== undefined ? this.normalizeDescriptionMd(input.descriptionMd) : skill.descriptionMd;
 
     this.repo.runInTransaction(() => {
       this.repo.createVersion(versionEntity);
       this.repo.updateSkill(skill.id, {
-        descriptionMd,
-        category: input.category?.trim() || skill.category,
-        tags: input.tags?.length ? this.normalizeTags(input.tags) : skill.tags,
         status: versionEntity.status === "published" ? "published" : skill.status,
         latestVersionId: versionEntity.status === "published" ? versionEntity.id : skill.latestVersionId,
         updatedAt: now
       });
     });
-    await this.promoteTempMarkdownUploads(skill.id, descriptionMd, ctx);
 
     return this.requireDetail(skill.id, this.actorUserId(ctx));
   }

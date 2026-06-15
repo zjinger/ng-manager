@@ -14,6 +14,12 @@ export const rejectSkillVersionSchema = z.object({
   reviewComment: z.string().trim().min(1).max(1000)
 });
 
+export const updateSkillSchema = z.object({
+  category: z.string().trim().max(80).optional(),
+  tags: z.array(z.string().trim().max(20)).max(10).optional(),
+  descriptionMd: z.string().trim().max(20000).optional()
+});
+
 export const favoriteSkillSchema = z.object({
   favorite: z.boolean()
 });

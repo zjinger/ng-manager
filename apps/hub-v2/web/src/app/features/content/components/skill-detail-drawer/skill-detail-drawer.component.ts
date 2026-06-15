@@ -51,10 +51,24 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
       [nzWidth]="860"
       [nzWrapClassName]="'skill-detail-drawer'"
       [nzBodyStyle]="drawerBodyStyle"
-      [nzClosable]="true"
-      nzTitle="Skill 详情"
+      [nzClosable]="false"
+      [nzMaskClosable]="true"
+      [nzMask]="false"
+      [nzTitle]="drawerTitleTpl"
       (nzOnClose)="close.emit()"
     >
+      <ng-template #drawerTitleTpl>
+        <div class="detail-drawer__title">
+          <div class="detail-drawer__title-main">
+            <span class="detail-drawer__subtitle">{{ skill()?.name || 'Skill' }}</span>
+            <strong>Skill 详情</strong>
+          </div>
+          <button type="button" class="detail-drawer__close" (click)="close.emit()">
+            <span nz-icon nzType="close"></span>
+          </button>
+        </div>
+      </ng-template>
+
       <ng-template nzDrawerContent>
         @if (skill(); as detail) {
           <div class="detail">
@@ -66,7 +80,7 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
                   </div>
                   <div class="drawer-hero-copy">
                     <h2>{{ detail.name }}</h2>
-                    <p>{{ detail.description }}</p>
+                    <p class="drawer-hero-description">{{ detail.description }}</p>
                     <div class="drawer-hero-author">
                       <span class="skill-author-avatar" [ngClass]="avatarTone(detail)">
                         @if (showOwnerAvatarImage(detail)) {
@@ -76,8 +90,8 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
                         }
                       </span>
                       <span>{{ detail.ownerName || '未知作者' }}</span>
-                      <span>·</span>
-                      <span>{{ detail.slug }}</span>
+                      <span class="drawer-hero-separator"></span>
+                      <span class="drawer-hero-slug">{{ detail.slug }}</span>
                     </div>
                   </div>
                 </div>
@@ -92,6 +106,12 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
                     <button nz-button (click)="uploadVersion.emit(detail)">
                       <nz-icon nzType="plus" nzTheme="outline" />
                       新版本
+                    </button>
+                  }
+                  @if (canEdit(detail)) {
+                    <button nz-button (click)="editSkill.emit(detail)">
+                      <nz-icon nzType="edit" nzTheme="outline" />
+                      编辑
                     </button>
                   }
                   @if (canManage() && detail.status === 'published') {
@@ -254,6 +274,55 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
       :host {
         display: contents;
       }
+      .detail-drawer__title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .detail-drawer__title-main {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+      }
+      .detail-drawer__title-main strong {
+        color: var(--text-primary);
+        font-size: 18px;
+        line-height: 1.2;
+      }
+      .detail-drawer__subtitle {
+        min-width: 0;
+        max-width: 240px;
+        flex-shrink: 0;
+        padding: 3px 8px;
+        overflow: hidden;
+        border-radius: 4px;
+        background: var(--gray-100);
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.4;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .detail-drawer__close {
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: var(--transition-base);
+      }
+      .detail-drawer__close:hover {
+        background: var(--bg-subtle);
+        color: var(--text-primary);
+      }
       .detail {
         height: 100%;
         min-height: 0;
@@ -272,10 +341,11 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
-        gap: 16px;
+        gap: 24px;
         padding: 26px 24px;
       }
       .drawer-hero-main {
+        flex: 1 1 auto;
         display: flex;
         align-items: flex-start;
         gap: 16px;
@@ -292,7 +362,10 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
         font-size: 24px;
       }
       .drawer-hero-copy {
+        display: grid;
+        gap: 8px;
         min-width: 0;
+        max-width: 640px;
       }
       .drawer-hero-copy h2,
       .detail__section h3 {
@@ -303,18 +376,36 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
         font-size: 18px;
         font-weight: 700;
       }
-      .drawer-hero-copy p {
-        margin: 8px 0 0;
+      .drawer-hero-description {
+        margin: 0;
         color: var(--text-secondary);
+        font-size: 14px;
         line-height: 1.6;
       }
       .drawer-hero-author {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 6px;
-        margin-top: 8px;
+        margin-top: 2px;
         color: var(--text-secondary);
         font-size: 13px;
+      }
+      .drawer-hero-separator {
+        width: 1px;
+        height: 12px;
+        margin: 0 2px;
+        background: var(--border-color);
+      }
+      .drawer-hero-slug {
+        min-width: 0;
+        max-width: 220px;
+        overflow: hidden;
+        color: var(--text-muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .skill-author-avatar {
         width: 20px;
@@ -335,11 +426,21 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
         object-fit: cover;
       }
       .detail__actions {
+        width: 96px;
+        flex: 0 0 96px;
         display: flex;
         align-items: center;
         justify-content: flex-end;
+        flex-direction: column;
         gap: 8px;
-        flex-wrap: wrap;
+        padding-left: 16px;
+        border-left: 1px solid var(--border-color);
+      }
+      .detail__actions button {
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
       .detail__section {
         padding: 0 24px 18px;
@@ -633,9 +734,27 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
       @media (max-width: 768px) {
         .detail__header {
           flex-direction: column;
+          gap: 16px;
+        }
+        .drawer-hero-main {
+          width: 100%;
+        }
+        .drawer-hero-copy {
+          max-width: none;
         }
         .detail__actions {
+          width: 100%;
+          flex: 0 0 auto;
+          align-items: stretch;
           justify-content: flex-start;
+          flex-direction: row;
+          flex-wrap: wrap;
+          padding-left: 0;
+          border-left: 0;
+        }
+        .detail__actions button {
+          width: auto;
+          min-width: 92px;
         }
         .file-browser {
           grid-template-columns: 1fr;
@@ -662,6 +781,7 @@ export class SkillDetailDrawerComponent {
   readonly isOwner = input(false);
   readonly close = output<void>();
   readonly uploadVersion = output<SkillDetailEntity>();
+  readonly editSkill = output<SkillDetailEntity>();
   readonly toggleFavorite = output<SkillDetailEntity>();
   readonly archive = output<SkillDetailEntity>();
   readonly deleteSkill = output<SkillDetailEntity>();
@@ -697,6 +817,10 @@ export class SkillDetailDrawerComponent {
       return false;
     }
     return this.isOwner() || this.canManage();
+  }
+
+  canEdit(detail: SkillDetailEntity): boolean {
+    return detail.status !== 'archived' && (this.isOwner() || this.canManage());
   }
 
   latestPreview(detail: SkillDetailEntity): SkillVersionEntity | null {

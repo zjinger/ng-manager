@@ -127,14 +127,40 @@
   padding-top: 14px;
   border-top: 1px solid var(--border-color);
 }
-.skill-stats {
-  display: flex;
-  align-items: center;
+.skill-card-meta {
+  flex: 1;
+  display: grid;
   gap: 8px;
   min-width: 0;
-  flex-wrap: wrap;
-  color: var(--text-muted);
+}
+.skill-category-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   font-size: 12px;
+  line-height: 1;
+}
+.skill-category-label {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.skill-category-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.skill-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
 }
 .skill-stat.version {
   flex-shrink: 0;
@@ -146,7 +172,8 @@
 .skill-tag {
   display: inline-flex;
   align-items: center;
-  max-width: 116px;
+  flex: 0 1 auto;
+  max-width: 96px;
   min-height: 22px;
   padding: 2px 8px;
   overflow: hidden;
@@ -159,10 +186,6 @@
 .skill-tag.cli {
   background: #f1f5f9;
   color: #475569;
-}
-.skill-tag.category {
-  background: #f8fafc;
-  color: #334155;
 }
 .skill-tag.web {
   background: #eef2ff;
@@ -253,10 +276,6 @@
 :host-context(html[data-theme='dark']) .skill-tag.cli {
   background: rgba(148, 163, 184, 0.14);
   color: #cbd5e1;
-}
-:host-context(html[data-theme='dark']) .skill-tag.category {
-  background: rgba(148, 163, 184, 0.14);
-  color: #e2e8f0;
 }
 @media (max-width: 768px) {
   .skill-grid {

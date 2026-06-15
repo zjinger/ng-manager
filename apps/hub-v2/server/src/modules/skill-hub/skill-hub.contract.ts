@@ -13,11 +13,13 @@ import type {
   SkillExportConfig,
   SkillExportTarget,
   SkillListResult,
+  UpdateSkillInput,
   SkillVersionEntity
 } from "./skill-hub.types";
 
 export interface SkillHubCommandContract {
   create(input: CreateSkillInput, ctx: RequestContext): Promise<SkillDetailEntity>;
+  update(skillId: string, input: UpdateSkillInput, ctx: RequestContext): Promise<SkillDetailEntity>;
   createVersion(skillId: string, input: CreateSkillVersionInput, ctx: RequestContext): Promise<SkillDetailEntity>;
   submitVersion(skillId: string, versionId: string, ctx: RequestContext): Promise<SkillVersionEntity>;
   publishVersion(skillId: string, versionId: string, ctx: RequestContext): Promise<SkillDetailEntity>;

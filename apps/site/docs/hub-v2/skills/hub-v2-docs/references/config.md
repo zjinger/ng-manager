@@ -57,13 +57,15 @@ HUB_V2_SOURCE=agent
 HUB_V2_CONFIG=C:/Users/you/.ng-manager/agent-connections.json
 ```
 
-Write policy variable:
+Hub V2 document write behavior:
 
 ```text
-NGM_MCP_ALLOW_WRITE=true
+confirm=true
+Personal Token with required document scope
+Hub V2 project permission
 ```
 
-Current document tools are read-first. This variable only affects confirmed write tools exposed by the same MCP server. Setting it does not replace `confirm: true` or Hub V2 Personal Token scope checks.
+Hub V2 document write tools call Hub V2 Token HTTP APIs. They do not depend on local NGM MCP policy flags such as `NGM_MCP_ALLOW_WRITE` or `NGM_MCP_ALLOW_EXECUTE`. If a confirmed document write fails, inspect the structured error for missing token, missing scope, project permission, or workflow-state validation.
 
 Project selection:
 
@@ -77,5 +79,5 @@ Security rules:
 - Never ask the user to paste tokens into chat.
 - Never pass tokens as MCP tool arguments.
 - Do not print full token values in logs or replies.
-- Use Project Token for document read tools.
+- Use Project Token for document read tools and Personal Token for document write tools.
 - Treat `~/.ng-manager/agent-connections.json` as a local secret file.

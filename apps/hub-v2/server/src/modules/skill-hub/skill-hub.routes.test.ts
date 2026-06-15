@@ -194,7 +194,7 @@ describe("skill hub routes", () => {
     assert.match(wrongNameResponse.json().message, /versioned-skill/);
   });
 
-  it("updates supplemental markdown description when uploading a new skill version", async () => {
+  it("updates supplemental skill metadata separately from version uploads", async () => {
     const ctx = await createTestApp();
     const zip = createSkillZip("described-skill", "Described Skill");
     const createResponse = await postSkillPackage(ctx, "/api/admin/skills", zip, {
@@ -205,12 +205,31 @@ describe("skill hub routes", () => {
     const created = createResponse.json().data;
     assert.equal(created.descriptionMd, "初始说明");
 
+    const updateResponse = await ctx.app.inject({
+      method: "PATCH",
+      url: `/api/admin/skills/${created.id}`,
+      headers: { authorization: `Bearer ${adminJwt(ctx)}` },
+      payload: {
+        category: "automation",
+        tags: ["usage", "api"],
+        descriptionMd: "## 新说明\n\n![截图](/api/admin/uploads/upl_demo/raw)"
+      }
+    });
+    assert.equal(updateResponse.statusCode, 200);
+    assert.equal(updateResponse.json().data.category, "automation");
+    assert.deepEqual(updateResponse.json().data.tags, ["usage", "api"]);
+    assert.equal(updateResponse.json().data.descriptionMd, "## 新说明\n\n![截图](/api/admin/uploads/upl_demo/raw)");
+
     const versionResponse = await postSkillPackage(ctx, `/api/admin/skills/${created.id}/versions`, zip, {
       version: "1.0.1",
-      descriptionMd: "## 新说明\n\n![截图](/api/admin/uploads/upl_demo/raw)"
+      category: "testing",
+      tags: "draft",
+      descriptionMd: "不应通过新版本上传更新"
     });
     assert.equal(versionResponse.statusCode, 201);
     assert.equal(versionResponse.json().data.descriptionMd, "## 新说明\n\n![截图](/api/admin/uploads/upl_demo/raw)");
+    assert.equal(versionResponse.json().data.category, "automation");
+    assert.deepEqual(versionResponse.json().data.tags, ["usage", "api"]);
     assert.equal(versionResponse.json().data.status, "published");
     assert.ok(versionResponse.json().data.versions.some((item: { version: string; status: string }) => item.version === "1.0.1" && item.status === "published"));
   });

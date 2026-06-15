@@ -34,8 +34,8 @@ import type { SkillDetailEntity, SkillUploadInput } from '../../models/skill-hub
     <app-dialog-shell
       [open]="open()"
       [width]="720"
-      [title]="target() ? '上传新版本' : '上传 Skill'"
-      [subtitle]="target() ? target()?.name || '' : '上传包含 SKILL.md 的 zip 包'"
+      [title]="versionMode() ? '上传新版本' : '上传 Skill'"
+      [subtitle]="versionMode() ? '仅上传 zip 包并填写版本号' : '上传包含 SKILL.md 的 zip 包'"
       [icon]="'upload'"
       (cancel)="cancel.emit()"
     >
@@ -69,22 +69,24 @@ import type { SkillDetailEntity, SkillUploadInput } from '../../models/skill-hub
             </nz-form-control>
           </nz-form-item>
 
-          <nz-form-item>
-            <nz-form-label nzRequired>Skill 名称</nz-form-label>
-            <nz-form-control nzErrorTip="请输入 Skill 名称">
-              <input
-                nz-input
-                [ngModel]="name()"
-                name="name"
-                [disabled]="!!target() || busy()"
-                placeholder="默认使用 zip 包名称"
-                (ngModelChange)="name.set($event)"
-              />
-            </nz-form-control>
-          </nz-form-item>
+          @if (!versionMode()) {
+            <nz-form-item>
+              <nz-form-label nzRequired>Skill 名称</nz-form-label>
+              <nz-form-control nzErrorTip="请输入 Skill 名称">
+                <input
+                  nz-input
+                  [ngModel]="name()"
+                  name="name"
+                  [disabled]="busy()"
+                  placeholder="默认使用 zip 包名称"
+                  (ngModelChange)="name.set($event)"
+                />
+              </nz-form-control>
+            </nz-form-item>
+          }
 
           <div nz-row nzGutter="16">
-            <div nz-col nzSpan="12">
+            <div nz-col [nzSpan]="versionMode() ? 24 : 12">
               <nz-form-item>
                 <nz-form-label>版本</nz-form-label>
                 <nz-form-control>
@@ -98,67 +100,71 @@ import type { SkillDetailEntity, SkillUploadInput } from '../../models/skill-hub
                 </nz-form-control>
               </nz-form-item>
             </div>
-            <div nz-col nzSpan="12">
-              <nz-form-item>
-                <nz-form-label>分类</nz-form-label>
-                <nz-form-control>
-                  <nz-select
-                    [ngModel]="category()"
-                    name="category"
-                    nzPlaceHolder="选择分类"
-                    (ngModelChange)="category.set($event)"
-                  >
-                    @for (item of categoryOptions; track item.value) {
-                      <nz-option [nzLabel]="item.label" [nzValue]="item.value" />
-                    }
-                  </nz-select>
-                </nz-form-control>
-              </nz-form-item>
-            </div>
+            @if (!versionMode()) {
+              <div nz-col nzSpan="12">
+                <nz-form-item>
+                  <nz-form-label>分类</nz-form-label>
+                  <nz-form-control>
+                    <nz-select
+                      [ngModel]="category()"
+                      name="category"
+                      nzPlaceHolder="选择分类"
+                      (ngModelChange)="category.set($event)"
+                    >
+                      @for (item of categoryOptions; track item.value) {
+                        <nz-option [nzLabel]="item.label" [nzValue]="item.value" />
+                      }
+                    </nz-select>
+                  </nz-form-control>
+                </nz-form-item>
+              </div>
+            }
           </div>
 
-          <nz-form-item>
-            <nz-form-label>标签</nz-form-label>
-            <nz-form-control>
-              <div class="tag-input-wrap" (click)="tagInputRef.focus()">
-                @for (tag of tags(); track tag) {
-                  <span class="tag-input-tag">
-                    {{ tag }}
-                    <button type="button" [disabled]="busy()" (click)="removeTag(tag); $event.stopPropagation()">×</button>
-                  </span>
-                }
-                <input
-                  #tagInputRef
-                  class="tag-input-field"
-                  [ngModel]="tagInput()"
-                  name="tagInput"
-                  [maxlength]="maxTagLength"
-                  [disabled]="busy() || tags().length >= maxTags"
-                  [placeholder]="tags().length ? '' : '输入标签后按 Enter 添加'"
-                  (ngModelChange)="onTagInputChange($event)"
-                  (keydown)="handleTagKeydown($event)"
-                />
-              </div>
-              <div class="form-hint">最多添加 3 个标签，每个标签不超过 5 个字。</div>
-            </nz-form-control>
-          </nz-form-item>
+          @if (!versionMode()) {
+            <nz-form-item>
+              <nz-form-label>标签</nz-form-label>
+              <nz-form-control>
+                <div class="tag-input-wrap" (click)="tagInputRef.focus()">
+                  @for (tag of tags(); track tag) {
+                    <span class="tag-input-tag">
+                      {{ tag }}
+                      <button type="button" [disabled]="busy()" (click)="removeTag(tag); $event.stopPropagation()">×</button>
+                    </span>
+                  }
+                  <input
+                    #tagInputRef
+                    class="tag-input-field"
+                    [ngModel]="tagInput()"
+                    name="tagInput"
+                    [maxlength]="maxTagLength"
+                    [disabled]="busy() || tags().length >= maxTags"
+                    [placeholder]="tags().length ? '' : '输入标签后按 Enter 添加'"
+                    (ngModelChange)="onTagInputChange($event)"
+                    (keydown)="handleTagKeydown($event)"
+                  />
+                </div>
+                <div class="form-hint">最多添加 3 个标签，每个标签不超过 5 个字。</div>
+              </nz-form-control>
+            </nz-form-item>
 
-          <nz-form-item>
-            <nz-form-label>描述</nz-form-label>
-            <nz-form-control>
-              <app-markdown-editor
-                [ngModel]="descriptionMd()"
-                [config]="editorConfig"
-                [imageUploadHandler]="uploadMarkdownImage"
-                name="descriptionMd"
-                [minHeight]="'220px'"
-                [maxHeight]="'360px'"
-                (contentChange)="descriptionMd.set($event)"
-                (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
-                [placeholder]="'补充安装步骤、使用示例、截图或注意事项，支持 Markdown 语法。'"
-              />
-            </nz-form-control>
-          </nz-form-item>
+            <nz-form-item>
+              <nz-form-label>描述</nz-form-label>
+              <nz-form-control>
+                <app-markdown-editor
+                  [ngModel]="descriptionMd()"
+                  [config]="editorConfig"
+                  [imageUploadHandler]="uploadMarkdownImage"
+                  name="descriptionMd"
+                  [minHeight]="'220px'"
+                  [maxHeight]="'360px'"
+                  (contentChange)="descriptionMd.set($event)"
+                  (imageUploadFailed)="onMarkdownImageUploadFailed($event)"
+                  [placeholder]="'补充安装步骤、使用示例、截图或注意事项，支持 Markdown 语法。'"
+                />
+              </nz-form-control>
+            </nz-form-item>
+          }
         </form>
       </div>
 
@@ -167,7 +173,7 @@ import type { SkillDetailEntity, SkillUploadInput } from '../../models/skill-hub
           <button nz-button type="button" (click)="cancel.emit()">取消</button>
           <button nz-button nzType="primary" type="submit" form="skill-upload-form" [nzLoading]="busy()" [disabled]="!canSubmit()">
             <nz-icon nzType="check" nzTheme="outline"></nz-icon>
-            上传
+            {{ versionMode() ? '上传新版本' : '上传' }}
           </button>
         </app-form-actions>
       </ng-container>
@@ -271,6 +277,7 @@ export class SkillUploadDialogComponent {
   readonly categoryOptions = SKILL_CATEGORY_OPTIONS;
   readonly files = signal<File[]>([]);
   readonly selectedFile = computed(() => this.files()[0] ?? null);
+  readonly versionMode = signal(false);
   readonly name = signal('');
   readonly version = signal('');
   readonly category = signal('general');
@@ -279,7 +286,9 @@ export class SkillUploadDialogComponent {
   readonly descriptionMd = signal('');
   readonly maxTags = 3;
   readonly maxTagLength = 5;
-  readonly canSubmit = computed(() => this.files().length > 0 && !!this.name().trim() && !this.busy());
+  readonly canSubmit = computed(
+    () => this.files().length > 0 && (this.versionMode() || !!this.name().trim()) && !this.busy(),
+  );
   readonly editorConfig = {
     autosave: true,
     autosaveUniqueId: 'skill-upload-description-editor',
@@ -294,6 +303,7 @@ export class SkillUploadDialogComponent {
         return;
       }
       const target = this.target();
+      this.versionMode.set(!!target);
       this.files.set([]);
       this.name.set(target?.name || '');
       this.version.set(target ? '' : '0.1.0');
@@ -310,7 +320,7 @@ export class SkillUploadDialogComponent {
 
   clearPackage(): void {
     this.files.set([]);
-    if (!this.target()) {
+    if (!this.versionMode()) {
       this.name.set('');
     }
   }
@@ -318,7 +328,7 @@ export class SkillUploadDialogComponent {
   onFilesChange(files: File[]): void {
     this.files.set(files);
     const file = files[0];
-    if (!file || this.target()) {
+    if (!file || this.versionMode()) {
       return;
     }
     this.name.set(this.skillNameFromFile(file.name));
@@ -364,17 +374,17 @@ export class SkillUploadDialogComponent {
   submitForm(): void {
     const file = this.files()[0];
     const name = this.name().trim();
-    if (!file || !name) {
+    if (!file || (!this.versionMode() && !name)) {
       return;
     }
 
     this.create.emit({
       file,
-      name,
+      name: this.versionMode() ? undefined : name,
       version: this.version().trim(),
-      category: this.category().trim(),
-      tags: this.tags().join(','),
-      descriptionMd: this.descriptionMd().trim(),
+      category: this.versionMode() ? undefined : this.category().trim(),
+      tags: this.versionMode() ? undefined : this.tags().join(','),
+      descriptionMd: this.versionMode() ? undefined : this.descriptionMd().trim(),
     });
   }
 
