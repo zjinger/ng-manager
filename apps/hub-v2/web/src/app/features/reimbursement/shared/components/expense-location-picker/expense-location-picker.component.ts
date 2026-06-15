@@ -110,7 +110,7 @@ export interface Area {
       (detach)="close()"
     >
       <div class="sl-dropdown">
-        <nz-tabset>
+        <nz-tabs>
           <nz-tab nzTitle="常用地点">
             <div class="content">
               @for (item of commonPlaces(); track item.city) {
@@ -130,7 +130,7 @@ export interface Area {
               }
             </div>
           </nz-tab>
-        </nz-tabset>
+        </nz-tabs>
 
         <div class="footer">
           <button

@@ -155,7 +155,7 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
             </div>
 
             <section class="detail__tabs" [class.is-files-tab]="detailTabIndex() === 2">
-              <nz-tabset [nzSelectedIndex]="detailTabIndex()" (nzSelectedIndexChange)="detailTabIndex.set($event)">
+              <nz-tabs [nzSelectedIndex]="detailTabIndex()" (nzSelectedIndexChange)="detailTabIndex.set($event)">
                 <nz-tab nzTitle="描述">
                   <div class="tab-pane">
                     @if (detail.descriptionMd) {
@@ -242,7 +242,7 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
                     />
                   </div>
                 </nz-tab>
-              </nz-tabset>
+              </nz-tabs>
             </section>
           </div>
         }
@@ -392,7 +392,7 @@ type SkillFileTreeRow = Omit<SkillFileTreeNode, 'children' | 'childMap'> & {
         overflow: hidden;
         padding: 0 24px 22px;
       }
-      .detail__tabs nz-tabset {
+      .detail__tabs nz-tabs {
         flex: 1 1 auto;
         height: 100%;
         min-height: 0;
