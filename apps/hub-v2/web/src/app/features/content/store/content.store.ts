@@ -32,7 +32,7 @@ export class ContentStore {
   private readonly api = inject(ContentApiService);
   private readonly projectContext = inject(ProjectContextStore);
 
-  private readonly tabState = signal<ContentTab>('announcements');
+  private readonly tabState = signal<ContentTab>('documents');
   private readonly queryState = signal<ContentQuery>({ ...DEFAULT_QUERY });
   private readonly loadingState = signal(false);
   private readonly busyState = signal(false);
