@@ -1,0 +1,268 @@
+@import './mobile-download-shared.less';
+
+.grid-3,
+.grid-2 {
+  display: grid;
+  gap: 20px;
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.card,
+.release-note {
+  padding: 28px 30px;
+}
+
+.card h3 {
+  margin: 0 0 14px;
+  font-size: 24px;
+  letter-spacing: 0;
+}
+
+.card p,
+.release-note p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.72;
+}
+
+.mini-list {
+  display: grid;
+  gap: 13px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mini-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--green);
+}
+
+.dot.blue {
+  background: var(--primary);
+}
+
+.dot.amber {
+  background: var(--amber);
+}
+
+.release-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.release-head h3 {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: 0;
+}
+
+.release-head time {
+  color: var(--subtle);
+  font-family: var(--mono);
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.change-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.change-list li {
+  display: flex;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.change-list li::before {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  margin-top: 0.55em;
+  border-radius: 999px;
+  background: var(--primary);
+  content: '';
+}
+
+.history-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.history-item {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: var(--surface);
+}
+
+.history-item div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-item strong,
+.history-item time {
+  overflow-wrap: anywhere;
+}
+
+.history-item time {
+  color: var(--subtle);
+  font-family: var(--mono);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.history-item p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.history-item__important {
+  color: var(--amber) !important;
+}
+
+.history-item__link {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 10px;
+  color: var(--primary);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.install-tabs {
+  display: grid;
+  gap: 10px;
+}
+
+details.install-item {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+details.install-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  font-weight: 850;
+  list-style: none;
+}
+
+details.install-item summary::-webkit-details-marker {
+  display: none;
+}
+
+details.install-item summary::after {
+  color: var(--primary);
+  font-size: 20px;
+  line-height: 1;
+  content: '+';
+}
+
+details.install-item[open] summary::after {
+  content: '-';
+}
+
+.install-body {
+  padding: 0 18px 18px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.support-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 28px;
+}
+
+.support-panel h3 {
+  margin: 0 0 4px;
+  letter-spacing: 0;
+}
+
+.support-panel p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 0 42px;
+  color: var(--subtle);
+  font-size: 13px;
+}
+
+@media (max-width: 960px) {
+  .grid-3,
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .card,
+  .release-note,
+  .support-panel {
+    border-radius: 18px;
+  }
+
+  .support-panel,
+  .footer,
+  .history-item div {
+    display: block;
+  }
+
+  .support-panel .btn {
+    width: 100%;
+    margin-top: 14px;
+  }
+
+  .footer {
+    margin-bottom: 86px;
+  }
+
+  .footer div + div {
+    margin-top: 8px;
+  }
+}

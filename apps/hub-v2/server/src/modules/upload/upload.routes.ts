@@ -33,7 +33,7 @@ function normalizeBucket(bucketRaw: string | undefined, categoryRaw: string | un
   const bucket = sanitizePathSegment(bucketRaw, "");
   const category = sanitizePathSegment(categoryRaw, "general");
 
-  if (bucket === "avatars" || bucket === "issues" || bucket === "project-avatars") {
+  if (bucket === "avatars" || bucket === "issues" || bucket === "project-avatars" || bucket === "mobile-apps") {
     return bucket;
   }
 

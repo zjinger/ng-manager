@@ -33,6 +33,7 @@ import type {
   ProjectListQuery,
   ProjectMemberCandidate,
   ProjectMemberEntity,
+  ProjectMobileAppConfig,
   ProjectModuleRdLinkEntity,
   ProjectModuleMemberEntity,
   ProjectMetaItem,
@@ -46,6 +47,7 @@ import type {
   UpdateProjectInput,
   UpdateProjectFavoriteInput,
   UpdateProjectMetaItemInput,
+  UpdateProjectMobileAppConfigInput,
   UpsertProjectFeatureProgressOverrideInput,
   UpdateProjectVersionItemInput
 } from '../models/project.model';
@@ -57,6 +59,30 @@ export class ProjectApiService {
   uploadProjectAvatar(file: File) {
     const formData = buildUploadFormData(file, UPLOAD_TARGETS.projectAvatar);
     return this.api.post<{ id: string }, FormData>('/uploads', formData);
+  }
+
+  getMobileAppConfig(projectId: string) {
+    return this.api.get<ProjectMobileAppConfig>(`/projects/${projectId}/mobile-app`);
+  }
+
+  updateMobileAppConfig(projectId: string, input: UpdateProjectMobileAppConfigInput) {
+    return this.api.put<ProjectMobileAppConfig, UpdateProjectMobileAppConfigInput>(
+      `/projects/${projectId}/mobile-app`,
+      input
+    );
+  }
+
+  uploadMobileAppPackage(projectId: string, platform: 'android' | 'ios', file: File) {
+    const formData = new FormData();
+    formData.set('file', file);
+    return this.api.post<ProjectMobileAppConfig, FormData>(
+      `/projects/${projectId}/mobile-app/packages/${platform}`,
+      formData
+    );
+  }
+
+  removeMobileAppPackage(projectId: string, platform: 'android' | 'ios') {
+    return this.api.delete<ProjectMobileAppConfig>(`/projects/${projectId}/mobile-app/packages/${platform}`);
   }
 
   list(query: Partial<ProjectListQuery>) {

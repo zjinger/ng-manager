@@ -5,6 +5,7 @@
     "inlineVideo": [".mp4", ".webm", ".mov", ".m4v"],
     "video": [".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v", ".flv", ".wmv"],
     "skillPackage": [".zip"],
+    "mobileAppPackage": [".apk", ".ipa"],
     "taskSheetAttachment": [".doc", ".docx", ".pdf", ".jpg", ".jpeg", ".png"]
   },
   "targets": {
@@ -121,6 +122,28 @@
       "allowedExtensions": "$skillPackage",
       "invalidTypeMessage": "仅支持上传 zip 格式 skill 包",
       "sizeLimitMessage": "skill 包大小不能超过 10MB"
+    },
+    "mobileAppPackage": {
+      "bucket": "mobile-apps",
+      "category": "package",
+      "visibility": "private",
+      "accept": [
+        "application/vnd.android.package-archive",
+        "application/octet-stream",
+        "application/zip",
+        "application/x-itunes-ipa",
+        "$mobileAppPackage"
+      ],
+      "maxSizeMb": 200,
+      "allowedMimeTypes": [
+        "application/vnd.android.package-archive",
+        "application/octet-stream",
+        "application/zip",
+        "application/x-itunes-ipa"
+      ],
+      "allowedExtensions": "$mobileAppPackage",
+      "invalidTypeMessage": "仅支持上传 apk 或 ipa 安装包",
+      "sizeLimitMessage": "安装包大小不能超过 200MB"
     }
   },
   "serverPolicyRules": [
@@ -132,13 +155,15 @@
     { "target": "reimbursementAttachment", "bucket": "reimbursements", "category": "attachment" },
     { "target": "taskSheetAttachment", "bucket": "task-sheets", "category": "attachment" },
     { "target": "taskSheetWordImport", "bucket": "task-sheets", "category": "word_import" },
-    { "target": "skillPackage", "bucket": "skills", "category": "package" }
+    { "target": "skillPackage", "bucket": "skills", "category": "package" },
+    { "target": "mobileAppPackage", "bucket": "mobile-apps", "category": "package" }
   ],
   "allowedBuckets": [
     "avatars",
     "documents",
     "issues",
     "misc",
+    "mobile-apps",
     "personal-todos",
     "project-avatars",
     "rd",

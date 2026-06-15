@@ -37,6 +37,13 @@ export const routes: Routes = [
         (m) => m.PublicAnnouncementPageComponent,
       ),
   },
+  {
+    path: 'download/:projectKey',
+    loadComponent: () =>
+      import('./features/mobile-download/pages/mobile-download-page/mobile-download-page.component').then(
+        (m) => m.MobileDownloadPageComponent,
+      ),
+  },
   // 问卷调查公开页面路由
   ...(FEATURE_FLAGS.survey
     ? [

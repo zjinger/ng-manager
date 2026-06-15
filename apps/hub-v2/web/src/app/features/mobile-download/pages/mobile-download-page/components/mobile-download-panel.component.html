@@ -1,0 +1,93 @@
+<aside id="download" class="download-panel" aria-labelledby="downloadTitle">
+  <div class="panel-head">
+    <div>
+      <h2 id="downloadTitle">下载安装</h2>
+    </div>
+    <span class="tag">{{ channelTag() }}</span>
+  </div>
+
+  <div class="detected" aria-live="polite">
+    <div class="detected-label">当前选择</div>
+    <strong>{{ deviceName() }}</strong>
+    <small>{{ deviceHint() }}</small>
+  </div>
+
+  <div class="package-card">
+    <div class="package-top">
+      <div class="package-name">{{ selectedPlatform()?.packageName || '尚未上传安装包' }}</div>
+      <span class="tag">{{ platformShortLabel(selectedPlatform()) }}</span>
+    </div>
+    <div class="meta-grid">
+      <div class="meta">
+        <span>包大小</span>
+        <strong>{{ packageSize(selectedPlatform()?.packageSizeBytes) }}</strong>
+      </div>
+      <div class="meta">
+        <span>最低系统</span>
+        <strong>{{ platformSystem(selectedPlatform()) }}</strong>
+      </div>
+      <div class="meta">
+        <span>构建号</span>
+        <strong>{{ selectedPlatform()?.versionCode || info().current.versionCode || '-' }}</strong>
+      </div>
+      <div class="meta">
+        <span>校验值</span>
+        <strong>{{ checksumText(selectedPlatform()) }}</strong>
+      </div>
+    </div>
+  </div>
+
+  @if (selectedPlatform()?.downloadUrl) {
+    <a class="btn primary block" [href]="selectedPlatform()?.downloadUrl" target="_blank" rel="noopener noreferrer">
+      {{ downloadText(selectedPlatform()) }}
+    </a>
+  } @else {
+    <button class="btn primary block" type="button" disabled>暂无安装包</button>
+  }
+
+  <div class="switcher" role="tablist" aria-label="切换下载平台">
+    @for (platform of info().platforms; track trackPlatform($index, platform)) {
+      <button
+        class="platform-btn"
+        type="button"
+        role="tab"
+        [attr.aria-selected]="platform.platform === selectedPlatformKey()"
+        [disabled]="!platform.enabled"
+        (click)="platformSelected.emit(platform.platform)"
+      >
+        {{ platform.platform === 'android' ? 'Android APK' : 'iOS 企业版' }}
+      </button>
+    }
+  </div>
+
+  <div class="qr-box">
+    <div class="qr" aria-label="下载二维码">
+      @if (selectedPlatform()?.qrCodeUrl) {
+        <img [src]="selectedPlatform()?.qrCodeUrl || ''" alt="下载二维码" />
+      } @else {
+        <svg viewBox="0 0 120 120" role="img" aria-label="下载页二维码占位">
+          <rect width="120" height="120" fill="#fff" />
+          <rect x="8" y="8" width="28" height="28" rx="2" fill="#111827" />
+          <rect x="14" y="14" width="16" height="16" fill="#fff" />
+          <rect x="18" y="18" width="8" height="8" fill="#111827" />
+          <rect x="84" y="8" width="28" height="28" rx="2" fill="#111827" />
+          <rect x="90" y="14" width="16" height="16" fill="#fff" />
+          <rect x="94" y="18" width="8" height="8" fill="#111827" />
+          <rect x="8" y="84" width="28" height="28" rx="2" fill="#111827" />
+          <rect x="14" y="90" width="16" height="16" fill="#fff" />
+          <rect x="18" y="94" width="8" height="8" fill="#111827" />
+          <path
+            d="M48 10h8v8h-8zM64 10h8v8h-8zM48 26h16v8H48zM72 26h8v8h-8zM42 42h8v8h-8zM58 42h16v8H58zM82 42h8v8h-8zM98 42h14v8H98zM42 58h8v8h-8zM56 58h8v8h-8zM72 58h24v8H72zM104 58h8v8h-8zM42 74h24v8H42zM74 74h8v8h-8zM90 74h22v8H90zM48 90h8v8h-8zM64 90h18v8H64zM96 90h8v8h-8zM42 106h8v8h-8zM58 106h8v8h-8zM74 106h30v8H74z"
+            fill="#111827"
+          />
+          <rect x="64" y="64" width="8" height="8" fill="var(--primary)" />
+          <rect x="82" y="100" width="8" height="8" fill="var(--primary)" />
+        </svg>
+      }
+    </div>
+    <div class="qr-text">
+      <strong>手机扫码下载</strong>
+      <p>在手机浏览器中打开后，按系统提示完成安装。</p>
+    </div>
+  </div>
+</aside>

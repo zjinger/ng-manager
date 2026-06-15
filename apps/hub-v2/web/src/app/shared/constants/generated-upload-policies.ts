@@ -195,6 +195,25 @@ export const UPLOAD_TARGETS = {
     ],
     "invalidTypeMessage": "仅支持上传 zip 格式 skill 包",
     "sizeLimitMessage": "skill 包大小不能超过 10MB"
+  },
+  "mobileAppPackage": {
+    "bucket": "mobile-apps",
+    "category": "package",
+    "visibility": "private",
+    "accept": "application/vnd.android.package-archive,application/octet-stream,application/zip,application/x-itunes-ipa,.apk,.ipa",
+    "maxSizeBytes": 209715200,
+    "allowedMimeTypes": [
+      "application/vnd.android.package-archive",
+      "application/octet-stream",
+      "application/zip",
+      "application/x-itunes-ipa"
+    ],
+    "allowedExtensions": [
+      ".apk",
+      ".ipa"
+    ],
+    "invalidTypeMessage": "仅支持上传 apk 或 ipa 安装包",
+    "sizeLimitMessage": "安装包大小不能超过 200MB"
   }
 } as const satisfies Record<string, UploadTargetPolicy>;
 

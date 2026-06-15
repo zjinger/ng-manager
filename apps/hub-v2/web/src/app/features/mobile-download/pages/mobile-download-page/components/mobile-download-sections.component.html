@@ -1,0 +1,143 @@
+<section class="section" aria-labelledby="featuresTitle">
+  <div class="section-head">
+    <h2 id="featuresTitle">移动端主要用途</h2>
+    <p>适用于待办处理、消息接收和项目进度查看。</p>
+  </div>
+  <div class="grid-3">
+    <article class="card">
+      <h3>处理待办</h3>
+      <p>查看待处理事项、待验证任务和指派 Issue，支持移动场景下快速处理。</p>
+      <ul class="mini-list">
+        <li><span class="dot"></span>我的待办</li>
+        <li><span class="dot blue"></span>待验证任务</li>
+      </ul>
+    </article>
+    <article class="card">
+      <h3>接收通知</h3>
+      <p>接收公告、评论、指派和进度变更提醒，保持项目状态同步。</p>
+      <ul class="mini-list">
+        <li><span class="dot"></span>公告提醒</li>
+        <li><span class="dot amber"></span>评论 / 指派通知</li>
+      </ul>
+    </article>
+    <article class="card">
+      <h3>跟进项目</h3>
+      <p>查看研发项进度和 Issue 详情，复杂配置请在 Hub V2 Web 端完成。</p>
+      <ul class="mini-list">
+        <li><span class="dot"></span>研发项进度</li>
+        <li><span class="dot blue"></span>Issue 详情</li>
+      </ul>
+    </article>
+  </div>
+</section>
+
+<section id="changes" class="section" aria-labelledby="changesTitle">
+  <div class="section-head">
+    <h2 id="changesTitle">本次更新</h2>
+    <p>当前版本的更新内容、包信息和校验项如下。</p>
+  </div>
+  <div class="grid-2">
+    <article class="release-note">
+      <div class="release-head">
+        <h3>{{ info().current.versionName || selectedPlatform()?.versionName || '当前版本' }}</h3>
+        <time>{{ info().current.publishedAt ? (info().current.publishedAt | date: 'yyyy-MM-dd') : info().current.channel }}</time>
+      </div>
+      @if (info().releaseNotes.length === 0) {
+        <ul class="change-list">
+          <li>暂无更新记录。</li>
+        </ul>
+      } @else {
+        <ul class="change-list">
+          @for (summary of info().releaseNotes[0].summary; track summary) {
+            <li>{{ summary }}</li>
+          }
+          @for (note of info().releaseNotes[0].importantNotes; track note) {
+            <li>{{ note }}</li>
+          }
+        </ul>
+      }
+    </article>
+    <article class="release-note">
+      <div class="release-head">
+        <h3>发布校验</h3>
+        <time>包信息</time>
+      </div>
+      <ul class="change-list">
+        <li>安装包：{{ selectedPlatform()?.packageName || '-' }}</li>
+        <li>构建号：{{ selectedPlatform()?.versionCode || info().current.versionCode || '-' }}</li>
+        <li>最低系统：{{ info().current.minOsVersion || platformSystem(selectedPlatform()) }}</li>
+      </ul>
+    </article>
+  </div>
+
+  @if (info().releaseNotes.length > 1) {
+    <div class="history-list">
+      @for (item of info().releaseNotes.slice(1); track trackRelease($index, item)) {
+        <article class="history-item">
+          <div>
+            <strong>{{ item.title }}</strong>
+            <time>{{ item.publishedAt ? (item.publishedAt | date: 'yyyy-MM-dd') : item.version }}</time>
+          </div>
+          @for (summary of item.summary; track summary) {
+            <p>{{ summary }}</p>
+          }
+          @for (note of item.importantNotes; track note) {
+            <p class="history-item__important">{{ note }}</p>
+          }
+          @if (item.downloadUrl) {
+            <a class="history-item__link" [href]="item.downloadUrl" target="_blank" rel="noopener noreferrer">
+              查看历史包
+            </a>
+          }
+        </article>
+      }
+    </div>
+  }
+</section>
+
+<section id="help" class="section" aria-labelledby="helpTitle">
+  <div class="section-head">
+    <h2 id="helpTitle">安装帮助</h2>
+    <p>按平台要求完成安装授权、证书信任和首次登录。</p>
+  </div>
+  <div class="install-tabs">
+    @for (step of info().installSteps; track trackTextItem($index, step)) {
+      <details class="install-item" [open]="$index === 0">
+        <summary>{{ step.title }}</summary>
+        <div class="install-body">{{ step.description }}</div>
+      </details>
+    }
+    @for (item of info().faq; track trackTextItem($index, item)) {
+      <details class="install-item">
+        <summary>{{ item.question }}</summary>
+        <div class="install-body">{{ item.answer }}</div>
+      </details>
+    }
+  </div>
+</section>
+
+<section class="section">
+  <div class="support-panel">
+    <div>
+      <h3>安装支持</h3>
+      <p>请提供错误截图、手机型号、系统版本、下载平台和账号信息。</p>
+    </div>
+    @if (info().support.docsUrl) {
+      <a class="btn primary" [href]="info().support.docsUrl || ''" target="_blank" rel="noopener noreferrer">查看支持文档</a>
+    } @else if (info().support.contact) {
+      <a class="btn primary" [href]="'mailto:' + info().support.contact">联系项目组</a>
+    } @else {
+      <button class="btn primary" type="button" (click)="copyChecksum.emit(selectedPlatform())">复制校验值</button>
+    }
+  </div>
+</section>
+
+<footer class="footer">
+  <div>{{ info().app.name }} Release Center · 企业内部使用</div>
+  <div>
+    维护：{{ info().support.owner }}
+    @if (info().current.publishedAt) {
+      <span> · 更新时间：{{ info().current.publishedAt | date: 'yyyy-MM-dd' }}</span>
+    }
+  </div>
+</footer>

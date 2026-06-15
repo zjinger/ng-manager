@@ -1,0 +1,209 @@
+@import './components/mobile-download-shared.less';
+
+:host {
+  display: block;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.release-page {
+  --primary: var(--color-primary, #4f46e5);
+  --primary-strong: var(--color-primary-hover, #4338ca);
+  --primary-soft: color-mix(in srgb, var(--color-primary, #4f46e5) 10%, var(--bg-container, #fff));
+  --green: var(--color-success, #10b981);
+  --green-soft: color-mix(in srgb, var(--color-success, #10b981) 12%, var(--bg-container, #fff));
+  --amber: var(--color-warning, #f59e0b);
+  --bg: var(--bg-page, #f8fafc);
+  --surface: var(--bg-container, #fff);
+  --surface-2: var(--bg-subtle, #f1f5f9);
+  --text: var(--text-heading, #0f172a);
+  --muted: var(--text-muted, #64748b);
+  --subtle: var(--text-disabled, #94a3b8);
+  --border: var(--border-color, #e2e8f0);
+  --hairline: var(--border-color-soft, #f1f5f9);
+  --radius-lg: 22px;
+  --mono: 'SFMono-Regular', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+
+  min-height: 100dvh;
+  overflow-x: hidden;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, transparent), transparent 34%),
+    linear-gradient(180deg, var(--bg), color-mix(in srgb, var(--bg), var(--surface) 16%));
+  color: var(--text);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Display',
+    'PingFang SC',
+    'Microsoft YaHei',
+    system-ui,
+    sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  border-bottom: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--bg), transparent 12%);
+  backdrop-filter: blur(18px);
+}
+
+.nav {
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: var(--gradient-brand, linear-gradient(135deg, var(--primary), var(--primary-strong)));
+  color: var(--text-inverse, #fff);
+  font-weight: 850;
+  letter-spacing: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.brand-title,
+.brand-subtitle {
+  display: block;
+}
+
+.brand-title {
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.brand-subtitle {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  align-items: stretch;
+  gap: 22px;
+  padding: 34px 0 24px;
+}
+
+.state {
+  min-height: calc(100dvh - 66px);
+  display: grid;
+  place-items: center;
+  padding: 56px 0;
+}
+
+.state-card {
+  width: min(520px, 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  background: var(--surface);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.state-card h1 {
+  margin: 12px 0 8px;
+}
+
+.state-card p {
+  color: var(--muted);
+}
+
+.loader {
+  width: 34px;
+  height: 34px;
+  display: inline-block;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.mobile-sticky {
+  display: none;
+}
+
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 50;
+  border-radius: 12px;
+  padding: 11px 14px;
+  background: var(--surface-contrast, #0f172a);
+  color: var(--text-inverse, #fff);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 960px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .nav {
+    min-height: 60px;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .hero {
+    gap: 16px;
+    padding-top: 22px;
+  }
+
+  .mobile-sticky {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    display: block;
+    border-top: 1px solid var(--border);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--surface), transparent 4%);
+    backdrop-filter: blur(18px);
+  }
+
+  .toast {
+    right: 16px;
+    bottom: 82px;
+    left: 16px;
+    text-align: center;
+  }
+}

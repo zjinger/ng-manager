@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Hub V2 发布中心</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      color-scheme: light;
+      --primary: #2563eb;
+      --primary-strong: #1d4ed8;
+      --primary-soft: #eff6ff;
+      --green: #16a34a;
+      --green-soft: #ecfdf5;
+      --amber: #d97706;
+      --amber-soft: #fffbeb;
+      --red: #dc2626;
+      --red-soft: #fef2f2;
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface-2: #f8fafc;
+      --text: #111827;
+      --muted: #64748b;
+      --subtle: #94a3b8;
+      --border: #e5e7eb;
+      --hairline: rgba(15, 23, 42, .08);
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, .04);
+      --shadow-md: 0 10px 30px rgba(15, 23, 42, .08);
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "SFMono-Regular", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+    }
+
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --primary: #60a5fa;
+      --primary-strong: #3b82f6;
+      --primary-soft: rgba(96, 165, 250, .14);
+      --green: #34d399;
+      --green-soft: rgba(52, 211, 153, .12);
+      --amber: #fbbf24;
+      --amber-soft: rgba(251, 191, 36, .12);
+      --red: #f87171;
+      --red-soft: rgba(248, 113, 113, .12);
+      --bg: #0f172a;
+      --surface: #111827;
+      --surface-2: #1f2937;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --subtle: #94a3b8;
+      --border: rgba(148, 163, 184, .2);
+      --hairline: rgba(248, 250, 252, .08);
+      --shadow-sm: none;
+      --shadow-md: 0 20px 40px rgba(0, 0, 0, .24);
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, .12), transparent 30vw),
+        linear-gradient(180deg, var(--bg), color-mix(in srgb, var(--bg), var(--surface) 16%));
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+    .page { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      backdrop-filter: blur(18px);
+      background: color-mix(in srgb, var(--bg), transparent 12%);
+      border-bottom: 1px solid var(--hairline);
+    }
+    .nav {
+      min-height: 66px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      color: #fff;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      display: grid;
+      place-items: center;
+      font-weight: 850;
+      letter-spacing: -.04em;
+      box-shadow: var(--shadow-sm);
+    }
+    .brand-title { display: block; font-weight: 800; letter-spacing: -.025em; }
+    .brand-subtitle { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+
+    .btn, .icon-btn {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      background: var(--surface);
+      color: var(--text);
+      transition: transform .16s ease, border-color .16s ease, background .16s ease;
+    }
+    .btn { padding: 0 16px; font-weight: 700; }
+    .icon-btn { width: 40px; padding: 0; }
+    .btn:hover, .icon-btn:hover { transform: translateY(-1px); border-color: var(--primary); }
+    .btn.primary { color: #fff; background: #2563eb; border-color: #2563eb; }
+    .btn.primary:hover { background: var(--primary-strong); }
+    .btn.soft { color: var(--primary); background: var(--primary-soft); border-color: transparent; }
+    .btn.block { width: 100%; min-height: 52px; border-radius: 14px; }
+    .btn.disabled { opacity: .56; cursor: not-allowed; pointer-events: none; }
+
+    .hero {
+      padding: 34px 0 24px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      gap: 22px;
+      align-items: stretch;
+    }
+    .hero-main, .download-panel, .card, .release-note, .support-panel {
+      background: color-mix(in srgb, var(--surface), transparent 0%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+    }
+    .hero-main {
+      padding: 34px;
+      min-height: 460px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+    .hero-main::after {
+      content: "";
+      position: absolute;
+      right: -120px;
+      top: -120px;
+      width: 300px;
+      height: 300px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(37, 99, 235, .18), transparent 66%);
+      pointer-events: none;
+    }
+    .eyebrow {
+      width: fit-content;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      color: var(--green);
+      background: var(--green-soft);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    h1 {
+      margin: 18px 0 12px;
+      max-width: 720px;
+      font-size: clamp(34px, 6vw, 64px);
+      line-height: .98;
+      letter-spacing: -.055em;
+    }
+    .lead {
+      margin: 0;
+      max-width: 660px;
+      color: var(--muted);
+      font-size: clamp(16px, 2vw, 19px);
+      line-height: 1.75;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+    .hero-actions .btn { min-height: 48px; border-radius: 14px; padding: 0 18px; }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 30px;
+    }
+    .status-card {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      min-width: 0;
+    }
+    .status-card span { display: block; color: var(--subtle); font-size: 12px; margin-bottom: 6px; }
+    .status-card strong {
+      display: block;
+      font-family: var(--mono);
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .download-panel {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+    }
+    .panel-head { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+    .panel-head h2, .section-head h2 { margin: 0; letter-spacing: -.035em; }
+    .panel-head p, .section-head p { margin: 6px 0 0; color: var(--muted); line-height: 1.6; }
+    .detected {
+      padding: 14px;
+      border-radius: 14px;
+      background: var(--primary-soft);
+      border: 1px solid color-mix(in srgb, var(--primary), transparent 78%);
+    }
+    .detected-label { color: var(--primary); font-size: 12px; font-weight: 800; margin-bottom: 4px; }
+    .detected strong { display: block; font-size: 16px; letter-spacing: -.02em; }
+    .detected small { display: block; margin-top: 4px; color: var(--muted); }
+
+    .qr-box {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 14px;
+      align-items: center;
+      padding: 14px;
+      border: 1px dashed color-mix(in srgb, var(--primary), transparent 55%);
+      border-radius: 16px;
+      background: var(--surface-2);
+    }
+    .qr {
+      width: 130px;
+      aspect-ratio: 1;
+      border-radius: 12px;
+      background: #fff;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .qr svg { width: 92%; height: 92%; display: block; }
+    .qr-text strong { display: block; margin-bottom: 6px; }
+    .qr-text p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+
+    .package-card {
+      padding: 14px;
+      border-radius: 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+    .package-top { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 12px; }
+    .package-name { font-weight: 850; letter-spacing: -.025em; }
+    .tag {
+      display: inline-flex;
+      min-height: 25px;
+      align-items: center;
+      padding: 0 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--primary);
+      background: var(--primary-soft);
+      white-space: nowrap;
+    }
+    .meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .meta { padding: 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
+    .meta span { display: block; font-size: 11px; color: var(--subtle); margin-bottom: 4px; }
+    .meta strong { display: block; font-size: 13px; font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .switcher { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .platform-btn {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      min-height: 48px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 800;
+    }
+    .platform-btn[aria-selected="true"] { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
+
+    .section { padding: 22px 0; }
+    .section-head { margin-bottom: 14px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .card { padding: 20px; }
+    .card h3 { margin: 0 0 8px; font-size: 18px; letter-spacing: -.025em; }
+    .card p { margin: 0; color: var(--muted); line-height: 1.65; }
+    .mini-list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 9px; }
+    .mini-list li { display: flex; gap: 9px; align-items: center; color: var(--muted); font-size: 14px; }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--green); flex: 0 0 auto; }
+    .dot.blue { background: var(--primary); }
+    .dot.amber { background: var(--amber); }
+
+    .release-note { padding: 22px; }
+    .release-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+    .release-head h3 { margin: 0; font-size: 24px; letter-spacing: -.04em; }
+    .release-head time { color: var(--subtle); font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+    .change-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+    .change-list li { display: flex; gap: 10px; color: var(--muted); line-height: 1.55; }
+    .change-list li::before { content: ""; width: 7px; height: 7px; margin-top: .55em; border-radius: 999px; background: var(--primary); flex: 0 0 auto; }
+
+    .install-tabs { display: grid; gap: 10px; }
+    details.install-item {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+    details.install-item summary {
+      cursor: pointer;
+      padding: 16px 18px;
+      font-weight: 850;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+    details.install-item summary::-webkit-details-marker { display: none; }
+    details.install-item summary::after { content: "+"; color: var(--primary); font-size: 20px; line-height: 1; }
+    details.install-item[open] summary::after { content: "−"; }
+    .install-body { padding: 0 18px 18px; color: var(--muted); line-height: 1.7; }
+    .install-body ol { margin: 0; padding-left: 20px; }
+
+    .support-panel {
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--primary-soft), var(--surface) 60%));
+    }
+    .support-panel h3 { margin: 0 0 4px; letter-spacing: -.025em; }
+    .support-panel p { margin: 0; color: var(--muted); }
+
+    .footer {
+      margin: 18px 0 42px;
+      color: var(--subtle);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .mobile-sticky {
+      display: none;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 40;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      background: color-mix(in srgb, var(--surface), transparent 4%);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(18px);
+    }
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 50;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      padding: 11px 14px;
+      border-radius: 12px;
+      color: #fff;
+      background: #111827;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 960px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-main { min-height: auto; }
+      .download-panel { max-width: 560px; width: 100%; justify-self: center; }
+      .status-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .page { width: min(100% - 28px, 1120px); }
+      .nav { min-height: 60px; }
+      .brand-subtitle, .desktop-only { display: none; }
+      .hero { padding-top: 22px; gap: 16px; }
+      .hero-main, .download-panel, .card, .release-note, .support-panel { border-radius: 18px; }
+      .hero-main { padding: 24px; }
+      .hero-actions .btn { width: 100%; }
+      .status-row, .meta-grid, .grid-2 { grid-template-columns: 1fr; }
+      .qr-box { grid-template-columns: 110px 1fr; }
+      .qr { width: 110px; }
+      .section { padding: 18px 0; }
+      .support-panel, .footer { display: block; }
+      .support-panel .btn { width: 100%; margin-top: 14px; }
+      .footer { margin-bottom: 86px; }
+      .footer div + div { margin-top: 8px; }
+      .mobile-sticky { display: block; }
+      .toast { left: 16px; right: 16px; bottom: 82px; text-align: center; }
+    }
+    @media (max-width: 420px) {
+      .qr-box { grid-template-columns: 1fr; }
+      .qr { width: min(100%, 220px); margin: 0 auto; }
+      .switcher { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="page nav">
+      <a class="brand" href="#top" aria-label="Hub V2 发布中心">
+        <span class="logo">H2</span>
+        <span>
+          <span class="brand-title">Hub V2 发布中心</span>
+          <span class="brand-subtitle">App / Web / 更新公告统一入口</span>
+        </span>
+      </a>
+      <nav class="nav-actions" aria-label="页面导航">
+        <a class="btn desktop-only" href="#changes">更新内容</a>
+        <a class="btn desktop-only" href="#help">安装帮助</a>
+        <button class="icon-btn" id="themeToggle" type="button" aria-label="切换深浅色主题">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3v2.5M12 18.5V21M21 12h-2.5M5.5 12H3M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8M18.4 18.4l-1.8-1.8M7.4 7.4 5.6 5.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </button>
+        <a class="btn primary" href="#download">立即下载</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top" class="page">
+    <section class="hero" aria-labelledby="heroTitle">
+      <div class="hero-main">
+        <div>
+          <span class="eyebrow">企业内测 · 安全发布</span>
+          <h1 id="heroTitle">Hub V2 Mobile</h1>
+          <p class="lead">移动端用于处理待办、接收项目通知、跟进 Issue 与研发项进度。手机访问可直接下载，电脑访问可扫码安装。</p>
+          <div class="hero-actions">
+            <a class="btn primary" href="#download">下载最新版</a>
+            <a class="btn soft" href="https://hub.example.com" target="_blank" rel="noreferrer">访问 Hub V2 Web</a>
+          </div>
+        </div>
+        <div class="status-row" aria-label="发布状态">
+          <div class="status-card"><span>当前版本</span><strong id="heroVersion">v1.0.0-beta.1</strong></div>
+          <div class="status-card"><span>发布渠道</span><strong>企业内测</strong></div>
+          <div class="status-card"><span>更新时间</span><strong>2026-06-12</strong></div>
+          <div class="status-card"><span>兼容范围</span><strong>iOS / Android</strong></div>
+        </div>
+      </div>
+
+      <aside id="download" class="download-panel" aria-labelledby="downloadTitle">
+        <div class="panel-head">
+          <div>
+            <h2 id="downloadTitle">下载安装</h2>
+            <p>自动识别设备，优先展示适配安装包。</p>
+          </div>
+          <span class="tag" id="channelTag">内测版</span>
+        </div>
+
+        <div class="detected" aria-live="polite">
+          <div class="detected-label">检测到当前设备</div>
+          <strong id="deviceName">正在识别设备...</strong>
+          <small id="deviceHint">如果识别不准确，可手动切换平台。</small>
+        </div>
+
+        <div class="package-card">
+          <div class="package-top">
+            <div class="package-name" id="packageName">HubV2Mobile.apk</div>
+            <span class="tag" id="packagePlatform">Android</span>
+          </div>
+          <div class="meta-grid">
+            <div class="meta"><span>包大小</span><strong id="packageSize">74.8 MB</strong></div>
+            <div class="meta"><span>最低系统</span><strong id="minSystem">Android 10+</strong></div>
+            <div class="meta"><span>构建号</span><strong id="buildNo">10001</strong></div>
+            <div class="meta"><span>校验值</span><strong id="checksum">SHA256 6b10a4f93d2</strong></div>
+          </div>
+        </div>
+
+        <a class="btn primary block" id="downloadBtn" href="/downloads/HubV2Mobile.apk">立即下载 APK</a>
+
+        <div class="switcher" role="tablist" aria-label="切换下载平台">
+          <button class="platform-btn" type="button" role="tab" aria-selected="false" data-platform="ios">iOS 企业版</button>
+          <button class="platform-btn" type="button" role="tab" aria-selected="true" data-platform="android">Android APK</button>
+        </div>
+
+        <div class="qr-box">
+          <div class="qr" aria-label="下载二维码">
+            <svg viewBox="0 0 120 120" role="img">
+              <rect width="120" height="120" fill="#fff"/>
+              <rect x="8" y="8" width="28" height="28" rx="2" fill="#111827"/>
+              <rect x="14" y="14" width="16" height="16" fill="#fff"/>
+              <rect x="18" y="18" width="8" height="8" fill="#111827"/>
+              <rect x="84" y="8" width="28" height="28" rx="2" fill="#111827"/>
+              <rect x="90" y="14" width="16" height="16" fill="#fff"/>
+              <rect x="94" y="18" width="8" height="8" fill="#111827"/>
+              <rect x="8" y="84" width="28" height="28" rx="2" fill="#111827"/>
+              <rect x="14" y="90" width="16" height="16" fill="#fff"/>
+              <rect x="18" y="94" width="8" height="8" fill="#111827"/>
+              <path d="M48 10h8v8h-8zM64 10h8v8h-8zM48 26h16v8H48zM72 26h8v8h-8zM42 42h8v8h-8zM58 42h16v8H58zM82 42h8v8h-8zM98 42h14v8H98zM42 58h8v8h-8zM56 58h8v8h-8zM72 58h24v8H72zM104 58h8v8h-8zM42 74h24v8H42zM74 74h8v8h-8zM90 74h22v8H90zM48 90h8v8h-8zM64 90h18v8H64zM96 90h8v8h-8zM42 106h8v8h-8zM58 106h8v8h-8zM74 106h30v8H74z" fill="#111827"/>
+              <rect x="64" y="64" width="8" height="8" fill="#2563eb"/>
+              <rect x="82" y="100" width="8" height="8" fill="#2563eb"/>
+            </svg>
+          </div>
+          <div class="qr-text">
+            <strong>电脑访问？请用手机扫码</strong>
+            <p>二维码建议替换为真实发布地址。桌面端保留扫码，移动端直接展示下载按钮。</p>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="section" aria-labelledby="featuresTitle">
+      <div class="section-head">
+        <h2 id="featuresTitle">移动端主要用途</h2>
+        <p>页面只保留安装决策需要的信息，不做营销式介绍。</p>
+      </div>
+      <div class="grid-3">
+        <article class="card">
+          <h3>处理待办</h3>
+          <p>集中查看我的待办、待验证、指派给我的 Issue，适合项目负责人和测试人员移动处理。</p>
+          <ul class="mini-list">
+            <li><span class="dot"></span>我的待办</li>
+            <li><span class="dot blue"></span>待验证任务</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>接收通知</h3>
+          <p>聚合公告、评论、指派和进度变化，减少只依赖群消息导致的遗漏。</p>
+          <ul class="mini-list">
+            <li><span class="dot"></span>公告提醒</li>
+            <li><span class="dot amber"></span>评论 / 指派通知</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>跟进项目</h3>
+          <p>移动端只做轻量查看和快速处理，复杂配置仍回到 Hub V2 Web 端完成。</p>
+          <ul class="mini-list">
+            <li><span class="dot"></span>研发项进度</li>
+            <li><span class="dot blue"></span>Issue 详情</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="changes" class="section" aria-labelledby="changesTitle">
+      <div class="section-head">
+        <h2 id="changesTitle">本次更新</h2>
+        <p>发布信息建议由后端 Release 配置自动生成，避免手工维护多个页面。</p>
+      </div>
+      <div class="grid-2">
+        <article class="release-note">
+          <div class="release-head">
+            <h3>v1.0.0-beta.1</h3>
+            <time>2026-06-12</time>
+          </div>
+          <ul class="change-list">
+            <li>新增移动端登录、服务器地址配置和项目切换。</li>
+            <li>新增工作台、统一待办、消息中心和我的页面。</li>
+            <li>优化移动端首屏信息结构，突出待处理事项。</li>
+          </ul>
+        </article>
+        <article class="release-note">
+          <div class="release-head">
+            <h3>发布校验</h3>
+            <time>内部验证</time>
+          </div>
+          <ul class="change-list">
+            <li>Android 包名：com.shenlan.hubv2</li>
+            <li>iOS Bundle ID：com.shenlan.hubv2.mobile</li>
+            <li>下载前可核对包大小、构建号和 SHA256 摘要。</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="help" class="section" aria-labelledby="helpTitle">
+      <div class="section-head">
+        <h2 id="helpTitle">安装帮助</h2>
+        <p>把高频阻塞点放在下载页，减少群里重复解释。</p>
+      </div>
+      <div class="install-tabs">
+        <details class="install-item" open>
+          <summary>Android 无法安装 APK</summary>
+          <div class="install-body">
+            <ol>
+              <li>确认系统版本为 Android 10 或以上。</li>
+              <li>在系统设置中允许当前浏览器或企业微信安装未知来源应用。</li>
+              <li>如果提示版本冲突，先卸载旧内测包后重新安装。</li>
+            </ol>
+          </div>
+        </details>
+        <details class="install-item">
+          <summary>iOS 企业包无法打开</summary>
+          <div class="install-body">
+            <ol>
+              <li>确认当前设备已加入企业内测分发范围。</li>
+              <li>安装后进入 设置 → 通用 → VPN 与设备管理。</li>
+              <li>信任公司企业证书后重新打开 Hub V2 Mobile。</li>
+            </ol>
+          </div>
+        </details>
+        <details class="install-item">
+          <summary>登录后无法连接服务器</summary>
+          <div class="install-body">
+            <ol>
+              <li>确认手机与公司内网或 VPN 处于可访问状态。</li>
+              <li>检查服务器地址是否为 Hub V2 Web 统一入口。</li>
+              <li>仍无法访问时，联系 Hub V2 项目组检查账号、网络和服务状态。</li>
+            </ol>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="support-panel">
+        <div>
+          <h3>仍然无法安装？</h3>
+          <p>请截图当前错误页面，并提供手机型号、系统版本、下载渠道和账号。</p>
+        </div>
+        <a class="btn primary" href="mailto:hubv2-support@example.com">联系项目组</a>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>Hub V2 Release Center · 企业内部使用</div>
+      <div>维护：Hub V2 项目组 · 更新时间：2026-06-12</div>
+    </footer>
+  </main>
+
+  <div class="mobile-sticky">
+    <a class="btn primary block" id="stickyDownloadBtn" href="/downloads/HubV2Mobile.apk">立即下载</a>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite">已切换下载平台</div>
+
+  <script>
+    const releases = {
+      ios: {
+        platformLabel: "iOS",
+        packageName: "HubV2Mobile.ipa",
+        packageSize: "86.4 MB",
+        minSystem: "iOS 14+",
+        buildNo: "10001",
+        checksum: "SHA256 8f42c9d1a6e0",
+        downloadText: "安装 iOS 企业版",
+        href: "/downloads/HubV2Mobile.ipa"
+      },
+      android: {
+        platformLabel: "Android",
+        packageName: "HubV2Mobile.apk",
+        packageSize: "74.8 MB",
+        minSystem: "Android 10+",
+        buildNo: "10001",
+        checksum: "SHA256 6b10a4f93d2",
+        downloadText: "立即下载 APK",
+        href: "/downloads/HubV2Mobile.apk"
+      }
+    };
+
+    const els = {
+      deviceName: document.querySelector("#deviceName"),
+      deviceHint: document.querySelector("#deviceHint"),
+      packageName: document.querySelector("#packageName"),
+      packageSize: document.querySelector("#packageSize"),
+      minSystem: document.querySelector("#minSystem"),
+      buildNo: document.querySelector("#buildNo"),
+      checksum: document.querySelector("#checksum"),
+      packagePlatform: document.querySelector("#packagePlatform"),
+      downloadBtn: document.querySelector("#downloadBtn"),
+      stickyDownloadBtn: document.querySelector("#stickyDownloadBtn"),
+      toast: document.querySelector("#toast")
+    };
+
+    const platformButtons = Array.from(document.querySelectorAll(".platform-btn"));
+
+    function detectPlatform() {
+      const ua = navigator.userAgent || "";
+      if (/iPad|iPhone|iPod/i.test(ua)) return "ios";
+      if (/Android/i.test(ua)) return "android";
+      return "android";
+    }
+
+    function getDeviceLabel(platform) {
+      const ua = navigator.userAgent || "";
+      if (platform === "ios") return /iPad/i.test(ua) ? "iPad / iPadOS" : "iPhone / iOS";
+      if (/Android/i.test(ua)) return "Android 设备";
+      return "桌面浏览器";
+    }
+
+    function applyPlatform(platform, silent = false) {
+      const data = releases[platform];
+      els.packageName.textContent = data.packageName;
+      els.packageSize.textContent = data.packageSize;
+      els.minSystem.textContent = data.minSystem;
+      els.buildNo.textContent = data.buildNo;
+      els.checksum.textContent = data.checksum;
+      els.packagePlatform.textContent = data.platformLabel;
+      els.downloadBtn.textContent = data.downloadText;
+      els.downloadBtn.href = data.href;
+      els.stickyDownloadBtn.textContent = data.downloadText;
+      els.stickyDownloadBtn.href = data.href;
+      els.deviceName.textContent = getDeviceLabel(platform);
+      els.deviceHint.textContent = platform === "ios"
+        ? "已优先展示 iOS 企业版安装包。"
+        : "已优先展示 Android APK 安装包。";
+      platformButtons.forEach(btn => btn.setAttribute("aria-selected", String(btn.dataset.platform === platform)));
+      localStorage.setItem("hubv2-release-platform", platform);
+      if (!silent) showToast("已切换到 " + data.platformLabel);
+    }
+
+    function showToast(text) {
+      els.toast.textContent = text;
+      els.toast.classList.add("show");
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => els.toast.classList.remove("show"), 1600);
+    }
+
+    platformButtons.forEach(btn => btn.addEventListener("click", () => applyPlatform(btn.dataset.platform)));
+
+    const savedPlatform = localStorage.getItem("hubv2-release-platform");
+    applyPlatform(savedPlatform || detectPlatform(), true);
+
+    const themeToggle = document.querySelector("#themeToggle");
+    const savedTheme = localStorage.getItem("hubv2-release-theme");
+    if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+    themeToggle.addEventListener("click", () => {
+      const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("hubv2-release-theme", next);
+    });
+  </script>
+</body>
+</html>

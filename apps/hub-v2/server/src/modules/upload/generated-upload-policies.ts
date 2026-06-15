@@ -159,6 +159,21 @@ export const GENERATED_UPLOAD_POLICIES = {
     ],
     "invalidTypeMessage": "仅支持上传 zip 格式 skill 包",
     "sizeLimitMessage": "skill 包大小不能超过 10MB"
+  },
+  "mobileAppPackage": {
+    "maxSizeBytes": 209715200,
+    "allowedMimeTypes": [
+      "application/vnd.android.package-archive",
+      "application/octet-stream",
+      "application/zip",
+      "application/x-itunes-ipa"
+    ],
+    "allowedExtensions": [
+      ".apk",
+      ".ipa"
+    ],
+    "invalidTypeMessage": "仅支持上传 apk 或 ipa 安装包",
+    "sizeLimitMessage": "安装包大小不能超过 200MB"
   }
 } as const satisfies Record<string, UploadPolicy>;
 
@@ -203,6 +218,11 @@ export const SERVER_UPLOAD_POLICY_RULES = [
     "target": "skillPackage",
     "bucket": "skills",
     "category": "package"
+  },
+  {
+    "target": "mobileAppPackage",
+    "bucket": "mobile-apps",
+    "category": "package"
   }
 ] as const;
 
@@ -211,6 +231,7 @@ export const ALLOWED_UPLOAD_BUCKETS = [
   "documents",
   "issues",
   "misc",
+  "mobile-apps",
   "personal-todos",
   "project-avatars",
   "rd",

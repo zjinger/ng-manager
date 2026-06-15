@@ -1,0 +1,318 @@
+<section class="mobile-app-tab">
+  <div class="mobile-app-tab__header">
+    <div>
+      <div class="mobile-app-tab__title">移动端 APP</div>
+      <div class="mobile-app-tab__hint">配置项目专属下载页和 Android / iOS 安装包。</div>
+    </div>
+    @if (config()?.configured) {
+      <span class="mobile-app-tab__status">已保存</span>
+    } @else {
+      <span class="mobile-app-tab__status mobile-app-tab__status--muted">未配置</span>
+    }
+  </div>
+
+  @if (draft(); as form) {
+    <div class="mobile-app-tab__body">
+      <div class="mobile-app-card mobile-app-card--compact">
+        <label class="mobile-app-switch">
+          <span>
+            <strong>启用下载页</strong>
+            <small>启用后，且至少一个平台有有效安装包时，公开地址才可访问。</small>
+          </span>
+          <nz-switch
+            [ngModel]="form.enabled"
+            [nzDisabled]="busy() || !canManageConfig()"
+            (ngModelChange)="updateEnabled(!!$event)"
+          />
+        </label>
+      </div>
+
+      <div class="mobile-app-grid">
+        <label>
+          <span>APP 名称</span>
+          <input
+            nz-input
+            [disabled]="busy() || !canManageConfig()"
+            [ngModel]="form.app?.name || ''"
+            (ngModelChange)="updateAppField('name', $event)"
+          />
+        </label>
+        <label>
+          <span>下载页标题</span>
+          <input
+            nz-input
+            [disabled]="busy() || !canManageConfig()"
+            [ngModel]="form.app?.title || ''"
+            (ngModelChange)="updateAppField('title', $event)"
+          />
+        </label>
+        <label>
+          <span>副标题</span>
+          <input
+            nz-input
+            [disabled]="busy() || !canManageConfig()"
+            [ngModel]="form.app?.subtitle || ''"
+            (ngModelChange)="updateAppField('subtitle', $event)"
+          />
+        </label>
+        <label>
+          <span>发布渠道</span>
+          <input
+            nz-input
+            [disabled]="busy() || !canManageConfig()"
+            [ngModel]="form.app?.channel || 'mobile-app'"
+            (ngModelChange)="updateAppField('channel', $event)"
+          />
+        </label>
+        <label class="mobile-app-grid__wide">
+          <span>页面描述</span>
+          <textarea
+            nz-input
+            rows="3"
+            [disabled]="busy() || !canManageConfig()"
+            [ngModel]="form.app?.description || ''"
+            (ngModelChange)="updateAppField('description', $event)"
+          ></textarea>
+        </label>
+      </div>
+
+      <div class="mobile-app-platforms">
+        @for (platform of form.platforms || []; track platform.platform) {
+          <article class="mobile-app-platform" [class.mobile-app-platform--disabled]="!platform.enabled">
+            <div class="mobile-app-platform__head">
+              <div>
+                <h3>{{ platformLabel(platform.platform) }}</h3>
+                <p>{{ platform.packageName || '尚未上传安装包' }}</p>
+              </div>
+              <label class="mobile-app-inline-switch">
+                <span>{{ platform.enabled ? '启用' : '停用' }}</span>
+                <nz-switch
+                  [ngModel]="platform.enabled"
+                  [nzDisabled]="busy() || !canManageConfig() || isPlatformPending(platform.platform)"
+                  (ngModelChange)="updatePlatformField(platform.platform, 'enabled', !!$event)"
+                />
+              </label>
+            </div>
+
+            <div class="mobile-app-platform__form">
+              <input
+                nz-input
+                placeholder="版本号，如 1.0.0"
+                [disabled]="busy() || !canManageConfig()"
+                [ngModel]="platform.versionName || ''"
+                (ngModelChange)="updatePlatformField(platform.platform, 'versionName', $event || null)"
+              />
+              <input
+                nz-input
+                type="number"
+                min="1"
+                placeholder="构建号"
+                [disabled]="busy() || !canManageConfig()"
+                [ngModel]="platform.versionCode"
+                (ngModelChange)="updatePlatformNumberField(platform.platform, 'versionCode', $event)"
+              />
+              <input
+                nz-input
+                placeholder="最低系统，如 Android 10+"
+                [disabled]="busy() || !canManageConfig()"
+                [ngModel]="platform.minOsVersion || ''"
+                (ngModelChange)="updatePlatformField(platform.platform, 'minOsVersion', $event || null)"
+              />
+              <input
+                nz-input
+                placeholder="分发类型，如 内测"
+                [disabled]="busy() || !canManageConfig()"
+                [ngModel]="platform.distributionType || ''"
+                (ngModelChange)="updatePlatformField(platform.platform, 'distributionType', $event || null)"
+              />
+            </div>
+
+            <div class="mobile-app-platform__meta">
+              <span>大小 {{ packageSize(platform.packageSizeBytes) }}</span>
+              <span>SHA256 {{ platform.checksum.sha256 || '-' }}</span>
+            </div>
+
+            <div class="mobile-app-platform__actions">
+              <label class="upload-btn" [class.upload-btn--disabled]="busy() || !canManageConfig() || isPlatformPending(platform.platform)">
+                <input
+                  type="file"
+                  [accept]="packagePolicy.accept"
+                  [disabled]="busy() || !canManageConfig() || isPlatformPending(platform.platform)"
+                  (change)="onPackageSelected(platform.platform, $event)"
+                />
+                <nz-icon nzType="upload" nzTheme="outline" />
+                上传安装包
+              </label>
+              @if (platform.packageUploadId) {
+                <button
+                  nz-button
+                  type="button"
+                  [disabled]="busy() || !canManageConfig() || isPlatformPending(platform.platform)"
+                  (click)="removeMobileAppPackage.emit(platform.platform)"
+                >
+                  移除安装包
+                </button>
+              }
+            </div>
+          </article>
+        }
+      </div>
+
+      @if (fileError()) {
+        <div class="mobile-app-error">{{ fileError() }}</div>
+      }
+
+      <div class="mobile-app-history">
+        <div class="mobile-app-section-head">
+          <div>
+            <h3>历史版本</h3>
+            <p>维护下载页“本次更新”和历史版本记录；未配置时会回退读取发布频道。</p>
+          </div>
+          @if (canManageConfig()) {
+            <div class="mobile-app-section-head__actions">
+              <button nz-button type="button" [disabled]="busy()" (click)="addReleaseNoteFromCurrent()">
+                从当前包生成
+              </button>
+              <button nz-button type="button" [disabled]="busy()" (click)="addReleaseNote()">
+                新增版本
+              </button>
+            </div>
+          }
+        </div>
+
+        @if ((form.releaseNotes || []).length === 0) {
+          <div class="mobile-app-history__empty">暂无手工维护的版本记录，下载页将使用发布频道数据。</div>
+        } @else {
+          <div class="mobile-app-history__list">
+            @for (item of form.releaseNotes || []; track item.id) {
+              <article class="mobile-app-history-item">
+                <div class="mobile-app-history-item__grid">
+                  <label>
+                    <span>版本号</span>
+                    <input
+                      nz-input
+                      placeholder="如 v1.0.0-beta.1"
+                      [disabled]="busy() || !canManageConfig()"
+                      [ngModel]="item.version"
+                      (ngModelChange)="updateReleaseNoteField(item.id, 'version', $event)"
+                    />
+                  </label>
+                  <label>
+                    <span>发布时间</span>
+                    <input
+                      nz-input
+                      type="date"
+                      [disabled]="busy() || !canManageConfig()"
+                      [ngModel]="item.publishedAt || ''"
+                      (ngModelChange)="updateReleaseNoteField(item.id, 'publishedAt', $event || null)"
+                    />
+                  </label>
+                  <label class="mobile-app-grid__wide">
+                    <span>标题</span>
+                    <input
+                      nz-input
+                      placeholder="如 Android / iOS 内测版"
+                      [disabled]="busy() || !canManageConfig()"
+                      [ngModel]="item.title"
+                      (ngModelChange)="updateReleaseNoteField(item.id, 'title', $event)"
+                    />
+                  </label>
+                  <label class="mobile-app-grid__wide">
+                    <span>更新内容（每行一条）</span>
+                    <textarea
+                      nz-input
+                      rows="3"
+                      [disabled]="busy() || !canManageConfig()"
+                      [ngModel]="releaseNoteLines(item, 'summary')"
+                      (ngModelChange)="updateReleaseNoteLines(item.id, 'summary', $event)"
+                    ></textarea>
+                  </label>
+                  <label class="mobile-app-grid__wide">
+                    <span>重要提示（可选，每行一条）</span>
+                    <textarea
+                      nz-input
+                      rows="2"
+                      [disabled]="busy() || !canManageConfig()"
+                      [ngModel]="releaseNoteLines(item, 'importantNotes')"
+                      (ngModelChange)="updateReleaseNoteLines(item.id, 'importantNotes', $event)"
+                    ></textarea>
+                  </label>
+                  <label class="mobile-app-grid__wide">
+                    <span>历史下载链接（可选）</span>
+                    <input
+                      nz-input
+                      placeholder="可填写外部归档地址；当前平台包仍使用上方安装包配置"
+                      [disabled]="busy() || !canManageConfig()"
+                      [ngModel]="item.downloadUrl || ''"
+                      (ngModelChange)="updateReleaseNoteField(item.id, 'downloadUrl', $event || null)"
+                    />
+                  </label>
+                </div>
+                @if (canManageConfig()) {
+                  <div class="mobile-app-history-item__actions">
+                    <button nz-button type="button" nzDanger [disabled]="busy()" (click)="removeReleaseNote(item.id)">
+                      删除版本
+                    </button>
+                  </div>
+                }
+              </article>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="mobile-app-grid">
+        <label>
+          <span>维护人</span>
+          <input
+            nz-input
+            [disabled]="busy() || !canManageConfig()"
+            [ngModel]="form.support?.owner || ''"
+            (ngModelChange)="updateSupportField('owner', $event)"
+          />
+        </label>
+        <label>
+          <span>联系方式</span>
+          <input
+            nz-input
+            [disabled]="busy() || !canManageConfig()"
+            [ngModel]="form.support?.contact || ''"
+            (ngModelChange)="updateSupportField('contact', $event)"
+          />
+        </label>
+        <label class="mobile-app-grid__wide">
+          <span>文档地址</span>
+          <input
+            nz-input
+            [disabled]="busy() || !canManageConfig()"
+            [ngModel]="form.support?.docsUrl || ''"
+            (ngModelChange)="updateSupportField('docsUrl', $event)"
+          />
+        </label>
+      </div>
+
+      <div class="mobile-app-footer">
+        <div class="download-link">
+          <span>公开下载页</span>
+          <code>{{ downloadPageUrl() || '-' }}</code>
+        </div>
+        <div class="mobile-app-footer__actions">
+          <button nz-button type="button" [disabled]="!downloadPageUrl()" (click)="copyPageUrl()">
+            <nz-icon nzType="copy" nzTheme="outline" />
+            复制链接
+          </button>
+          @if (canManageConfig()) {
+            <button nz-button nzType="primary" type="button" [disabled]="busy()" (click)="submit()">
+              <nz-icon nzType="save" nzTheme="outline" />
+              保存配置
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="mobile-app-tip">安装包支持 apk / ipa，单包上限 {{ packageSizeLimit() }}，实际大小还受服务端全局上传上限限制。</div>
+    </div>
+  } @else {
+    <div class="mobile-app-empty">正在加载移动端 APP 配置…</div>
+  }
+</section>

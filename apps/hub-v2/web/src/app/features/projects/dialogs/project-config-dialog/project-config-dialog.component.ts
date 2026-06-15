@@ -16,14 +16,18 @@ import type {
   CreateProjectMetaItemInput,
   CreateProjectVersionItemInput,
   ProjectApiTokenEntity,
+  ProjectMobileAppConfig,
+  MobileAppPlatform,
   ProjectMetaItem,
   ProjectSummary,
   ProjectVersionItem,
+  UpdateProjectMobileAppConfigInput,
   UpdateProjectMetaItemInput,
   UpdateProjectVersionItemInput,
 } from '../../models/project.model';
 import { ProjectConfigApiTokensTabComponent } from './components/project-config-api-tokens-tab.component';
 import { ProjectConfigEnvironmentsTabComponent } from './components/project-config-environments-tab.component';
+import { ProjectConfigMobileAppTabComponent } from './components/project-config-mobile-app-tab.component';
 import { ProjectConfigRdStagesTabComponent } from './components/project-config-rd-stages-tab.component';
 import { ProjectConfigVersionsTabComponent } from './components/project-config-versions-tab.component';
 
@@ -38,6 +42,7 @@ import { ProjectConfigVersionsTabComponent } from './components/project-config-v
     ProjectConfigVersionsTabComponent,
     ProjectConfigRdStagesTabComponent,
     ProjectConfigApiTokensTabComponent,
+    ProjectConfigMobileAppTabComponent,
   ],
   templateUrl: './project-config-dialog.component.html',
   styleUrls: ['./project-config-dialog.component.less'],
@@ -52,12 +57,14 @@ export class ProjectConfigDialogComponent {
   readonly stages = input<RdStageEntity[]>([]);
   readonly stageTaskTemplates = input<RdStageTaskTemplateEntity[]>([]);
   readonly apiTokens = input<ProjectApiTokenEntity[]>([]);
+  readonly mobileAppConfig = input<ProjectMobileAppConfig | null>(null);
   readonly latestCreatedToken = input<string | null>(null);
   readonly pendingEnvironmentIds = input<string[]>([]);
   readonly pendingVersionIds = input<string[]>([]);
   readonly pendingStageIds = input<string[]>([]);
   readonly pendingStageTaskTemplateIds = input<string[]>([]);
   readonly pendingTokenIds = input<string[]>([]);
+  readonly pendingMobileAppPlatforms = input<MobileAppPlatform[]>([]);
   readonly canManageConfig = input(false);
 
   readonly cancel = output<void>();
@@ -77,4 +84,8 @@ export class ProjectConfigDialogComponent {
   readonly revokeApiToken = output<string>();
   readonly copyLatestToken = output<string>();
   readonly clearLatestToken = output<void>();
+  readonly saveMobileAppConfig = output<UpdateProjectMobileAppConfigInput>();
+  readonly uploadMobileAppPackage = output<{ platform: MobileAppPlatform; file: File }>();
+  readonly removeMobileAppPackage = output<MobileAppPlatform>();
+  readonly copyMobileAppDownloadPageUrl = output<string>();
 }

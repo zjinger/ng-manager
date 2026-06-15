@@ -16,6 +16,8 @@ import feedbackRoutes from "../modules/feedback/feedback.routes";
 import documentPublicRoutes from "../modules/document/document-public.routes";
 import documentRoutes from "../modules/document/document.routes";
 import mobileRoutes from "../modules/mobile/mobile.routes";
+import mobileAppDownloadAdminRoutes from "../modules/mobile-app-download/mobile-app-download-admin.routes";
+import mobileAppDownloadPublicRoutes from "../modules/mobile-app-download/mobile-app-download-public.routes";
 import notificationRoutes from "../modules/notifications/notification.routes";
 import organizationRoutes from "../modules/organization/organization.routes";
 import personalTodoRoutes from "../modules/personal-todo/personal-todo.routes";
@@ -180,6 +182,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(feedbackRoutes, { prefix: "/api/admin" });
   await app.register(documentRoutes, { prefix: "/api/admin" });
   await app.register(mobileRoutes, { prefix: "/api/admin" });
+  await app.register(mobileAppDownloadAdminRoutes, { prefix: "/api/admin" });
   await app.register(notificationRoutes, { prefix: "/api/admin" });
   await app.register(organizationRoutes, { prefix: "/api/admin" });
   await app.register(personalTodoRoutes, { prefix: "/api/admin" });
@@ -208,6 +211,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(documentPublicRoutes, { prefix: "/api/public" });
   await app.register(releasePublicRoutes, { prefix: "/api/public" });
   await app.register(sharedConfigPublicRoutes, { prefix: "/api/public" });
+  await app.register(mobileAppDownloadPublicRoutes, { prefix: "/api/public" });
   await app.register(healthRoutes, { prefix: "/api/public" });
   await app.register(apiTokenRoutes, { prefix: "/api/token" });
   await app.register(personalTokenIntrospectRoutes, { prefix: "/api/personal" });

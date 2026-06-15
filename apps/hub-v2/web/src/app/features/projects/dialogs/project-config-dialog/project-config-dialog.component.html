@@ -2,7 +2,7 @@
   [open]="open()"
   [width]="1040"
   [title]="project() ? '项目配置 · ' + project()!.name : '项目配置'"
-  [subtitle]="'维护环境、版本、研发阶段和 API Token。'"
+  [subtitle]="'维护环境、版本、研发阶段、API Token 和移动端 APP。'"
   [icon]="'setting'"
   (cancel)="cancel.emit()"
 >
@@ -59,6 +59,20 @@
           (revokeApiToken)="revokeApiToken.emit($event)"
           (copyLatestToken)="copyLatestToken.emit($event)"
           (clearLatestToken)="clearLatestToken.emit()"
+        />
+      </nz-tab>
+
+      <nz-tab nzTitle="移动端 APP">
+        <app-project-config-mobile-app-tab
+          [busy]="busy()"
+          [project]="project()"
+          [config]="mobileAppConfig()"
+          [pendingPlatforms]="pendingMobileAppPlatforms()"
+          [canManageConfig]="canManageConfig()"
+          (saveMobileAppConfig)="saveMobileAppConfig.emit($event)"
+          (uploadMobileAppPackage)="uploadMobileAppPackage.emit($event)"
+          (removeMobileAppPackage)="removeMobileAppPackage.emit($event)"
+          (copyDownloadPageUrl)="copyMobileAppDownloadPageUrl.emit($event)"
         />
       </nz-tab>
     </nz-tabs>

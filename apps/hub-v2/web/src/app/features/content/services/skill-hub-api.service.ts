@@ -108,6 +108,10 @@ export class SkillHubApiService {
     });
   }
 
+  downloadUrl(skillId: string, versionId: string): string {
+    return `${this.baseUrl}/skills/${encodeURIComponent(skillId)}/versions/${encodeURIComponent(versionId)}/download?t=${Date.now()}`;
+  }
+
   private buildFormData(input: SkillUploadInput): FormData {
     const form = new FormData();
     form.append('file', input.file);

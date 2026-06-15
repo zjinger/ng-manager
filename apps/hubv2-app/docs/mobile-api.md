@@ -191,6 +191,60 @@ type MobileMessageItem = {
 };
 ```
 
+### 2.6 MobileAppDownloadInfo
+
+```ts
+type MobileAppDownloadInfo = {
+  app: { name: string; title: string; subtitle: string; description: string; channel: string };
+  current: {
+    versionName: string | null;
+    versionCode: number | null;
+    publishedAt: string | null;
+    channel: string;
+    packageSizeBytes: number | null;
+    minOsVersion: string | null;
+    forceUpdate: boolean;
+    gray: boolean;
+    minSupportedVersion: string | null;
+  };
+  platforms: MobileAppDownloadPlatform[];
+  releaseNotes: MobileAppDownloadReleaseNote[];
+  installSteps: Array<{ title: string; description: string }>;
+  faq: Array<{ question: string; answer: string }>;
+  support: { owner: string; contact: string | null; docsUrl: string | null };
+  cache: { maxAgeSeconds: number };
+  configured: boolean;
+  source: { configKey: string | null; releaseChannel: string };
+};
+
+type MobileAppDownloadPlatform = {
+  platform: "android" | "ios";
+  enabled: boolean;
+  packageName: string | null;
+  versionName: string | null;
+  versionCode: number | null;
+  downloadUrl: string | null;
+  qrCodeUrl: string | null;
+  packageSizeBytes: number | null;
+  minOsVersion: string | null;
+  checksum: { sha256: string | null; md5: string | null };
+  distributionType: string | null;
+  forceUpdate: boolean;
+  gray: boolean;
+  minSupportedVersion: string | null;
+};
+
+type MobileAppDownloadReleaseNote = {
+  id: string;
+  version: string;
+  title: string;
+  publishedAt: string | null;
+  summary: string[];
+  importantNotes: string[];
+  downloadUrl: string | null;
+};
+```
+
 ## 3. 登录能力
 
 ### 3.1 获取登录挑战
@@ -779,7 +833,118 @@ type MobileMessageItem = {
 
 状态映射：测试按钮 loading；401 显示“登录已失效”；网络失败显示“服务器不可达”。
 
-## 9. 接口缺口清单
+## 9. App 下载门户
+
+下载门户是公司内网公开页，不要求登录；App 内生产接口仍使用登录态 Cookie Session。
+
+### 9.1 获取下载门户信息
+
+`GET /api/public/mobile-app/download`
+
+用途：下载门户 `/download` 的首屏和升级记录数据源，支持 Web 与手机浏览器访问。
+
+请求参数：无。
+
+响应 Header：
+
+```http
+Cache-Control: public, max-age=120
+```
+
+响应示例：
+
+```json
+{
+  "code": "OK",
+  "message": "success",
+  "data": {
+    "app": {
+      "name": "Hub V2",
+      "title": "Hub V2 Mobile 下载门户",
+      "subtitle": "研发协作随身端",
+      "description": "给研发、测试、项目负责人和公司全员使用的移动协作入口。",
+      "channel": "hubv2-mobile"
+    },
+    "current": {
+      "versionName": "1.0.0",
+      "versionCode": 1,
+      "publishedAt": "2026-06-12T00:00:00.000Z",
+      "channel": "hubv2-mobile",
+      "packageSizeBytes": 109320667,
+      "minOsVersion": "Android 10",
+      "forceUpdate": false,
+      "gray": false,
+      "minSupportedVersion": null
+    },
+    "platforms": [
+      {
+        "platform": "android",
+        "enabled": true,
+        "packageName": "HubV2-v1.0.0+1-production.apk",
+        "versionName": "1.0.0",
+        "versionCode": 1,
+        "downloadUrl": "http://intranet/downloads/HubV2-v1.0.0+1-production.apk",
+        "qrCodeUrl": "http://intranet/downloads/HubV2-download-qr.png",
+        "packageSizeBytes": 109320667,
+        "minOsVersion": "Android 10",
+        "checksum": {
+          "sha256": "ba46f1843aa37e3c4bf15af6da4f68e0a94335b1b955edb3acaac310fd11bce9",
+          "md5": null
+        },
+        "distributionType": "internal",
+        "forceUpdate": false,
+        "gray": false,
+        "minSupportedVersion": null
+      }
+    ],
+    "releaseNotes": [
+      {
+        "id": "rel_1",
+        "version": "1.0.0",
+        "title": "Android 内测正式版",
+        "publishedAt": "2026-06-12T00:00:00.000Z",
+        "summary": ["登录态恢复", "统一待办"],
+        "importantNotes": [],
+        "downloadUrl": "http://intranet/downloads/HubV2-v1.0.0+1-production.apk"
+      }
+    ],
+    "installSteps": [{ "title": "打开门户", "description": "在手机浏览器或企业微信中打开本页面。" }],
+    "faq": [{ "question": "谁可以安装？", "answer": "面向公司内网用户开放。" }],
+    "support": { "owner": "Hub V2 项目组", "contact": null, "docsUrl": null },
+    "cache": { "maxAgeSeconds": 120 },
+    "configured": true,
+    "source": { "configKey": "hubv2.mobile.download", "releaseChannel": "hubv2-mobile" }
+  }
+}
+```
+
+错误码：`MOBILE_APP_DOWNLOAD_CONFIG_INVALID`、`INTERNAL_ERROR`。
+
+状态映射：
+
+| 场景 | UI 状态 |
+| --- | --- |
+| 请求中 | 门户页 loading |
+| `configured=false` | 展示“尚未配置安装包信息”，禁用下载按钮 |
+| 当前平台 `enabled=false` | 平台标记“暂未开放”，可切换其他平台 |
+| `downloadUrl=null` | 禁用下载按钮，保留复制链接降级提示 |
+| `qrCodeUrl=null` | 显示二维码占位和下载链接 |
+| `releaseNotes=[]` | 展示“暂无升级记录” |
+| 配置非法/500/网络失败 | error state + 重试 |
+
+数据来源：
+
+| 字段 | 来源 | 说明 |
+| --- | --- | --- |
+| `app/current/platforms/installSteps/faq/support/cache` | `shared_configs` | 使用 `category=mobile-app-download`，优先 `configKey=hubv2.mobile.download` |
+| `releaseNotes` | `releases` | 复用公开发布记录，按配置的 `releaseChannel` 过滤 |
+| APK 包名、大小、SHA256 | 发布流水线产物 | 可从 `apps/hubv2-app/releases/android/*/release.json` 录入到 shared-config |
+| `downloadUrl` | 内网发布位置或上传文件 URL | 服务端不直接读取开发机 release 目录 |
+| `qrCodeUrl` | 配置或发布服务 | 前端只展示图片，不在页面内生成二维码 |
+
+缓存策略：接口默认短缓存 `120s`，可通过配置 `cache.maxAgeSeconds` 覆盖，最大不超过 `3600s`。发布新包后应更新 shared-config 或发布记录，并等待短缓存过期。
+
+## 10. 接口缺口清单
 
 | 缺口 | 状态 | 处理 |
 | --- | --- | --- |
@@ -795,10 +960,11 @@ type MobileMessageItem = {
 | 统一消息详情 | 已补 | `GET /api/admin/mobile/messages/:messageType/:id` |
 | 消息已读 | 已补 | `POST /api/admin/mobile/messages/read` |
 | 设置页连接测试 | 已补 | `GET /api/admin/mobile/connection` |
+| App 下载门户 | 已补 | `GET /api/public/mobile-app/download` + Web `/download` |
 | 上传附件 | 复用现有上传接口 | 本 RD 不新增移动端上传聚合 |
 | 项目管理/Token 管理 | 不开放 | 移动端不提供后台管理能力 |
 
-## 10. 实现顺序建议
+## 11. 实现顺序建议
 
 1. 接入 `bootstrap` 和登录态校验，完成启动、项目选择和全局 badge。
 2. 接入 `dashboard`，完成 4 Tab 首页数据骨架。
@@ -806,11 +972,13 @@ type MobileMessageItem = {
 4. 接入 Issue/RD 评论、进度和状态动作，补充操作后的刷新策略。
 5. 接入 `messages`、消息详情和已读，完成消息中心。
 6. 接入 `connection`，完成设置页连接测试。
+7. 接入 `/download` 与 `mobile-app/download`，完成 App 内部分发门户。
 
-## 11. 服务端实现说明
+## 12. 服务端实现说明
 
 - 新增接口注册在 `/api/admin/mobile/*`。
 - 服务端模块只做移动端 ViewModel 包装，不新增数据库表。
 - 服务端复用现有 `auth`、`dashboard`、`issue`、`rd`、`notifications`、`document`、`announcement`、`release`、`project` 服务。
 - 不改变桌面 Web API 行为。
 - Project Token、Personal Token、系统设置、项目管理等后台能力不纳入移动端生产接口。
+- 下载门户公开接口注册在 `/api/public/mobile-app/download`，复用 `shared-config` 和 `release`，不要求登录，不读取本地构建产物目录。

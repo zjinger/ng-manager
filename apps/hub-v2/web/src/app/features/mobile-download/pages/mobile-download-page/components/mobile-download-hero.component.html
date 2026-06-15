@@ -1,0 +1,42 @@
+<div class="hero-main">
+  <div>
+    <span class="eyebrow">企业内测 · 安全发布</span>
+    <h1 id="heroTitle">{{ displayTitle() }}</h1>
+    <p class="lead">{{ info().app.description }}</p>
+    <div class="hero-actions">
+      @if (selectedPlatform()?.downloadUrl) {
+        <a class="btn primary" [href]="selectedPlatform()?.downloadUrl" target="_blank" rel="noopener noreferrer">
+          下载最新版
+        </a>
+      } @else {
+        <button class="btn primary" type="button" disabled>暂无安装包</button>
+      }
+      @if (info().support.docsUrl) {
+        <a class="btn soft" [href]="info().support.docsUrl || ''" target="_blank" rel="noopener noreferrer">
+          查看文档
+        </a>
+      } @else {
+        <a class="btn soft" href="#help">安装帮助</a>
+      }
+    </div>
+  </div>
+
+  <div class="status-row" aria-label="发布状态">
+    <div class="status-card">
+      <span>当前版本</span>
+      <strong>{{ info().current.versionName || selectedPlatform()?.versionName || '-' }}</strong>
+    </div>
+    <div class="status-card">
+      <span>发布渠道</span>
+      <strong>{{ info().current.channel || info().app.channel || '-' }}</strong>
+    </div>
+    <div class="status-card">
+      <span>更新时间</span>
+      <strong>{{ info().current.publishedAt ? (info().current.publishedAt | date: 'yyyy-MM-dd') : '-' }}</strong>
+    </div>
+    <div class="status-card">
+      <span>兼容范围</span>
+      <strong>{{ compatibility() }}</strong>
+    </div>
+  </div>
+</div>
