@@ -4,6 +4,7 @@
  * 用法示例：
  * - 仅预览：npm --prefix apps/hub-v2/server run skill-hub:cleanup-data
  * - 执行清理：npm --prefix apps/hub-v2/server run skill-hub:cleanup-data -- --apply
+ * - 正式环境执行清理：npm run skill-hub:cleanup-data -- --apply --confirm-production-cleanup
  *
  * 清理范围：
  * - drop skills / skill_versions / skill_comments / skill_favorites / skill_reviews 表
@@ -24,6 +25,7 @@ import { loadEnv } from "../shared/env/env";
 
 type CleanupArgs = {
   apply: boolean;
+  confirmProductionCleanup: boolean;
 };
 
 type UploadRow = {
@@ -40,14 +42,17 @@ const SKILL_MIGRATIONS = ["0071_skill_hub.sql", "0072_skill_hub_discovery.sql"];
 
 function parseArgs(argv: string[]): CleanupArgs {
   return {
-    apply: argv.includes("--apply")
+    apply: argv.includes("--apply"),
+    confirmProductionCleanup: argv.includes("--confirm-production-cleanup")
   };
 }
 
-function assertNonProductionScript(scriptName: string): void {
+function assertCleanupAllowed(scriptName: string, args: CleanupArgs): void {
   const nodeEnv = (process.env.NODE_ENV || "development").trim().toLowerCase();
-  if (nodeEnv === "production") {
-    throw new Error(`${scriptName} is disabled when NODE_ENV=production`);
+  if (nodeEnv === "production" && args.apply && !args.confirmProductionCleanup) {
+    throw new Error(
+      `${scriptName} requires --confirm-production-cleanup with --apply when NODE_ENV=production`
+    );
   }
 }
 
@@ -215,7 +220,7 @@ function sumFileSize(rows: UploadRow[]): number {
 
 function main(): void {
   const args = parseArgs(process.argv.slice(2));
-  assertNonProductionScript("cleanup-skill-hub-data");
+  assertCleanupAllowed("cleanup-skill-hub-data", args);
   const config = loadEnv();
   const db = createSqliteDatabase(config);
 

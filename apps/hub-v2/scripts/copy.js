@@ -112,7 +112,7 @@ async function generateProdPackageJson(src, dest) {
   prodPkg.scripts = {
     "db:migrate": "node db/migrate-cli.js",
     "issue:move-project": "node scripts/move-issue-project.js",
-    "skill-hub:cleanup-data": "node scripts/cleanup-data.js"
+    "skill-hub:cleanup-data": "NODE_ENV=production node scripts/cleanup-skill-hub-data.js"
   };
 
   await fs.promises.writeFile(dest, JSON.stringify(prodPkg, null, 2));
