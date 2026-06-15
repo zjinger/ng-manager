@@ -120,4 +120,25 @@ export const hubV2ApiTools: ToolCatalogEntry[] = [
     riskLevel: "write",
     description: "Preview or update Hub V2 RD progress with explicit confirmation.",
   },
+  {
+    name: "hub_v2_rd_member_blocks_list",
+    skill: "hub-v2-api",
+    capability: "hub-v2",
+    riskLevel: "read",
+    description: "List Hub V2 RD item member blocks.",
+  },
+  {
+    name: "hub_v2_rd_member_block_create",
+    skill: "hub-v2-api",
+    capability: "hub-v2",
+    riskLevel: "write",
+    description: "Preview or create a Hub V2 RD member block with explicit confirmation.",
+  },
+  {
+    name: "hub_v2_rd_member_block_resolve",
+    skill: "hub-v2-api",
+    capability: "hub-v2",
+    riskLevel: "write",
+    description: "Preview or resolve a Hub V2 RD member block with explicit confirmation.",
+  },
 ];

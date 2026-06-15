@@ -17,6 +17,8 @@ import {
   rdUpdateSchema,
   rdUpdateProgressSchema,
   rdUploadRawSchema,
+  rdMemberBlockCreateSchema,
+  rdMemberBlockResolveSchema,
 } from "./schemas";
 import { ok } from "../../utils/result";
 import { readRawAsBase64 } from "./raw";
@@ -330,6 +332,74 @@ export function hubV2RdTools(): McpToolDefinition[] {
         const client = new HubV2Client(ctx);
         const data = await client.request("PATCH", client.personalUrl(path), body, { preserveNull: true });
         return ok("hub_v2_rd_update", data);
+      },
+    },
+    {
+      name: "hub_v2_rd_member_blocks_list",
+      description: "List Hub V2 RD item member blocks with Project Token.",
+      riskLevel: "read",
+      inputSchema: rdReadDetailSchema,
+      async handler(args) {
+        const ctx = resolveHubV2Context(args, "project");
+        const client = new HubV2Client(ctx);
+        const data = await client.request("GET", client.tokenUrl(`/rd-items/${encodeURIComponent(args.itemId)}/member-blocks`));
+        return ok("hub_v2_rd_member_blocks_list", data);
+      },
+    },
+    {
+      name: "hub_v2_rd_member_block_create",
+      description: "Preview or create a Hub V2 RD member block with Personal Token.",
+      riskLevel: "write",
+      inputSchema: rdMemberBlockCreateSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        const path = `/rd-items/${encodeURIComponent(args.itemId)}/member-blocks`;
+        const body = compact({ reason: args.reason });
+        if (!args.confirm) {
+          return ok("hub_v2_rd_member_block_create", {
+            code: "PREVIEW",
+            message: "set confirm=true to execute this write operation",
+            data: {
+              method: "POST",
+              path,
+              requiredScope: "rd:progress:write",
+              body,
+            },
+          });
+        }
+        const ctx = resolveHubV2Context(args, "personal");
+        const client = new HubV2Client(ctx);
+        const data = await client.request("POST", client.personalUrl(path), body);
+        return ok("hub_v2_rd_member_block_create", data);
+      },
+    },
+    {
+      name: "hub_v2_rd_member_block_resolve",
+      description: "Preview or resolve a Hub V2 RD member block with Personal Token.",
+      riskLevel: "write",
+      inputSchema: rdMemberBlockResolveSchema,
+      allowPreviewWhenBlocked: true,
+      isConfirmed: (args) => args.confirm === true,
+      async handler(args) {
+        const path = `/rd-items/${encodeURIComponent(args.itemId)}/member-blocks/${encodeURIComponent(args.blockId)}/resolve`;
+        const body = compact({ note: args.note });
+        if (!args.confirm) {
+          return ok("hub_v2_rd_member_block_resolve", {
+            code: "PREVIEW",
+            message: "set confirm=true to execute this write operation",
+            data: {
+              method: "POST",
+              path,
+              requiredScope: "rd:progress:write",
+              body,
+            },
+          });
+        }
+        const ctx = resolveHubV2Context(args, "personal");
+        const client = new HubV2Client(ctx);
+        const data = await client.request("POST", client.personalUrl(path), body);
+        return ok("hub_v2_rd_member_block_resolve", data);
       },
     },
   ];

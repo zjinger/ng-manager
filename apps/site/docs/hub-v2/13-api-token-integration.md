@@ -74,7 +74,7 @@ Hub V2 MCP 写入类工具仍遵循 Agent 安全口径：默认 preview，真实
 | Issue 协作 | 新增/删除协作人、创建/启动/完成协作分支 | `hub_v2_issues_participant_add`、`hub_v2_issues_participant_remove`、`hub_v2_issues_branch_create`、`hub_v2_issues_branch_start_mine`、`hub_v2_issues_branch_start`、`hub_v2_issues_branch_complete` | 已暴露 |
 | 上传 | Markdown 图片、受控附件文件 | `hub_v2_upload_markdown_image`、`hub_v2_file_upload` | 已暴露 |
 | RD 读取 | 列表、详情、阶段字典、日志、阶段历史、阶段任务、成员进度、进度历史、raw 读取 | `hub_v2_rd_list`、`hub_v2_rd_get`、`hub_v2_rd_stages_list`、`hub_v2_rd_logs_list`、`hub_v2_rd_stage_history_list`、`hub_v2_rd_stage_tasks_list`、`hub_v2_rd_progress_list`、`hub_v2_rd_progress_history_list`、`hub_v2_rd_upload_raw_get` | 已暴露 |
-| RD 写入 | 创建、编辑、阶段推进、阶段任务、进度、流转 | `hub_v2_rd_create`、`hub_v2_rd_update`、`hub_v2_rd_advance_stage`、`hub_v2_rd_stage_tasks_create`、`hub_v2_rd_update_progress`、`hub_v2_rd_start`、`hub_v2_rd_block`、`hub_v2_rd_resume`、`hub_v2_rd_complete`、`hub_v2_rd_accept`、`hub_v2_rd_reopen`、`hub_v2_rd_close` | 已暴露 |
+| RD 写入 | 创建、编辑、阶段推进、阶段任务、进度、流转、成员阻塞 | `hub_v2_rd_create`、`hub_v2_rd_update`、`hub_v2_rd_advance_stage`、`hub_v2_rd_stage_tasks_create`、`hub_v2_rd_update_progress`、`hub_v2_rd_start`、`hub_v2_rd_block`、`hub_v2_rd_resume`、`hub_v2_rd_complete`、`hub_v2_rd_accept`、`hub_v2_rd_reopen`、`hub_v2_rd_close`、`hub_v2_rd_member_block_create`、`hub_v2_rd_member_block_resolve` | 已暴露 |
 
 当前 Token route 已存在但 MCP 暂未暴露的能力如下：
 
@@ -189,6 +189,7 @@ RD：
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/progress`（成员进度）
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/progress/history`（成员进度历史）
 - `GET /api/token/projects/:projectKey/rd-items/:itemId/uploads/:uploadId/raw`（RD 描述中的 Markdown 图片展示）
+- `GET /api/token/projects/:projectKey/rd-items/:itemId/member-blocks`（成员阻塞列表）
 - `GET /api/token/projects/:projectKey/issues?rdItemId=:itemId`（RD 详情关联测试单列表）
 
 说明：
@@ -327,6 +328,8 @@ RD：
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/progress`
 - `POST /api/personal/projects/:projectKey/rd-items/:itemId/stage-tasks`
 - `PATCH /api/personal/projects/:projectKey/rd-items/:itemId`
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/member-blocks`
+- `POST /api/personal/projects/:projectKey/rd-items/:itemId/member-blocks/:blockId/resolve`
 
 Docs：
 
@@ -692,7 +695,19 @@ curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/progress" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"stageTaskId\":\"<STAGE_TASK_ID>\",\"progress\":40,\"note\":\"完成核心模块联调\"}"
 ```
 
-### 9.10 Personal Token 创建 RD 与当前阶段任务
+### 9.10 Personal Token 创建成员阻塞
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/member-blocks" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"reason\":\"等待外部接口对接\"}"
+```
+
+### 9.11 Personal Token 解决成员阻塞
+
+```bash
+curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/member-blocks/<BLOCK_ID>/resolve" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"note\":\"外部接口已对接完成\"}"
+```
+
+### 9.12 Personal Token 创建 RD 与当前阶段任务
 
 创建研发项时，`projectId` 由 URL 中的 `projectKey` 决定，不能从请求体覆盖。
 
@@ -706,19 +721,19 @@ curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items"
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/rd-items/<ITEM_ID>/stage-tasks" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"补充回归验证\",\"description\":\"补充登录异常场景验证。\",\"ownerIds\":[\"u_001\",\"u_002\"],\"plannedStartAt\":\"2026-06-03\",\"plannedEndAt\":\"2026-06-04\"}"
 ```
 
-### 9.11 Personal Token 创建文档
+### 9.13 Personal Token 创建文档
 
 ```bash
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"自动生成文档\",\"content\":\"# 自动生成文档\\n\\n这是由脚本创建的文档。\",\"categoryId\":\"automation\",\"summary\":\"自动化创建的文档\",\"tags\":[\"auto\",\"hub-v2\"],\"status\":\"draft\",\"source\":\"cli\"}"
 ```
 
-### 9.12 Personal Token 编辑文档
+### 9.14 Personal Token 编辑文档
 
 ```bash
 curl -X PATCH "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DOC_ID>" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"title\":\"更新后的文档标题\",\"content\":\"# 更新后的文档正文\",\"slug\":\"updated-doc-slug\",\"categoryId\":\"automation\",\"summary\":\"更新后的文档摘要\",\"tags\":[\"auto\",\"hub-v2\"],\"source\":\"cli\"}"
 ```
 
-### 9.13 Personal Token 发布文档
+### 9.15 Personal Token 发布文档
 
 Token API 与 MCP 均已支持发布文档；MCP 对应 `hub_v2_docs_publish`，仍需要 preview、`confirm=true` 与 Personal Token 的 `doc:publish:write` scope。
 
@@ -726,7 +741,7 @@ Token API 与 MCP 均已支持发布文档；MCP 对应 `hub_v2_docs_publish`，
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/docs/<DOC_ID>/publish" -H "Authorization: Bearer <PERSONAL_TOKEN>" -H "Content-Type: application/json" -d "{\"source\":\"cli\"}"
 ```
 
-### 9.14 Project Token 读取文档
+### 9.16 Project Token 读取文档
 
 ```bash
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs?page=1&pageSize=20&statusGroup=active" -H "Authorization: Bearer <PROJECT_TOKEN>"
@@ -740,7 +755,7 @@ curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/<DOC_ID>
 curl -X GET "http://<HUB_V2_HOST>/api/token/projects/<PROJECT_KEY>/docs/by-slug/<DOC_SLUG>" -H "Authorization: Bearer <PROJECT_TOKEN>"
 ```
 
-### 9.15 Personal Token 读取 Skill Hub
+### 9.17 Personal Token 读取 Skill Hub
 
 列表：
 
@@ -762,7 +777,7 @@ curl -X GET "http://<HUB_V2_HOST>/api/personal/skills/<SKILL_ID>/versions/<VERSI
 
 说明：这些接口使用 `skill:read` scope，只返回已发布 Skill。Skill Hub 是全局资源，路径中不包含 `PROJECT_KEY`。
 
-### 9.16 Personal Token 上传 Markdown 图片
+### 9.18 Personal Token 上传 Markdown 图片
 
 上传接口使用 multipart form-data，字段：
 
@@ -775,7 +790,7 @@ curl -X GET "http://<HUB_V2_HOST>/api/personal/skills/<SKILL_ID>/versions/<VERSI
 curl -X POST "http://<HUB_V2_HOST>/api/personal/projects/<PROJECT_KEY>/uploads/markdown" -H "Authorization: Bearer <PERSONAL_TOKEN>" -F "file=@screenshot.png;type=image/png" -F "alt=登录异常截图"
 ```
 
-### 9.17 Personal Token 上传受控附件文件
+### 9.19 Personal Token 上传受控附件文件
 
 上传接口使用 multipart form-data，字段：
 

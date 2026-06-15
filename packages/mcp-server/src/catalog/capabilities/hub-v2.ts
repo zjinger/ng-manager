@@ -28,6 +28,9 @@ export const hubV2Capabilities: CapabilityCatalogEntry[] = [
       "hub_v2_rd_advance_stage",
       "hub_v2_rd_stage_tasks_create",
       "hub_v2_rd_update_progress",
+      "hub_v2_rd_member_blocks_list",
+      "hub_v2_rd_member_block_create",
+      "hub_v2_rd_member_block_resolve",
     ],
   },
 ];

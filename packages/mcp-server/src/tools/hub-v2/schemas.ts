@@ -362,3 +362,16 @@ export const rdUpdateSchema = projectSelectorSchema.extend({
   stageDescription: z.string().trim().max(4000).nullable().optional(),
   confirm: z.boolean().optional(),
 }).strict();
+
+export const rdMemberBlockCreateSchema = projectSelectorSchema.extend({
+  itemId: z.string().trim().min(1),
+  reason: z.string().trim().min(1).max(500),
+  confirm: z.boolean().optional(),
+}).strict();
+
+export const rdMemberBlockResolveSchema = projectSelectorSchema.extend({
+  itemId: z.string().trim().min(1),
+  blockId: z.string().trim().min(1),
+  note: z.string().trim().max(500).optional(),
+  confirm: z.boolean().optional(),
+}).strict();

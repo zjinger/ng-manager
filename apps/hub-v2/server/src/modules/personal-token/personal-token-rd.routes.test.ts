@@ -196,6 +196,76 @@ describe("personal token rd routes", () => {
     });
     assert.notEqual(nonMemberResponse.statusCode, 201);
   });
+
+  it("rejects creating member block without rd:progress:write", async () => {
+    const ctx = await createTestApp();
+    const item = await createRdItemWithToken(ctx);
+    const token = await createPersonalToken(ctx, ["rd:edit:write"]);
+
+    const response = await ctx.app.inject({
+      method: "POST",
+      url: `/api/personal/projects/${ctx.project.key}/rd-items/${item.id}/member-blocks`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { reason: "等待外部接口对接" }
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().code, "TOKEN_SCOPE_FORBIDDEN");
+  });
+
+  it("creates member block with personal token", async () => {
+    const ctx = await createTestApp();
+    const item = await createRdItemWithToken(ctx);
+    const token = await createPersonalToken(ctx, ["rd:progress:write"]);
+
+    const response = await ctx.app.inject({
+      method: "POST",
+      url: `/api/personal/projects/${ctx.project.key}/rd-items/${item.id}/member-blocks`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { reason: "等待外部接口对接" }
+    });
+
+    assert.equal(response.statusCode, 201);
+    const block = response.json().data;
+    assert.equal(block.reason, "等待外部接口对接");
+    assert.equal(block.status, "active");
+  });
+
+  it("rejects resolving member block without rd:progress:write", async () => {
+    const ctx = await createTestApp();
+    const item = await createRdItemWithToken(ctx);
+    const block = await createMemberBlock(ctx, item.id);
+    const token = await createPersonalToken(ctx, ["rd:edit:write"]);
+
+    const response = await ctx.app.inject({
+      method: "POST",
+      url: `/api/personal/projects/${ctx.project.key}/rd-items/${item.id}/member-blocks/${block.id}/resolve`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { note: "外部接口已对接完成" }
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().code, "TOKEN_SCOPE_FORBIDDEN");
+  });
+
+  it("resolves member block with personal token", async () => {
+    const ctx = await createTestApp();
+    const item = await createRdItemWithToken(ctx);
+    const block = await createMemberBlock(ctx, item.id);
+    const token = await createPersonalToken(ctx, ["rd:progress:write"]);
+
+    const response = await ctx.app.inject({
+      method: "POST",
+      url: `/api/personal/projects/${ctx.project.key}/rd-items/${item.id}/member-blocks/${block.id}/resolve`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { note: "外部接口已对接完成" }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const resolved = response.json().data;
+    assert.equal(resolved.status, "resolved");
+    assert.equal(resolved.resolveNote, "外部接口已对接完成");
+  });
 });
 
 async function createTestApp(): Promise<TestApp> {
@@ -370,6 +440,18 @@ async function createRdItemWithToken(ctx: TestApp): Promise<{ id: string }> {
     url: `/api/personal/projects/${ctx.project.key}/rd-items`,
     headers: { authorization: `Bearer ${token}` },
     payload: createRdItemPayload(ctx)
+  });
+  assert.equal(response.statusCode, 201);
+  return response.json().data;
+}
+
+async function createMemberBlock(ctx: TestApp, itemId: string): Promise<{ id: string }> {
+  const token = await createPersonalToken(ctx, ["rd:progress:write"]);
+  const response = await ctx.app.inject({
+    method: "POST",
+    url: `/api/personal/projects/${ctx.project.key}/rd-items/${itemId}/member-blocks`,
+    headers: { authorization: `Bearer ${token}` },
+    payload: { reason: "测试阻塞" }
   });
   assert.equal(response.statusCode, 201);
   return response.json().data;
