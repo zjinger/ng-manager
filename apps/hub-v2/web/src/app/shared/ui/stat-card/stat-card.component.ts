@@ -14,9 +14,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         </span>
       </div>
       <div class="stat-card__value">{{ value() }}</div>
-      @if (hint()) {
-        <div class="stat-card__hint">{{ hint() }}</div>
-      }
+      <div class="stat-card__hint">{{ hint() }}</div>
     </div>
   `,
   styles: [
@@ -97,6 +95,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
         margin-top: 8px;
         color: var(--text-disabled);
         font-size: 12px;
+        min-height: 1.2em;
       }
       :host-context(html[data-theme='dark']) .stat-card {
         background:

@@ -88,6 +88,6 @@ export class AppShellComponent implements OnDestroy {
   }
 
   private keepsTransientProjectContext(url: string): boolean {
-    return url.startsWith('/delivery-overview') || url.startsWith('/projects/progress');
+    return url.startsWith('/delivery-overview') || url.startsWith('/projects/progress') || url.startsWith('/projects/mobile-app-versions');
   }
 }

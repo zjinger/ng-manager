@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hub V2 Mobile — 门户配置</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      color-scheme: light;
+      --primary: #6366F1; --primary-hover: #4F46E5; --primary-soft: rgba(99,102,241,0.10);
+      --success: #10B981; --success-soft: rgba(16,185,129,0.10);
+      --warning: #F59E0B; --warning-soft: rgba(245,158,11,0.10);
+      --danger: #EF4444; --danger-soft: rgba(239,68,68,0.10);
+      --bg: #F3F4F6; --surface: #FFFFFF; --surface-hover: #F9FAFB;
+      --text: #111827; --text-secondary: #6B7280; --text-muted: #9CA3AF;
+      --border: #E5E7EB; --hairline: rgba(17,24,39,0.06);
+      --radius: 8px; --radius-sm: 6px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "SF Mono", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+      --sidebar-w: 220px;
+    }
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0B0D13; --surface: #13151E; --surface-hover: #1A1D2A;
+      --text: #E4E6ED; --text-secondary: #8B90A5; --text-muted: #5C6178;
+      --border: #252836; --hairline: rgba(228,230,237,0.06);
+      --primary-soft: rgba(99,102,241,0.15); --success-soft: rgba(16,185,129,0.15);
+      --warning-soft: rgba(245,158,11,0.15); --danger-soft: rgba(239,68,68,0.15);
+    }
+    html { font-size: 14px; }
+    body { font-family: var(--font); color: var(--text); background: var(--bg); min-height: 100vh; display: flex; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; text-decoration: none; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    svg { display: block; }
+
+    .sidebar { width: var(--sidebar-w); flex: 0 0 var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+    .sidebar-back { padding: 0 10px 8px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+    .sidebar-back a { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; font-size: 12px; color: var(--text-muted); transition: background 0.15s, color 0.15s; }
+    .sidebar-back a:hover { background: var(--surface-hover); color: var(--text); }
+    .sidebar-back a svg { width: 14px; height: 14px; }
+    .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 0 16px 12px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .sidebar-logo { width: 32px; height: 32px; border-radius: 8px; background: var(--primary); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 12px; flex-shrink: 0; }
+    .sidebar-brand-text { line-height: 1.2; }
+    .sidebar-brand-title { font-weight: 700; font-size: 14px; }
+    .sidebar-brand-sub { font-size: 11px; color: var(--text-muted); }
+    .sidebar-section { padding: 0 10px; margin-bottom: 20px; }
+    .sidebar-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 8px 8px; }
+    .sidebar-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; font-size: 13px; color: var(--text-secondary); cursor: pointer; border: none; background: none; width: 100%; text-align: left; transition: background 0.15s, color 0.15s; }
+    .sidebar-item:hover { background: var(--surface-hover); color: var(--text); }
+    .sidebar-item.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+    .sidebar-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .sidebar-spacer { flex: 1; }
+    .sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+    .sidebar-footer-avatar { width: 24px; height: 24px; border-radius: 6px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; font-weight: 700; font-size: 11px; }
+
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { height: 52px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); }
+    .topbar-breadcrumb span:last-child { color: var(--text); font-weight: 600; }
+    .topbar-breadcrumb .sep { color: var(--text-muted); }
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+    .topbar-btn { height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: border-color 0.15s; }
+    .topbar-btn:hover { border-color: var(--primary); color: var(--text); }
+    .topbar-btn svg { width: 14px; height: 14px; }
+    .topbar-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .topbar-btn.primary:hover { background: var(--primary-hover); }
+
+    .content { flex: 1; padding: 24px; overflow-y: auto; max-width: 800px; }
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+    .page-header p { color: var(--text-secondary); font-size: 13px; margin-top: 4px; }
+
+    .settings-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .settings-section-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .settings-section-header svg { width: 16px; height: 16px; color: var(--text-muted); }
+    .settings-section-header h2 { font-size: 14px; font-weight: 700; }
+    .settings-section-body { padding: 20px; }
+
+    .field-group { margin-bottom: 20px; }
+    .field-group:last-child { margin-bottom: 0; }
+    .field-label { font-size: 13px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .field-label .required { color: var(--danger); font-size: 11px; }
+    .field-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+    .field-input {
+      width: 100%;
+      height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      font-size: 13px;
+      transition: border-color 0.15s;
+    }
+    .field-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    textarea.field-input { height: auto; padding: 10px 12px; resize: vertical; min-height: 80px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .upload-area {
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .upload-area:hover { border-color: var(--primary); background: var(--primary-soft); }
+    .upload-area svg { margin: 0 auto 8px; color: var(--text-muted); }
+    .upload-area p { font-size: 13px; color: var(--text-secondary); }
+    .upload-area .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+    .logo-preview {
+      width: 64px; height: 64px;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 24px;
+      margin-bottom: 12px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-info { flex: 1; }
+    .toggle-title { font-size: 13px; font-weight: 600; }
+    .toggle-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .toggle-switch {
+      width: 40px; height: 22px;
+      background: var(--border);
+      border-radius: 999px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+      margin-left: 16px;
+    }
+    .toggle-switch::after {
+      content: "";
+      width: 18px; height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px; left: 2px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .toggle-switch.on { background: var(--primary); }
+    .toggle-switch.on::after { transform: translateX(18px); }
+
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .color-swatch {
+      width: 38px; height: 38px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .color-input {
+      flex: 1;
+      height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+    .color-input:focus { outline: none; border-color: var(--primary); }
+
+    .form-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      padding-top: 20px;
+    }
+    .btn {
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color 0.15s;
+    }
+    .btn:hover { border-color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover { background: var(--primary-hover); }
+    .btn.danger { border-color: var(--danger); color: var(--danger); }
+    .btn.danger:hover { background: var(--danger-soft); }
+
+    @media (max-width: 900px) { .sidebar { display: none; } }
+    @media (max-width: 600px) { .content { padding: 16px; } .field-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-back">
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ng-manager 项目
+      </a>
+    </div>
+    <div class="sidebar-brand">
+      <span class="sidebar-logo">H2</span>
+      <div class="sidebar-brand-text">
+        <div class="sidebar-brand-title">Hub V2 Mobile</div>
+        <div class="sidebar-brand-sub">研发协作随身端</div>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">应用管理</div>
+      <a href="hub-v2-download-portal.html" class="sidebar-item"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>版本管理</a>
+      <a class="sidebar-item active"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v2m0 14v2m-7-9H3m18 0h-2m-1.5-6.5L16 8M8 16l-1.5 1.5M16 16l1.5 1.5M8 8 6.5 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>门户配置</a>
+      <a href="portal-landing.html" class="sidebar-item" target="_blank"><svg viewBox="0 0 24 24" fill="none"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>预览门户</a>
+    </div>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-footer"><span class="sidebar-footer-avatar">张</span><span>张明 · Admin</span></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-breadcrumb"><span>ng-manager</span><span class="sep">/</span><span>应用管理</span><span class="sep">/</span><span>门户配置</span></div>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn" id="themeToggle">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v2.5M12 18.5V21M21 12h-2.5M5.5 12H3M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8M18.4 18.4l-1.8-1.8M7.4 7.4 5.6 5.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg>
+          切换主题
+        </button>
+        <button class="topbar-btn primary" id="saveBtn">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          保存设置
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="page-header">
+        <h1>门户配置</h1>
+        <p>配置下载门户的品牌信息、SEO、外观和功能模块</p>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-header">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5ZM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h2>品牌信息</h2>
+        </div>
+        <div class="settings-section-body">
+          <div class="field-group">
+            <div class="field-label">门户 Logo</div>
+            <div class="field-hint">显示在下载页面顶部，推荐 128×128 PNG</div>
+            <div style="display:flex;align-items:center;gap:20px;">
+              <div class="logo-preview">H2</div>
+              <div class="upload-area" style="flex:1;padding:16px;">
+                <p>点击上传新 Logo</p>
+                <div class="hint">PNG / SVG，最大 2 MB</div>
+              </div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <div class="field-label">门户名称 <span class="required">*</span></div>
+              <input class="field-input" type="text" value="Hub V2 Mobile">
+            </div>
+            <div class="field-group">
+              <div class="field-label">门户副标题</div>
+              <input class="field-input" type="text" value="研发协作随身端">
+            </div>
+          </div>
+          <div class="field-group">
+            <div class="field-label">门户描述</div>
+            <textarea class="field-input" rows="3">Hub V2 Mobile 是面向研发团队的移动端协作工具，支持查看待办、处理 Issue、跟进研发项和接收通知。</textarea>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <div class="field-label">品牌主色</div>
+              <div class="color-row">
+                <div class="color-swatch" style="background:#6366F1;"></div>
+                <input class="color-input" type="text" value="#6366F1">
+              </div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">品牌辅助色</div>
+              <div class="color-row">
+                <div class="color-swatch" style="background:#10B981;"></div>
+                <input class="color-input" type="text" value="#10B981">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-header">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v2m0 14v2m-7-9H3m18 0h-2m-1.5-6.5L16 8M8 16l-1.5 1.5M16 16l1.5 1.5M8 8 6.5 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+          <h2>页面模块</h2>
+        </div>
+        <div class="settings-section-body">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">显示二维码区域</div>
+              <div class="toggle-desc">在下载页面展示 iOS / Android 二维码</div>
+            </div>
+            <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">显示安装说明</div>
+              <div class="toggle-desc">展示 iOS 和 Android 的安装步骤</div>
+            </div>
+            <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">显示版本历史</div>
+              <div class="toggle-desc">在页面底部展示版本更新日志</div>
+            </div>
+            <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">显示系统要求</div>
+              <div class="toggle-desc">展示最低系统版本要求</div>
+            </div>
+            <div class="toggle-switch" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">显示下载统计</div>
+              <div class="toggle-desc">在页面上展示总下载量</div>
+            </div>
+            <div class="toggle-switch" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-header">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h2>公告横幅</h2>
+        </div>
+        <div class="settings-section-body">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">启用公告横幅</div>
+              <div class="toggle-desc">在下载页面顶部显示一条公告消息</div>
+            </div>
+            <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="field-group" style="margin-top:16px;">
+            <div class="field-label">横幅文案</div>
+            <input class="field-input" type="text" value="v1.2.0 已发布 — 全新统一待办入口">
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <div class="field-label">横幅样式</div>
+              <select class="field-input" style="appearance:none;background-image:url(&quot;data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;">
+                <option>信息 (蓝色)</option>
+                <option>成功 (绿色)</option>
+                <option selected>品牌色 (紫色)</option>
+                <option>警告 (黄色)</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <div class="field-label">链接地址</div>
+              <input class="field-input" type="text" placeholder="可选，点击横幅跳转" value="">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn danger">重置为默认</button>
+        <button class="btn">取消</button>
+        <button class="btn primary">保存设置</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const savedTheme = localStorage.getItem("hubv2-admin-theme");
+    if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+    document.getElementById("themeToggle").addEventListener("click", () => {
+      const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("hubv2-admin-theme", next);
+    });
+  </script>
+</body>
+</html>

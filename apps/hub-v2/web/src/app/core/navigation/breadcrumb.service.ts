@@ -168,6 +168,13 @@ export class BreadcrumbService {
       ];
     }
 
+    if (path.startsWith('/projects/mobile-app-versions')) {
+      return [
+        { label: '项目管理', route: '/projects' },
+        { label: 'APP 版本管理' },
+      ];
+    }
+
     if (path.startsWith('/projects')) {
       return [{ label: '项目管理' }];
     }

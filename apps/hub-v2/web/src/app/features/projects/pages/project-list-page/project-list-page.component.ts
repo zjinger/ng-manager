@@ -369,6 +369,11 @@ export class ProjectListPageComponent {
     void this.router.navigate(['/projects/progress']);
   }
 
+  openMobileAppVersion(project: ProjectSummary): void {
+    this.projectContext.setTransientCurrentProject(project);
+    void this.router.navigate(['/projects/mobile-app-versions']);
+  }
+
   closeConfigDialog(): void {
     this.configDialogOpen.set(false);
     this.configProject.set(null);

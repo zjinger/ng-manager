@@ -152,7 +152,7 @@ export const NAV_ITEMS: NavSection[] = [
         label: '项目管理',
         icon: 'appstore',
         route: '/projects',
-        activeRoutes: ['/delivery-overview', '/projects/progress'],
+        activeRoutes: ['/delivery-overview', '/projects/progress', '/projects/mobile-app-versions'],
         permissions: [...PROJECT_GOVERNANCE_PERMISSIONS],
       },
       // 协作平台用户管理入口已收口到 Admin Console；如后续需要只读通讯录，可恢复以下菜单项。

@@ -155,6 +155,16 @@
           >
             <nz-icon nzType="project" nzTheme="outline" />
           </a>
+          <a
+            nz-button
+            nz-tooltip="APP 版本管理"
+            nzType="text"
+            class="project-action"
+            type="button"
+            (click)="openMobileAppVersion.emit(item)"
+          >
+            <nz-icon nzType="mobile" nzTheme="outline" />
+          </a>
           @if (item.status === 'active') {
             <a
               nz-button

@@ -48,6 +48,7 @@ export class ProjectListTableComponent {
   readonly manageConfig = output<ProjectSummary>();
   readonly openDeliveryOverview = output<ProjectSummary>();
   readonly openFeatureProgress = output<ProjectSummary>();
+  readonly openMobileAppVersion = output<ProjectSummary>();
   readonly archive = output<ProjectSummary>();
   readonly restore = output<ProjectSummary>();
   readonly toggleExpand = output<ProjectSummary>();
