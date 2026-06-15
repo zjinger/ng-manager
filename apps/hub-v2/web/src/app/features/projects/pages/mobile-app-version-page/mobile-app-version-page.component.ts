@@ -28,6 +28,7 @@ import { MobileAppReleaseTimelineComponent } from '../../components/mobile-app-r
 import { MobileAppVersionDetailDrawerComponent } from '../../components/mobile-app-version-detail-drawer/mobile-app-version-detail-drawer.component';
 import { MobileAppVersionFormDialogComponent } from '../../dialogs/mobile-app-version-form-dialog/mobile-app-version-form-dialog.component';
 import { PortalSettingsTabComponent } from '../../components/portal-settings-tab/portal-settings-tab.component';
+import { MobileAppVersionAdvancedFilterDrawerComponent } from '../../components/mobile-app-version-advanced-filter-drawer/mobile-app-version-advanced-filter-drawer.component';
 
 @Component({
   selector: 'app-mobile-app-version-page',
@@ -47,6 +48,7 @@ import { PortalSettingsTabComponent } from '../../components/portal-settings-tab
     MobileAppVersionDetailDrawerComponent,
     MobileAppVersionFormDialogComponent,
     PortalSettingsTabComponent,
+    MobileAppVersionAdvancedFilterDrawerComponent,
   ],
   template: `
     <app-page-header title="版本管理" [subtitle]="subtitle()">
@@ -81,9 +83,12 @@ import { PortalSettingsTabComponent } from '../../components/portal-settings-tab
                 [keyword]="keywordInput()"
                 [statusFilter]="statusFilter()"
                 [platformFilter]="platformFilter()"
+                [archivedOnly]="archivedOnly()"
                 (keywordChange)="setKeywordInput($event)"
-                (statusFilterChange)="statusFilter.set($event)"
+                (statusFilterChange)="setStatusFilter($event)"
                 (platformFilterChange)="platformFilter.set($event)"
+                (filter)="applyFilters()"
+                (advancedFilter)="advancedFilterOpen.set(true)"
                 (create)="openCreateDialog()"
               />
 
@@ -92,7 +97,6 @@ import { PortalSettingsTabComponent } from '../../components/portal-settings-tab
                 [selectedId]="selectedVersion()?.id ?? null"
                 (viewDetail)="openDetailDrawer($event)"
                 (edit)="openEditDialog($event)"
-                (archive)="archiveVersion($event)"
                 (delete)="deleteVersion($event)"
               />
 
@@ -141,6 +145,14 @@ import { PortalSettingsTabComponent } from '../../components/portal-settings-tab
             (edit)="openEditDialog($event)"
             (archive)="archiveVersion($event)"
             (publish)="publishVersion($event)"
+            (remove)="deleteVersion($event)"
+          />
+
+          <app-mobile-app-version-advanced-filter-drawer
+            [open]="advancedFilterOpen()"
+            [archivedOnly]="archivedOnly()"
+            (close)="advancedFilterOpen.set(false)"
+            (apply)="applyAdvancedFilter($event)"
           />
 
           <app-mobile-app-version-form-dialog
@@ -222,6 +234,8 @@ export class MobileAppVersionPageComponent {
   readonly keyword = signal('');
   readonly statusFilter = signal<MobileAppVersionStatus | ''>('');
   readonly platformFilter = signal<MobileAppPlatformType | ''>('');
+  readonly archivedOnly = signal(false);
+  readonly advancedFilterOpen = signal(false);
   readonly activeTab = signal(0);
 
   readonly page = signal(1);
@@ -261,6 +275,12 @@ export class MobileAppVersionPageComponent {
           v.buildNumber.toLowerCase().includes(keyword) ||
           v.packageName.toLowerCase().includes(keyword)
       );
+    }
+
+    if (this.archivedOnly()) {
+      result = result.filter((v) => v.status === 'archived');
+    } else {
+      result = result.filter((v) => v.status !== 'archived');
     }
 
     if (statusFilter) {
@@ -312,6 +332,32 @@ export class MobileAppVersionPageComponent {
       this.page.set(1);
       this.keywordTimer = null;
     }, 300);
+  }
+
+  setStatusFilter(status: MobileAppVersionStatus | ''): void {
+    this.statusFilter.set(status);
+    if (this.archivedOnly()) {
+      this.archivedOnly.set(false);
+    }
+    this.page.set(1);
+  }
+
+  applyFilters(): void {
+    if (this.keywordTimer) {
+      clearTimeout(this.keywordTimer);
+      this.keywordTimer = null;
+    }
+    this.keyword.set(this.keywordInput());
+    this.page.set(1);
+  }
+
+  applyAdvancedFilter(archivedOnly: boolean): void {
+    this.archivedOnly.set(archivedOnly);
+    if (archivedOnly) {
+      this.statusFilter.set('');
+    }
+    this.page.set(1);
+    this.advancedFilterOpen.set(false);
   }
 
   onPageIndexChange(page: number): void {
@@ -397,7 +443,10 @@ export class MobileAppVersionPageComponent {
         next: (updated) => {
           if (updated) {
             this.message.success('版本已归档');
-            this.closeDetailDrawer();
+            this.replaceVersion(updated);
+            if (this.selectedVersion()?.id === updated.id) {
+              this.selectedVersion.set(updated);
+            }
             this.reload();
           }
         },
@@ -437,6 +486,7 @@ export class MobileAppVersionPageComponent {
         next: (updated) => {
           if (updated) {
             this.message.success('版本已发布到门户');
+            this.replaceVersion(updated);
             this.closeDetailDrawer();
             this.reload();
           }
@@ -531,10 +581,16 @@ export class MobileAppVersionPageComponent {
     this.keyword.set('');
     this.statusFilter.set('');
     this.platformFilter.set('');
+    this.archivedOnly.set(false);
+    this.advancedFilterOpen.set(false);
     this.activeTab.set(0);
     this.page.set(1);
     this.pageSize.set(10);
     this.closeDetailDrawer();
     this.closeFormDialog();
+  }
+
+  private replaceVersion(version: MobileAppVersion): void {
+    this.versions.update((items) => items.map((item) => (item.id === version.id ? version : item)));
   }
 }

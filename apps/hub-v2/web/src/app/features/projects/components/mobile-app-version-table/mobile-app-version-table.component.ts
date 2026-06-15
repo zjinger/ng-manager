@@ -1,10 +1,11 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 
+import { API_BASE_URL } from '@core/http';
 import { DataTableComponent } from '@shared/ui';
 import type { MobileAppVersion } from '../../models/mobile-app-version.model';
 import {
@@ -71,35 +72,25 @@ import {
               <a
                 nz-button
                 nzType="text"
-                nz-tooltip="查看详情"
+                nz-tooltip="下载"
                 class="version-action"
                 type="button"
-                (click)="viewDetail.emit(item)"
+                [href]="packageDownloadUrl(item)"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <nz-icon nzType="eye" nzTheme="outline" />
-              </a>
-              <a
-                nz-button
-                nzType="text"
-                nz-tooltip="编辑"
-                class="version-action"
-                type="button"
-                (click)="edit.emit(item)"
-              >
-                <nz-icon nzType="edit" nzTheme="outline" />
+                <nz-icon nzType="download" nzTheme="outline" />
               </a>
               @if (item.status !== 'archived') {
                 <a
                   nz-button
                   nzType="text"
-                  nz-tooltip="归档"
+                  nz-tooltip="编辑"
                   class="version-action"
-                  nzPopconfirm="确定要归档此版本吗？"
-                  nzPopconfirmOkText="确认"
-                  nzPopconfirmCancelText="取消"
-                  (nzOnConfirm)="archive.emit(item)"
+                  type="button"
+                  (click)="edit.emit(item)"
                 >
-                  <nz-icon nzType="inbox" nzTheme="outline" />
+                  <nz-icon nzType="edit" nzTheme="outline" />
                 </a>
               } @else {
                 <a
@@ -131,7 +122,7 @@ import {
       .version-table__head,
       .version-row {
         display: grid;
-        grid-template-columns: 100px 90px 110px 1fr 90px 90px 110px 80px 120px;
+        grid-template-columns: 100px 90px 110px 1fr 96px 90px 110px 80px 112px;
         gap: 12px;
         align-items: center;
       }
@@ -331,12 +322,13 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MobileAppVersionTableComponent {
+  private readonly apiBaseUrl = inject(API_BASE_URL);
+
   readonly versions = input<MobileAppVersion[]>([]);
   readonly selectedId = input<string | null>(null);
 
   readonly viewDetail = output<MobileAppVersion>();
   readonly edit = output<MobileAppVersion>();
-  readonly archive = output<MobileAppVersion>();
   readonly delete = output<MobileAppVersion>();
 
   statusLabel(status: string): string {
@@ -348,8 +340,22 @@ export class MobileAppVersionTableComponent {
   }
 
   formatSize(bytes: number): string {
-    if (bytes === 0) return '—';
-    const mb = bytes / (1024 * 1024);
-    return `${mb.toFixed(1)} MB`;
+    if (!Number.isFinite(bytes) || bytes <= 0) {
+      return '—';
+    }
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    }
+    if (bytes < 1024 * 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+    if (bytes < 1024 * 1024 * 1024) {
+      return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    }
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  }
+
+  packageDownloadUrl(version: MobileAppVersion): string {
+    return `${this.apiBaseUrl}/uploads/${encodeURIComponent(version.packageUploadId)}/raw`;
   }
 }

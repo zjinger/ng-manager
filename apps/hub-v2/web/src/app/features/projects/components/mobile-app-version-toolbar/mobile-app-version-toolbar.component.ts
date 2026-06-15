@@ -29,7 +29,6 @@ import type { MobileAppVersionStatus, MobileAppPlatformType } from '../../models
           <nz-option nzValue="published" nzLabel="已发布"></nz-option>
           <nz-option nzValue="testing" nzLabel="测试中"></nz-option>
           <nz-option nzValue="draft" nzLabel="草稿"></nz-option>
-          <nz-option nzValue="archived" nzLabel="已归档"></nz-option>
         </nz-select>
 
         <nz-select
@@ -42,6 +41,23 @@ import type { MobileAppVersionStatus, MobileAppPlatformType } from '../../models
           <nz-option nzValue="ios" nzLabel="iOS"></nz-option>
           <nz-option nzValue="android" nzLabel="Android"></nz-option>
         </nz-select>
+
+        <button
+          nz-button
+          class="version-toolbar__filter"
+          (click)="filter.emit()"
+        >
+          筛选
+        </button>
+
+        <button
+          nz-button
+          class="version-toolbar__advanced"
+          [class.version-toolbar__advanced--active]="archivedOnly()"
+          (click)="advancedFilter.emit()"
+        >
+          高级筛选
+        </button>
       </div>
 
       <app-search-box
@@ -50,7 +66,7 @@ import type { MobileAppVersionStatus, MobileAppPlatformType } from '../../models
         placeholder="搜索版本号、构建号…"
         [value]="keyword()"
         (valueChange)="keywordChange.emit($event)"
-        (submitted)="keywordChange.emit($event)"
+        (submitted)="submitKeyword($event)"
       />
     </app-page-toolbar>
   `,
@@ -64,6 +80,11 @@ import type { MobileAppVersionStatus, MobileAppPlatformType } from '../../models
 
       .version-toolbar__select {
         width: 140px;
+      }
+
+      .version-toolbar__advanced--active {
+        border-color: var(--primary-500);
+        color: var(--primary-600);
       }
 
       .version-toolbar__search {
@@ -86,9 +107,17 @@ export class MobileAppVersionToolbarComponent {
   readonly keyword = input<string>('');
   readonly statusFilter = input<MobileAppVersionStatus | ''>('');
   readonly platformFilter = input<MobileAppPlatformType | ''>('');
+  readonly archivedOnly = input(false);
 
   readonly keywordChange = output<string>();
   readonly statusFilterChange = output<MobileAppVersionStatus | ''>();
   readonly platformFilterChange = output<MobileAppPlatformType | ''>();
+  readonly filter = output<void>();
+  readonly advancedFilter = output<void>();
   readonly create = output<void>();
+
+  submitKeyword(value: string): void {
+    this.keywordChange.emit(value);
+    this.filter.emit();
+  }
 }

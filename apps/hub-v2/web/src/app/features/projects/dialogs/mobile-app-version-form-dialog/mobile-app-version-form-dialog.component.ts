@@ -1,5 +1,5 @@
 import { FormsModule } from '@angular/forms';
-import { ChangeDetectionStrategy, Component, input, output, signal, effect } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal, effect } from '@angular/core';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
@@ -9,6 +9,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 
 import { DialogShellComponent, FileUploadDropzoneComponent } from '@shared/ui';
 import { UPLOAD_TARGETS } from '@shared/constants';
+import { calculateFileSha256 } from '@shared/utils/sha256.util';
 import type {
   MobileAppVersion,
   CreateMobileAppVersionInput,
@@ -92,14 +93,28 @@ import type {
               <nz-form-item>
                 <nz-form-label>安装包</nz-form-label>
                 <nz-form-control>
-                  <app-file-upload-dropzone
-                    [policy]="packagePolicy"
-                    [files]="packageFiles()"
-                    [multiple]="false"
-                    [title]="'拖放 .ipa / .apk 文件到此处，或点击选择'"
-                    [hint]="'最大 200 MB'"
-                    (filesChange)="onPackageFilesChange($event)"
-                  />
+                  @if (packageSummary(); as packageItem) {
+                    <div class="selected-package">
+                      <div>
+                        <strong>{{ packageItem.name }}</strong>
+                        <span>{{ formatSize(packageItem.size) }}</span>
+                      </div>
+                      <button nz-button type="button" (click)="selectPackageAgain()">
+                        <nz-icon nzType="swap" nzTheme="outline" />
+                        重新选择
+                      </button>
+                    </div>
+                  } @else {
+                    <app-file-upload-dropzone
+                      [policy]="packagePolicy"
+                      [files]="packageFiles()"
+                      [multiple]="false"
+                      [showPreview]="false"
+                      [title]="'拖放 .ipa / .apk 文件到此处，或点击选择'"
+                      [hint]="'最大 200 MB'"
+                      (filesChange)="onPackageFilesChange($event)"
+                    />
+                  }
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -143,7 +158,7 @@ import type {
               <nz-form-item>
                 <nz-form-label>最低系统版本</nz-form-label>
                 <nz-form-control>
-                  <input nz-input placeholder="例如 iOS 15.0 / Android 10" [(ngModel)]="minOsVersion" name="minOsVersion" />
+                  <input nz-input placeholder="例如 iOS 15.0 / Android 12" [(ngModel)]="minOsVersion" name="minOsVersion" />
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -177,6 +192,36 @@ import type {
       .row {
         margin-bottom: 0;
       }
+
+      .selected-package {
+        min-height: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--surface-subtle);
+      }
+
+      .selected-package > div {
+        min-width: 0;
+        display: grid;
+        gap: 4px;
+      }
+
+      .selected-package strong {
+        color: var(--text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .selected-package span {
+        color: var(--text-secondary);
+        font-size: 12px;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -194,13 +239,26 @@ export class MobileAppVersionFormDialogComponent {
   readonly isEditing = signal(false);
   readonly version = signal('');
   readonly buildNumber = signal('');
-  readonly platform = signal<MobileAppPlatformType>('ios');
-  readonly status = signal<MobileAppVersionStatus>('draft');
+  readonly platform = signal<MobileAppPlatformType>('android');
+  readonly status = signal<MobileAppVersionStatus>('testing');
   readonly releaseChannel = signal('企业内测 — 全员');
-  readonly minOsVersion = signal(defaultMinOsVersion('ios'));
+  readonly minOsVersion = signal(defaultMinOsVersion('android'));
   readonly sha256 = signal('');
   readonly changelogText = signal('');
   readonly packageFiles = signal<File[]>([]);
+  readonly packageReplaceMode = signal(false);
+  readonly selectedPackage = computed(() => this.packageFiles()[0] ?? null);
+  readonly packageSummary = computed(() => {
+    const selected = this.selectedPackage();
+    if (selected) {
+      return { name: selected.name, size: selected.size };
+    }
+    const editVersion = this.editVersion();
+    if (this.isEditing() && !this.packageReplaceMode() && editVersion) {
+      return { name: editVersion.packageName, size: editVersion.sizeBytes };
+    }
+    return null;
+  });
 
   constructor() {
     effect(() => {
@@ -216,6 +274,7 @@ export class MobileAppVersionFormDialogComponent {
         this.sha256.set(editVersion.sha256);
         this.changelogText.set(editVersion.changelog.join('\n'));
         this.packageFiles.set([]);
+        this.packageReplaceMode.set(false);
       } else {
         this.isEditing.set(false);
         this.resetForm();
@@ -231,21 +290,34 @@ export class MobileAppVersionFormDialogComponent {
     this.packageFiles.set(files);
     const file = files[0];
     if (!file) {
-      if (!this.isEditing()) {
-        this.sha256.set('');
-      }
+      this.restorePackageSha256();
       return;
     }
-    void this.calculateSha256(file).then((value) => {
-      if (value && this.packageFiles()[0] === file) {
+    const detectedPlatform = platformFromPackageName(file.name);
+    if (detectedPlatform && detectedPlatform !== this.platform()) {
+      this.onPlatformChange(detectedPlatform);
+    }
+    void calculateFileSha256(file).then((value) => {
+      if (this.packageFiles()[0] === file) {
         this.sha256.set(value);
       }
-    });
+    }).catch(() => this.restorePackageSha256());
+  }
+
+  selectPackageAgain(): void {
+    this.packageFiles.set([]);
+    this.packageReplaceMode.set(true);
+    this.restorePackageSha256();
   }
 
   onPlatformChange(platform: MobileAppPlatformType): void {
-    const previousDefault = defaultMinOsVersion(this.platform());
-    const shouldResetMinOs = !this.minOsVersion().trim() || this.minOsVersion().trim() === previousDefault;
+    const previousPlatform = this.platform();
+    const previousDefault = defaultMinOsVersion(previousPlatform);
+    const minOsVersion = this.minOsVersion().trim();
+    const shouldResetMinOs =
+      !minOsVersion ||
+      minOsVersion === previousDefault ||
+      isMinOsVersionForPlatform(minOsVersion, previousPlatform);
     this.platform.set(platform);
     if (shouldResetMinOs) {
       this.minOsVersion.set(defaultMinOsVersion(platform));
@@ -291,26 +363,50 @@ export class MobileAppVersionFormDialogComponent {
   private resetForm(): void {
     this.version.set('');
     this.buildNumber.set('');
-    this.platform.set('ios');
+    this.platform.set('android');
     this.status.set('draft');
     this.releaseChannel.set('企业内测 — 全员');
-    this.minOsVersion.set(defaultMinOsVersion('ios'));
+    this.minOsVersion.set(defaultMinOsVersion('android'));
     this.sha256.set('');
     this.changelogText.set('');
     this.packageFiles.set([]);
+    this.packageReplaceMode.set(false);
   }
 
-  private async calculateSha256(file: File): Promise<string> {
-    if (!globalThis.crypto?.subtle) {
-      return '';
+  private restorePackageSha256(): void {
+    this.sha256.set(this.isEditing() ? this.editVersion()?.sha256 ?? '' : '');
+  }
+
+  formatSize(bytes: number): string {
+    if (bytes < 1024) {
+      return `${bytes} B`;
     }
-    const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', await file.arrayBuffer());
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((byte) => byte.toString(16).padStart(2, '0'))
-      .join('');
+    if (bytes < 1024 * 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 }
 
 function defaultMinOsVersion(platform: MobileAppPlatformType): string {
-  return platform === 'ios' ? 'iOS 15.0' : 'Android 10';
+  return platform === 'ios' ? 'iOS 15.0' : 'Android 12';
+}
+
+function platformFromPackageName(fileName: string): MobileAppPlatformType | null {
+  const normalized = fileName.trim().toLowerCase();
+  if (normalized.endsWith('.apk')) {
+    return 'android';
+  }
+  if (normalized.endsWith('.ipa')) {
+    return 'ios';
+  }
+  return null;
+}
+
+function isMinOsVersionForPlatform(value: string, platform: MobileAppPlatformType): boolean {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  return platform === 'ios' ? normalized.startsWith('ios') : normalized.startsWith('android');
 }

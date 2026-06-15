@@ -41,7 +41,14 @@ import { DEFAULT_PORTAL_SETTINGS, type PortalSettings } from '../../models/mobil
             <div class="field-label">门户公开地址</div>
             <div class="portal-url-row">
               <div class="portal-url-text">{{ publicUrl() }}</div>
-              <a nz-button nzType="default" [href]="publicUrl()" target="_blank" rel="noopener">
+              <a
+                nz-button
+                nzType="default"
+                class="portal-url-action"
+                [href]="publicUrl()"
+                target="_blank"
+                rel="noopener"
+              >
                 <nz-icon nzType="export" nzTheme="outline" />
                 打开
               </a>
@@ -273,6 +280,13 @@ import { DEFAULT_PORTAL_SETTINGS, type PortalSettings } from '../../models/mobil
         font-size: 12px;
         line-height: 20px;
         overflow-wrap: anywhere;
+      }
+
+      .portal-url-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
       }
 
       .logo-upload-row {
