@@ -25,7 +25,6 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
         gap: 16px;
         margin-bottom: 20px;
         flex-wrap: wrap;
-        padding: 4px 0 2px;
       }
 
       .page-toolbar__start,

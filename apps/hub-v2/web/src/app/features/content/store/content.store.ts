@@ -49,6 +49,8 @@ export class ContentStore {
   readonly items = computed(
     () => (this.resultState()?.items ?? []) as ContentEntity[],
   );
+  readonly page = computed(() => this.resultState()?.page ?? this.queryState().page);
+  readonly pageSize = computed(() => this.resultState()?.pageSize ?? this.queryState().pageSize);
   readonly total = computed(() => this.resultState()?.total ?? 0);
 
   initialize(): void {
@@ -71,6 +73,7 @@ export class ContentStore {
       return;
     }
     this.tabState.set(tab);
+    this.queryState.update((query) => ({ ...query, page: 1 }));
     this.load();
   }
 

@@ -7,6 +7,7 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
+import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { map } from 'rxjs';
@@ -19,6 +20,7 @@ import {
   PageHeaderComponent,
   PageToolbarComponent,
   SearchBoxComponent,
+  StickyToolbarComponent,
 } from '@shared/ui';
 import { AnnouncementListComponent } from '../../components/announcement-list/announcement-list.component';
 import { ContentDetailDrawerComponent } from '../../components/content-detail-drawer/content-detail-drawer.component';
@@ -54,10 +56,12 @@ type ContentQuickStatus = 'active' | 'draft' | 'published';
     NzDrawerModule,
     NzSelectModule,
     NzSwitchModule,
+    NzPaginationModule,
     NzIconModule,
     PageHeaderComponent,
     PageToolbarComponent,
     SearchBoxComponent,
+    StickyToolbarComponent,
     FilterBarComponent,
     ListStateComponent,
     ContentTabsComponent,
@@ -73,53 +77,55 @@ type ContentQuickStatus = 'active' | 'draft' | 'published';
   template: `
     <app-page-header title="内容管理" [subtitle]="subtitle()" />
 
-    <app-page-toolbar>
-      <app-content-tabs toolbar-primary [value]="store.activeTab()" (valueChange)="switchTab($event)" />
+    <app-sticky-toolbar [enabled]="stickyHeader()">
+      <app-page-toolbar>
+        <app-content-tabs toolbar-primary [value]="store.activeTab()" (valueChange)="switchTab($event)" />
 
-      <app-filter-bar toolbar-filters class="content-toolbar__main">
-        <nz-select
-          nzPlaceHolder="全部状态"
-          class="toolbar-select"
-          [ngModel]="quickStatus()"
-          (ngModelChange)="setQuickStatus($event)"
-          style="width: 130px;"
-        >
-          <nz-option nzLabel="全部" nzValue="active"></nz-option>
-          <nz-option nzLabel="草稿" nzValue="draft"></nz-option>
-          <nz-option nzLabel="已发布" nzValue="published"></nz-option>
-        </nz-select>
+        <app-filter-bar toolbar-filters class="content-toolbar__main">
+          <nz-select
+            nzPlaceHolder="全部状态"
+            class="toolbar-select"
+            [ngModel]="quickStatus()"
+            (ngModelChange)="setQuickStatus($event)"
+            style="width: 130px;"
+          >
+            <nz-option nzLabel="全部" nzValue="active"></nz-option>
+            <nz-option nzLabel="草稿" nzValue="draft"></nz-option>
+            <nz-option nzLabel="已发布" nzValue="published"></nz-option>
+          </nz-select>
 
-        <button nz-button class="toolbar-filter-btn" (click)="applyFilters()">筛选</button>
-        <button
-          nz-button
-          class="toolbar-filter-btn"
-          [class.toolbar-filter-btn--active]="archiveFilterEnabled()"
-          (click)="advancedOpen.set(true)"
-        >
-          高级筛选
-        </button>
+          <button nz-button class="toolbar-filter-btn" (click)="applyFilters()">筛选</button>
+          <button
+            nz-button
+            class="toolbar-filter-btn"
+            [class.toolbar-filter-btn--active]="archiveFilterEnabled()"
+            (click)="advancedOpen.set(true)"
+          >
+            高级筛选
+          </button>
 
-        <button
-          nz-button
-          nzType="primary"
-          class="toolbar-create-btn"
-          [disabled]="!canCreateCurrentTab()"
-          (click)="openCreateDialog()"
-        >
-          <nz-icon nzType="plus" nzTheme="outline" />
-          {{ createLabel() }}
-        </button>
-      </app-filter-bar>
+          <button
+            nz-button
+            nzType="primary"
+            class="toolbar-create-btn"
+            [disabled]="!canCreateCurrentTab()"
+            (click)="openCreateDialog()"
+          >
+            <nz-icon nzType="plus" nzTheme="outline" />
+            {{ createLabel() }}
+          </button>
+        </app-filter-bar>
 
-      <app-search-box
-        toolbar-search
-        class="toolbar-search"
-        placeholder="搜索标题、摘要、版本或说明"
-        [value]="keyword()"
-        (valueChange)="keyword.set($event)"
-        (submitted)="applyFilters()"
-      />
-    </app-page-toolbar>
+        <app-search-box
+          toolbar-search
+          class="toolbar-search"
+          placeholder="搜索标题、摘要、版本或说明"
+          [value]="keyword()"
+          (valueChange)="keyword.set($event)"
+          (submitted)="applyFilters()"
+        />
+      </app-page-toolbar>
+    </app-sticky-toolbar>
 
     <nz-drawer
       [nzVisible]="advancedOpen()"
@@ -141,6 +147,19 @@ type ContentQuickStatus = 'active' | 'draft' | 'published';
               <nz-switch
                 [ngModel]="archiveFilterEnabled()"
                 (ngModelChange)="toggleArchiveFilter($event)"
+              ></nz-switch>
+            </div>
+          </div>
+          <div class="advanced-field">
+            <label>列表体验</label>
+            <div class="advanced-switch">
+              <div>
+                <strong>固定筛选栏</strong>
+                <p>滚动列表时保持筛选条件可见</p>
+              </div>
+              <nz-switch
+                [ngModel]="draftStickyHeader()"
+                (ngModelChange)="draftStickyHeader.set($event)"
               ></nz-switch>
             </div>
           </div>
@@ -182,6 +201,23 @@ type ContentQuickStatus = 'active' | 'draft' | 'published';
             (select)="openReleaseDetail($event)"
           />
         }
+      }
+
+      @if (store.total() > 0) {
+        <div class="content-pagination">
+          <nz-pagination
+            [nzTotal]="store.total()"
+            [nzPageIndex]="store.page()"
+            [nzPageSize]="store.pageSize()"
+            [nzPageSizeOptions]="[10, 20, 50, 100]"
+            [nzShowSizeChanger]="true"
+            [nzShowQuickJumper]="true"
+            [nzShowTotal]="totalTpl"
+            (nzPageIndexChange)="onPageIndexChange($event)"
+            (nzPageSizeChange)="onPageSizeChange($event)"
+          ></nz-pagination>
+          <ng-template #totalTpl let-total>共 {{ total }} 条</ng-template>
+        </div>
       }
     </app-list-state>
 
@@ -242,6 +278,11 @@ type ContentQuickStatus = 'active' | 'draft' | 'published';
       .toolbar-filter-btn--active {
         border-color: #1677ff;
         color: #1677ff;
+      }
+      .content-pagination {
+        display: flex;
+        justify-content: flex-end;
+        padding: 16px 0 4px;
       }
       .advanced-panel {
         display: grid;
@@ -304,6 +345,8 @@ export class ContentManagementPageComponent {
   });
   readonly archiveFilterEnabled = computed(() => this.status() === 'archived');
   readonly advancedOpen = signal(false);
+  readonly stickyHeader = signal(false);
+  readonly draftStickyHeader = signal(false);
   readonly announcementDialogOpen = signal(false);
   readonly documentDialogOpen = signal(false);
   readonly releaseDialogOpen = signal(false);
@@ -426,6 +469,12 @@ export class ContentManagementPageComponent {
     this.store.initialize();
 
     effect(() => {
+      if (this.advancedOpen()) {
+        this.draftStickyHeader.set(this.stickyHeader());
+      }
+    });
+
+    effect(() => {
       if (!this.authStore.isAuthenticated()) {
         this.closeDetailDrawer(false);
         return;
@@ -491,12 +540,26 @@ export class ContentManagementPageComponent {
   }
 
   applyAdvanced(): void {
+    this.stickyHeader.set(this.draftStickyHeader());
     this.applyFilters();
     this.advancedOpen.set(false);
   }
 
+  onPageIndexChange(page: number): void {
+    this.store.updateQuery({ page });
+  }
+
+  onPageSizeChange(pageSize: number): void {
+    const nextPageSize = Number(pageSize) || this.store.pageSize();
+    if (nextPageSize === this.store.pageSize()) {
+      return;
+    }
+    this.store.updateQuery({ page: 1, pageSize: nextPageSize });
+  }
+
   clearAdvanced(): void {
     this.status.set('active');
+    this.draftStickyHeader.set(false);
   }
 
   openCreateDialog(): void {

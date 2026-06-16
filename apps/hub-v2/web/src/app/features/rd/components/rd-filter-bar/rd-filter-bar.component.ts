@@ -167,6 +167,19 @@ export type RdViewMode = 'board' | 'list';
               <nz-option nzLabel="正序（旧到新）" nzValue="asc"></nz-option>
             </nz-select>
           </div>
+          <div class="advanced-field">
+            <label>列表体验</label>
+            <div class="advanced-switch">
+              <div>
+                <strong>固定筛选栏</strong>
+                <p>滚动列表时保持筛选条件可见</p>
+              </div>
+              <nz-switch
+                [ngModel]="draftStickyHeader()"
+                (ngModelChange)="draftStickyHeader.set($event)"
+              ></nz-switch>
+            </div>
+          </div>
           <div class="advanced-actions">
             <button nz-button (click)="clearAdvanced()">重置</button>
             <button nz-button nzType="primary" (click)="applyAdvanced()">应用筛选</button>
@@ -237,10 +250,12 @@ export class RdFilterBarComponent {
   readonly currentUserId = input<string>('');
   readonly viewMode = input<RdViewMode>('list');
   readonly canCreate = input(true);
+  readonly stickyHeader = input(false);
   readonly submit = output<RdListQuery>();
   readonly reset = output<void>();
   readonly create = output<void>();
   readonly viewModeChange = output<RdViewMode>();
+  readonly stickyHeaderChange = output<boolean>();
   readonly advancedOpen = signal(false);
 
   readonly priorityOptions = ISSUE_PRIORITY_OPTIONS;
@@ -281,6 +296,7 @@ export class RdFilterBarComponent {
     sortBy: 'createdAt',
     sortOrder: 'desc',
   });
+  readonly draftStickyHeader = signal(false);
 
   constructor() {
     effect(() => {
@@ -289,6 +305,9 @@ export class RdFilterBarComponent {
         query.status = this.withoutClosed(query.status);
       }
       this.draft.set(query);
+    });
+    effect(() => {
+      this.draftStickyHeader.set(this.stickyHeader());
     });
   }
 
@@ -306,11 +325,13 @@ export class RdFilterBarComponent {
   }
 
   applyAdvanced(): void {
+    this.stickyHeaderChange.emit(this.draftStickyHeader());
     this.submit.emit(this.draft());
     this.advancedOpen.set(false);
   }
 
   clearAdvanced(): void {
+    this.draftStickyHeader.set(false);
     this.draft.update((draft) => ({
       ...draft,
       page: 1,

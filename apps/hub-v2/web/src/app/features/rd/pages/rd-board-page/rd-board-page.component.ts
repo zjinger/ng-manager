@@ -7,7 +7,7 @@ import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { AuthStore } from '@core/auth';
 import { ProjectContextStore } from '@core/state';
 import { ISSUE_PRIORITY_LABELS, RD_STATUS_LABELS } from '@shared/constants';
-import { ActiveFilterTag, ActiveFiltersBarComponent, PageHeaderComponent, ListStateComponent } from '@shared/ui';
+import { ActiveFilterTag, ActiveFiltersBarComponent, PageHeaderComponent, ListStateComponent, StickyToolbarComponent } from '@shared/ui';
 import type { IssueEntity } from '../../../issues/models/issue.model';
 import { IssueApiService } from '../../../issues/services/issue-api.service';
 import type { ProjectMemberEntity } from '../../../projects/models/project.model';
@@ -50,23 +50,28 @@ type RdFilterTagKind = 'stageIds' | 'status' | 'type' | 'priority' | 'assigneeId
     RdProgressUpdateDialogComponent,
     NzPaginationModule,
     ActiveFiltersBarComponent,
+    StickyToolbarComponent,
   ],
   providers: [RdStore],
   template: `
     <app-page-header title="研发项" [subtitle]="subtitle()" />
 
-    <app-rd-filter-bar
-      [query]="store.query()"
-      [stages]="store.stages()"
-      [members]="members()"
-      [currentUserId]="currentUserId() || ''"
-      [viewMode]="viewMode()"
-      [canCreate]="projectContext.currentProjectIsActive()"
-      (submit)="applyFilters($event)"
-      (reset)="resetFilters()"
-      (create)="createOpen.set(true)"
-      (viewModeChange)="viewMode.set($event)"
-    />
+    <app-sticky-toolbar [enabled]="stickyHeader()">
+      <app-rd-filter-bar
+        [query]="store.query()"
+        [stages]="store.stages()"
+        [members]="members()"
+        [currentUserId]="currentUserId() || ''"
+        [viewMode]="viewMode()"
+        [canCreate]="projectContext.currentProjectIsActive()"
+        [stickyHeader]="stickyHeader()"
+        (submit)="applyFilters($event)"
+        (reset)="resetFilters()"
+        (create)="createOpen.set(true)"
+        (viewModeChange)="viewMode.set($event)"
+        (stickyHeaderChange)="stickyHeader.set($event)"
+      />
+    </app-sticky-toolbar>
     <app-active-filters-bar [tags]="activeFilterBarTags()" (remove)="onActiveFilterRemove($event)" (clear)="resetFilters()" />
 
     @if (!projectContext.currentProjectId()) {
@@ -239,6 +244,7 @@ export class RdBoardPageComponent {
   private readonly router = inject(Router);
 
   readonly viewMode = signal<RdViewMode>('list');
+  readonly stickyHeader = signal(false);
   readonly createOpen = signal(false);
   readonly closeOpen = signal(false);
   readonly completeOpen = signal(false);

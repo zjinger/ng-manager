@@ -12,7 +12,7 @@ import type { ProjectMemberEntity, ProjectMetaItem, ProjectModuleRdLinkEntity, P
 import { ProjectApiService } from '@features/projects/services/project-api.service';
 import { RdApiService } from '@features/rd/services/rd-api.service';
 import { ISSUE_PRIORITY_LABELS, ISSUE_STATUS_LABELS, ISSUE_TYPE_LABELS } from '@shared/constants';
-import { ActiveFilterTag, ActiveFiltersBarComponent, ListStateComponent, PageHeaderComponent } from '@shared/ui';
+import { ActiveFilterTag, ActiveFiltersBarComponent, ListStateComponent, PageHeaderComponent, StickyToolbarComponent } from '@shared/ui';
 import { IssueDetailDrawerComponent } from '../../components/issue-detail-drawer/issue-detail-drawer.component';
 import { IssueFilterBarComponent, type IssueListViewMode } from '../../components/issue-filter-bar/issue-filter-bar.component';
 import { IssueListTableComponent } from '../../components/issue-list-table/issue-list-table.component';
@@ -34,24 +34,29 @@ import { IssueListStore } from '../../store/issue-list.store';
     IssueCreateDialogComponent,
     NzPaginationModule,
     ActiveFiltersBarComponent,
+    StickyToolbarComponent,
   ],
   providers: [IssueListStore],
   template: `
     <app-page-header title="测试跟踪" [subtitle]="subtitle()" />
-    <app-issue-filter-bar
-      [query]="store.query()"
-      [members]="members()"
-      [currentUserId]="currentUserId() || ''"
-      [modules]="modules()"
-      [versions]="versions()"
-      [environments]="environments()"
-      [viewMode]="viewMode()"
-      [canCreate]="projectContext.currentProjectIsActive()"
-      (submit)="onFilterSubmit($event)"
-      (reset)="resetFilters()"
-      (create)="createOpen.set(true)"
-      (viewModeChange)="viewMode.set($event)"
-    />
+    <app-sticky-toolbar [enabled]="stickyHeader()">
+      <app-issue-filter-bar
+        [query]="store.query()"
+        [members]="members()"
+        [currentUserId]="currentUserId() || ''"
+        [modules]="modules()"
+        [versions]="versions()"
+        [environments]="environments()"
+        [viewMode]="viewMode()"
+        [canCreate]="projectContext.currentProjectIsActive()"
+        [stickyHeader]="stickyHeader()"
+        (submit)="onFilterSubmit($event)"
+        (reset)="resetFilters()"
+        (create)="createOpen.set(true)"
+        (viewModeChange)="viewMode.set($event)"
+        (stickyHeaderChange)="stickyHeader.set($event)"
+      />
+    </app-sticky-toolbar>
     <!-- <div class="issue-batch-actions">
       <div class="issue-batch-actions__summary">
         已选择 <strong>{{ selectedIssueIds().length }}</strong> 项
@@ -171,6 +176,7 @@ export class IssueListPageComponent {
   readonly rdItems = signal<Array<{ id: string; rdNo: string; title: string; status: string }>>([]);
   readonly createOpen = signal(false);
   readonly viewMode = signal<IssueListViewMode>('list');
+  readonly stickyHeader = signal(false);
   readonly selectedIssueIds = signal<string[]>([]);
   readonly batchResolving = signal(false);
   readonly detailQuery = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('detail'))), {

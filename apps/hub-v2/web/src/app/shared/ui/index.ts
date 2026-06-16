@@ -25,3 +25,4 @@ export * from './markdown-editor';
 export * from './attachment-preview-wall';
 export * from './markdown-viewer';
 export * from './stat-card';
+export * from './sticky-toolbar';

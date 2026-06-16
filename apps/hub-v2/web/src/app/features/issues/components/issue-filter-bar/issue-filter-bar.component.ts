@@ -207,6 +207,16 @@ export type IssueListViewMode = 'list' | 'card';
               <nz-option nzLabel="正序（旧到新）" nzValue="asc"></nz-option>
             </nz-select>
           </div>
+          <div class="advanced-field">
+            <label>列表体验</label>
+            <label class="advanced-switch advanced-switch--between">
+              <span>
+                <strong>固定筛选栏</strong>
+                <small>滚动列表时保持筛选条件可见</small>
+              </span>
+              <nz-switch [ngModel]="draftStickyHeader()" (ngModelChange)="draftStickyHeader.set($event)"></nz-switch>
+            </label>
+          </div>
           <div class="advanced-actions">
             <button nz-button (click)="clearAdvanced()">重置</button>
             <button nz-button nzType="primary" (click)="applyAdvanced()">应用筛选</button>
@@ -251,6 +261,26 @@ export type IssueListViewMode = 'list' | 'card';
         align-items: center;
         gap: 8px;
       }
+      .advanced-switch--between {
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--surface-subtle);
+      }
+      .advanced-switch--between span {
+        display: grid;
+        gap: 4px;
+      }
+      .advanced-switch--between strong {
+        color: var(--text-primary);
+        font-size: 14px;
+      }
+      .advanced-switch--between small {
+        color: var(--text-secondary);
+        font-size: 12px;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -264,10 +294,12 @@ export class IssueFilterBarComponent {
   readonly versions = input<ProjectVersionItem[]>([]);
   readonly viewMode = input<IssueListViewMode>('list');
   readonly canCreate = input(true);
+  readonly stickyHeader = input(false);
   readonly submit = output<IssueListQuery>();
   readonly reset = output<void>();
   readonly create = output<void>();
   readonly viewModeChange = output<IssueListViewMode>();
+  readonly stickyHeaderChange = output<boolean>();
   readonly advancedOpen = signal(false);
   readonly sortedMembers = computed(() => {
     const members = this.members();
@@ -309,10 +341,14 @@ export class IssueFilterBarComponent {
     sortOrder: 'desc',
     projectId: '',
   });
+  readonly draftStickyHeader = signal(false);
 
   constructor() {
     effect(() => {
       this.draft.set({ ...this.query() });
+    });
+    effect(() => {
+      this.draftStickyHeader.set(this.stickyHeader());
     });
   }
 
@@ -321,11 +357,13 @@ export class IssueFilterBarComponent {
   }
 
   applyAdvanced(): void {
+    this.stickyHeaderChange.emit(this.draftStickyHeader());
     this.submit.emit(this.draft());
     this.advancedOpen.set(false);
   }
 
   clearAdvanced(): void {
+    this.draftStickyHeader.set(false);
     this.draft.update((draft) => ({
       ...draft,
       moduleCodes: [],
