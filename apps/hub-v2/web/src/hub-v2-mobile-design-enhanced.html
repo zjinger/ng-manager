@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>Hub V2 Mobile — Enhanced</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b1020;--page:#0f172a;--card:rgba(255,255,255,.085);--card2:rgba(255,255,255,.12);
+  --muted:rgba(255,255,255,.055);--border:rgba(255,255,255,.1);--border2:rgba(255,255,255,.16);
+  --t1:#f8fafc;--t2:#cbd5e1;--t3:#94a3b8;--t4:#64748b;
+  --primary:#7c8cff;--primary2:#6366f1;
+  --blue:#38bdf8;--green:#34d399;--orange:#fbbf24;--red:#fb7185;--purple:#a78bfa;
+  --blueS:rgba(56,189,248,.14);--greenS:rgba(52,211,153,.14);--orangeS:rgba(251,191,36,.16);
+  --redS:rgba(251,113,133,.16);--purpleS:rgba(167,139,250,.16);--primaryS:rgba(124,140,255,.16);
+  --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--t1);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;
+  background:radial-gradient(circle at top left,rgba(99,102,241,.22),transparent 32%),#080b14;
+  -webkit-font-smoothing:antialiased;
+}
+.phone{width:393px;height:852px;border-radius:46px;overflow:hidden;background:var(--page);position:relative;box-shadow:0 0 0 10px #111,0 0 0 12px #2a2a2a,0 36px 90px rgba(0,0,0,.55)}
+.status{height:54px;padding:0 28px 7px;display:flex;align-items:flex-end;justify-content:space-between;background:#0b0c0f;font-size:14px;font-weight:700;position:relative;z-index:200}
+.status-icons{display:flex;gap:5px;font-size:12px}
+.app{position:absolute;inset:54px 0 0;overflow:hidden;background:linear-gradient(180deg,rgba(15,23,42,.96),#0b1020 48%,#0b1020)}
+
+/* ===== Screen Transitions ===== */
+.screen{position:absolute;inset:0;overflow-y:auto;padding-bottom:108px;opacity:0;transform:translateX(24px) scale(.985);pointer-events:none;transition:opacity .3s cubic-bezier(.4,0,.2,1),transform .3s cubic-bezier(.4,0,.2,1);will-change:transform,opacity}
+.screen.active{opacity:1;transform:translateX(0) scale(1);pointer-events:auto;z-index:2}
+.screen::-webkit-scrollbar{display:none}
+
+button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.icon{width:38px;height:38px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.06);color:var(--t2);display:flex;align-items:center;justify-content:center;transition:background .15s,transform .15s}
+.icon:active{background:rgba(255,255,255,.12);transform:scale(.92)}
+
+/* ===== Typography ===== */
+.top{padding:18px 20px 10px}
+.head{display:flex;align-items:center;gap:12px}
+.avatar{width:38px;height:38px;border-radius:15px;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;flex-shrink:0}
+.avatar.s{width:28px;height:28px;border-radius:11px;font-size:11px}
+.avatar.xs{width:22px;height:22px;border-radius:8px;font-size:9px}
+.avatar.b{background:linear-gradient(135deg,#38bdf8,#6366f1)}
+.avatar.g{background:linear-gradient(135deg,#34d399,#059669)}
+.avatar.p{background:linear-gradient(135deg,#a78bfa,#7c3aed)}
+.avatar.o{background:linear-gradient(135deg,#fbbf24,#f59e0b)}
+.head-copy{flex:1;min-width:0}
+.head-copy h1{font-size:24px;line-height:1.18;font-weight:780;letter-spacing:-.5px}
+.head-copy p{margin-top:4px;color:var(--t3);font-size:12px}
+
+.section{padding:0 20px;margin-top:18px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-title{font-size:15px;font-weight:740}
+.section-action{color:var(--primary);font-size:12px;font-weight:650;cursor:pointer}
+
+/* ===== Card ===== */
+.card{border-radius:20px;border:1px solid var(--border);background:var(--card);overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.16);transition:transform .15s}
+.card:active{transform:scale(.985)}
+
+/* ===== Badges ===== */
+.badge{height:22px;padding:0 8px;border-radius:999px;display:inline-flex;align-items:center;font-size:11px;font-weight:740;white-space:nowrap}
+.badge.red{color:var(--red);background:var(--redS)}
+.badge.blue{color:var(--blue);background:var(--blueS)}
+.badge.green{color:var(--green);background:var(--greenS)}
+.badge.orange{color:var(--orange);background:var(--orangeS)}
+.badge.purple{color:var(--purple);background:var(--purpleS)}
+.badge.primary{color:var(--primary);background:var(--primaryS)}
+.code{font-size:11px;color:var(--t4);font-family:"SF Mono",Consolas,monospace}
+.type{height:20px;padding:0 7px;border-radius:7px;display:inline-flex;align-items:center;font-size:10px;font-weight:800}
+.type.issue{color:var(--blue);background:var(--blueS)}
+.type.rd{color:var(--purple);background:var(--purpleS)}
+.type.doc{color:var(--green);background:var(--greenS)}
+
+/* ===== Item ===== */
+.item{padding:14px;display:flex;gap:12px;border-bottom:1px solid var(--border);transition:background .15s}
+.item:last-child{border-bottom:none}
+.item:active{background:rgba(255,255,255,.045)}
+.item-icon{width:36px;height:36px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+.item-icon.red{color:var(--red);background:var(--redS)}
+.item-icon.blue{color:var(--blue);background:var(--blueS)}
+.item-icon.green{color:var(--green);background:var(--greenS)}
+.item-icon.orange{color:var(--orange);background:var(--orangeS)}
+.item-icon.purple{color:var(--purple);background:var(--purpleS)}
+.item-main{flex:1;min-width:0}
+.item-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.item-title{margin-top:5px;font-size:14px;line-height:1.42;font-weight:650}
+.item-desc{margin-top:4px;color:var(--t3);font-size:12px;line-height:1.45}
+.item-meta{margin-top:8px;color:var(--t4);font-size:11px;display:flex;gap:10px;flex-wrap:wrap}
+
+/* ===== 启动页 ===== */
+.launch{position:absolute;inset:0;z-index:120;background:#141516;display:flex;flex-direction:column;padding:0 24px 34px;transition:.28s ease}
+.launch.hidden{opacity:0;visibility:hidden;pointer-events:none;transform:scale(.985)}
+.launch-center{flex:1;display:flex;flex-direction:column;justify-content:center;padding-bottom:48px}
+.launch-illu{width:250px;height:250px;margin:0 auto 36px;position:relative;opacity:.82}
+.house{position:absolute;left:50px;bottom:46px;width:160px;height:105px;border:1.5px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1)}
+.house:before{content:"";position:absolute;left:-1px;top:-72px;width:160px;height:110px;background:linear-gradient(135deg,transparent 49%,rgba(255,255,255,.22) 50%,transparent 51%),linear-gradient(225deg,transparent 49%,rgba(255,255,255,.22) 50%,transparent 51%);clip-path:polygon(50% 0,100% 68%,100% 100%,0 100%,0 68%)}
+.door{position:absolute;left:40px;bottom:18px;width:38px;height:66px;background:rgba(255,255,255,.72);box-shadow:inset 3px 0 0 rgba(66,133,244,.55)}
+.person{position:absolute;right:68px;bottom:78px;width:54px;height:66px}
+.person:before{content:"";position:absolute;top:0;left:17px;width:18px;height:18px;background:#3b82f6;border-radius:50%;z-index:2}
+.person:after{content:"";position:absolute;top:25px;left:0;width:54px;height:64px;background:rgba(255,255,255,.72);border-radius:28px 28px 18px 18px}
+.cloud{position:absolute;right:42px;top:48px;width:130px;height:34px;background:rgba(255,255,255,.09);border-radius:50px}
+.launch h1{text-align:center;font-size:28px;font-weight:500;letter-spacing:1px;color:rgba(255,255,255,.88)}
+.launch p{margin-top:18px;text-align:center;font-size:16px;letter-spacing:1.5px;color:rgba(255,255,255,.46)}
+.launch-btn{height:56px;border:none;border-radius:7px;background:#3b73e6;color:#fff;font-size:17px;letter-spacing:2px;transition:transform .15s}
+.launch-btn:active{transform:scale(.97)}
+
+/* ===== 隐私弹窗 ===== */
+.privacy{position:absolute;inset:0;z-index:130;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:0 28px;opacity:0;visibility:hidden;transition:.24s ease}
+.privacy.active{opacity:1;visibility:visible}
+.privacy-card{width:100%;border-radius:8px;background:#272829;padding:28px 22px 26px;color:rgba(255,255,255,.86);box-shadow:0 24px 80px rgba(0,0,0,.48)}
+.privacy h2{text-align:center;font-size:17px;font-weight:500;letter-spacing:1px;margin-bottom:22px}
+.privacy-content{max-height:330px;overflow:auto;color:rgba(255,255,255,.82);font-size:16px;line-height:1.72;letter-spacing:1px}
+.privacy-content::-webkit-scrollbar{width:0}
+.privacy-links{margin-top:28px;text-align:center;font-size:14px;color:rgba(255,255,255,.72)}
+.privacy-links a{color:#3b73e6;text-decoration:none}
+.privacy-btn{margin-top:18px;width:100%;height:48px;border:none;border-radius:7px;background:#3b73e6;color:#fff;font-size:17px;letter-spacing:2px;transition:transform .15s}
+.privacy-btn:active{transform:scale(.97)}
+.privacy-no{margin-top:22px;text-align:center;color:rgba(255,255,255,.36);font-size:17px;letter-spacing:2px}
+
+/* ===== Hero / Stat Cards ===== */
+.hero{margin:18px 20px 0;padding:18px;border-radius:24px;border:1px solid rgba(124,140,255,.22);background:linear-gradient(135deg,rgba(99,102,241,.28),rgba(14,165,233,.12)),rgba(255,255,255,.06);box-shadow:0 16px 40px rgba(0,0,0,.22)}
+.hero-meta{color:rgba(248,250,252,.72);font-size:12px;display:flex;align-items:center;gap:6px}
+.hero-title{margin-top:6px;font-size:22px;line-height:1.28;font-weight:800;letter-spacing:-.6px}
+.hero-summary{margin-top:10px;display:flex;gap:12px;flex-wrap:wrap}
+.hero-summary span{font-size:11px;color:rgba(248,250,252,.55);display:flex;align-items:center;gap:4px}
+.hero-summary .dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.hero-grid{margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.hero-stat{border-radius:16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);padding:11px 9px;transition:transform .15s}
+.hero-stat:active{transform:scale(.95)}
+.hero-stat strong{display:block;font-size:20px}
+.hero-stat span{display:block;margin-top:6px;color:rgba(248,250,252,.68);font-size:11px}
+.hero-stat .trend{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:700;margin-top:4px;padding:1px 5px;border-radius:6px}
+.hero-stat .trend.up{color:#34d399;background:rgba(52,211,153,.18)}
+.hero-stat .trend.down{color:#fb7185;background:rgba(251,113,133,.18)}
+
+/* ===== Quick Grid ===== */
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.quick button{border-radius:18px;background:var(--card);border:1px solid var(--border);padding:12px 6px;color:var(--t2);transition:transform .15s,background .15s}
+.quick button:active{transform:scale(.93);background:var(--card2)}
+.quick i{display:inline-flex;width:32px;height:32px;border-radius:12px;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px}
+.quick button:nth-child(1) i{color:var(--blue);background:var(--blueS)}
+.quick button:nth-child(2) i{color:var(--orange);background:var(--orangeS)}
+.quick button:nth-child(3) i{color:var(--purple);background:var(--purpleS)}
+.quick button:nth-child(4) i{color:var(--green);background:var(--greenS)}
+.quick span{display:block;font-size:11px;font-weight:650}
+
+/* ===== Segment ===== */
+.segment{margin:14px 20px 0;padding:4px;display:flex;gap:3px;border-radius:15px;background:var(--muted);border:1px solid var(--border)}
+.segment button{flex:1;height:32px;border:none;border-radius:11px;background:transparent;color:var(--t3);font-size:12px;font-weight:700;transition:all .2s}
+.segment button.active{background:rgba(255,255,255,.12);color:var(--t1)}
+
+/* ===== Project ===== */
+.project-card{padding:15px;cursor:pointer}
+.project-card+.project-card{margin-top:10px}
+.project-head{display:flex;align-items:center;gap:12px}
+.project-logo{width:42px;height:42px;border-radius:15px;background:linear-gradient(135deg,#38bdf8,#6366f1);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.project-info{flex:1;min-width:0}
+.project-name{font-size:15px;font-weight:740}
+.project-key{margin-top:3px;color:var(--t3);font-size:11px;font-family:"SF Mono",Consolas,monospace}
+.health{height:24px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:740;display:inline-flex;align-items:center}
+.health.bad{color:var(--red);background:var(--redS)}
+.health.warn{color:var(--orange);background:var(--orangeS)}
+.health.ok{color:var(--green);background:var(--greenS)}
+.project-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px}
+.project-stat{border-radius:13px;background:var(--muted);border:1px solid var(--border);padding:9px}
+.project-stat strong{display:block;font-size:16px}
+.project-stat span{display:block;margin-top:3px;font-size:10px;color:var(--t3)}
+
+/* ===== Profile Entry ===== */
+.profile-entry{margin:18px 20px 0;padding:18px;border-radius:24px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:14px;cursor:pointer;transition:transform .15s}
+.profile-entry:active{transform:scale(.98);background:var(--card2)}
+.profile-entry-main{flex:1;min-width:0}
+.profile-entry-name{font-size:18px;font-weight:760;color:var(--t1)}
+.profile-entry-desc{margin-top:4px;color:var(--t3);font-size:12px}
+.profile-entry i{color:var(--t4);font-size:13px}
+
+/* ===== Overlay / Secondary Pages ===== */
+.overlay{z-index:60;background:var(--page);transform:translateX(100%);padding-bottom:0;transition:opacity .3s cubic-bezier(.4,0,.2,1),transform .3s cubic-bezier(.4,0,.2,1)}
+.overlay.active{opacity:1;transform:translateX(0);pointer-events:auto}
+.bar{height:58px;padding:8px 14px;display:flex;align-items:center;gap:10px;background:rgba(15,23,42,.96);border-bottom:1px solid var(--border);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.back{width:34px;height:34px;border:none;border-radius:13px;background:var(--muted);color:var(--t1);transition:transform .15s}
+.back:active{transform:scale(.88)}
+.bar-title{flex:1;text-align:center;font-size:15px;font-weight:740}
+
+/* ===== Search ===== */
+.search-input-wrap{flex:1;height:40px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid var(--border);display:flex;align-items:center;gap:9px;padding:0 12px;color:var(--t3)}
+.search-input-wrap input{flex:1;border:none;outline:none;background:transparent;color:var(--t1);font-size:14px}
+.cancel{border:none;background:transparent;color:var(--primary);font-size:14px;font-weight:650}
+.search-body{padding:18px 20px 110px}
+.chips{display:flex;flex-wrap:wrap;gap:9px}
+.chip{height:32px;padding:0 12px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--t2);font-size:12px;transition:background .15s}
+.chip:active{background:var(--card2)}
+
+/* ===== Project Space ===== */
+.project-space{z-index:55;background:var(--page);transform:translateX(100%);padding-bottom:88px;transition:opacity .3s cubic-bezier(.4,0,.2,1),transform .3s cubic-bezier(.4,0,.2,1)}
+.project-space.active{opacity:1;transform:translateX(0);pointer-events:auto}
+.ps-hero{margin:16px 20px 0;padding:18px;border-radius:24px;border:1px solid rgba(124,140,255,.22);background:linear-gradient(135deg,rgba(99,102,241,.25),rgba(14,165,233,.11)),rgba(255,255,255,.06);box-shadow:0 16px 40px rgba(0,0,0,.22)}
+.ps-main{display:flex;gap:14px;align-items:center}
+.ps-logo{width:52px;height:52px;border-radius:18px;background:linear-gradient(135deg,#38bdf8,#6366f1);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.ps-copy{flex:1}
+.ps-name{font-size:20px;font-weight:800}
+.ps-desc{margin-top:5px;color:var(--t3);font-size:12px;line-height:1.4}
+.ps-stats{margin-top:18px;display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.ps-stat{border-radius:15px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);padding:11px 8px}
+.ps-stat strong{display:block;font-size:18px}
+.ps-stat span{display:block;margin-top:5px;color:var(--t3);font-size:10px}
+
+/* Members row */
+.members-row{display:flex;align-items:center;margin-top:12px}
+.members-row .avatar.xs{border:2px solid rgba(15,23,42,.8);margin-left:-6px}
+.members-row .avatar.xs:first-child{margin-left:0}
+.members-count{margin-left:6px;font-size:11px;color:var(--t4)}
+
+/* Progress card */
+.progress-card{padding:15px}
+.progress-top{display:flex;justify-content:space-between}
+.progress-label{font-size:14px;font-weight:650}
+.progress-value{color:var(--green);font-size:18px;font-weight:800}
+.progress-bar{margin-top:12px;height:7px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;position:relative}
+.progress-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--blue));position:relative;overflow:hidden;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.progress-fill:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);animation:shimmer 2s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.mile{margin-top:12px;display:flex;justify-content:space-between;color:var(--t3);font-size:12px}
+
+.filters{display:flex;gap:8px;overflow-x:auto;padding:14px 20px 0}
+.filters::-webkit-scrollbar{display:none}
+.filter{flex-shrink:0;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--border);background:var(--muted);color:var(--t3);font-size:12px;font-weight:650;transition:all .2s}
+.filter.active{color:var(--t1);background:var(--primaryS);border-color:rgba(124,140,255,.36)}
+
+.ps-tab{display:none}
+.ps-tab.active{display:block}
+.ps-nav{position:absolute;left:0;right:0;bottom:0;height:88px;padding:8px 14px 22px;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(11,16,32,1);border-top:1px solid var(--border);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);z-index:30}
+.ps-nav button{border:none;background:transparent;color:var(--t4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border-radius:16px;transition:all .2s}
+.ps-nav i{font-size:19px}
+.ps-nav span{font-size:10px;font-weight:650}
+.ps-nav button.active{color:var(--t1);background:var(--primaryS)}
+.ps-nav button.active i{color:var(--primary)}
+.fab{position:absolute;right:22px;bottom:108px;width:54px;height:54px;border-radius:999px;border:none;background:#2563eb;color:#fff;font-size:22px;box-shadow:0 14px 32px rgba(37,99,235,.35);z-index:36;transition:transform .2s}
+.fab:active{transform:scale(.88)}
+
+/* ===== Config ===== */
+.config{height:56px;padding:0 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
+.config:last-child{border-bottom:none}
+.config-icon{width:34px;height:34px;border-radius:13px;display:flex;align-items:center;justify-content:center;color:var(--primary);background:var(--primaryS)}
+.config-main{flex:1}
+.config-title{font-size:14px;font-weight:650}
+.config-desc{margin-top:3px;color:var(--t3);font-size:11px}
+
+/* ===== Personal Info Page ===== */
+.personal-info-body{padding:18px 20px 110px}
+.personal-card{border-radius:22px;border:1px solid var(--border);background:var(--card);overflow:hidden;margin-bottom:18px}
+.personal-row{min-height:58px;padding:0 16px;display:flex;align-items:center;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.personal-row:last-child{border-bottom:none}
+.personal-row:active{background:rgba(255,255,255,.045)}
+.personal-row.avatar-row{min-height:82px}
+.personal-label{flex-shrink:0;color:var(--t1);font-size:15px;font-weight:640}
+.personal-value{margin-left:auto;display:flex;align-items:center;gap:12px;color:var(--t2);font-size:14px}
+.personal-value.muted{color:var(--t4)}
+.personal-value i.fa-chevron-right{color:var(--t4);font-size:13px}
+.personal-avatar{width:54px;height:54px;border-radius:22px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800}
+.qr-icon{color:var(--t3);font-size:20px}
+.personal-tip{margin:10px 4px 0;color:var(--t4);font-size:12px;line-height:1.6}
+
+/* ===== Profile Hero (Enhanced) ===== */
+.profile-hero{margin:18px 20px 0;padding:22px 18px;border-radius:24px;background:linear-gradient(135deg,rgba(99,102,241,.4),rgba(124,58,237,.25),rgba(236,72,153,.15));border:1px solid rgba(124,140,255,.22);position:relative;overflow:hidden}
+.profile-hero:after{content:"";position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+.profile-hero-content{position:relative;z-index:1;display:flex;align-items:center;gap:16px}
+.profile-avatar-lg{width:64px;height:64px;border-radius:22px;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:2px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;flex-shrink:0}
+.profile-hero-info{flex:1;min-width:0}
+.profile-hero-info h2{font-size:20px;font-weight:800;color:#fff}
+.profile-hero-info p{font-size:12px;color:rgba(255,255,255,.7);margin-top:3px}
+.profile-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.profile-tag{font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.85);font-weight:600;backdrop-filter:blur(4px)}
+.profile-tag.admin{background:rgba(255,255,255,.22)}
+.profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;position:relative;z-index:1}
+.profile-stat{text-align:center;padding:10px 0;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
+.profile-stat-val{font-size:22px;font-weight:800;color:#fff}
+.profile-stat-label{font-size:10px;color:rgba(255,255,255,.6);margin-top:3px}
+
+/* Profile Tabs */
+.profile-tabs{display:flex;gap:0;margin:16px 20px 0;border-bottom:1px solid var(--border);overflow-x:auto}
+.profile-tabs::-webkit-scrollbar{display:none}
+.profile-tab-btn{padding:10px 14px;font-size:12px;font-weight:650;color:var(--t4);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s}
+.profile-tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+.profile-panel{display:none}
+.profile-panel.active{display:block}
+
+/* Form elements */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px}
+.form-field{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:var(--muted);color:var(--t1);font-size:14px;font-family:inherit;transition:border-color .2s}
+.form-field:focus{outline:none;border-color:var(--primary)}
+.form-field::placeholder{color:var(--t4)}
+textarea.form-field{resize:vertical;min-height:72px;line-height:1.5}
+
+/* Toggle */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info{flex:1;min-width:0}
+.toggle-title{font-size:14px;font-weight:600}
+.toggle-desc{font-size:11px;color:var(--t4);margin-top:3px}
+.toggle{width:44px;height:26px;border-radius:13px;background:rgba(255,255,255,.15);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--primary2)}
+.toggle .knob{width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.toggle.on .knob{transform:translateX(18px)}
+
+/* Session item */
+.session-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.session-item:last-child{border-bottom:none}
+.session-icon{width:34px;height:34px;border-radius:10px;background:var(--muted);display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:14px;flex-shrink:0}
+.session-info{flex:1}
+.session-name{font-size:13px;font-weight:600}
+.session-meta{font-size:11px;color:var(--t4);margin-top:2px}
+.session-badge{font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(52,211,153,.15);color:var(--green);font-weight:600;margin-left:4px}
+.session-terminate{font-size:11px;color:var(--red);background:transparent;border:1px solid rgba(251,113,133,.3);border-radius:8px;padding:4px 10px;cursor:pointer}
+
+/* Activity log */
+.activity-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.activity-item:last-child{border-bottom:none}
+.activity-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.activity-content{flex:1}
+.activity-text{font-size:13px;color:var(--t2);line-height:1.5}
+.activity-text strong{font-weight:650;color:var(--t1)}
+.activity-time{font-size:11px;color:var(--t4);margin-top:3px}
+
+/* ===== Detail Page (Enhanced) ===== */
+.detail-head{padding:18px 20px;border-bottom:1px solid var(--border)}
+.detail-id{color:var(--t4);font-size:12px;font-family:"SF Mono",Consolas,monospace}
+.detail-title{margin-top:8px;font-size:20px;line-height:1.38;font-weight:780}
+.detail-tags{margin-top:12px;display:flex;gap:7px;flex-wrap:wrap}
+
+/* State Flow */
+.state-flow{display:flex;align-items:center;gap:3px;padding:14px 20px;border-bottom:1px solid var(--border);overflow-x:auto;flex-wrap:nowrap}
+.state-flow::-webkit-scrollbar{display:none}
+.state-step{padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap;transition:all .2s}
+.state-step.done{background:rgba(52,211,153,.15);color:var(--green)}
+.state-step.active{background:rgba(124,140,255,.2);color:var(--primary);box-shadow:0 0 12px rgba(124,140,255,.2)}
+.state-step.pending{background:var(--muted);color:var(--t4)}
+.state-arrow{color:var(--t4);font-size:8px;flex-shrink:0;margin:0 1px}
+
+/* Action buttons */
+.detail-actions{display:flex;gap:8px;padding:14px 20px;border-bottom:1px solid var(--border);overflow-x:auto}
+.detail-actions::-webkit-scrollbar{display:none}
+.action-btn{height:34px;padding:0 14px;border:none;border-radius:10px;font-size:12px;font-weight:650;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:transform .15s}
+.action-btn:active{transform:scale(.93)}
+.action-btn.success{background:rgba(52,211,153,.15);color:var(--green)}
+.action-btn.default{background:var(--muted);color:var(--t2);border:1px solid var(--border)}
+.action-btn.danger{background:rgba(251,113,133,.12);color:var(--red)}
+
+/* Detail block */
+.detail-block{padding:16px 20px;border-bottom:1px solid var(--border)}
+.detail-block h3{font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.detail-block h3 i{color:var(--t4);font-size:13px}
+.prop{display:flex;padding:9px 0;font-size:13px}
+.prop span{width:82px;color:var(--t3)}
+.prop strong{flex:1;color:var(--t2);font-weight:650}
+
+/* Collaborators */
+.collab-chips{display:flex;flex-wrap:wrap;gap:8px}
+.collab-chip{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:999px;background:var(--muted);border:1px solid var(--border)}
+.collab-chip .avatar.xs{border:none}
+
+/* Attachments */
+.attach-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.attach-item:last-child{border-bottom:none}
+.attach-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.attach-icon.img{background:rgba(56,189,248,.12);color:var(--blue)}
+.attach-icon.log{background:var(--muted);color:var(--t4)}
+.attach-name{font-size:13px;flex:1}
+
+/* Comment input */
+.comment-area{padding:14px 20px;border-top:1px solid var(--border);background:rgba(15,23,42,.9);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.comment-row{display:flex;gap:10px;align-items:flex-start}
+.comment-avatar{margin-top:2px}
+.comment-box{flex:1}
+.comment-textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--muted);color:var(--t1);font-size:13px;font-family:inherit;resize:vertical;min-height:44px;line-height:1.5;transition:border-color .2s}
+.comment-textarea:focus{outline:none;border-color:var(--primary)}
+.comment-textarea::placeholder{color:var(--t4)}
+.comment-toolbar{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.comment-tools{display:flex;gap:6px}
+.comment-tool{width:30px;height:30px;border:none;border-radius:8px;background:var(--muted);color:var(--t3);display:flex;align-items:center;justify-content:center;font-size:12px;transition:background .15s}
+.comment-tool:active{background:var(--card2)}
+.comment-send{height:30px;padding:0 14px;border:none;border-radius:8px;background:var(--primary2);color:#fff;font-size:12px;font-weight:650;transition:transform .15s}
+.comment-send:active{transform:scale(.93)}
+
+/* Bottom action bar */
+.detail-bottom{position:sticky;bottom:0;display:flex;gap:9px;padding:12px 20px 24px;background:rgba(15,23,42,.9);border-top:1px solid var(--border);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.btn{height:42px;border:none;border-radius:15px;padding:0 15px;font-size:14px;font-weight:740;transition:transform .15s}
+.btn:active{transform:scale(.94)}
+.btn.primary{flex:1;background:var(--primary2);color:#fff}
+.btn.ghost{background:var(--card);color:var(--t2);border:1px solid var(--border)}
+
+/* ===== Nav ===== */
+.nav{position:absolute;left:0;right:0;bottom:0;height:88px;padding:8px 16px 22px;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:rgba(11,16,32,.88);border-top:1px solid var(--border);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);z-index:30}
+.nav button{position:relative;border:none;background:transparent;color:var(--t4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:16px;transition:all .2s}
+.nav i{font-size:19px}
+.nav span{font-size:10px;font-weight:650}
+.nav button.active{color:var(--t1);background:var(--primaryS)}
+.nav button.active i{color:var(--primary)}
+.dot{position:absolute;top:7px;right:17px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center}
+
+/* ===== Toast ===== */
+.toast{position:absolute;left:50%;bottom:112px;transform:translateX(-50%) translateY(20px);min-width:140px;height:40px;padding:0 15px;border-radius:999px;background:rgba(15,23,42,.96);border:1px solid var(--border2);color:var(--t1);display:flex;align-items:center;justify-content:center;font-size:13px;opacity:0;pointer-events:none;transition:.24s ease;z-index:180;backdrop-filter:blur(12px)}
+.toast.active{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ===== Pull to refresh indicator ===== */
+.pull-indicator{display:flex;align-items:center;justify-content:center;padding:16px 0;color:var(--t4);font-size:12px;gap:6px}
+.pull-indicator i{animation:spin .8s linear infinite}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* ===== Skeleton ===== */
+.skeleton{background:linear-gradient(90deg,var(--muted) 25%,rgba(255,255,255,.08) 50%,var(--muted) 75%);background-size:200% 100%;animation:skeleton-pulse 1.5s ease-in-out infinite;border-radius:8px}
+@keyframes skeleton-pulse{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ===== Empty State ===== */
+.empty-state{text-align:center;padding:48px 20px}
+.empty-state i{font-size:40px;color:var(--t4);opacity:.5}
+.empty-state p{margin-top:12px;color:var(--t4);font-size:13px}
+
+@media(max-width:480px){body{display:block}.phone{width:100vw;height:100vh;border-radius:0;box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status">
+    <div>13:02</div>
+    <div class="status-icons">
+      <i class="fa-solid fa-shield-halved"></i>
+      <i class="fa-solid fa-signal"></i>
+      <i class="fa-solid fa-wifi"></i>
+      <i class="fa-solid fa-battery-three-quarters"></i>
+    </div>
+  </div>
+
+  <main class="app">
+    <!-- 启动页 -->
+    <section class="launch" id="launch">
+      <div class="launch-center">
+        <div class="launch-illu">
+          <div class="cloud"></div>
+          <div class="house"><div class="door"></div></div>
+          <div class="person"></div>
+        </div>
+        <h1>让协作更清晰</h1>
+        <p>Hub 内部研发协作平台</p>
+      </div>
+      <button class="launch-btn" onclick="startLaunch()">开始使用</button>
+    </section>
+
+    <!-- 隐私弹窗 -->
+    <section class="privacy" id="privacy">
+      <div class="privacy-card">
+        <h2>个人信息保护指引</h2>
+        <div class="privacy-content">
+          Hub 是一个企业协作与管理平台，帮助团队实现研发协同、任务流转、文档共享和项目管理。<br>
+          1. 我们会遵循隐私政策收集、使用必要的个人信息，不会强制收集与当前功能无关的信息。<br>
+          2. 通讯录、相册、日历等权限默认不会开启，仅在你使用相关功能并明确授权后调用。<br>
+          3. 你可以在系统设置中管理或撤回授权，撤回后不会影响其他基础协作功能。<br>
+          4. 我们会采取安全措施保护你的个人信息，仅在企业协作、身份验证、消息通知、项目管理等必要场景中使用。
+        </div>
+        <div class="privacy-links">你可以查看完整版<a href="javascript:void(0)">用户协议</a>和<a href="javascript:void(0)">隐私政策</a></div>
+        <button class="privacy-btn" onclick="agreePrivacy()">同意</button>
+        <div class="privacy-no" onclick="showToast('需要同意后才能继续使用')">不同意</div>
+      </div>
+    </section>
+
+    <!-- ========== 工作台 ========== -->
+    <section class="screen active" id="home">
+      <div class="top">
+        <div class="head">
+          <div class="head-copy">
+            <h1>早上好，Lin</h1>
+            <p>今天有 12 个事项需要你关注</p>
+          </div>
+          <button class="icon" onclick="openSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+      </div>
+
+      <div class="hero">
+        <div class="hero-meta"><i class="fa-solid fa-terminal" style="font-size:10px"></i> 研发协作工作台 · 周三</div>
+        <div class="hero-title">2 个阻塞事项建议优先处理</div>
+        <div class="hero-summary">
+          <span><span class="dot" style="background:var(--green)"></span>本周完成 8 项</span>
+          <span><span class="dot" style="background:var(--blue)"></span>新增 5 项</span>
+          <span><span class="dot" style="background:var(--orange)"></span>待验证 4 项</span>
+        </div>
+        <div class="hero-grid">
+          <div class="hero-stat">
+            <strong>12</strong><span>待我处理</span>
+            <span class="trend up"><i class="fa-solid fa-arrow-up" style="font-size:8px"></i> 12%</span>
+          </div>
+          <div class="hero-stat">
+            <strong>4</strong><span>待我验证</span>
+            <span class="trend down"><i class="fa-solid fa-arrow-down" style="font-size:8px"></i> 5%</span>
+          </div>
+          <div class="hero-stat">
+            <strong>2</strong><span>项目风险</span>
+            <span class="trend up"><i class="fa-solid fa-arrow-up" style="font-size:8px"></i> 8%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="quick">
+          <button onclick="switchTab('todo')"><i class="fa-solid fa-check"></i><span>处理待办</span></button>
+          <button onclick="showToast('新建事项')"><i class="fa-solid fa-plus"></i><span>新建事项</span></button>
+          <button onclick="switchTab('project')"><i class="fa-solid fa-diagram-project"></i><span>项目状态</span></button>
+          <button onclick="switchTab('message')"><i class="fa-solid fa-inbox"></i><span>协作消息</span></button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">今日重点</div>
+          <div class="section-action" onclick="switchTab('todo')">查看全部</div>
+        </div>
+        <div class="card">
+          <div class="item" onclick="openDetail('issue')">
+            <div class="item-icon red"><i class="fa-solid fa-bug"></i></div>
+            <div class="item-main">
+              <div class="item-top"><span class="code">NGM-042</span><span class="type issue">Issue</span><span class="badge red">阻塞</span></div>
+              <div class="item-title">用户权限缓存未及时刷新，导致配置变更后仍可访问旧资源</div>
+              <div class="item-meta"><span>今天 18:00</span><span>指派给我</span></div>
+            </div>
+          </div>
+          <div class="item" onclick="openDetail('rd')">
+            <div class="item-icon purple"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="item-main">
+              <div class="item-top"><span class="code">RDI-018</span><span class="type rd">RD</span><span class="badge orange">待评审</span></div>
+              <div class="item-title">移动端消息聚合策略调整，需要确认交互边界</div>
+              <div class="item-meta"><span>3 条评论</span><span>Hub Mobile</span></div>
+            </div>
+          </div>
+          <div class="item" onclick="openDetail('doc')">
+            <div class="item-icon green"><i class="fa-regular fa-file-lines"></i></div>
+            <div class="item-main">
+              <div class="item-top"><span class="code">DOC-227</span><span class="type doc">Doc</span><span class="badge blue">需确认</span></div>
+              <div class="item-title">Hub v2 移动端信息架构优化说明</div>
+              <div class="item-meta"><span>12 人阅读</span><span>已收藏</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 待办 ========== -->
+    <section class="screen" id="todo">
+      <div class="top">
+        <div class="head">
+          <div class="head-copy"><h1>待办</h1><p>按优先级处理与你相关的事项</p></div>
+          <button class="icon" onclick="openSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+      </div>
+      <div class="segment">
+        <button class="active" onclick="activeBtn(this)">全部</button>
+        <button onclick="activeBtn(this)">指派给我</button>
+        <button onclick="activeBtn(this)">待验证</button>
+        <button onclick="activeBtn(this)">阻塞</button>
+      </div>
+      <div class="section">
+        <div class="section-head"><div class="section-title">今天</div><div class="section-action">12 项</div></div>
+        <div class="card">
+          <div class="item" onclick="openDetail('issue')">
+            <div class="item-icon red"><i class="fa-solid fa-bug"></i></div>
+            <div class="item-main">
+              <div class="item-top"><span class="code">NGM-042</span><span class="badge red">阻塞</span><span class="badge orange">P0</span></div>
+              <div class="item-title">用户权限缓存未及时刷新</div>
+              <div class="item-desc">配置变更后仍可访问旧资源，影响权限安全。</div>
+              <div class="item-meta"><span>Hub Mobile</span><span>今天 18:00</span></div>
+            </div>
+          </div>
+          <div class="item" onclick="openDetail('rd')">
+            <div class="item-icon purple"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="item-main">
+              <div class="item-top"><span class="code">RDI-018</span><span class="badge orange">待评审</span></div>
+              <div class="item-title">移动端消息聚合策略调整</div>
+              <div class="item-desc">需要确认首页与消息页的信息分工边界。</div>
+              <div class="item-meta"><span>产品设计</span><span>3 条评论</span></div>
+            </div>
+          </div>
+          <div class="item" onclick="openDetail('issue')">
+            <div class="item-icon blue"><i class="fa-solid fa-bug"></i></div>
+            <div class="item-main">
+              <div class="item-top"><span class="code">API-119</span><span class="badge blue">进行中</span></div>
+              <div class="item-title">开放接口鉴权失败时错误码不一致</div>
+              <div class="item-meta"><span>OpenAPI</span><span>明天 12:00</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 项目 ========== -->
+    <section class="screen" id="project">
+      <div class="top">
+        <div class="head">
+          <div class="head-copy"><h1>项目</h1><p>关注项目健康度与阻塞风险</p></div>
+          <button class="icon" onclick="openSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="project-card card" onclick="openProjectSpace()">
+          <div class="project-head">
+            <div class="project-logo">HM</div>
+            <div class="project-info"><div class="project-name">Hub Mobile</div><div class="project-key">HUB-MOBILE</div></div>
+            <span class="health bad">有风险</span>
+          </div>
+          <div class="project-stats">
+            <div class="project-stat"><strong>24</strong><span>Issue</span></div>
+            <div class="project-stat"><strong>8</strong><span>研发项</span></div>
+            <div class="project-stat"><strong>3</strong><span>配置项</span></div>
+          </div>
+        </div>
+        <div class="project-card card" onclick="openProjectSpace()">
+          <div class="project-head">
+            <div class="project-logo" style="background:linear-gradient(135deg,#34d399,#0ea5e9)">OP</div>
+            <div class="project-info"><div class="project-name">Open Platform</div><div class="project-key">OPEN-API</div></div>
+            <span class="health warn">需关注</span>
+          </div>
+          <div class="project-stats">
+            <div class="project-stat"><strong>17</strong><span>Issue</span></div>
+            <div class="project-stat"><strong>5</strong><span>研发项</span></div>
+            <div class="project-stat"><strong>1</strong><span>配置项</span></div>
+          </div>
+        </div>
+        <div class="project-card card" onclick="openProjectSpace()">
+          <div class="project-head">
+            <div class="project-logo" style="background:linear-gradient(135deg,#a78bfa,#6366f1)">DS</div>
+            <div class="project-info"><div class="project-name">Design System</div><div class="project-key">HUB-DS</div></div>
+            <span class="health ok">正常</span>
+          </div>
+          <div class="project-stats">
+            <div class="project-stat"><strong>9</strong><span>Issue</span></div>
+            <div class="project-stat"><strong>3</strong><span>研发项</span></div>
+            <div class="project-stat"><strong>0</strong><span>配置项</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 消息 ========== -->
+    <section class="screen" id="message">
+      <div class="top">
+        <div class="head">
+          <div class="head-copy"><h1>消息</h1><p>聚合与你相关的协作动态</p></div>
+          <button class="icon" onclick="openSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+      </div>
+      <div class="segment">
+        <button class="active" onclick="activeBtn(this)">提到我</button>
+        <button onclick="activeBtn(this)">状态</button>
+        <button onclick="activeBtn(this)">文档</button>
+        <button onclick="activeBtn(this)">公告</button>
+      </div>
+      <div class="section">
+        <div class="card">
+          <div class="item" onclick="openDetail('issue')">
+            <div class="avatar s b">周</div>
+            <div class="item-main">
+              <div class="item-title">周洋 提到了你</div>
+              <div class="item-desc">NGM-042 的权限缓存问题需要你确认移动端复现路径。</div>
+              <div class="item-meta"><span>8 分钟前</span></div>
+            </div>
+          </div>
+          <div class="item" onclick="openDetail('rd')">
+            <div class="avatar s p">陈</div>
+            <div class="item-main">
+              <div class="item-title">陈晓 评论了研发项</div>
+              <div class="item-desc">建议把消息聚合入口从消息页前置到工作台。</div>
+              <div class="item-meta"><span>22 分钟前</span></div>
+            </div>
+          </div>
+          <div class="item" onclick="openDetail('doc')">
+            <div class="avatar s g">文</div>
+            <div class="item-main">
+              <div class="item-title">文档有新版本</div>
+              <div class="item-desc">Hub v2 移动端信息架构优化说明已更新。</div>
+              <div class="item-meta"><span>1 小时前</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 我的 (Enhanced) ========== -->
+    <section class="screen" id="profile">
+      <div class="top">
+        <div class="head">
+          <div class="head-copy"><h1>我的</h1><p>账户、安全与偏好设置</p></div>
+          <button class="icon" onclick="openSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+      </div>
+
+      <!-- Hero Banner -->
+      <div class="profile-hero">
+        <div class="profile-hero-content">
+          <div class="profile-avatar-lg">林</div>
+          <div class="profile-hero-info">
+            <h2>Lin</h2>
+            <p>lin@hub-team.com</p>
+            <div class="profile-tags">
+              <span class="profile-tag admin">Admin</span>
+              <span class="profile-tag">产品设计师</span>
+              <span class="profile-tag">Hub Team</span>
+            </div>
+          </div>
+        </div>
+        <div class="profile-stats">
+          <div class="profile-stat"><div class="profile-stat-val">128</div><div class="profile-stat-label">已创建 Issue</div></div>
+          <div class="profile-stat"><div class="profile-stat-val">36</div><div class="profile-stat-label">研发项</div></div>
+          <div class="profile-stat"><div class="profile-stat-val">12</div><div class="profile-stat-label">项目</div></div>
+        </div>
+      </div>
+
+      <!-- Profile Tabs -->
+      <div class="profile-tabs">
+        <div class="profile-tab-btn active" onclick="switchProfileTab('basic',this)">基本信息</div>
+        <div class="profile-tab-btn" onclick="switchProfileTab('security',this)">账号安全</div>
+        <div class="profile-tab-btn" onclick="switchProfileTab('notif',this)">通知偏好</div>
+        <div class="profile-tab-btn" onclick="switchProfileTab('activity',this)">操作日志</div>
+      </div>
+
+      <!-- Tab: 基本信息 -->
+      <div class="profile-panel active" id="ptab-basic">
+        <div class="section" style="margin-top:14px">
+          <div class="personal-card">
+            <div class="personal-row avatar-row" onclick="showToast('更换头像')">
+              <div class="personal-label">头像</div>
+              <div class="personal-value"><div class="personal-avatar">林</div><i class="fa-solid fa-chevron-right"></i></div>
+            </div>
+            <div class="personal-row" onclick="showToast('编辑姓名')">
+              <div class="personal-label">姓名</div>
+              <div class="personal-value"><span>Lin</span><i class="fa-solid fa-chevron-right"></i></div>
+            </div>
+            <div class="personal-row" onclick="showToast('编辑邮箱')">
+              <div class="personal-label">邮箱</div>
+              <div class="personal-value"><span>lin@hub-team.com</span><i class="fa-solid fa-chevron-right"></i></div>
+            </div>
+            <div class="personal-row" onclick="showToast('编辑手机号')">
+              <div class="personal-label">手机号</div>
+              <div class="personal-value muted"><span>138****6789</span><i class="fa-solid fa-chevron-right"></i></div>
+            </div>
+            <div class="personal-row" onclick="showToast('编辑个性签名')">
+              <div class="personal-label">个性签名</div>
+              <div class="personal-value muted"><span>让协作更清晰</span><i class="fa-solid fa-chevron-right"></i></div>
+            </div>
+          </div>
+          <div class="personal-card">
+            <div class="personal-row" onclick="showToast('查看企业信息')">
+              <div class="personal-label">企业</div>
+              <div class="personal-value"><span>Hub Team · 已认证</span><i class="fa-solid fa-chevron-right"></i></div>
+            </div>
+          </div>
+          <div class="personal-tip">个人信息仅用于团队协作、任务分配、消息通知和项目成员识别。</div>
+        </div>
+      </div>
+
+      <!-- Tab: 账号安全 -->
+      <div class="profile-panel" id="ptab-security">
+        <div class="section" style="margin-top:14px">
+          <div class="card" style="padding:16px">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:14px"><i class="fa-solid fa-key" style="color:var(--orange);margin-right:6px"></i>修改密码</h3>
+            <div class="form-group"><div class="form-label">当前密码</div><input class="form-field" type="password" placeholder="请输入当前密码"></div>
+            <div class="form-group"><div class="form-label">新密码</div><input class="form-field" type="password" placeholder="至少 8 位，包含字母和数字"></div>
+            <div class="form-group"><div class="form-label">确认新密码</div><input class="form-field" type="password" placeholder="再次输入新密码"></div>
+            <button class="btn primary" style="width:100%;margin-top:4px;font-size:13px" onclick="showToast('密码已更新')">更新密码</button>
+          </div>
+
+          <div class="card" style="padding:16px;margin-top:12px">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:14px"><i class="fa-solid fa-shield-halved" style="color:var(--green);margin-right:6px"></i>两步验证 (2FA)</h3>
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+              <div style="width:34px;height:34px;border-radius:10px;background:rgba(52,211,153,.12);display:flex;align-items:center;justify-content:center;color:var(--green)"><i class="fa-solid fa-mobile-screen"></i></div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Authenticator App</div><div style="font-size:11px;color:var(--t4);margin-top:2px">TOTP 应用生成验证码</div></div>
+              <span class="badge green">已开启</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0">
+              <div style="width:34px;height:34px;border-radius:10px;background:var(--blueS);display:flex;align-items:center;justify-content:center;color:var(--blue)"><i class="fa-solid fa-envelope"></i></div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">邮箱验证</div><div style="font-size:11px;color:var(--t4);margin-top:2px">邮箱接收一次性验证码</div></div>
+              <button class="action-btn default" style="font-size:11px;height:28px;padding:0 10px" onclick="showToast('已启用')">启用</button>
+            </div>
+          </div>
+
+          <div class="card" style="padding:16px;margin-top:12px">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:14px"><i class="fa-solid fa-desktop" style="color:var(--blue);margin-right:6px"></i>活跃会话</h3>
+            <div class="session-item">
+              <div class="session-icon" style="color:var(--primary);background:var(--primaryS)"><i class="fa-solid fa-laptop"></i></div>
+              <div class="session-info"><div class="session-name">macOS · Safari<span class="session-badge">当前</span></div><div class="session-meta">上海 · 最后活跃：刚刚</div></div>
+            </div>
+            <div class="session-item">
+              <div class="session-icon"><i class="fa-solid fa-mobile-screen"></i></div>
+              <div class="session-info"><div class="session-name">iPhone · Safari</div><div class="session-meta">上海 · 2 小时前</div></div>
+              <button class="session-terminate" onclick="showToast('已终止')">终止</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: 通知偏好 -->
+      <div class="profile-panel" id="ptab-notif">
+        <div class="section" style="margin-top:14px">
+          <div class="card" style="padding:16px">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:14px"><i class="fa-solid fa-bell" style="color:var(--purple);margin-right:6px"></i>通知渠道</h3>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">邮件通知</div><div class="toggle-desc">lin@hub-team.com</div></div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">站内消息</div><div class="toggle-desc">浏览器内实时推送</div></div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">飞书机器人</div><div class="toggle-desc">未绑定 · 点击配置</div></div>
+              <div class="toggle" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:16px;margin-top:12px">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:14px"><i class="fa-solid fa-filter" style="color:var(--orange);margin-right:6px"></i>事件订阅</h3>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">Issue 分配给我</div><div class="toggle-desc">当 Issue 被分配到你时通知</div></div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">Issue 状态变更</div><div class="toggle-desc">你参与的 Issue 状态变化时通知</div></div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">研发项评论</div><div class="toggle-desc">你的研发项收到新评论时通知</div></div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">发布通知</div><div class="toggle-desc">有新的版本发布时通知</div></div>
+              <div class="toggle" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: 操作日志 -->
+      <div class="profile-panel" id="ptab-activity">
+        <div class="section" style="margin-top:14px">
+          <div class="card" style="padding:16px">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:14px"><i class="fa-solid fa-clock-rotate-left" style="color:var(--t4);margin-right:6px"></i>操作日志</h3>
+            <div class="activity-item">
+              <div class="activity-dot" style="background:var(--primary)"></div>
+              <div class="activity-content"><div class="activity-text"><strong>创建了 Issue</strong> NGM-045 · 移动端适配方案</div><div class="activity-time">今天 10:32</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background:var(--green)"></div>
+              <div class="activity-content"><div class="activity-text"><strong>更新了研发项状态</strong> RDI-021 从进行中变更为已完成</div><div class="activity-time">今天 09:15</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background:var(--blue)"></div>
+              <div class="activity-content"><div class="activity-text"><strong>修改了共享配置</strong> api.base_url 的值</div><div class="activity-time">昨天 17:42</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background:var(--orange)"></div>
+              <div class="activity-content"><div class="activity-text"><strong>发布了文档</strong> 移动端视觉规范与组件说明 v2.1</div><div class="activity-time">昨天 15:20</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background:var(--red)"></div>
+              <div class="activity-content"><div class="activity-text"><strong>关闭了 Issue</strong> APP-087 · 底部安全区高度异常</div><div class="activity-time">3月20日 14:08</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background:var(--purple)"></div>
+              <div class="activity-content"><div class="activity-text"><strong>添加了用户</strong> 王晨 到项目 Hub Mobile</div><div class="activity-time">3月19日 16:45</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 搜索页 ========== -->
+    <section class="screen overlay" id="search">
+      <div class="bar">
+        <button class="back" onclick="closeSearch()"><i class="fa-solid fa-chevron-left"></i></button>
+        <div class="search-input-wrap"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" placeholder="搜索 Issue、研发项、项目、文档"></div>
+        <button class="cancel" onclick="closeSearch()">取消</button>
+      </div>
+      <div class="search-body">
+        <div class="section-head"><div class="section-title">最近搜索</div></div>
+        <div class="chips">
+          <button class="chip">NGM-042</button>
+          <button class="chip">Hub Mobile</button>
+          <button class="chip">移动端信息架构</button>
+          <button class="chip">阻塞事项</button>
+        </div>
+        <div class="section-head" style="margin-top:26px"><div class="section-title">最近访问</div></div>
+        <div class="card">
+          <div class="item" onclick="openDetail('issue')">
+            <div class="item-icon blue"><i class="fa-solid fa-bug"></i></div>
+            <div class="item-main"><div class="item-title">用户权限缓存未及时刷新</div><div class="item-desc">NGM-042 · Hub Mobile · 8 分钟前</div></div>
+          </div>
+          <div class="item" onclick="openProjectSpace()">
+            <div class="item-icon purple"><i class="fa-solid fa-diagram-project"></i></div>
+            <div class="item-main"><div class="item-title">Hub Mobile</div><div class="item-desc">项目空间 · 有 2 个阻塞事项</div></div>
+          </div>
+          <div class="item" onclick="openDetail('doc')">
+            <div class="item-icon green"><i class="fa-regular fa-file-lines"></i></div>
+            <div class="item-main"><div class="item-title">Hub v2 移动端信息架构优化说明</div><div class="item-desc">文档 · 产品设计 · 1 小时前</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 个人信息页 ========== -->
+    <section class="screen overlay" id="personalInfo">
+      <div class="bar">
+        <button class="back" onclick="closePersonalInfo()"><i class="fa-solid fa-chevron-left"></i></button>
+        <div class="bar-title">个人信息</div>
+        <div style="width:38px"></div>
+      </div>
+      <div class="personal-info-body">
+        <div class="personal-card">
+          <div class="personal-row avatar-row" onclick="showToast('更换头像')">
+            <div class="personal-label">头像</div>
+            <div class="personal-value"><div class="personal-avatar">林</div><i class="fa-solid fa-chevron-right"></i></div>
+          </div>
+          <div class="personal-row" onclick="showToast('编辑姓名')">
+            <div class="personal-label">姓名</div>
+            <div class="personal-value"><span>Lin</span><i class="fa-solid fa-chevron-right"></i></div>
+          </div>
+          <div class="personal-row" onclick="showToast('编辑别名')">
+            <div class="personal-label">别名</div>
+            <div class="personal-value muted"><span>输入别名</span><i class="fa-solid fa-chevron-right"></i></div>
+          </div>
+          <div class="personal-row" onclick="showToast('打开我的二维码')">
+            <div class="personal-label">我的二维码</div>
+            <div class="personal-value"><i class="fa-solid fa-qrcode qr-icon"></i><i class="fa-solid fa-chevron-right"></i></div>
+          </div>
+          <div class="personal-row" onclick="showToast('编辑个性签名')">
+            <div class="personal-label">个性签名</div>
+            <div class="personal-value muted"><span>添加一句工作状态</span><i class="fa-solid fa-chevron-right"></i></div>
+          </div>
+        </div>
+        <div class="personal-card">
+          <div class="personal-row" onclick="showToast('查看企业信息')">
+            <div class="personal-label">企业</div>
+            <div class="personal-value"><span>Hub Team · 未认证</span><i class="fa-solid fa-chevron-right"></i></div>
+          </div>
+        </div>
+        <div class="personal-tip">个人信息仅用于团队协作、任务分配、消息通知和项目成员识别。</div>
+      </div>
+    </section>
+
+    <!-- ========== 项目二级空间 (Enhanced) ========== -->
+    <section class="screen project-space" id="projectSpace">
+      <div class="bar">
+        <button class="back" onclick="closeProjectSpace()"><i class="fa-solid fa-chevron-left"></i></button>
+        <div class="bar-title">Hub Mobile<br><span style="font-size:11px;color:var(--t4);font-weight:500">项目空间</span></div>
+        <button class="icon" onclick="openSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
+      </div>
+
+      <!-- 概览 -->
+      <div class="ps-tab active" id="ps-overview">
+        <div class="ps-hero">
+          <div class="ps-main">
+            <div class="ps-logo">HM</div>
+            <div class="ps-copy">
+              <div class="ps-name">Hub Mobile</div>
+              <div class="ps-desc">移动端研发协作、事项流转与项目风险追踪。</div>
+              <div style="margin-top:10px"><span class="badge red">有风险 · 2 个阻塞</span></div>
+            </div>
+          </div>
+          <div class="ps-stats">
+            <div class="ps-stat"><strong>24</strong><span>Issue</span></div>
+            <div class="ps-stat"><strong>8</strong><span>研发项</span></div>
+            <div class="ps-stat"><strong>3</strong><span>配置项</span></div>
+            <div class="ps-stat"><strong>71%</strong><span>进度</span></div>
+          </div>
+          <!-- Members -->
+          <div class="members-row">
+            <div class="avatar xs" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">林</div>
+            <div class="avatar xs b">周</div>
+            <div class="avatar xs p">陈</div>
+            <div class="avatar xs g">王</div>
+            <div class="avatar xs o">李</div>
+            <span class="members-count">+7 名成员</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head"><div class="section-title">版本进度</div><div class="section-action">v2.3.0</div></div>
+          <div class="card progress-card">
+            <div class="progress-top"><div class="progress-label">移动端优化版本</div><div class="progress-value">71%</div></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:71%"></div></div>
+            <div class="mile"><span>需求确认</span><span>开发中</span><span>灰度前</span></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head"><div class="section-title">项目文档</div><div class="section-action">全部</div></div>
+          <div class="card">
+            <div class="item" onclick="openDetail('doc')">
+              <div class="item-icon green"><i class="fa-regular fa-file-lines"></i></div>
+              <div class="item-main"><div class="item-title">Hub v2 移动端信息架构优化说明</div><div class="item-desc">PRD · Lin 更新于 1 小时前</div></div>
+            </div>
+            <div class="item" onclick="showToast('打开设计规范')">
+              <div class="item-icon purple"><i class="fa-solid fa-pen-ruler"></i></div>
+              <div class="item-main"><div class="item-title">移动端视觉规范与组件说明</div><div class="item-desc">设计稿 · 陈晓 更新于 昨天</div></div>
+            </div>
+            <div class="item" onclick="showToast('打开技术方案')">
+              <div class="item-icon blue"><i class="fa-solid fa-code"></i></div>
+              <div class="item-main"><div class="item-title">移动端接口联调与鉴权方案</div><div class="item-desc">技术方案 · 周洋 更新于 4月17日</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head"><div class="section-title">关键风险</div><div class="section-action">全部</div></div>
+          <div class="card">
+            <div class="item" onclick="openDetail('issue')">
+              <div class="item-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">NGM-042</span><span class="badge red">阻塞</span></div>
+                <div class="item-title">权限缓存问题阻塞今日版本冻结</div>
+                <div class="item-desc">需要确认移动端缓存清理策略与服务端返回头是否一致。</div>
+                <div class="item-meta"><span>负责人 Lin</span><span>今天 18:00</span></div>
+              </div>
+            </div>
+            <div class="item" onclick="openDetail('rd')">
+              <div class="item-icon orange"><i class="fa-solid fa-circle-exclamation"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">RDI-018</span><span class="badge orange">待确认</span></div>
+                <div class="item-title">消息聚合策略需要确认交互边界</div>
+                <div class="item-desc">影响工作台与消息页的信息分工。</div>
+                <div class="item-meta"><span>负责人 陈晓</span><span>3 条评论</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Issue Tab -->
+      <div class="ps-tab" id="ps-issue">
+        <div class="filters">
+          <button class="filter active">全部</button><button class="filter">阻塞</button>
+          <button class="filter">进行中</button><button class="filter">待验证</button><button class="filter">已关闭</button>
+        </div>
+        <div class="section">
+          <div class="section-head"><div class="section-title">项目 Issue</div><div class="section-action">24 个</div></div>
+          <div class="card">
+            <div class="item" onclick="openDetail('issue')">
+              <div class="item-icon red"><i class="fa-solid fa-bug"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">NGM-042</span><span class="badge red">阻塞</span><span class="badge orange">P0</span></div>
+                <div class="item-title">用户权限缓存未及时刷新</div>
+                <div class="item-desc">配置变更后仍可访问旧资源，影响权限安全。</div>
+                <div class="item-meta"><span>Lin</span><span>今天 18:00</span><span>5 条评论</span></div>
+              </div>
+            </div>
+            <div class="item" onclick="openDetail('issue')">
+              <div class="item-icon blue"><i class="fa-solid fa-bug"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">API-119</span><span class="badge blue">进行中</span><span class="badge orange">P1</span></div>
+                <div class="item-title">开放接口鉴权失败时错误码不一致</div>
+                <div class="item-desc">移动端无法统一展示错误反馈。</div>
+                <div class="item-meta"><span>周洋</span><span>明天 12:00</span></div>
+              </div>
+            </div>
+            <div class="item" onclick="openDetail('issue')">
+              <div class="item-icon green"><i class="fa-solid fa-check"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">APP-087</span><span class="badge green">已解决</span><span class="badge blue">P2</span></div>
+                <div class="item-title">部分机型底部安全区高度异常</div>
+                <div class="item-desc">已修复，等待灰度验证。</div>
+                <div class="item-meta"><span>王晨</span><span>待验证</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 研发项 Tab -->
+      <div class="ps-tab" id="ps-rd">
+        <div class="filters">
+          <button class="filter active">全部</button><button class="filter">需求评审</button>
+          <button class="filter">开发中</button><button class="filter">联调中</button><button class="filter">已验收</button>
+        </div>
+        <div class="section">
+          <div class="section-head"><div class="section-title">研发项</div><div class="section-action">8 个</div></div>
+          <div class="card">
+            <div class="item" onclick="openDetail('rd')">
+              <div class="item-icon purple"><i class="fa-solid fa-layer-group"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">RDI-018</span><span class="badge orange">待评审</span></div>
+                <div class="item-title">移动端消息聚合策略调整</div>
+                <div class="item-desc">明确工作台、消息页、详情页的协作提醒边界。</div>
+                <div class="item-meta"><span>陈晓</span><span>进度 35%</span><span>关联 3 个 Issue</span></div>
+              </div>
+            </div>
+            <div class="item" onclick="openDetail('rd')">
+              <div class="item-icon blue"><i class="fa-solid fa-code-branch"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">RDI-021</span><span class="badge blue">开发中</span></div>
+                <div class="item-title">项目二级空间移动端交互优化</div>
+                <div class="item-desc">支持项目下 Issue、研发项、配置的快速切换。</div>
+                <div class="item-meta"><span>Lin</span><span>进度 68%</span><span>v2.3.0</span></div>
+              </div>
+            </div>
+            <div class="item" onclick="openDetail('rd')">
+              <div class="item-icon green"><i class="fa-solid fa-flask"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">RDI-025</span><span class="badge green">已验收</span></div>
+                <div class="item-title">启动页与个人信息保护指引接入</div>
+                <div class="item-desc">已完成首次启动流程与隐私授权弹窗。</div>
+                <div class="item-meta"><span>王晨</span><span>已完成</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 配置 Tab -->
+      <div class="ps-tab" id="ps-config">
+        <div class="section">
+          <div class="section-head"><div class="section-title">项目配置</div><div class="section-action">管理员</div></div>
+          <div class="card">
+            <div class="config"><div class="config-icon"><i class="fa-solid fa-users"></i></div><div class="config-main"><div class="config-title">项目成员</div><div class="config-desc">12 名成员，3 名管理员</div></div><i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i></div>
+            <div class="config"><div class="config-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></div><div class="config-main"><div class="config-title">Issue 流程</div><div class="config-desc">新建 → 处理中 → 待验证 → 已关闭</div></div><i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i></div>
+            <div class="config"><div class="config-icon"><i class="fa-solid fa-diagram-project"></i></div><div class="config-main"><div class="config-title">研发项流程</div><div class="config-desc">需求池 → 评审中 → 开发中 → 已验收</div></div><i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-head"><div class="section-title">协作设置</div></div>
+          <div class="card">
+            <div class="config"><div class="config-icon"><i class="fa-solid fa-bell"></i></div><div class="config-main"><div class="config-title">通知规则</div><div class="config-desc">阻塞、提到我、状态变更时通知</div></div><i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i></div>
+            <div class="config"><div class="config-icon"><i class="fa-solid fa-shield-halved"></i></div><div class="config-main"><div class="config-title">权限控制</div><div class="config-desc">仅项目成员可查看与编辑</div></div><i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i></div>
+            <div class="config"><div class="config-icon"><i class="fa-solid fa-plug"></i></div><div class="config-main"><div class="config-title">集成配置</div><div class="config-desc">代码仓库、流水线、Webhook</div></div><i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="fab" onclick="showToast('新建项目事项')"><i class="fa-solid fa-plus"></i></button>
+      <nav class="ps-nav">
+        <button class="active" onclick="switchProjectTab('overview',this)"><i class="fa-solid fa-chart-simple"></i><span>概览</span></button>
+        <button onclick="switchProjectTab('issue',this)"><i class="fa-solid fa-bug"></i><span>Issue</span></button>
+        <button onclick="switchProjectTab('rd',this)"><i class="fa-solid fa-layer-group"></i><span>研发项</span></button>
+        <button onclick="switchProjectTab('config',this)"><i class="fa-solid fa-sliders"></i><span>配置</span></button>
+      </nav>
+    </section>
+
+    <!-- ========== 详情页 (Enhanced with State Flow, Actions, Comments) ========== -->
+    <section class="screen overlay" id="detail">
+      <div class="bar">
+        <button class="back" onclick="closeDetail()"><i class="fa-solid fa-chevron-left"></i></button>
+        <div class="bar-title">事项详情</div>
+        <button class="icon" onclick="showToast('更多操作')"><i class="fa-solid fa-ellipsis"></i></button>
+      </div>
+
+      <div style="overflow-y:auto;flex:1;padding-bottom:160px">
+        <!-- Header -->
+        <div class="detail-head">
+          <div class="detail-id" id="detailId">NGM-042</div>
+          <div class="detail-title" id="detailTitle">用户权限缓存未及时刷新，导致配置变更后仍可访问旧资源</div>
+          <div class="detail-tags">
+            <span class="type issue" id="detailType">Issue</span>
+            <span class="badge red" id="detailStatus">阻塞</span>
+            <span class="badge orange">P0</span>
+          </div>
+        </div>
+
+        <!-- State Flow -->
+        <div class="state-flow" id="detailStateFlow">
+          <span class="state-step done">待处理</span>
+          <i class="fa-solid fa-chevron-right state-arrow"></i>
+          <span class="state-step active">进行中</span>
+          <i class="fa-solid fa-chevron-right state-arrow"></i>
+          <span class="state-step pending">已解决</span>
+          <i class="fa-solid fa-chevron-right state-arrow"></i>
+          <span class="state-step pending">已验证</span>
+          <i class="fa-solid fa-chevron-right state-arrow"></i>
+          <span class="state-step pending">已关闭</span>
+        </div>
+
+        <!-- Actions -->
+        <div class="detail-actions">
+          <button class="action-btn success" onclick="showToast('已流转为已解决')"><i class="fa-solid fa-check"></i> 解决</button>
+          <button class="action-btn default" onclick="showToast('选择指派人')"><i class="fa-solid fa-user-pen"></i> 重新指派</button>
+          <button class="action-btn default" onclick="showToast('已挂起')"><i class="fa-solid fa-pause"></i> 挂起</button>
+          <button class="action-btn danger" onclick="showToast('已关闭')"><i class="fa-solid fa-times"></i> 关闭</button>
+        </div>
+
+        <!-- Properties -->
+        <div class="detail-block">
+          <h3><i class="fa-solid fa-circle-info"></i> 基础信息</h3>
+          <div class="prop"><span>负责人</span><strong>Lin</strong></div>
+          <div class="prop"><span>项目</span><strong>Hub Mobile</strong></div>
+          <div class="prop"><span>截止时间</span><strong>今天 18:00</strong></div>
+          <div class="prop"><span>优先级</span><strong>P0 · 阻塞发布</strong></div>
+        </div>
+
+        <!-- Description -->
+        <div class="detail-block">
+          <h3><i class="fa-solid fa-align-left"></i> 描述</h3>
+          <div class="item-desc" style="font-size:13px;color:var(--t3);line-height:1.65">
+            在权限配置变更后，移动端仍会读取旧缓存，导致部分用户可以继续访问已撤销的资源。需要确认缓存失效策略与服务端返回头是否一致。
+          </div>
+        </div>
+
+        <!-- Collaborators -->
+        <div class="detail-block">
+          <h3><i class="fa-solid fa-users"></i> 协作人 <span style="font-size:11px;color:var(--t4);font-weight:500;margin-left:4px">3 人</span></h3>
+          <div class="collab-chips">
+            <div class="collab-chip"><div class="avatar xs b">周</div><span style="font-size:12px">周洋</span></div>
+            <div class="collab-chip"><div class="avatar xs p">陈</div><span style="font-size:12px">陈晓</span></div>
+            <div class="collab-chip"><div class="avatar xs g">王</div><span style="font-size:12px">王晨</span></div>
+          </div>
+        </div>
+
+        <!-- Attachments -->
+        <div class="detail-block">
+          <h3><i class="fa-solid fa-paperclip"></i> 附件 <span style="font-size:11px;color:var(--t4);font-weight:500;margin-left:4px">2 个</span></h3>
+          <div class="attach-item">
+            <div class="attach-icon img"><i class="fa-solid fa-image"></i></div>
+            <div class="attach-name">error-screenshot.png</div>
+            <span style="font-size:11px;color:var(--t4)">1.2 MB</span>
+          </div>
+          <div class="attach-item">
+            <div class="attach-icon log"><i class="fa-solid fa-file-lines"></i></div>
+            <div class="attach-name">server-error.log</div>
+            <span style="font-size:11px;color:var(--t4)">48 KB</span>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="detail-block">
+          <h3><i class="fa-solid fa-clock-rotate-left"></i> 协作记录</h3>
+          <div class="item" style="padding:10px 0">
+            <div class="avatar s b">周</div>
+            <div class="item-main">
+              <div class="item-title">周洋</div>
+              <div class="item-desc">我这边已经补充了复现路径，麻烦确认移动端是否需要主动清理本地缓存。</div>
+              <div class="item-meta"><span>8 分钟前</span></div>
+            </div>
+          </div>
+          <div class="item" style="padding:10px 0">
+            <div class="avatar s p">陈</div>
+            <div class="item-main">
+              <div class="item-title">陈晓</div>
+              <div class="item-desc">建议这次不要只做兜底弹窗，需要在登录态刷新时统一处理。</div>
+              <div class="item-meta"><span>24 分钟前</span></div>
+            </div>
+          </div>
+          <!-- System log -->
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:11px;color:var(--t4)">
+            <i class="fa-solid fa-play" style="color:var(--blue);font-size:10px"></i>
+            <span><strong style="color:var(--t2)">周洋</strong> 开始处理</span>
+            <span style="margin-left:auto">3 小时前</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:11px;color:var(--t4)">
+            <i class="fa-solid fa-user-plus" style="color:var(--primary);font-size:10px"></i>
+            <span><strong style="color:var(--t2)">Lin</strong> 指派给 <strong style="color:var(--t2)">周洋</strong></span>
+            <span style="margin-left:auto">4 小时前</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comment Input (fixed at bottom) -->
+      <div class="comment-area" style="position:absolute;bottom:0;left:0;right:0">
+        <div class="comment-row">
+          <div class="comment-avatar"><div class="avatar xs" style="width:28px;height:28px;border-radius:10px;font-size:10px;background:linear-gradient(135deg,#f59e0b,#ef4444)">林</div></div>
+          <div class="comment-box">
+            <textarea class="comment-textarea" placeholder="添加评论… 输入 @ 提及成员" rows="1"></textarea>
+            <div class="comment-toolbar">
+              <div class="comment-tools">
+                <button class="comment-tool" onclick="showToast('添加附件')"><i class="fa-solid fa-paperclip"></i></button>
+                <button class="comment-tool" onclick="showToast('@提及成员')"><i class="fa-solid fa-at"></i></button>
+              </div>
+              <button class="comment-send" onclick="showToast('评论已发送')">发送</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 主底部导航 ========== -->
+    <nav class="nav">
+      <button class="active" data-tab="home" onclick="switchTab('home')"><i class="fa-solid fa-house"></i><span>工作台</span></button>
+      <button data-tab="todo" onclick="switchTab('todo')"><i class="fa-solid fa-list-check"></i><span>待办</span><em class="dot">12</em></button>
+      <button data-tab="project" onclick="switchTab('project')"><i class="fa-solid fa-diagram-project"></i><span>项目</span></button>
+      <button data-tab="message" onclick="switchTab('message')"><i class="fa-solid fa-inbox"></i><span>消息</span><em class="dot">3</em></button>
+      <button data-tab="profile" onclick="switchTab('profile')"><i class="fa-regular fa-user"></i><span>我的</span></button>
+    </nav>
+
+    <div class="toast" id="toast">已完成</div>
+  </main>
+</div>
+
+<script>
+const screens = ['home','todo','project','message','profile'].reduce((m,id) => { m[id] = document.getElementById(id); return m; }, {});
+const navBtns = document.querySelectorAll('.nav button');
+const detail = document.getElementById('detail');
+const search = document.getElementById('search');
+const projectSpace = document.getElementById('projectSpace');
+const personalInfo = document.getElementById('personalInfo');
+const toast = document.getElementById('toast');
+
+function startLaunch() { document.getElementById('privacy').classList.add('active'); }
+function agreePrivacy() { document.getElementById('privacy').classList.remove('active'); document.getElementById('launch').classList.add('hidden'); showToast('欢迎使用 Hub'); }
+
+function switchTab(tab) {
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens[tab].classList.add('active');
+  navBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  detail.classList.remove('active'); search.classList.remove('active');
+  projectSpace.classList.remove('active'); personalInfo.classList.remove('active');
+}
+
+function activeBtn(btn) { btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); showToast('筛选已更新'); }
+
+function openSearch() { search.classList.add('active'); setTimeout(() => document.getElementById('searchInput')?.focus(), 120); }
+function closeSearch() { search.classList.remove('active'); }
+function openPersonalInfo() { personalInfo.classList.add('active'); }
+function closePersonalInfo() { personalInfo.classList.remove('active'); }
+function openProjectSpace() { search.classList.remove('active'); detail.classList.remove('active'); personalInfo.classList.remove('active'); projectSpace.classList.add('active'); }
+function closeProjectSpace() { projectSpace.classList.remove('active'); }
+
+function switchProjectTab(tab, btn) {
+  ['overview','issue','rd','config'].forEach(id => document.getElementById('ps-'+id).classList.remove('active'));
+  document.getElementById('ps-'+tab).classList.add('active');
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function switchProfileTab(tab, btn) {
+  document.querySelectorAll('.profile-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.profile-tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('ptab-'+tab).classList.add('active');
+  btn.classList.add('active');
+}
+
+function openDetail(type) {
+  const data = {
+    issue: { id:'NGM-042', title:'用户权限缓存未及时刷新，导致配置变更后仍可访问旧资源', type:'Issue', typeClass:'type issue', status:'阻塞', statusClass:'badge red' },
+    rd: { id:'RDI-018', title:'移动端消息聚合策略调整，需要确认交互边界', type:'RD', typeClass:'type rd', status:'待评审', statusClass:'badge orange' },
+    doc: { id:'DOC-227', title:'Hub v2 移动端信息架构优化说明', type:'Doc', typeClass:'type doc', status:'需确认', statusClass:'badge blue' }
+  };
+  const c = data[type] || data.issue;
+  document.getElementById('detailId').textContent = c.id;
+  document.getElementById('detailTitle').textContent = c.title;
+  const dt = document.getElementById('detailType'); dt.textContent = c.type; dt.className = c.typeClass;
+  const ds = document.getElementById('detailStatus'); ds.textContent = c.status; ds.className = c.statusClass;
+  search.classList.remove('active'); personalInfo.classList.remove('active'); detail.classList.add('active');
+}
+function closeDetail() { detail.classList.remove('active'); }
+
+let toastTimer = null;
+function showToast(text) { toast.textContent = text; toast.classList.add('active'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('active'), 1600); }
+
+document.addEventListener('keydown', e => {
+  if ((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k') { e.preventDefault(); openSearch(); }
+  if (e.key==='Escape') { search.classList.remove('active'); detail.classList.remove('active'); projectSpace.classList.remove('active'); personalInfo.classList.remove('active'); }
+});
+</script>
+</body>
+</html>

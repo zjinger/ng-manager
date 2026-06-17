@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hub V2 Mobile Design Final V2</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b1020;--page:#0f172a;--card:rgba(255,255,255,.085);--card2:rgba(255,255,255,.12);
+  --muted:rgba(255,255,255,.055);--border:rgba(255,255,255,.1);--border2:rgba(255,255,255,.16);
+  --t1:#f8fafc;--t2:#cbd5e1;--t3:#94a3b8;--t4:#64748b;
+  --primary:#7c8cff;--primary2:#6366f1;
+  --blue:#38bdf8;--green:#34d399;--orange:#fbbf24;--red:#fb7185;--purple:#a78bfa;
+  --blueS:rgba(56,189,248,.14);--greenS:rgba(52,211,153,.14);--orangeS:rgba(251,191,36,.16);
+  --redS:rgba(251,113,133,.16);--purpleS:rgba(167,139,250,.16);--primaryS:rgba(124,140,255,.16);
+}
+body{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--t1);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;
+  background:radial-gradient(circle at top left,rgba(99,102,241,.22),transparent 32%),#080b14;
+}
+.phone{width:393px;height:852px;border-radius:46px;overflow:hidden;background:var(--page);position:relative;box-shadow:0 0 0 10px #111,0 0 0 12px #2a2a2a,0 36px 90px rgba(0,0,0,.55)}
+.status{height:54px;padding:0 28px 7px;display:flex;align-items:flex-end;justify-content:space-between;background:#0b0c0f;font-size:14px;font-weight:700;position:relative;z-index:200}
+.status-icons{display:flex;gap:5px;font-size:12px}
+.app{position:absolute;inset:54px 0 0;overflow:hidden;background:linear-gradient(180deg,rgba(15,23,42,.96),#0b1020 48%,#0b1020)}
+.screen{position:absolute;inset:0;overflow-y:auto;padding-bottom:108px;opacity:0;transform:translateX(24px);pointer-events:none;transition:.26s ease}
+.screen.active{opacity:1;transform:translateX(0);pointer-events:auto;z-index:2}
+.screen::-webkit-scrollbar{display:none}
+button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.icon{width:38px;height:38px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.06);color:var(--t2);display:flex;align-items:center;justify-content:center}
+.top{padding:18px 20px 10px}
+.head{display:flex;align-items:center;gap:12px}
+.avatar{width:38px;height:38px;border-radius:15px;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;flex-shrink:0}
+.avatar.s{width:28px;height:28px;border-radius:11px;font-size:11px}
+.avatar.b{background:linear-gradient(135deg,#38bdf8,#6366f1)}
+.avatar.g{background:linear-gradient(135deg,#34d399,#059669)}
+.avatar.p{background:linear-gradient(135deg,#a78bfa,#7c3aed)}
+.head-copy{flex:1;min-width:0}
+.head-copy h1{font-size:24px;line-height:1.18;font-weight:780;letter-spacing:-.5px}
+.head-copy p{margin-top:4px;color:var(--t3);font-size:12px}
+.section{padding:0 20px;margin-top:18px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-title{font-size:15px;font-weight:740}
+.section-action{color:var(--primary);font-size:12px;font-weight:650}
+.card{border-radius:20px;border:1px solid var(--border);background:var(--card);overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.16)}
+.badge{height:22px;padding:0 8px;border-radius:999px;display:inline-flex;align-items:center;font-size:11px;font-weight:740;white-space:nowrap}
+.badge.red{color:var(--red);background:var(--redS)}
+.badge.blue{color:var(--blue);background:var(--blueS)}
+.badge.green{color:var(--green);background:var(--greenS)}
+.badge.orange{color:var(--orange);background:var(--orangeS)}
+.badge.purple{color:var(--purple);background:var(--purpleS)}
+.code{font-size:11px;color:var(--t4);font-family:"SF Mono",Consolas,monospace}
+.type{height:20px;padding:0 7px;border-radius:7px;display:inline-flex;align-items:center;font-size:10px;font-weight:800}
+.type.issue{color:var(--blue);background:var(--blueS)}
+.type.rd{color:var(--purple);background:var(--purpleS)}
+.type.doc{color:var(--green);background:var(--greenS)}
+.item{padding:14px;display:flex;gap:12px;border-bottom:1px solid var(--border)}
+.item:last-child{border-bottom:none}
+.item:active{background:rgba(255,255,255,.045)}
+.item-icon{width:36px;height:36px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.item-icon.red{color:var(--red);background:var(--redS)}
+.item-icon.blue{color:var(--blue);background:var(--blueS)}
+.item-icon.green{color:var(--green);background:var(--greenS)}
+.item-icon.orange{color:var(--orange);background:var(--orangeS)}
+.item-icon.purple{color:var(--purple);background:var(--purpleS)}
+.item-main{flex:1;min-width:0}
+.item-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.item-title{margin-top:5px;font-size:14px;line-height:1.42;font-weight:650}
+.item-desc{margin-top:4px;color:var(--t3);font-size:12px;line-height:1.45}
+.item-meta{margin-top:8px;color:var(--t4);font-size:11px;display:flex;gap:10px;flex-wrap:wrap}
+
+/* 启动页 */
+.launch{position:absolute;inset:0;z-index:120;background:#141516;display:flex;flex-direction:column;padding:0 24px 34px;transition:.28s ease}
+.launch.hidden{opacity:0;visibility:hidden;pointer-events:none;transform:scale(.985)}
+.launch-center{flex:1;display:flex;flex-direction:column;justify-content:center;padding-bottom:48px}
+.launch-illu{width:250px;height:250px;margin:0 auto 36px;position:relative;opacity:.82}
+.house{position:absolute;left:50px;bottom:46px;width:160px;height:105px;border:1.5px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1)}
+.house:before{content:"";position:absolute;left:-1px;top:-72px;width:160px;height:110px;background:linear-gradient(135deg,transparent 49%,rgba(255,255,255,.22) 50%,transparent 51%),linear-gradient(225deg,transparent 49%,rgba(255,255,255,.22) 50%,transparent 51%);clip-path:polygon(50% 0,100% 68%,100% 100%,0 100%,0 68%)}
+.door{position:absolute;left:40px;bottom:18px;width:38px;height:66px;background:rgba(255,255,255,.72);box-shadow:inset 3px 0 0 rgba(66,133,244,.55)}
+.person{position:absolute;right:68px;bottom:78px;width:54px;height:66px}
+.person:before{content:"";position:absolute;top:0;left:17px;width:18px;height:18px;background:#3b82f6;border-radius:50%;z-index:2}
+.person:after{content:"";position:absolute;top:25px;left:0;width:54px;height:64px;background:rgba(255,255,255,.72);border-radius:28px 28px 18px 18px}
+.cloud{position:absolute;right:42px;top:48px;width:130px;height:34px;background:rgba(255,255,255,.09);border-radius:50px}
+.launch h1{text-align:center;font-size:28px;font-weight:500;letter-spacing:1px;color:rgba(255,255,255,.88)}
+.launch p{margin-top:18px;text-align:center;font-size:16px;letter-spacing:1.5px;color:rgba(255,255,255,.46)}
+.launch-btn{height:56px;border:none;border-radius:7px;background:#3b73e6;color:#fff;font-size:17px;letter-spacing:2px}
+
+/* 个人信息保护指引 */
+.privacy{position:absolute;inset:0;z-index:130;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:0 28px;opacity:0;visibility:hidden;transition:.24s ease}
+.privacy.active{opacity:1;visibility:visible}
+.privacy-card{width:100%;border-radius:8px;background:#272829;padding:28px 22px 26px;color:rgba(255,255,255,.86);box-shadow:0 24px 80px rgba(0,0,0,.48)}
+.privacy h2{text-align:center;font-size:17px;font-weight:500;letter-spacing:1px;margin-bottom:22px}
+.privacy-content{max-height:330px;overflow:auto;color:rgba(255,255,255,.82);font-size:16px;line-height:1.72;letter-spacing:1px}
+.privacy-content::-webkit-scrollbar{width:0}
+.privacy-links{margin-top:28px;text-align:center;font-size:14px;color:rgba(255,255,255,.72)}
+.privacy-links a{color:#3b73e6;text-decoration:none}
+.privacy-btn{margin-top:18px;width:100%;height:48px;border:none;border-radius:7px;background:#3b73e6;color:#fff;font-size:17px;letter-spacing:2px}
+.privacy-no{margin-top:22px;text-align:center;color:rgba(255,255,255,.36);font-size:17px;letter-spacing:2px}
+
+/* 工作台 */
+.hero{margin:18px 20px 0;padding:18px;border-radius:24px;border:1px solid rgba(124,140,255,.22);background:linear-gradient(135deg,rgba(99,102,241,.28),rgba(14,165,233,.12)),rgba(255,255,255,.06);box-shadow:0 16px 40px rgba(0,0,0,.22)}
+.hero-meta{color:rgba(248,250,252,.72);font-size:12px}
+.hero-title{margin-top:6px;font-size:22px;line-height:1.28;font-weight:800;letter-spacing:-.6px}
+.hero-grid{margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.hero-stat{border-radius:16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);padding:11px 9px}
+.hero-stat strong{display:block;font-size:20px}
+.hero-stat span{display:block;margin-top:6px;color:rgba(248,250,252,.68);font-size:11px}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.quick button{border-radius:18px;background:var(--card);border:1px solid var(--border);padding:12px 6px;color:var(--t2)}
+.quick i{display:inline-flex;width:32px;height:32px;border-radius:12px;align-items:center;justify-content:center;margin-bottom:8px;font-size:14px}
+.quick button:nth-child(1) i{color:var(--blue);background:var(--blueS)}
+.quick button:nth-child(2) i{color:var(--orange);background:var(--orangeS)}
+.quick button:nth-child(3) i{color:var(--purple);background:var(--purpleS)}
+.quick button:nth-child(4) i{color:var(--green);background:var(--greenS)}
+.quick span{display:block;font-size:11px;font-weight:650}
+
+/* 筛选 */
+.segment{margin:14px 20px 0;padding:4px;display:flex;gap:3px;border-radius:15px;background:var(--muted);border:1px solid var(--border)}
+.segment button{flex:1;height:32px;border:none;border-radius:11px;background:transparent;color:var(--t3);font-size:12px;font-weight:700}
+.segment button.active{background:rgba(255,255,255,.12);color:var(--t1)}
+
+/* 项目列表 */
+.project-card{padding:15px;cursor:pointer}
+.project-card+.project-card{margin-top:10px}
+.project-head{display:flex;align-items:center;gap:12px}
+.project-logo{width:42px;height:42px;border-radius:15px;background:linear-gradient(135deg,#38bdf8,#6366f1);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.project-info{flex:1;min-width:0}
+.project-name{font-size:15px;font-weight:740}
+.project-key{margin-top:3px;color:var(--t3);font-size:11px;font-family:"SF Mono",Consolas,monospace}
+.health{height:24px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:740;display:inline-flex;align-items:center}
+.health.bad{color:var(--red);background:var(--redS)}
+.health.warn{color:var(--orange);background:var(--orangeS)}
+.health.ok{color:var(--green);background:var(--greenS)}
+.project-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px}
+.project-stat{border-radius:13px;background:var(--muted);border:1px solid var(--border);padding:9px}
+.project-stat strong{display:block;font-size:16px}
+.project-stat span{display:block;margin-top:3px;font-size:10px;color:var(--t3)}
+
+/* 我的 */
+.profile-entry{margin:18px 20px 0;padding:18px;border-radius:24px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:14px;cursor:pointer}
+.profile-entry:active{background:var(--card2)}
+.profile-entry-main{flex:1;min-width:0}
+.profile-entry-name{font-size:18px;font-weight:760;color:var(--t1)}
+.profile-entry-desc{margin-top:4px;color:var(--t3);font-size:12px}
+.profile-entry i{color:var(--t4);font-size:13px}
+
+/* 二级页通用 */
+.overlay{z-index:60;background:var(--page);transform:translateX(100%);padding-bottom:0}
+.overlay.active{opacity:1;transform:translateX(0);pointer-events:auto}
+.bar{height:58px;padding:8px 14px;display:flex;align-items:center;gap:10px;background:rgba(15,23,42,.96);border-bottom:1px solid var(--border);backdrop-filter:blur(18px)}
+.back{width:34px;height:34px;border:none;border-radius:13px;background:var(--muted);color:var(--t1)}
+.bar-title{flex:1;text-align:center;font-size:15px;font-weight:740}
+
+/* 搜索 */
+.search-input{flex:1;height:40px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid var(--border);display:flex;align-items:center;gap:9px;padding:0 12px;color:var(--t3)}
+.search-input input{flex:1;border:none;outline:none;background:transparent;color:var(--t1);font-size:14px}
+.cancel{border:none;background:transparent;color:var(--primary);font-size:14px;font-weight:650}
+.search-body{padding:18px 20px 110px}
+.chips{display:flex;flex-wrap:wrap;gap:9px}
+.chip{height:32px;padding:0 12px;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--t2);font-size:12px}
+
+/* 项目二级空间 */
+.project-space{z-index:55;background:var(--page);transform:translateX(100%);padding-bottom:88px}
+.project-space.active{opacity:1;transform:translateX(0);pointer-events:auto}
+.ps-hero{margin:16px 20px 0;padding:18px;border-radius:24px;border:1px solid rgba(124,140,255,.22);background:linear-gradient(135deg,rgba(99,102,241,.25),rgba(14,165,233,.11)),rgba(255,255,255,.06);box-shadow:0 16px 40px rgba(0,0,0,.22)}
+.ps-main{display:flex;gap:14px;align-items:center}
+.ps-logo{width:52px;height:52px;border-radius:18px;background:linear-gradient(135deg,#38bdf8,#6366f1);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.ps-copy{flex:1}
+.ps-name{font-size:20px;font-weight:800}
+.ps-desc{margin-top:5px;color:var(--t3);font-size:12px;line-height:1.4}
+.ps-stats{margin-top:18px;display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.ps-stat{border-radius:15px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);padding:11px 8px}
+.ps-stat strong{display:block;font-size:18px}
+.ps-stat span{display:block;margin-top:5px;color:var(--t3);font-size:10px}
+.progress-card{padding:15px}
+.progress-top{display:flex;justify-content:space-between}
+.progress-label{font-size:14px;font-weight:650}
+.progress-value{color:var(--green);font-size:18px;font-weight:800}
+.progress-bar{margin-top:12px;height:7px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.progress-fill{height:100%;width:71%;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--blue))}
+.mile{margin-top:12px;display:flex;justify-content:space-between;color:var(--t3);font-size:12px}
+.filters{display:flex;gap:8px;overflow-x:auto;padding:14px 20px 0}
+.filters::-webkit-scrollbar{display:none}
+.filter{flex-shrink:0;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--border);background:var(--muted);color:var(--t3);font-size:12px;font-weight:650}
+.filter.active{color:var(--t1);background:var(--primaryS);border-color:rgba(124,140,255,.36)}
+.ps-tab{display:none}
+.ps-tab.active{display:block}
+.ps-nav{position:absolute;left:0;right:0;bottom:0;height:88px;padding:8px 14px 22px;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(11,16,32,.9);border-top:1px solid var(--border);backdrop-filter:blur(22px);z-index:30}
+.ps-nav button{border:none;background:transparent;color:var(--t4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border-radius:16px}
+.ps-nav i{font-size:19px}
+.ps-nav span{font-size:10px;font-weight:650}
+.ps-nav button.active{color:var(--t1);background:var(--primaryS)}
+.ps-nav button.active i{color:var(--primary)}
+.fab{position:absolute;right:22px;bottom:108px;width:54px;height:54px;border-radius:999px;border:none;background:#2563eb;color:#fff;font-size:22px;box-shadow:0 14px 32px rgba(37,99,235,.35);z-index:36}
+
+/* 配置 */
+.config{height:56px;padding:0 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
+.config:last-child{border-bottom:none}
+.config-icon{width:34px;height:34px;border-radius:13px;display:flex;align-items:center;justify-content:center;color:var(--primary);background:var(--primaryS)}
+.config-main{flex:1}
+.config-title{font-size:14px;font-weight:650}
+.config-desc{margin-top:3px;color:var(--t3);font-size:11px}
+
+/* 个人信息页 */
+.personal-info-body{padding:18px 20px 110px}
+.personal-card{border-radius:22px;border:1px solid var(--border);background:var(--card);overflow:hidden;margin-bottom:18px}
+.personal-row{min-height:58px;padding:0 16px;display:flex;align-items:center;border-bottom:1px solid var(--border);cursor:pointer}
+.personal-row:last-child{border-bottom:none}
+.personal-row:active{background:rgba(255,255,255,.045)}
+.personal-row.avatar-row{min-height:82px}
+.personal-label{flex-shrink:0;color:var(--t1);font-size:15px;font-weight:640}
+.personal-value{margin-left:auto;display:flex;align-items:center;gap:12px;color:var(--t2);font-size:14px}
+.personal-value.muted{color:var(--t4)}
+.personal-value.enterprise{color:var(--t3);max-width:210px}
+.personal-value.enterprise span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.personal-value i.fa-chevron-right{color:var(--t4);font-size:13px}
+.personal-avatar{width:54px;height:54px;border-radius:22px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800}
+.qr-icon{color:var(--t3);font-size:20px}
+.personal-tip{margin:10px 4px 0;color:var(--t4);font-size:12px;line-height:1.6}
+
+/* 详情 */
+.detail-head{padding:18px 20px;border-bottom:1px solid var(--border)}
+.detail-id{color:var(--t4);font-size:12px;font-family:"SF Mono",Consolas,monospace}
+.detail-title{margin-top:8px;font-size:20px;line-height:1.38;font-weight:780}
+.detail-tags{margin-top:12px;display:flex;gap:7px;flex-wrap:wrap}
+.detail-block{padding:16px 20px;border-bottom:1px solid var(--border)}
+.detail-block h3{font-size:14px;margin-bottom:12px}
+.prop{display:flex;padding:9px 0;font-size:13px}
+.prop span{width:82px;color:var(--t3)}
+.prop strong{flex:1;color:var(--t2);font-weight:650}
+.detail-bottom{position:sticky;bottom:0;display:flex;gap:9px;padding:12px 20px 24px;background:rgba(15,23,42,.9);border-top:1px solid var(--border);backdrop-filter:blur(20px)}
+.btn{height:42px;border:none;border-radius:15px;padding:0 15px;font-size:14px;font-weight:740}
+.btn.primary{flex:1;background:var(--primary2);color:#fff}
+.btn.ghost{background:var(--card);color:var(--t2);border:1px solid var(--border)}
+
+/* 底部导航 */
+.nav{position:absolute;left:0;right:0;bottom:0;height:88px;padding:8px 16px 22px;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:rgba(11,16,32,.88);border-top:1px solid var(--border);backdrop-filter:blur(22px);z-index:30}
+.nav button{position:relative;border:none;background:transparent;color:var(--t4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:16px}
+.nav i{font-size:19px}
+.nav span{font-size:10px;font-weight:650}
+.nav button.active{color:var(--t1);background:var(--primaryS)}
+.nav button.active i{color:var(--primary)}
+.dot{position:absolute;top:7px;right:17px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--red);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center}
+
+/* Toast */
+.toast{position:absolute;left:50%;bottom:112px;transform:translateX(-50%) translateY(20px);min-width:140px;height:40px;padding:0 15px;border-radius:999px;background:rgba(15,23,42,.96);border:1px solid var(--border2);color:var(--t1);display:flex;align-items:center;justify-content:center;font-size:13px;opacity:0;pointer-events:none;transition:.24s ease;z-index:180}
+.toast.active{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:480px){body{display:block}.phone{width:100vw;height:100vh;border-radius:0;box-shadow:none}}
+</style>
+</head>
+
+<body>
+<div class="phone">
+  <div class="status">
+    <div>13:02</div>
+    <div class="status-icons">
+      <i class="fa-solid fa-shield-halved"></i>
+      <i class="fa-solid fa-signal"></i>
+      <i class="fa-solid fa-wifi"></i>
+      <i class="fa-solid fa-battery-three-quarters"></i>
+    </div>
+  </div>
+
+  <main class="app">
+    <!-- 启动页 -->
+    <section class="launch" id="launch">
+      <div class="launch-center">
+        <div class="launch-illu">
+          <div class="cloud"></div>
+          <div class="house"><div class="door"></div></div>
+          <div class="person"></div>
+        </div>
+        <h1>让协作更清晰</h1>
+        <p>Hub 内部研发协作平台</p>
+      </div>
+      <button class="launch-btn" onclick="startLaunch()">开始使用</button>
+    </section>
+
+    <!-- 个人信息保护指引 -->
+    <section class="privacy" id="privacy">
+      <div class="privacy-card">
+        <h2>个人信息保护指引</h2>
+        <div class="privacy-content">
+          Hub 是一个企业协作与管理平台，帮助团队实现研发协同、任务流转、文档共享和项目管理。<br>
+          1. 我们会遵循隐私政策收集、使用必要的个人信息，不会强制收集与当前功能无关的信息。<br>
+          2. 通讯录、相册、日历等权限默认不会开启，仅在你使用相关功能并明确授权后调用。<br>
+          3. 你可以在系统设置中管理或撤回授权，撤回后不会影响其他基础协作功能。<br>
+          4. 我们会采取安全措施保护你的个人信息，仅在企业协作、身份验证、消息通知、项目管理等必要场景中使用。
+        </div>
+        <div class="privacy-links">
+          你可以查看完整版<a href="javascript:void(0)">用户协议</a>和<a href="javascript:void(0)">隐私政策</a>
+        </div>
+        <button class="privacy-btn" onclick="agreePrivacy()">同意</button>
+        <div class="privacy-no" onclick="showToast('需要同意后才能继续使用')">不同意</div>
+      </div>
+    </section>
+
+    <!-- 工作台 -->
+    <section class="screen active" id="home">
+      <div class="top">
+        <div class="head">
+          <div class="head-copy">
+            <h1>早上好，Lin</h1>
+            <p>今天有 12 个事项需要你关注</p>
+          </div>
+          <button class="icon" onclick="openSearch()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="hero">
+        <div class="hero-meta">研发协作工作台 · 周三</div>
+        <div class="hero-title">2 个阻塞事项建议优先处理</div>
+        <div class="hero-grid">
+          <div class="hero-stat"><strong>12</strong><span>待我处理</span></div>
+          <div class="hero-stat"><strong>4</strong><span>待我验证</span></div>
+          <div class="hero-stat"><strong>2</strong><span>项目风险</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="quick">
+          <button onclick="switchTab('todo')"><i class="fa-solid fa-check"></i><span>处理待办</span></button>
+          <button onclick="showToast('新建事项')"><i class="fa-solid fa-plus"></i><span>新建事项</span></button>
+          <button onclick="switchTab('project')"><i class="fa-solid fa-diagram-project"></i><span>项目状态</span></button>
+          <button onclick="switchTab('message')"><i class="fa-solid fa-inbox"></i><span>协作消息</span></button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">今日重点</div>
+          <div class="section-action" onclick="switchTab('todo')">查看全部</div>
+        </div>
+
+        <div class="card">
+          <div class="item" onclick="openDetail('issue')">
+            <div class="item-icon red"><i class="fa-solid fa-bug"></i></div>
+            <div class="item-main">
+              <div class="item-top">
+                <span class="code">NGM-042</span>
+                <span class="type issue">Issue</span>
+                <span class="badge red">阻塞</span>
+              </div>
+              <div class="item-title">用户权限缓存未及时刷新，导致配置变更后仍可访问旧资源</div>
+              <div class="item-meta"><span>今天 18:00</span><span>指派给我</span></div>
+            </div>
+          </div>
+
+          <div class="item" onclick="openDetail('rd')">
+            <div class="item-icon purple"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="item-main">
+              <div class="item-top">
+                <span class="code">RDI-018</span>
+                <span class="type rd">RD</span>
+                <span class="badge orange">待评审</span>
+              </div>
+              <div class="item-title">移动端消息聚合策略调整，需要确认交互边界</div>
+              <div class="item-meta"><span>3 条评论</span><span>Hub Mobile</span></div>
+            </div>
+          </div>
+
+          <div class="item" onclick="openDetail('doc')">
+            <div class="item-icon green"><i class="fa-regular fa-file-lines"></i></div>
+            <div class="item-main">
+              <div class="item-top">
+                <span class="code">DOC-227</span>
+                <span class="type doc">Doc</span>
+                <span class="badge blue">需确认</span>
+              </div>
+              <div class="item-title">Hub v2 移动端信息架构优化说明</div>
+              <div class="item-meta"><span>12 人阅读</span><span>已收藏</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 待办 -->
+    <section class="screen" id="todo">
+      <div class="top">
+        <div class="head">
+          <div class="head-copy">
+            <h1>待办</h1>
+            <p>按优先级处理与你相关的事项</p>
+          </div>
+          <button class="icon" onclick="openSearch()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="segment">
+        <button class="active" onclick="activeBtn(this)">全部</button>
+        <button onclick="activeBtn(this)">指派给我</button>
+        <button onclick="activeBtn(this)">待验证</button>
+        <button onclick="activeBtn(this)">阻塞</button>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">今天</div>
+          <div class="section-action">12 项</div>
+        </div>
+
+        <div class="card">
+          <div class="item" onclick="openDetail('issue')">
+            <div class="item-icon red"><i class="fa-solid fa-bug"></i></div>
+            <div class="item-main">
+              <div class="item-top">
+                <span class="code">NGM-042</span>
+                <span class="badge red">阻塞</span>
+                <span class="badge orange">P0</span>
+              </div>
+              <div class="item-title">用户权限缓存未及时刷新</div>
+              <div class="item-desc">配置变更后仍可访问旧资源，影响权限安全。</div>
+              <div class="item-meta"><span>Hub Mobile</span><span>今天 18:00</span></div>
+            </div>
+          </div>
+
+          <div class="item" onclick="openDetail('rd')">
+            <div class="item-icon purple"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="item-main">
+              <div class="item-top"><span class="code">RDI-018</span><span class="badge orange">待评审</span></div>
+              <div class="item-title">移动端消息聚合策略调整</div>
+              <div class="item-desc">需要确认首页与消息页的信息分工边界。</div>
+              <div class="item-meta"><span>产品设计</span><span>3 条评论</span></div>
+            </div>
+          </div>
+
+          <div class="item" onclick="openDetail('issue')">
+            <div class="item-icon blue"><i class="fa-solid fa-bug"></i></div>
+            <div class="item-main">
+              <div class="item-top"><span class="code">API-119</span><span class="badge blue">进行中</span></div>
+              <div class="item-title">开放接口鉴权失败时错误码不一致</div>
+              <div class="item-meta"><span>OpenAPI</span><span>明天 12:00</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 项目 -->
+    <section class="screen" id="project">
+      <div class="top">
+        <div class="head">
+          <div class="head-copy">
+            <h1>项目</h1>
+            <p>关注项目健康度与阻塞风险</p>
+          </div>
+          <button class="icon" onclick="openSearch()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="project-card card" onclick="openProjectSpace()">
+          <div class="project-head">
+            <div class="project-logo">HM</div>
+            <div class="project-info">
+              <div class="project-name">Hub Mobile</div>
+              <div class="project-key">HUB-MOBILE</div>
+            </div>
+            <span class="health bad">有风险</span>
+          </div>
+          <div class="project-stats">
+            <div class="project-stat"><strong>24</strong><span>Issue</span></div>
+            <div class="project-stat"><strong>8</strong><span>研发项</span></div>
+            <div class="project-stat"><strong>3</strong><span>配置项</span></div>
+          </div>
+        </div>
+
+        <div class="project-card card" onclick="openProjectSpace()">
+          <div class="project-head">
+            <div class="project-logo" style="background:linear-gradient(135deg,#34d399,#0ea5e9)">OP</div>
+            <div class="project-info">
+              <div class="project-name">Open Platform</div>
+              <div class="project-key">OPEN-API</div>
+            </div>
+            <span class="health warn">需关注</span>
+          </div>
+          <div class="project-stats">
+            <div class="project-stat"><strong>17</strong><span>Issue</span></div>
+            <div class="project-stat"><strong>5</strong><span>研发项</span></div>
+            <div class="project-stat"><strong>1</strong><span>配置项</span></div>
+          </div>
+        </div>
+
+        <div class="project-card card" onclick="openProjectSpace()">
+          <div class="project-head">
+            <div class="project-logo" style="background:linear-gradient(135deg,#a78bfa,#6366f1)">DS</div>
+            <div class="project-info">
+              <div class="project-name">Design System</div>
+              <div class="project-key">HUB-DS</div>
+            </div>
+            <span class="health ok">正常</span>
+          </div>
+          <div class="project-stats">
+            <div class="project-stat"><strong>9</strong><span>Issue</span></div>
+            <div class="project-stat"><strong>3</strong><span>研发项</span></div>
+            <div class="project-stat"><strong>0</strong><span>配置项</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 消息 -->
+    <section class="screen" id="message">
+      <div class="top">
+        <div class="head">
+          <div class="head-copy">
+            <h1>消息</h1>
+            <p>聚合与你相关的协作动态</p>
+          </div>
+          <button class="icon" onclick="openSearch()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="segment">
+        <button class="active" onclick="activeBtn(this)">提到我</button>
+        <button onclick="activeBtn(this)">状态</button>
+        <button onclick="activeBtn(this)">文档</button>
+        <button onclick="activeBtn(this)">公告</button>
+      </div>
+
+      <div class="section">
+        <div class="card">
+          <div class="item" onclick="openDetail('issue')">
+            <div class="avatar s b">周</div>
+            <div class="item-main">
+              <div class="item-title">周洋 提到了你</div>
+              <div class="item-desc">NGM-042 的权限缓存问题需要你确认移动端复现路径。</div>
+              <div class="item-meta"><span>8 分钟前</span></div>
+            </div>
+          </div>
+
+          <div class="item" onclick="openDetail('rd')">
+            <div class="avatar s p">陈</div>
+            <div class="item-main">
+              <div class="item-title">陈晓 评论了研发项</div>
+              <div class="item-desc">建议把消息聚合入口从消息页前置到工作台。</div>
+              <div class="item-meta"><span>22 分钟前</span></div>
+            </div>
+          </div>
+
+          <div class="item" onclick="openDetail('doc')">
+            <div class="avatar s g">文</div>
+            <div class="item-main">
+              <div class="item-title">文档有新版本</div>
+              <div class="item-desc">Hub v2 移动端信息架构优化说明已更新。</div>
+              <div class="item-meta"><span>1 小时前</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 我的 -->
+    <section class="screen" id="profile">
+      <div class="top">
+        <div class="head">
+          <div class="head-copy">
+            <h1>我的</h1>
+            <p>账户、安全与偏好设置</p>
+          </div>
+          <button class="icon" onclick="openSearch()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="profile-entry" onclick="openPersonalInfo()">
+        <div class="avatar">林</div>
+        <div class="profile-entry-main">
+          <div class="profile-entry-name">Lin</div>
+          <div class="profile-entry-desc">产品设计师 · Hub Team</div>
+        </div>
+        <i class="fa-solid fa-chevron-right"></i>
+      </div>
+
+      <div class="section">
+        <div class="card">
+          <div class="item">
+            <div class="item-icon purple"><i class="fa-regular fa-bell"></i></div>
+            <div class="item-main">
+              <div class="item-title">通知偏好</div>
+              <div class="item-desc">工作日 · 阻塞事项优先提醒</div>
+            </div>
+          </div>
+
+          <div class="item">
+            <div class="item-icon blue"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="item-main">
+              <div class="item-title">账号安全</div>
+              <div class="item-desc">已开启 MFA</div>
+            </div>
+          </div>
+
+          <div class="item">
+            <div class="item-icon green"><i class="fa-solid fa-server"></i></div>
+            <div class="item-main">
+              <div class="item-title">服务器</div>
+              <div class="item-desc">hub.internal</div>
+            </div>
+          </div>
+
+          <div class="item">
+            <div class="item-icon orange"><i class="fa-regular fa-circle-question"></i></div>
+            <div class="item-main">
+              <div class="item-title">关于 Hub</div>
+              <div class="item-desc">Hub v2.3.0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 搜索页 -->
+    <section class="screen overlay" id="search">
+      <div class="bar">
+        <button class="back" onclick="closeSearch()">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <div class="search-input">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="searchInput" placeholder="搜索 Issue、研发项、项目、文档" />
+        </div>
+        <button class="cancel" onclick="closeSearch()">取消</button>
+      </div>
+
+      <div class="search-body">
+        <div class="section-head"><div class="section-title">最近搜索</div></div>
+        <div class="chips">
+          <button class="chip">NGM-042</button>
+          <button class="chip">Hub Mobile</button>
+          <button class="chip">移动端信息架构</button>
+          <button class="chip">阻塞事项</button>
+        </div>
+
+        <div class="section-head" style="margin-top:26px"><div class="section-title">最近访问</div></div>
+        <div class="card">
+          <div class="item" onclick="openDetail('issue')">
+            <div class="item-icon blue"><i class="fa-solid fa-bug"></i></div>
+            <div class="item-main">
+              <div class="item-title">用户权限缓存未及时刷新</div>
+              <div class="item-desc">NGM-042 · Hub Mobile · 8 分钟前</div>
+            </div>
+          </div>
+
+          <div class="item" onclick="openProjectSpace()">
+            <div class="item-icon purple"><i class="fa-solid fa-diagram-project"></i></div>
+            <div class="item-main">
+              <div class="item-title">Hub Mobile</div>
+              <div class="item-desc">项目空间 · 有 2 个阻塞事项</div>
+            </div>
+          </div>
+
+          <div class="item" onclick="openDetail('doc')">
+            <div class="item-icon green"><i class="fa-regular fa-file-lines"></i></div>
+            <div class="item-main">
+              <div class="item-title">Hub v2 移动端信息架构优化说明</div>
+              <div class="item-desc">文档 · 产品设计 · 1 小时前</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 个人信息页 -->
+    <section class="screen overlay" id="personalInfo">
+      <div class="bar">
+        <button class="back" onclick="closePersonalInfo()">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <div class="bar-title">个人信息</div>
+        <div style="width:38px;"></div>
+      </div>
+
+      <div class="personal-info-body">
+        <div class="personal-card">
+          <div class="personal-row avatar-row" onclick="showToast('更换头像')">
+            <div class="personal-label">头像</div>
+            <div class="personal-value">
+              <div class="personal-avatar">林</div>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </div>
+
+          <div class="personal-row" onclick="showToast('编辑姓名')">
+            <div class="personal-label">姓名</div>
+            <div class="personal-value">
+              <span>Lin</span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </div>
+
+          <div class="personal-row" onclick="showToast('编辑别名')">
+            <div class="personal-label">别名</div>
+            <div class="personal-value muted">
+              <span>输入别名</span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </div>
+
+          <div class="personal-row" onclick="showToast('打开我的二维码')">
+            <div class="personal-label">我的二维码</div>
+            <div class="personal-value">
+              <i class="fa-solid fa-qrcode qr-icon"></i>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </div>
+
+          <div class="personal-row" onclick="showToast('编辑个性签名')">
+            <div class="personal-label">个性签名</div>
+            <div class="personal-value muted">
+              <span>添加一句工作状态</span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="personal-card">
+          <div class="personal-row" onclick="showToast('查看企业信息')">
+            <div class="personal-label">企业</div>
+            <div class="personal-value enterprise">
+              <span>Hub Team · 未认证</span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="personal-tip">
+          个人信息仅用于团队协作、任务分配、消息通知和项目成员识别。
+        </div>
+      </div>
+    </section>
+
+    <!-- 项目二级空间 -->
+    <section class="screen project-space" id="projectSpace">
+      <div class="bar">
+        <button class="back" onclick="closeProjectSpace()">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <div class="bar-title">
+          Hub Mobile<br>
+          <span style="font-size:11px;color:var(--t4);font-weight:500">项目空间</span>
+        </div>
+        <button class="icon" onclick="openSearch()">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+      </div>
+
+      <!-- 概览 -->
+      <div class="ps-tab active" id="ps-overview">
+        <div class="ps-hero">
+          <div class="ps-main">
+            <div class="ps-logo">HM</div>
+            <div class="ps-copy">
+              <div class="ps-name">Hub Mobile</div>
+              <div class="ps-desc">移动端研发协作、事项流转与项目风险追踪。</div>
+              <div style="margin-top:10px">
+                <span class="badge red">有风险 · 2 个阻塞</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ps-stats">
+            <div class="ps-stat"><strong>24</strong><span>Issue</span></div>
+            <div class="ps-stat"><strong>8</strong><span>研发项</span></div>
+            <div class="ps-stat"><strong>3</strong><span>配置项</span></div>
+            <div class="ps-stat"><strong>71%</strong><span>进度</span></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <div class="section-title">版本进度</div>
+            <div class="section-action">v2.3.0</div>
+          </div>
+
+          <div class="card progress-card">
+            <div class="progress-top">
+              <div class="progress-label">移动端优化版本</div>
+              <div class="progress-value">71%</div>
+            </div>
+            <div class="progress-bar"><div class="progress-fill"></div></div>
+            <div class="mile">
+              <span>需求确认</span>
+              <span>开发中</span>
+              <span>灰度前</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <div class="section-title">项目文档</div>
+            <div class="section-action">全部</div>
+          </div>
+
+          <div class="card">
+            <div class="item" onclick="openDetail('doc')">
+              <div class="item-icon green"><i class="fa-regular fa-file-lines"></i></div>
+              <div class="item-main">
+                <div class="item-title">Hub v2 移动端信息架构优化说明</div>
+                <div class="item-desc">PRD · Lin 更新于 1 小时前</div>
+              </div>
+            </div>
+
+            <div class="item" onclick="showToast('打开设计规范')">
+              <div class="item-icon purple"><i class="fa-solid fa-pen-ruler"></i></div>
+              <div class="item-main">
+                <div class="item-title">移动端视觉规范与组件说明</div>
+                <div class="item-desc">设计稿 · 陈晓 更新于 昨天</div>
+              </div>
+            </div>
+
+            <div class="item" onclick="showToast('打开技术方案')">
+              <div class="item-icon blue"><i class="fa-solid fa-code"></i></div>
+              <div class="item-main">
+                <div class="item-title">移动端接口联调与鉴权方案</div>
+                <div class="item-desc">技术方案 · 周洋 更新于 4月17日</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <div class="section-title">关键风险</div>
+            <div class="section-action">全部</div>
+          </div>
+
+          <div class="card">
+            <div class="item" onclick="openDetail('issue')">
+              <div class="item-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">NGM-042</span><span class="badge red">阻塞</span></div>
+                <div class="item-title">权限缓存问题阻塞今日版本冻结</div>
+                <div class="item-desc">需要确认移动端缓存清理策略与服务端返回头是否一致。</div>
+                <div class="item-meta"><span>负责人 Lin</span><span>今天 18:00</span></div>
+              </div>
+            </div>
+
+            <div class="item" onclick="openDetail('rd')">
+              <div class="item-icon orange"><i class="fa-solid fa-circle-exclamation"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">RDI-018</span><span class="badge orange">待确认</span></div>
+                <div class="item-title">消息聚合策略需要确认交互边界</div>
+                <div class="item-desc">影响工作台与消息页的信息分工。</div>
+                <div class="item-meta"><span>负责人 陈晓</span><span>3 条评论</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Issue -->
+      <div class="ps-tab" id="ps-issue">
+        <div class="filters">
+          <button class="filter active">全部</button>
+          <button class="filter">阻塞</button>
+          <button class="filter">进行中</button>
+          <button class="filter">待验证</button>
+          <button class="filter">已关闭</button>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <div class="section-title">项目 Issue</div>
+            <div class="section-action">24 个</div>
+          </div>
+
+          <div class="card">
+            <div class="item" onclick="openDetail('issue')">
+              <div class="item-icon red"><i class="fa-solid fa-bug"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">NGM-042</span><span class="badge red">阻塞</span><span class="badge orange">P0</span></div>
+                <div class="item-title">用户权限缓存未及时刷新</div>
+                <div class="item-desc">配置变更后仍可访问旧资源，影响权限安全。</div>
+                <div class="item-meta"><span>Lin</span><span>今天 18:00</span><span>5 条评论</span></div>
+              </div>
+            </div>
+
+            <div class="item" onclick="openDetail('issue')">
+              <div class="item-icon blue"><i class="fa-solid fa-bug"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">API-119</span><span class="badge blue">进行中</span><span class="badge orange">P1</span></div>
+                <div class="item-title">开放接口鉴权失败时错误码不一致</div>
+                <div class="item-desc">移动端无法统一展示错误反馈。</div>
+                <div class="item-meta"><span>周洋</span><span>明天 12:00</span></div>
+              </div>
+            </div>
+
+            <div class="item" onclick="openDetail('issue')">
+              <div class="item-icon green"><i class="fa-solid fa-check"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">APP-087</span><span class="badge green">已解决</span><span class="badge blue">P2</span></div>
+                <div class="item-title">部分机型底部安全区高度异常</div>
+                <div class="item-desc">已修复，等待灰度验证。</div>
+                <div class="item-meta"><span>王晨</span><span>待验证</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 研发项 -->
+      <div class="ps-tab" id="ps-rd">
+        <div class="filters">
+          <button class="filter active">全部</button>
+          <button class="filter">需求评审</button>
+          <button class="filter">开发中</button>
+          <button class="filter">联调中</button>
+          <button class="filter">已验收</button>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <div class="section-title">研发项</div>
+            <div class="section-action">8 个</div>
+          </div>
+
+          <div class="card">
+            <div class="item" onclick="openDetail('rd')">
+              <div class="item-icon purple"><i class="fa-solid fa-layer-group"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">RDI-018</span><span class="badge orange">待评审</span></div>
+                <div class="item-title">移动端消息聚合策略调整</div>
+                <div class="item-desc">明确工作台、消息页、详情页的协作提醒边界。</div>
+                <div class="item-meta"><span>陈晓</span><span>进度 35%</span><span>关联 3 个 Issue</span></div>
+              </div>
+            </div>
+
+            <div class="item" onclick="openDetail('rd')">
+              <div class="item-icon blue"><i class="fa-solid fa-code-branch"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">RDI-021</span><span class="badge blue">开发中</span></div>
+                <div class="item-title">项目二级空间移动端交互优化</div>
+                <div class="item-desc">支持项目下 Issue、研发项、配置的快速切换。</div>
+                <div class="item-meta"><span>Lin</span><span>进度 68%</span><span>v2.3.0</span></div>
+              </div>
+            </div>
+
+            <div class="item" onclick="openDetail('rd')">
+              <div class="item-icon green"><i class="fa-solid fa-flask"></i></div>
+              <div class="item-main">
+                <div class="item-top"><span class="code">RDI-025</span><span class="badge green">已验收</span></div>
+                <div class="item-title">启动页与个人信息保护指引接入</div>
+                <div class="item-desc">已完成首次启动流程与隐私授权弹窗。</div>
+                <div class="item-meta"><span>王晨</span><span>已完成</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 配置 -->
+      <div class="ps-tab" id="ps-config">
+        <div class="section">
+          <div class="section-head">
+            <div class="section-title">项目配置</div>
+            <div class="section-action">管理员</div>
+          </div>
+
+          <div class="card">
+            <div class="config">
+              <div class="config-icon"><i class="fa-solid fa-users"></i></div>
+              <div class="config-main"><div class="config-title">项目成员</div><div class="config-desc">12 名成员，3 名管理员</div></div>
+              <i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i>
+            </div>
+
+            <div class="config">
+              <div class="config-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></div>
+              <div class="config-main"><div class="config-title">Issue 流程</div><div class="config-desc">新建 → 处理中 → 待验证 → 已关闭</div></div>
+              <i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i>
+            </div>
+
+            <div class="config">
+              <div class="config-icon"><i class="fa-solid fa-diagram-project"></i></div>
+              <div class="config-main"><div class="config-title">研发项流程</div><div class="config-desc">需求池 → 评审中 → 开发中 → 已验收</div></div>
+              <i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head"><div class="section-title">协作设置</div></div>
+          <div class="card">
+            <div class="config">
+              <div class="config-icon"><i class="fa-solid fa-bell"></i></div>
+              <div class="config-main"><div class="config-title">通知规则</div><div class="config-desc">阻塞、提到我、状态变更时通知</div></div>
+              <i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i>
+            </div>
+
+            <div class="config">
+              <div class="config-icon"><i class="fa-solid fa-shield-halved"></i></div>
+              <div class="config-main"><div class="config-title">权限控制</div><div class="config-desc">仅项目成员可查看与编辑</div></div>
+              <i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i>
+            </div>
+
+            <div class="config">
+              <div class="config-icon"><i class="fa-solid fa-plug"></i></div>
+              <div class="config-main"><div class="config-title">集成配置</div><div class="config-desc">代码仓库、流水线、Webhook</div></div>
+              <i class="fa-solid fa-chevron-right" style="color:var(--t4);font-size:12px"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="fab" onclick="showToast('新建项目事项')">
+        <i class="fa-solid fa-plus"></i>
+      </button>
+
+      <nav class="ps-nav">
+        <button class="active" onclick="switchProjectTab('overview',this)">
+          <i class="fa-solid fa-chart-simple"></i>
+          <span>概览</span>
+        </button>
+        <button onclick="switchProjectTab('issue',this)">
+          <i class="fa-solid fa-bug"></i>
+          <span>Issue</span>
+        </button>
+        <button onclick="switchProjectTab('rd',this)">
+          <i class="fa-solid fa-layer-group"></i>
+          <span>研发项</span>
+        </button>
+        <button onclick="switchProjectTab('config',this)">
+          <i class="fa-solid fa-sliders"></i>
+          <span>配置</span>
+        </button>
+      </nav>
+    </section>
+
+    <!-- 详情页 -->
+    <section class="screen overlay" id="detail">
+      <div class="bar">
+        <button class="back" onclick="closeDetail()">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <div class="bar-title">事项详情</div>
+        <button class="icon" onclick="showToast('更多操作')">
+          <i class="fa-solid fa-ellipsis"></i>
+        </button>
+      </div>
+
+      <div class="detail-head">
+        <div class="detail-id" id="detailId">NGM-042</div>
+        <div class="detail-title" id="detailTitle">用户权限缓存未及时刷新，导致配置变更后仍可访问旧资源</div>
+        <div class="detail-tags">
+          <span class="type issue" id="detailType">Issue</span>
+          <span class="badge red" id="detailStatus">阻塞</span>
+          <span class="badge orange">P0</span>
+        </div>
+      </div>
+
+      <div class="detail-block">
+        <h3>基础信息</h3>
+        <div class="prop"><span>负责人</span><strong>Lin</strong></div>
+        <div class="prop"><span>项目</span><strong>Hub Mobile</strong></div>
+        <div class="prop"><span>截止时间</span><strong>今天 18:00</strong></div>
+        <div class="prop"><span>优先级</span><strong>P0 · 阻塞发布</strong></div>
+      </div>
+
+      <div class="detail-block">
+        <h3>描述</h3>
+        <div class="item-desc" style="font-size:13px;color:var(--t3)">
+          在权限配置变更后，移动端仍会读取旧缓存，导致部分用户可以继续访问已撤销的资源。需要确认缓存失效策略与服务端返回头是否一致。
+        </div>
+      </div>
+
+      <div class="detail-block">
+        <h3>协作记录</h3>
+        <div class="item" style="padding:10px 0">
+          <div class="avatar s b">周</div>
+          <div class="item-main">
+            <div class="item-title">周洋</div>
+            <div class="item-desc">我这边已经补充了复现路径，麻烦确认移动端是否需要主动清理本地缓存。</div>
+            <div class="item-meta"><span>8 分钟前</span></div>
+          </div>
+        </div>
+
+        <div class="item" style="padding:10px 0">
+          <div class="avatar s p">陈</div>
+          <div class="item-main">
+            <div class="item-title">陈晓</div>
+            <div class="item-desc">建议这次不要只做兜底弹窗，需要在登录态刷新时统一处理。</div>
+            <div class="item-meta"><span>24 分钟前</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-bottom">
+        <button class="btn ghost" onclick="showToast('已收藏')">
+          <i class="fa-regular fa-star"></i>
+        </button>
+        <button class="btn ghost" onclick="showToast('评论输入框已打开')">评论</button>
+        <button class="btn primary" onclick="showToast('已流转状态')">流转状态</button>
+      </div>
+    </section>
+
+    <!-- 主底部导航 -->
+    <nav class="nav">
+      <button class="active" data-tab="home" onclick="switchTab('home')">
+        <i class="fa-solid fa-house"></i>
+        <span>工作台</span>
+      </button>
+
+      <button data-tab="todo" onclick="switchTab('todo')">
+        <i class="fa-solid fa-list-check"></i>
+        <span>待办</span>
+        <em class="dot">12</em>
+      </button>
+
+      <button data-tab="project" onclick="switchTab('project')">
+        <i class="fa-solid fa-diagram-project"></i>
+        <span>项目</span>
+      </button>
+
+      <button data-tab="message" onclick="switchTab('message')">
+        <i class="fa-solid fa-inbox"></i>
+        <span>消息</span>
+        <em class="dot">3</em>
+      </button>
+
+      <button data-tab="profile" onclick="switchTab('profile')">
+        <i class="fa-regular fa-user"></i>
+        <span>我的</span>
+      </button>
+    </nav>
+
+    <div class="toast" id="toast">已完成</div>
+  </main>
+</div>
+
+<script>
+const screens = ['home','todo','project','message','profile'].reduce((map, id) => {
+  map[id] = document.getElementById(id);
+  return map;
+}, {});
+
+const navBtns = document.querySelectorAll('.nav button');
+const detail = document.getElementById('detail');
+const search = document.getElementById('search');
+const projectSpace = document.getElementById('projectSpace');
+const personalInfo = document.getElementById('personalInfo');
+const toast = document.getElementById('toast');
+
+function startLaunch() {
+  document.getElementById('privacy').classList.add('active');
+}
+
+function agreePrivacy() {
+  document.getElementById('privacy').classList.remove('active');
+  document.getElementById('launch').classList.add('hidden');
+  showToast('欢迎使用 Hub');
+}
+
+function switchTab(tab) {
+  Object.values(screens).forEach(screen => screen.classList.remove('active'));
+  screens[tab].classList.add('active');
+
+  navBtns.forEach(button => {
+    button.classList.toggle('active', button.dataset.tab === tab);
+  });
+
+  detail.classList.remove('active');
+  search.classList.remove('active');
+  projectSpace.classList.remove('active');
+  personalInfo.classList.remove('active');
+}
+
+function activeBtn(button) {
+  button.parentElement.querySelectorAll('button').forEach(item => item.classList.remove('active'));
+  button.classList.add('active');
+  showToast('筛选已更新');
+}
+
+function openSearch() {
+  search.classList.add('active');
+  setTimeout(() => {
+    document.getElementById('searchInput')?.focus();
+  }, 120);
+}
+
+function closeSearch() {
+  search.classList.remove('active');
+}
+
+function openPersonalInfo() {
+  personalInfo.classList.add('active');
+}
+
+function closePersonalInfo() {
+  personalInfo.classList.remove('active');
+}
+
+function openProjectSpace() {
+  search.classList.remove('active');
+  detail.classList.remove('active');
+  personalInfo.classList.remove('active');
+  projectSpace.classList.add('active');
+}
+
+function closeProjectSpace() {
+  projectSpace.classList.remove('active');
+}
+
+function switchProjectTab(tab, button) {
+  ['overview','issue','rd','config'].forEach(id => {
+    document.getElementById('ps-' + id).classList.remove('active');
+  });
+
+  document.getElementById('ps-' + tab).classList.add('active');
+
+  button.parentElement.querySelectorAll('button').forEach(item => item.classList.remove('active'));
+  button.classList.add('active');
+}
+
+function openDetail(type) {
+  const data = {
+    issue: {
+      id: 'NGM-042',
+      title: '用户权限缓存未及时刷新，导致配置变更后仍可访问旧资源',
+      type: 'Issue',
+      typeClass: 'type issue',
+      status: '阻塞',
+      statusClass: 'badge red'
+    },
+    rd: {
+      id: 'RDI-018',
+      title: '移动端消息聚合策略调整，需要确认交互边界',
+      type: 'RD',
+      typeClass: 'type rd',
+      status: '待评审',
+      statusClass: 'badge orange'
+    },
+    doc: {
+      id: 'DOC-227',
+      title: 'Hub v2 移动端信息架构优化说明',
+      type: 'Doc',
+      typeClass: 'type doc',
+      status: '需确认',
+      statusClass: 'badge blue'
+    }
+  };
+
+  const current = data[type] || data.issue;
+
+  document.getElementById('detailId').textContent = current.id;
+  document.getElementById('detailTitle').textContent = current.title;
+
+  const detailType = document.getElementById('detailType');
+  detailType.textContent = current.type;
+  detailType.className = current.typeClass;
+
+  const detailStatus = document.getElementById('detailStatus');
+  detailStatus.textContent = current.status;
+  detailStatus.className = current.statusClass;
+
+  search.classList.remove('active');
+  personalInfo.classList.remove('active');
+  detail.classList.add('active');
+}
+
+function closeDetail() {
+  detail.classList.remove('active');
+}
+
+let toastTimer = null;
+
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add('active');
+
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('active');
+  }, 1600);
+}
+
+document.addEventListener('keydown', event => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    openSearch();
+  }
+
+  if (event.key === 'Escape') {
+    search.classList.remove('active');
+    detail.classList.remove('active');
+    projectSpace.classList.remove('active');
+    personalInfo.classList.remove('active');
+  }
+});
+</script>
+</body>
+</html>
