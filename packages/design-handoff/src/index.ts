@@ -7,3 +7,4 @@ export * from "./exporters";
 export * from "./scanner";
 export * from "./agent";
 export * from "./profile";
+export * from "./sketch-file";
