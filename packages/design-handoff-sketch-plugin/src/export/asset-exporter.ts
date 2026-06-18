@@ -6,14 +6,39 @@
 // - 每个 asset 写入完整字段（含 handoffId/artboardId/absoluteFrame/format/width/height/...）
 // - 单个资源导出失败只记录 warning，不中断整个 Artboard 导出
 const sketch = require("sketch");
-const normalize = require("./normalize-layer");
-const classify = require("./asset-classify");
+const normalize = require("../sketch/normalize-layer");
+const classify = require("./asset-classify") as typeof import("./asset-classify");
+
+import type { AssetRecordDto, AssetType, HandoffLayerNodeDto, RectDto } from "../types/runtime";
+
+type JoinPathFn = (...parts: string[]) => string;
+
+interface LayerIndexEntry {
+  handoffId: string | null;
+  absoluteFrame: RectDto | null;
+  artboardId: string | null;
+}
+
+interface AssetLayerItem {
+  layer: SketchLayerLike;
+  info: import("./asset-classify").AssetClassificationDto;
+}
+
+interface ExportAssetResult {
+  format: string;
+  relPath: string;
+}
+
+interface ExportBitmapAssetsContext {
+  layerTree?: HandoffLayerNodeDto | null;
+  artboardId?: string | null;
+}
 
 function getFileManager() {
   return NSFileManager.defaultManager();
 }
 
-function ensureDir(dir) {
+function ensureDir(dir: string): void {
   getFileManager().createDirectoryAtPath_withIntermediateDirectories_attributes_error(
     String(dir),
     true,
@@ -22,7 +47,7 @@ function ensureDir(dir) {
   );
 }
 
-function removeItemAt(path) {
+function removeItemAt(path: string): void {
   try {
     getFileManager().removeItemAtPath_error(String(path), null);
   } catch (error) {
@@ -30,15 +55,15 @@ function removeItemAt(path) {
   }
 }
 
-function moveItemFromTo(source, target) {
+function moveItemFromTo(source: string, target: string): void {
   getFileManager().moveItemAtPath_toPath_error(String(source), String(target), null);
 }
 
-function fileExistsAt(path) {
+function fileExistsAt(path: string): boolean {
   return getFileManager().fileExistsAtPath(String(path));
 }
 
-function sanitizeAssetName(name) {
+function sanitizeAssetName(name: unknown): string {
   const value = String(name || "asset")
     .replace(/[\\/:*?"<>|]/g, "-")
     .replace(/\s+/g, " ")
@@ -46,13 +71,13 @@ function sanitizeAssetName(name) {
   return value || "asset";
 }
 
-function scanDirFileNames(dir) {
+function scanDirFileNames(dir: string): string[] {
   const fm = getFileManager();
   if (!fm.fileExistsAtPath(String(dir))) {
     return [];
   }
   let contents = fm.contentsOfDirectoryAtPath_error(String(dir), null);
-  let result = [];
+  const result: string[] = [];
   if (!contents) {
     return result;
   }
@@ -63,19 +88,19 @@ function scanDirFileNames(dir) {
   return result;
 }
 
-function fileExt(name) {
+function fileExt(name: string): string {
   const dot = String(name || "").lastIndexOf(".");
   return dot >= 0 ? String(name).slice(dot + 1).toLowerCase() : "";
 }
 
 // 构建 layerId -> { handoffId, absoluteFrame, artboardId } 索引，
 // 从已 normalize 的 layerTree 查询，避免重复归一化并保证 handoffId 与图层树一致。
-function buildLayerIndex(layerTree) {
-  const index = {};
+function buildLayerIndex(layerTree: HandoffLayerNodeDto | null | undefined): Record<string, LayerIndexEntry> {
+  const index: Record<string, LayerIndexEntry> = {};
   if (!layerTree) {
     return index;
   }
-  function visit(node) {
+  function visit(node: HandoffLayerNodeDto): void {
     if (!node || !node.id) {
       return;
     }
@@ -94,7 +119,7 @@ function buildLayerIndex(layerTree) {
 
 // 递归收集资源图层。若某层被分类为资源（icon group / symbol 等），
 // 则整体导出、不再向下递归子层，避免图标与其内部 ShapePath 重复导出。
-function collectAssetLayers(layer, list) {
+function collectAssetLayers(layer: SketchLayerLike | undefined, list: AssetLayerItem[]): void {
   if (!layer) {
     return;
   }
@@ -104,7 +129,7 @@ function collectAssetLayers(layer, list) {
     return;
   }
   if (layer.layers && layer.layers.length > 0) {
-    layer.layers.forEach(function (child) {
+    layer.layers.forEach(function (child: SketchLayerLike) {
       collectAssetLayers(child, list);
     });
   }
@@ -112,7 +137,7 @@ function collectAssetLayers(layer, list) {
 
 // 在独立临时目录内导出指定格式，扫描新增文件。
 // 临时目录导出前为空，避免与已有文件同名覆盖导致的 before/after 误判（任务 3）。
-function exportIntoTempDir(layer, tmpDir, fmt) {
+function exportIntoTempDir(layer: SketchLayerLike, tmpDir: string, fmt: string): string | null {
   ensureDir(tmpDir);
   const before = scanDirFileNames(tmpDir);
   try {
@@ -139,7 +164,16 @@ function exportIntoTempDir(layer, tmpDir, fmt) {
 }
 // 导出单个资源：按格式策略依次尝试，成功后重命名为稳定文件名。
 // 返回 { format, relPath } 或 null（含资源级 warning 写入 assetWarnings）。
-function exportAssetItem(layer, type, outputDir, joinPath, seq, baseName, shortId, assetWarnings) {
+function exportAssetItem(
+  layer: SketchLayerLike,
+  type: AssetType,
+  outputDir: string,
+  joinPath: JoinPathFn,
+  seq: string,
+  baseName: string,
+  shortId: string,
+  assetWarnings: string[],
+): ExportAssetResult | null {
   const formats = classify.preferSvg(type) ? ["svg", "png"] : ["png"];
   const subDir = classify.assetTypeDirectory(type);
   const assetDir = joinPath(outputDir, "assets", subDir);
@@ -176,7 +210,13 @@ function exportAssetItem(layer, type, outputDir, joinPath, seq, baseName, shortI
 // 导出 Artboard 的资源图层，返回 assets 数组（写入 assets-map.json）。
 // 保留原函数名 exportBitmapAssets 以兼容 exporter.ts 调用；
 // 新增第 5 个参数 context = { layerTree, artboardId }，用于补全 handoffId / absoluteFrame。
-function exportBitmapAssets(artboard, outputDir, joinPath, warnings, context) {
+function exportBitmapAssets(
+  artboard: SketchLayerLike,
+  outputDir: string,
+  joinPath: JoinPathFn,
+  warnings: string[],
+  context?: ExportBitmapAssetsContext,
+): AssetRecordDto[] {
   context = context || {};
   let layerTree = context.layerTree || null;
   const artboardId = context.artboardId || (layerTree ? layerTree.artboardId : null) || "";
@@ -185,10 +225,10 @@ function exportBitmapAssets(artboard, outputDir, joinPath, warnings, context) {
   const imagesDir = joinPath(outputDir, "assets", "images");
   ensureDir(imagesDir);
 
-  const list = [];
+  const list: AssetLayerItem[] = [];
   collectAssetLayers(artboard, list);
 
-  const assets = [];
+  const assets: AssetRecordDto[] = [];
   list.forEach(function (item, index) {
     let layer = item.layer;
     const info = item.info;
@@ -206,7 +246,7 @@ function exportBitmapAssets(artboard, outputDir, joinPath, warnings, context) {
     const absoluteFrame = node && node.absoluteFrame ? node.absoluteFrame : frame;
     const resolvedArtboardId = node && node.artboardId ? node.artboardId : artboardId;
 
-    const assetWarnings = [];
+    const assetWarnings: string[] = [];
     let result = exportAssetItem(
       layer,
       info.type,

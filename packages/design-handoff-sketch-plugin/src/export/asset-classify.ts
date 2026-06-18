@@ -6,12 +6,12 @@ import type { AssetType, RectDto } from "../types/runtime";
 
 // 图标 / 小矢量尺寸阈值（px）。小于等于该值视为“小尺寸矢量图标”，
 // 用于把装饰性大形状排除在 icon/vector 之外。
-let SMALL_VECTOR_MAX: number = 128;
+export const SMALL_VECTOR_MAX: number = 128;
 
 let ICON_RE: RegExp = /\bicon\b|图标|\bic[-_/]|svg/i;
 let LOGO_RE: RegExp = /\blogo\b|品牌标|商标/i;
 
-function getFrame(layer: SketchLayerLike | undefined): RectDto {
+export function getFrame(layer: SketchLayerLike | undefined): RectDto {
   let frame = layer && layer.frame ? layer.frame : {};
   return {
     x: Number(frame.x) || 0,
@@ -25,11 +25,11 @@ function lowerName(layer: SketchLayerLike | undefined): string {
   return String((layer && layer.name) || "").toLowerCase();
 }
 
-function hasExportFormats(layer: SketchLayerLike | undefined): boolean {
+export function hasExportFormats(layer: SketchLayerLike | undefined): boolean {
   return !!(layer && layer.exportFormats && layer.exportFormats.length > 0);
 }
 
-function isSmallSize(frame: RectDto): boolean {
+export function isSmallSize(frame: RectDto): boolean {
   return (
     frame.width > 0 &&
     frame.height > 0 &&
@@ -39,7 +39,7 @@ function isSmallSize(frame: RectDto): boolean {
 }
 
 // 判断 Group 内部是否主要由矢量形状组成（ShapePath / Shape / Vector 占多数）。
-function isMostlyShapePath(layer: SketchLayerLike | undefined): boolean {
+export function isMostlyShapePath(layer: SketchLayerLike | undefined): boolean {
   if (!layer || !layer.layers || layer.layers.length === 0) {
     return false;
   }
@@ -73,7 +73,7 @@ export interface AssetClassificationDto {
 //   6. Group 小尺寸 + 内部主要 ShapePath -> icon
 //   7. ShapePath / Shape / Vector 小尺寸 -> vector
 //   8. 有 exportFormats 但未命中上述 -> misc（仅显式可导出层才当资源，避免噪声）
-function classifyAsset(layer: SketchLayerLike | undefined): AssetClassificationDto | null {
+export function classifyAsset(layer: SketchLayerLike | undefined): AssetClassificationDto | null {
   if (!layer) {
     return null;
   }
@@ -129,14 +129,14 @@ function classifyAsset(layer: SketchLayerLike | undefined): AssetClassificationD
 // 导出格式策略（任务 2）：
 // - icon / vector / logo 优先 svg，svg 失败再 fallback png
 // - bitmap / image / slice / symbol / misc 默认 png
-function preferSvg(type: AssetType): boolean {
+export function preferSvg(type: AssetType): boolean {
   return type === "icon" || type === "vector" || type === "logo";
 }
 
 // 根据 Asset 类型决定 Handoff Package 中的子目录（architecture-plan-v2 第 7.3 节）。
 // bitmap / image -> images, slice -> slices, icon / logo -> icons,
 // symbol -> symbols, vector -> vectors, misc / exportable -> misc。
-function assetTypeDirectory(type: AssetType): string {
+export function assetTypeDirectory(type: AssetType): string {
   let map: Record<string, string> = {
     bitmap: "images",
     image: "images",
@@ -150,16 +150,3 @@ function assetTypeDirectory(type: AssetType): string {
   };
   return map[type] || "misc";
 }
-
-module.exports = {
-  classifyAsset: classifyAsset,
-  preferSvg: preferSvg,
-  assetTypeDirectory: assetTypeDirectory,
-  hasExportFormats: hasExportFormats,
-  isSmallSize: isSmallSize,
-  isMostlyShapePath: isMostlyShapePath,
-  getFrame: getFrame,
-  SMALL_VECTOR_MAX: SMALL_VECTOR_MAX,
-};
-
-export {};

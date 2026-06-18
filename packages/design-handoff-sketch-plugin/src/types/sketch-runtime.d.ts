@@ -64,6 +64,8 @@ declare global {
 
   interface SketchDocumentLike {
     id?: string;
+    name?: string;
+    path?: string | null;
     pages?: SketchPageLike[];
     selectedPage?: SketchPageLike;
     page?: SketchPageLike;

@@ -2,7 +2,7 @@ const sketch = require("sketch");
 const normalize = require("../sketch/normalize-layer");
 const styles = require("./style-extractor");
 const components = require("./component-infer");
-const promptGenerator = require("./prompt-generator");
+const promptGenerator = require("../handoff/prompt-generator");
 const pluginSettings = require("../sketch/settings");
 const handoffMapGenerator = require("../handoff/handoff-map-generator");
 const previewTemplate = require("../handoff/preview-template");
@@ -13,17 +13,61 @@ const interactionBridgeTemplate = require("../handoff/interaction-bridge-templat
 const designContextGenerator = require("../handoff/design-context-generator");
 const assetExporter = require("./asset-exporter");
 
+import type { AssetsMapDto, AssetRecordDto } from "../types/runtime";
+
 const UTF8_ENCODING = typeof NSUTF8StringEncoding !== "undefined" ? NSUTF8StringEncoding : 4;
+
+interface PluginSettingsDto {
+  outputRoot: string;
+  exportScreenshot?: boolean;
+}
+
+interface ExportLoggerLike {
+  step?(stage: string, message: string, data?: unknown): unknown;
+  warn?(stage: string, message: string, data?: unknown): unknown;
+}
+
+interface ExportArtboardOptions {
+  pluginVersion?: string;
+  settings?: PluginSettingsDto;
+  outputDir?: string;
+  pageName?: string | null;
+  logger?: ExportLoggerLike | null;
+  onProgress?: ((key: string, name: string) => void) | null;
+}
+
+interface ExportArtboardResult {
+  outputDir: string;
+  warnings: string[];
+}
+
+interface HandoffMetaDto {
+  pluginVersion: string;
+  handoffSpecVersion: string;
+  documentName: string;
+  documentPath: string | null;
+  pageName: string;
+  artboardName: string;
+  exportedAt: string;
+  platform: "sketch";
+}
+
+function errorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message);
+  }
+  return String(error);
+}
 
 function getFileManager() {
   return NSFileManager.defaultManager();
 }
 
-function fileExists(filePath) {
+function fileExists(filePath: string): boolean {
   return getFileManager().fileExistsAtPath(String(filePath));
 }
 
-function ensureDirRecursive(dir) {
+function ensureDirRecursive(dir: string): void {
   getFileManager().createDirectoryAtPath_withIntermediateDirectories_attributes_error(
     String(dir),
     true,
@@ -32,17 +76,17 @@ function ensureDirRecursive(dir) {
   );
 }
 
-function removeFile(filePath) {
+function removeFile(filePath: string): void {
   getFileManager().removeItemAtPath_error(String(filePath), null);
 }
 
-function moveFile(source, target) {
+function moveFile(source: string, target: string): void {
   getFileManager().moveItemAtPath_toPath_error(String(source), String(target), null);
 }
 
-function readDir(dir) {
+function readDir(dir: string): string[] {
   let contents = getFileManager().contentsOfDirectoryAtPath_error(String(dir), null);
-  const result = [];
+  const result: string[] = [];
 
   if (!contents) {
     return result;
@@ -55,14 +99,14 @@ function readDir(dir) {
   return result;
 }
 
-function sanitizeName(name) {
+function sanitizeName(name: unknown): string {
   return String(name || "untitled")
     .replace(/[\\/:*?"<>|]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-function getDocumentPath(document) {
+function getDocumentPath(document: SketchDocumentLike): string | null {
   if (document.path) {
     return String(document.path);
   }
@@ -70,11 +114,11 @@ function getDocumentPath(document) {
   return null;
 }
 
-function writeJson(outputDir, fileName, value) {
+function writeJson(outputDir: string, fileName: string, value: unknown): void {
   writeText(outputDir, fileName, JSON.stringify(value, null, 2));
 }
 
-function writeText(outputDir, fileName, value) {
+function writeText(outputDir: string, fileName: string, value: unknown): void {
   const filePath = pluginSettings.joinPath(outputDir, fileName);
   const text = NSString.stringWithString(String(value));
   let ok = text.writeToFile_atomically_encoding_error(filePath, true, UTF8_ENCODING, null);
@@ -84,7 +128,7 @@ function writeText(outputDir, fileName, value) {
   }
 }
 
-function collectExportedPngs(dir) {
+function collectExportedPngs(dir: string): string[] {
   if (!fileExists(dir)) {
     return [];
   }
@@ -98,7 +142,7 @@ function collectExportedPngs(dir) {
     });
 }
 
-function exportScreenshot(artboard, outputDir, warnings) {
+function exportScreenshot(artboard: SketchLayerLike, outputDir: string, warnings: string[]): string | null {
   const before = collectExportedPngs(outputDir);
 
   try {
@@ -109,7 +153,7 @@ function exportScreenshot(artboard, outputDir, warnings) {
       overwriting: true,
     });
   } catch (error) {
-    warnings.push("Sketch screenshot export failed: " + (error && error.message ? error.message : String(error)));
+    warnings.push("Sketch screenshot export failed: " + errorMessage(error));
     return null;
   }
 
@@ -142,20 +186,20 @@ function exportScreenshot(artboard, outputDir, warnings) {
   return "screenshot.png";
 }
 
-function buildMeta(document, artboard, pluginVersion, pageName) {
+function buildMeta(document: SketchDocumentLike, artboard: SketchLayerLike, pluginVersion: string, pageName: string | null): HandoffMetaDto {
   return {
     pluginVersion: pluginVersion,
     handoffSpecVersion: "1.0",
     documentName: document.name || "Untitled",
     documentPath: getDocumentPath(document),
-    pageName: pageName || (document.selectedPage ? document.selectedPage.name : ""),
+    pageName: pageName || (document.selectedPage ? document.selectedPage.name || "" : ""),
     artboardName: artboard.name || "Untitled Artboard",
     exportedAt: new Date().toISOString(),
     platform: "sketch",
   };
 }
 
-function buildManifest(meta, screenshot) {
+function buildManifest(meta: HandoffMetaDto, screenshot: string | null) {
   return {
     specVersion: "1.0",
     handoffSpecVersion: meta.handoffSpecVersion || "1.0",
@@ -181,7 +225,7 @@ function buildManifest(meta, screenshot) {
   };
 }
 
-function exportArtboard(document, artboard, options) {
+function exportArtboard(document: SketchDocumentLike, artboard: SketchLayerLike, options?: ExportArtboardOptions): ExportArtboardResult {
   options = options || {};
   const pluginVersion = options.pluginVersion ? options.pluginVersion : "0.2.0";
   const settings = options.settings ? options.settings : pluginSettings.getSettings();
@@ -193,15 +237,15 @@ function exportArtboard(document, artboard, options) {
   const outputDir = options.outputDir
     ? options.outputDir
     : pluginSettings.joinPath(settings.outputRoot, documentName, artboardName);
-  const warnings = [];
+  const warnings: string[] = [];
 
-  function logStep(stage, message, data) {
+  function logStep(stage: string, message: string, data?: unknown): void {
     if (logger && typeof logger.step === "function") {
       logger.step(stage, message, data || null);
     }
   }
 
-  function logWarning(stage, message, data) {
+  function logWarning(stage: string, message: string, data?: unknown): void {
     if (logger && typeof logger.warn === "function") {
       logger.warn(stage, message, data || null);
     }
@@ -210,7 +254,7 @@ function exportArtboard(document, artboard, options) {
   logStep("创建输出目录", "准备创建画板输出目录", { outputDir: outputDir });
   ensureDirRecursive(outputDir);
 
-  function emitStep(key, name) {
+  function emitStep(key: string, name: string): void {
     if (onProgress) {
       try {
         onProgress(key, name);
@@ -220,7 +264,7 @@ function exportArtboard(document, artboard, options) {
     }
   }
 
-  emitStep("generatingHandoffJson", artboard.name);
+  emitStep("generatingHandoffJson", artboardName);
 
   logStep("normalize layer tree", "开始归一化图层树", { artboardName: artboard.name });
   const styleRegistry = styles.createStyleRegistry();
@@ -239,7 +283,7 @@ function exportArtboard(document, artboard, options) {
   const inferredComponents = components.inferComponents(layerTree);
 
   if (settings.exportScreenshot) {
-    emitStep("generatingScreenshot", artboard.name);
+    emitStep("generatingScreenshot", artboardName);
     logStep("export screenshot", "开始导出截图", { artboardName: artboard.name });
   }
   let screenshot = settings.exportScreenshot ? exportScreenshot(artboard, outputDir, warnings) : null;
@@ -251,14 +295,14 @@ function exportArtboard(document, artboard, options) {
   }
 
   logStep("export assets", "开始导出资源图层", { artboardName: artboard.name });
-  const bitmapAssets = assetExporter.exportBitmapAssets(
+  const bitmapAssets: AssetRecordDto[] = assetExporter.exportBitmapAssets(
     artboard,
     outputDir,
     pluginSettings.joinPath,
     warnings,
     { layerTree: layerTree, artboardId: layerTree.artboardId },
   );
-  const assetsMap = {
+  const assetsMap: AssetsMapDto = {
     screenshot: screenshot,
     assets: bitmapAssets,
     warnings: warnings,
@@ -268,7 +312,7 @@ function exportArtboard(document, artboard, options) {
   logStep("build handoff map", "开始生成 Handoff 映射", { artboardName: artboard.name });
   const handoffMap = handoffMapGenerator.buildHandoffMap(layerTree, inferredComponents);
 
-  emitStep("generatingPreview", artboard.name);
+  emitStep("generatingPreview", artboardName);
   logStep("generate preview html", "开始生成预览 HTML", { artboardName: artboard.name });
   const previewDataJson = previewDataGenerator.generatePreviewData(meta, layerTree, inferredComponents, screenshot, styleMap, assetsMap);
   const previewCssText = previewCss.generatePreviewCss();
@@ -276,7 +320,7 @@ function exportArtboard(document, artboard, options) {
   const previewHtml = previewTemplate.generatePreviewHtml(meta, layerTree, inferredComponents, screenshot, styleMap, assetsMap, previewDataJson);
   const bridgeScript = interactionBridgeTemplate.generateBridgeScript();
 
-  emitStep("generatingAiContext", artboard.name);
+  emitStep("generatingAiContext", artboardName);
   logStep("generate design context", "开始生成设计上下文", { artboardName: artboard.name });
   const designContext = designContextGenerator.generateDesignContext(meta, layerTree, inferredComponents, texts, tokens, assetsMap);
   const manifest = buildManifest(meta, screenshot);

@@ -76,12 +76,15 @@ export interface AssetRecordDto {
   name?: string;
   layerId?: string;
   handoffId?: string | null;
+  artboardId?: string | null;
   sourceLayerType?: string;
   type?: AssetType;
-  format?: AssetFormat;
-  path?: string;
+  format?: AssetFormat | null;
+  path?: string | null;
   width?: number;
   height?: number;
+  frame?: RectDto;
+  absoluteFrame?: RectDto | null;
   exportStatus?: AssetExportStatus;
   warnings?: string[];
 }
@@ -90,7 +93,9 @@ export interface AssetsMapDto {
   version?: string;
   documentName?: string;
   exportedAt?: string;
+  screenshot?: string | null;
   assets: AssetRecordDto[];
+  warnings?: string[];
 }
 
 export type ExportItemStatus = "success" | "failed" | "skipped" | string;
@@ -108,6 +113,7 @@ export interface ArtboardExportRecordDto {
   status: ExportItemStatus;
   reason?: string | null;
   warnings?: string[];
+  outputDir?: string;
 }
 
 export interface ExportResultWarningDto {
@@ -163,6 +169,12 @@ export interface DocumentIndexSummaryDto {
   warningTotal: number;
 }
 
+export interface DocumentIndexErrorDto {
+  artboardName?: string;
+  reason?: string | null;
+  message?: string;
+}
+
 export interface DocumentIndexDto {
   specVersion?: string;
   documentName?: string;
@@ -173,5 +185,5 @@ export interface DocumentIndexDto {
   artboards: DocumentIndexArtboardDto[];
   summary: DocumentIndexSummaryDto;
   warnings?: string[];
-  errors?: string[];
+  errors?: DocumentIndexErrorDto[];
 }

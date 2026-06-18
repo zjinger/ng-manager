@@ -1,10 +1,10 @@
-import type { DocumentIndexDto, DocumentIndexPageDto, DocumentIndexArtboardDto, ArtboardExportRecordDto } from "../types/runtime";
+import type { DocumentIndexDto, DocumentIndexPageDto, DocumentIndexArtboardDto, ArtboardExportRecordDto, DocumentIndexErrorDto } from "../types/runtime";
 
 // 文档级索引生成器。
 // 输出 handoff-index.json 与可选 index.html，记录文档/页面/画板导出结果。
 // 路径信息均为相对 outputRoot 的路径，便于跨平台迁移。
 
-function pad3(value: number): string {
+export function pad3(value: number): string {
   let n = Number(value) || 0;
   let s = String(n);
   while (s.length < 3) {
@@ -28,14 +28,14 @@ function cssVariable(name: string): string {
 // records: 由导出器产出的扁平画板结果
 // [{ pageIndex, pageName, artboardIndex, shortId, artboardName, packageDir,
 //    screenshotPath, previewHtmlPath, status, reason }]
-function buildIndexObject(options: {
+export function buildIndexObject(options: {
   documentName?: string;
   exportedAt?: string;
   mode?: string;
   outputRoot?: string;
   records?: ArtboardExportRecordDto[];
   warnings?: string[];
-  errors?: string[];
+  errors?: DocumentIndexErrorDto[];
 }): DocumentIndexDto {
   let records: ArtboardExportRecordDto[] = options.records || [];
   let pagesMap: Record<string, DocumentIndexPageDto> = {};
@@ -93,7 +93,7 @@ function buildIndexObject(options: {
   };
 }
 
-function generateIndexHtml(indexObject: DocumentIndexDto, modeLabel?: string): string {
+export function generateIndexHtml(indexObject: DocumentIndexDto, modeLabel?: string): string {
   let lines = [];
   lines.push("<!DOCTYPE html>");
   lines.push('<html lang="zh">');
@@ -201,11 +201,3 @@ function summaryItem(label: string, value: unknown) {
     "</div></div>"
   );
 }
-
-module.exports = {
-  pad3: pad3,
-  buildIndexObject: buildIndexObject,
-  generateIndexHtml: generateIndexHtml,
-};
-
-export {};

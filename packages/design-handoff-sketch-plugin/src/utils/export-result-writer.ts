@@ -1,6 +1,6 @@
 import type { ArtboardExportRecordDto, ExportItemStatus, ExportResultDto, ExportResultWarningDto, ExportResultErrorDto } from "../types/runtime";
 
-let debugLogger = require("./debug-logger");
+import * as debugLogger from "./debug-logger";
 
 function countByStatus(items: ArtboardExportRecordDto[] | undefined, status: ExportItemStatus): number {
   return (items || []).filter(function (item: ArtboardExportRecordDto) {
@@ -8,7 +8,7 @@ function countByStatus(items: ArtboardExportRecordDto[] | undefined, status: Exp
   }).length;
 }
 
-function collectWarnings(items: ArtboardExportRecordDto[] | undefined): ExportResultWarningDto[] {
+export function collectWarnings(items: ArtboardExportRecordDto[] | undefined): ExportResultWarningDto[] {
   let warnings: ExportResultWarningDto[] = [];
   (items || []).forEach(function (item) {
     (item.warnings || []).forEach(function (warning: string) {
@@ -21,7 +21,7 @@ function collectWarnings(items: ArtboardExportRecordDto[] | undefined): ExportRe
   return warnings;
 }
 
-function collectErrors(items: ArtboardExportRecordDto[] | undefined, extraErrors: ExportResultErrorDto[] | undefined): ExportResultErrorDto[] {
+export function collectErrors(items: ArtboardExportRecordDto[] | undefined, extraErrors: ExportResultErrorDto[] | undefined): ExportResultErrorDto[] {
   let errors: ExportResultErrorDto[] = [];
   (items || [])
     .filter(function (item: ArtboardExportRecordDto) {
@@ -39,7 +39,7 @@ function collectErrors(items: ArtboardExportRecordDto[] | undefined, extraErrors
   return errors;
 }
 
-function buildExportResult(input: {
+export function buildExportResult(input: {
   mode?: string;
   startedAt?: string;
   finishedAt?: string;
@@ -76,19 +76,10 @@ function buildExportResult(input: {
   };
 }
 
-function writeExportResult(outputRoot: string, result: ExportResultDto): string | null {
+export function writeExportResult(outputRoot: string, result: ExportResultDto): string | null {
   if (!outputRoot) {
     return null;
   }
   debugLogger.writeJsonFile(outputRoot, "export-result.json", result);
   return debugLogger.joinPath(outputRoot, "export-result.json");
 }
-
-module.exports = {
-  buildExportResult: buildExportResult,
-  collectErrors: collectErrors,
-  collectWarnings: collectWarnings,
-  writeExportResult: writeExportResult,
-};
-
-export {};

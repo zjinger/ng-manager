@@ -8,6 +8,9 @@
   },
   "include": [
     "src/types/**/*.ts",
+    "src/main.ts",
+    "src/export/exporter.ts",
+    "src/export/asset-exporter.ts",
     "src/export/asset-classify.ts",
     "src/export/document-index-generator.ts",
     "src/utils/export-result-writer.ts",

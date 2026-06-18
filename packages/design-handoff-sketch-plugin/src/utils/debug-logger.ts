@@ -1,4 +1,4 @@
-const LOG_FILE_NAME = "ngm-ai-handoff.log";
+export const LOG_FILE_NAME = "ngm-ai-handoff.log";
 const UTF8_ENCODING = typeof NSUTF8StringEncoding !== "undefined" ? NSUTF8StringEncoding : 4;
 
 function tryRequire(name: string): any {
@@ -12,7 +12,7 @@ function tryRequire(name: string): any {
 const nodeFs: any = tryRequire("fs");
 const nodeOs: any = tryRequire("os");
 
-function joinPath(..._parts: unknown[]): string {
+export function joinPath(..._parts: unknown[]): string {
   const parts = Array.prototype.slice.call(arguments).filter(function (part) {
     return part !== null && part !== undefined && String(part).length > 0;
   });
@@ -45,7 +45,7 @@ function getFileManager() {
   return null;
 }
 
-function ensureDirRecursive(dir: string): boolean {
+export function ensureDirRecursive(dir: string): boolean {
   const fileManager = getFileManager();
   if (fileManager) {
     return Boolean(
@@ -64,7 +64,7 @@ function ensureDirRecursive(dir: string): boolean {
   return false;
 }
 
-function fileExists(path: string): boolean {
+export function fileExists(path: string): boolean {
   const fileManager = getFileManager();
   if (fileManager) {
     return Boolean(fileManager.fileExistsAtPath(String(path)));
@@ -83,7 +83,7 @@ function removeFile(path: string): void {
   }
 }
 
-function writeTextFile(path: string, text: string): boolean {
+export function writeTextFile(path: string, text: string): boolean {
   const fileManager = getFileManager();
   if (fileManager && typeof NSString !== "undefined") {
     const value = NSString.stringWithString(String(text));
@@ -96,7 +96,7 @@ function writeTextFile(path: string, text: string): boolean {
   return false;
 }
 
-function appendTextFile(path: string, text: string): boolean {
+export function appendTextFile(path: string, text: string): boolean {
   const fileManager = getFileManager();
   if (fileManager && typeof NSString !== "undefined") {
     if (!fileExists(path)) {
@@ -120,12 +120,12 @@ function appendTextFile(path: string, text: string): boolean {
   return false;
 }
 
-function writeJsonFile(dir: string, fileName: string, value: unknown): boolean {
+export function writeJsonFile(dir: string, fileName: string, value: unknown): boolean {
   ensureDirRecursive(dir);
   return writeTextFile(joinPath(dir, fileName), JSON.stringify(value, null, 2) + "\n");
 }
 
-function isDirectoryWritable(dir: string): boolean {
+export function isDirectoryWritable(dir: string): boolean {
   try {
     ensureDirRecursive(dir);
     const probe = joinPath(dir, ".ngm-ai-handoff-write-test");
@@ -139,7 +139,7 @@ function isDirectoryWritable(dir: string): boolean {
   }
 }
 
-function resolveLogLocation(outputRoot: string | undefined | null): { logDir: string; logPath: string; fallback: boolean } {
+export function resolveLogLocation(outputRoot: string | undefined | null): { logDir: string; logPath: string; fallback: boolean } {
   const preferredRoot = outputRoot ? joinPath(outputRoot, "logs") : null;
   if (preferredRoot && isDirectoryWritable(preferredRoot)) {
     return {
@@ -158,7 +158,7 @@ function resolveLogLocation(outputRoot: string | undefined | null): { logDir: st
   };
 }
 
-function getFallbackOutputRoot(): string {
+export function getFallbackOutputRoot(): string {
   return joinPath(getHomeDir(), "Desktop", "ngm-ai-handoff");
 }
 
@@ -185,7 +185,7 @@ function normalizeError(error: unknown): { message: string; stack: string | null
   };
 }
 
-function buildLogEntry(options: {
+export function buildLogEntry(options: {
   time?: string;
   level: string;
   command?: string;
@@ -205,7 +205,7 @@ function buildLogEntry(options: {
   };
 }
 
-function createLogger(options?: {
+export function createLogger(options?: {
   outputRoot?: string;
   command?: string;
 }) {
@@ -255,20 +255,3 @@ function createLogger(options?: {
     },
   };
 }
-
-module.exports = {
-  LOG_FILE_NAME: LOG_FILE_NAME,
-  appendTextFile: appendTextFile,
-  buildLogEntry: buildLogEntry,
-  createLogger: createLogger,
-  ensureDirRecursive: ensureDirRecursive,
-  fileExists: fileExists,
-  getFallbackOutputRoot: getFallbackOutputRoot,
-  isDirectoryWritable: isDirectoryWritable,
-  joinPath: joinPath,
-  resolveLogLocation: resolveLogLocation,
-  writeJsonFile: writeJsonFile,
-  writeTextFile: writeTextFile,
-};
-
-export {};

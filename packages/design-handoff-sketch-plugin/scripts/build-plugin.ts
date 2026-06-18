@@ -1,5 +1,5 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "fs";
-import { basename, extname, join, resolve } from "path";
+import { extname, join, relative, resolve } from "path";
 
 const packageRoot = resolve(__dirname, "..", "..");
 const compiledSourceRoot = join(packageRoot, "lib", "src");
@@ -116,7 +116,7 @@ function cleanRuntimeSource(source: string): string {
 }
 
 function moduleIdForFile(file: string): string {
-  return basename(file, ".js");
+  return relative(compiledSourceRoot, file).replace(/\\/g, "/").replace(/\.js$/, "");
 }
 
 function buildMainBundle(files: string[]): string {
@@ -145,21 +145,33 @@ var __ngmHandlerRegistry = {};
     __ngmModules[id] = factory;
   }
 
-  function __ngmNormalize(request) {
+  function __ngmNormalize(request, fromId) {
     var value = String(request || "");
-    if (value.indexOf("./") === 0) {
-      value = value.slice(2);
-    }
-    if (value.indexOf("../") === 0) {
-      value = value.replace(/^\\.\\.\\//, "");
+    if (value.indexOf("./") === 0 || value.indexOf("../") === 0) {
+      var baseParts = fromId ? String(fromId).split("/") : [];
+      if (baseParts.length > 0) {
+        baseParts.pop();
+      }
+      var requestParts = value.split("/");
+      for (var partIndex = 0; partIndex < requestParts.length; partIndex += 1) {
+        var part = requestParts[partIndex];
+        if (!part || part === ".") {
+          continue;
+        }
+        if (part === "..") {
+          baseParts.pop();
+        } else {
+          baseParts.push(part);
+        }
+      }
+      value = baseParts.join("/");
     }
     value = value.replace(/\\.js$/, "");
-    var slash = value.lastIndexOf("/");
-    return slash >= 0 ? value.slice(slash + 1) : value;
+    return value;
   }
 
-  function __ngmRequire(request) {
-    var id = __ngmNormalize(request);
+  function __ngmRequire(request, fromId) {
+    var id = __ngmNormalize(request, fromId);
     if (!__ngmModules[id]) {
       if (__ngmNativeRequire) {
         return __ngmNativeRequire(request);
@@ -172,7 +184,7 @@ var __ngmHandlerRegistry = {};
     var module = { exports: {} };
     __ngmCache[id] = module;
     __ngmModules[id](function (nextRequest) {
-      return __ngmRequire(nextRequest);
+      return __ngmRequire(nextRequest, id);
     }, module, module.exports);
     return module.exports;
   }

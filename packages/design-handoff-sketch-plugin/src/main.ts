@@ -5,25 +5,141 @@ const pluginSettings = require("./sketch/settings");
 const i18n = require("./i18n/i18n");
 const normalize = require("./sketch/normalize-layer");
 const artboardUtils = require("./sketch/artboard-utils");
-const progress = require("./export-progress");
-const scopeDialog = require("./export-scope-dialog");
-const indexGenerator = require("./document-index-generator");
-const safeRunModule = require("./safe-run");
-const diagnostics = require("./diagnostics");
-const scanPage = require("./scan-page");
-const exportResultWriter = require("./export-result-writer");
+const progress = require("./ui/export-progress");
+const scopeDialog = require("./ui/export-scope-dialog");
+const indexGenerator = require("./export/document-index-generator");
+const safeRunModule = require("./utils/safe-run");
+const diagnostics = require("./utils/diagnostics");
+const scanPage = require("./utils/scan-page");
+const exportResultWriter = require("./utils/export-result-writer");
+
+import type {
+  ArtboardExportRecordDto,
+  DocumentIndexDto,
+  ExportResultWarningDto,
+} from "./types/runtime";
 
 const PLUGIN_VERSION = "0.3.0";
+
+type ExportMode = "selected" | "currentPage" | "wholeDocument" | "custom";
+
+interface ArtboardGroup {
+  page: SketchPageLike;
+  artboards: SketchLayerLike[];
+}
+
+interface FlatArtboardEntry {
+  page: SketchPageLike;
+  artboard: SketchLayerLike;
+}
+
+interface PluginSettingsDto {
+  outputRoot: string;
+  exportScreenshot?: boolean;
+}
+
+interface ExportLoggerLike {
+  logPath?: string;
+  getStage(): string;
+  step(stage: string, message: string, data?: unknown): unknown;
+  info(stage: string, message: string, data?: unknown): unknown;
+  warn(stage: string, message: string, data?: unknown): unknown;
+  error(stage: string, message: string, error: unknown, data?: unknown): unknown;
+}
+
+interface ExportReporterLike {
+  begin(): void;
+  close(): void;
+  collected(total: number): void;
+  raw(message: string): void;
+  startArtboard(current: number, total: number, artboardName?: string): void;
+  step(key: string, name?: string): void;
+  success(artboard: SketchLayerLike, outputDir: string): void;
+  failure(artboard: SketchLayerLike, error: unknown): void;
+  warning(message: string): void;
+  generatingIndex(): void;
+  finish(success: number, failed: number): void;
+  renderLog(): string;
+}
+
+interface SafeRunContextLike {
+  startedAt?: string;
+  settings?: PluginSettingsDto;
+  logger: ExportLoggerLike;
+  logPath?: string;
+}
+
+interface BuildArtboardRecordOptions {
+  rootOutputDir: string;
+  outputDir: string;
+  page: SketchPageLike;
+  artboard: SketchLayerLike;
+  pageIndex: number;
+  artboardInPageIndex: number;
+  shortId: string;
+  status: ArtboardExportRecordDto["status"];
+  reason?: string | null;
+}
+
+interface ExportSingleArtboardOptions {
+  document: SketchDocumentLike;
+  settings: PluginSettingsDto;
+  rootOutputDir: string;
+  page: SketchPageLike;
+  artboard: SketchLayerLike;
+  pageIndex: number;
+  artboardInPageIndex: number;
+  reporter: ExportReporterLike;
+  logger: ExportLoggerLike;
+}
+
+interface FinalizeExportOptions {
+  document: SketchDocumentLike;
+  mode: ExportMode;
+  groups: ArtboardGroup[];
+  rootOutputDir: string;
+  records: ArtboardExportRecordDto[];
+  reporter: ExportReporterLike;
+  context: SafeRunContextLike;
+}
+
+interface EmptyExportResultOptions {
+  document: SketchDocumentLike;
+  mode: ExportMode;
+  rootOutputDir: string;
+  context: SafeRunContextLike;
+  reason: string;
+}
+
+interface ExportSummaryOptions {
+  mode: ExportMode;
+  modeLabel: string;
+  groups?: ArtboardGroup[];
+  records: ArtboardExportRecordDto[];
+  rootOutputDir: string;
+  logPath?: string;
+  success: number;
+  failed: number;
+  warnings: number;
+  stage?: string;
+}
+
+function errorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message);
+  }
+  return String(error);
+}
 
 // ============================================================
 // 基础工具
 // ============================================================
 
-function getDocument() {
+function getDocument(): SketchDocumentLike | undefined {
   return sketch.getSelectedDocument();
 }
 
-function getModeLabel(mode) {
+function getModeLabel(mode: ExportMode | string): string {
   if (mode === "selected") {
     return i18n.STRINGS.modeSelected;
   }
@@ -39,7 +155,7 @@ function getModeLabel(mode) {
   return mode;
 }
 
-function relativePath(rootDir, absPath) {
+function relativePath(rootDir: string | null | undefined, absPath: string | null | undefined): string {
   if (!rootDir || !absPath) {
     return absPath || "";
   }
@@ -60,19 +176,25 @@ function relativePath(rootDir, absPath) {
 // groups: [{ page, artboards }]
 // ============================================================
 
-function collectGroupsForMode(document, mode) {
+function collectGroupsForMode(document: SketchDocumentLike, mode: ExportMode): ArtboardGroup[] {
   if (mode === "selected") {
-    const artboards = artboardUtils.getArtboardsFromSelection(document);
+    const artboards: SketchLayerLike[] = artboardUtils.getArtboardsFromSelection(document);
     if (artboards.length === 0) {
       return [];
     }
     const page = document.selectedPage;
+    if (!page) {
+      return [];
+    }
     return [{ page: page, artboards: artboards }];
   }
 
   if (mode === "currentPage") {
     const currentPage = document.selectedPage;
-    const currentArtboards = artboardUtils.collectVisibleArtboards(currentPage);
+    if (!currentPage) {
+      return [];
+    }
+    const currentArtboards: SketchLayerLike[] = artboardUtils.collectVisibleArtboards(currentPage);
     return [{ page: currentPage, artboards: currentArtboards }];
   }
 
@@ -89,7 +211,7 @@ function collectGroupsForMode(document, mode) {
 // ============================================================
 
 // 计算每个画板的唯一输出目录，避免同名覆盖。
-function computeArtboardOutputDir(rootOutputDir, page, artboard, pageIndex, artboardInPageIndex) {
+function computeArtboardOutputDir(rootOutputDir: string, page: SketchPageLike, artboard: SketchLayerLike, pageIndex: number, artboardInPageIndex: number): string {
   const pageName = exporter.sanitizeName(page && page.name ? page.name : "Page");
   const artboardName = exporter.sanitizeName(artboard.name || "Untitled Artboard");
   const shortId = normalize.shortHash(String(artboard.id || ""));
@@ -105,7 +227,7 @@ function computeArtboardOutputDir(rootOutputDir, page, artboard, pageIndex, artb
 }
 
 // 构造文档级索引用的扁平 record。路径一律相对 rootOutputDir。
-function buildArtboardRecord(options) {
+function buildArtboardRecord(options: BuildArtboardRecordOptions): ArtboardExportRecordDto {
   const relPackageDir = relativePath(options.rootOutputDir, options.outputDir);
   return {
     pageIndex: options.pageIndex,
@@ -124,7 +246,7 @@ function buildArtboardRecord(options) {
   };
 }
 
-function exportSingleArtboard(options) {
+function exportSingleArtboard(options: ExportSingleArtboardOptions): ArtboardExportRecordDto {
   let document = options.document;
   const settings = options.settings;
   const rootOutputDir = options.rootOutputDir;
@@ -160,7 +282,7 @@ function exportSingleArtboard(options) {
       outputDir: outputDir,
       pageName: page && page.name,
       logger: logger,
-      onProgress: function (key, name) {
+      onProgress: function (key: string, name: string) {
         reporter.step(key, name);
       },
     });
@@ -184,7 +306,7 @@ function exportSingleArtboard(options) {
     });
   } catch (error) {
     record.status = "failed";
-    record.reason = error && error.message ? error.message : String(error);
+    record.reason = errorMessage(error);
     record.warnings = [];
     reporter.failure(artboard, error);
     logger.error("导出失败", "单个画板导出失败", error, {
@@ -202,7 +324,7 @@ function exportSingleArtboard(options) {
 // 统一导出工作流
 // ============================================================
 
-function runExport(document, mode, groups, context) {
+function runExport(document: SketchDocumentLike, mode: ExportMode, groups: ArtboardGroup[], context: SafeRunContextLike) {
   const logger = context.logger;
   logger.step("读取设置", "读取插件导出设置");
   const settings = context.settings || pluginSettings.getSettings();
@@ -223,7 +345,7 @@ function runExport(document, mode, groups, context) {
     reporter.begin();
 
     logger.step("收集 Artboard", "开始收集导出画板", { mode: mode });
-    const flat = artboardUtils.flattenGroups(groups);
+    const flat: FlatArtboardEntry[] = artboardUtils.flattenGroups(groups);
     reporter.collected(flat.length);
     if (flat.length === 0) {
       writeEmptyExportResult({
@@ -244,14 +366,14 @@ function runExport(document, mode, groups, context) {
       reporter.raw(i18n.STRINGS.singleArtboardHint);
     }
 
-    const pageIndexMap = {};
-    groups.forEach(function (group, index) {
+    const pageIndexMap: Record<string, number> = {};
+    groups.forEach(function (group: ArtboardGroup, index: number) {
       pageIndexMap[String((group.page && group.page.id) || "")] = index;
     });
 
-    const pageCounter = {};
-    const records = [];
-    flat.forEach(function (entry, i) {
+    const pageCounter: Record<string, number> = {};
+    const records: ArtboardExportRecordDto[] = [];
+    flat.forEach(function (entry: FlatArtboardEntry, i: number) {
       const page = entry.page;
       const artboard = entry.artboard;
       const pageId = String((page && page.id) || "");
@@ -293,7 +415,7 @@ function runExport(document, mode, groups, context) {
   }
 }
 
-function finalizeExport(options) {
+function finalizeExport(options: FinalizeExportOptions) {
   let document = options.document;
   const mode = options.mode;
   const groups = options.groups;
@@ -316,10 +438,10 @@ function finalizeExport(options) {
     records: records,
     warnings: [],
     errors: records
-      .filter(function (r) {
+      .filter(function (r: ArtboardExportRecordDto) {
         return r.status === "failed";
       })
-      .map(function (r) {
+      .map(function (r: ArtboardExportRecordDto) {
         return { artboardName: r.artboardName, reason: r.reason };
       }),
   });
@@ -328,18 +450,18 @@ function finalizeExport(options) {
     const indexHtml = indexGenerator.generateIndexHtml(indexObject, modeLabel);
     exporter.writeText(rootOutputDir, "index.html", indexHtml);
   } catch (error) {
-    reporter.warning("index.html 生成失败：" + (error && error.message ? error.message : String(error)));
-    logger.warn("write html files", "index.html 生成失败", { error: error && error.message ? error.message : String(error) });
+    reporter.warning("index.html 生成失败：" + errorMessage(error));
+    logger.warn("write html files", "index.html 生成失败", { error: errorMessage(error) });
   }
 
   // 汇总
-  const success = records.filter(function (r) {
+  const success = records.filter(function (r: ArtboardExportRecordDto) {
     return r.status === "success";
   }).length;
-  const failed = records.filter(function (r) {
+  const failed = records.filter(function (r: ArtboardExportRecordDto) {
     return r.status === "failed";
   }).length;
-  const warnings = exportResultWriter.collectWarnings(records);
+  const warnings: ExportResultWarningDto[] = exportResultWriter.collectWarnings(records);
   const errors = exportResultWriter.collectErrors(records, []);
   logger.step("write export result", "开始写入 export-result.json", {
     success: success,
@@ -391,7 +513,7 @@ function finalizeExport(options) {
   return { rootOutputDir: rootOutputDir, records: records, indexObject: indexObject, exportResult: exportResult };
 }
 
-function writeEmptyExportResult(options) {
+function writeEmptyExportResult(options: EmptyExportResultOptions): void {
   const result = exportResultWriter.buildExportResult({
     mode: options.mode,
     startedAt: options.context.startedAt,
@@ -413,8 +535,16 @@ function writeEmptyExportResult(options) {
 // 导出日志
 // ============================================================
 
-function buildExportLogText(options) {
-  const lines = [];
+function buildExportLogText(options: {
+  document: SketchDocumentLike;
+  records: ArtboardExportRecordDto[];
+  reporter: ExportReporterLike;
+  indexObject: DocumentIndexDto;
+  exportedAt: string;
+  modeLabel: string;
+  rootOutputDir: string;
+}): string {
+  const lines: string[] = [];
   let document = options.document;
   const records = options.records;
   const reporter = options.reporter;
@@ -435,19 +565,19 @@ function buildExportLogText(options) {
   lines.push("");
   lines.push("---- 成功列表 ----");
   records
-    .filter(function (r) {
+    .filter(function (r: ArtboardExportRecordDto) {
       return r.status === "success";
     })
-    .forEach(function (r) {
+    .forEach(function (r: ArtboardExportRecordDto) {
       lines.push("- " + r.pageName + " / " + r.artboardName + " -> " + r.outputDir);
     });
   lines.push("");
   lines.push("---- 失败列表 ----");
   records
-    .filter(function (r) {
+    .filter(function (r: ArtboardExportRecordDto) {
       return r.status === "failed";
     })
-    .forEach(function (r) {
+    .forEach(function (r: ArtboardExportRecordDto) {
       lines.push("- " + r.pageName + " / " + r.artboardName + "，原因：" + (r.reason || "unknown"));
     });
   lines.push("");
@@ -455,7 +585,7 @@ function buildExportLogText(options) {
   if (!indexObject.warnings || indexObject.warnings.length === 0) {
     lines.push("（无）");
   } else {
-    indexObject.warnings.forEach(function (w) {
+    indexObject.warnings.forEach(function (w: string) {
       lines.push("- " + w);
     });
   }
@@ -467,11 +597,11 @@ function buildExportLogText(options) {
 // 摘要弹窗
 // ============================================================
 
-function showSuccessSummary(options) {
+function showSuccessSummary(options: ExportSummaryOptions): void {
   const alert = NSAlert.alloc().init();
   alert.setMessageText(i18n.STRINGS.summary.title);
 
-  const pageNames = (options.groups || []).map(function (g) {
+  const pageNames = (options.groups || []).map(function (g: ArtboardGroup) {
     return (g.page && g.page.name) || "";
   });
 
@@ -496,13 +626,13 @@ function showSuccessSummary(options) {
   }
 }
 
-function showFailureSummary(options) {
+function showFailureSummary(options: ExportSummaryOptions): void {
   const records = options.records || [];
-  const failures = records.filter(function (r) {
+  const failures = records.filter(function (r: ArtboardExportRecordDto) {
     return r.status === "failed";
   });
 
-  const failureLines = failures.map(function (r) {
+  const failureLines = failures.map(function (r: ArtboardExportRecordDto) {
     return (
       "- " +
       i18n.STRINGS.failure.failedArtboard +
@@ -542,7 +672,7 @@ function showFailureSummary(options) {
   }
 }
 
-function revealInFinder(path) {
+function revealInFinder(path: string): void {
   const targetPath = String(path || "");
   try {
     const url = NSURL.fileURLWithPath(targetPath);
@@ -558,7 +688,7 @@ function revealInFinder(path) {
   }
 }
 
-function showNoArtboardMessage(mode) {
+function showNoArtboardMessage(mode: ExportMode): void {
   if (mode === "selected") {
     UI.alert(i18n.STRINGS.noArtboardFound, i18n.STRINGS.noArtboardFoundHint);
     return;
@@ -582,7 +712,7 @@ function showNoArtboardMessage(mode) {
 // ============================================================
 
 function onExportSelectedArtboard() {
-  return safeRunModule.safeRun({ command: "export-selected-artboard", commandLabel: i18n.STRINGS.modeSelected }, function (context) {
+  return safeRunModule.safeRun({ command: "export-selected-artboard", commandLabel: i18n.STRINGS.modeSelected }, function (context: SafeRunContextLike) {
     context.logger.step("获取当前文档", "准备获取当前文档");
     let document = getDocument();
     if (!document) {
@@ -598,7 +728,7 @@ function onExportSelectedArtboard() {
 }
 
 function onExportCurrentPage() {
-  return safeRunModule.safeRun({ command: "export-current-page", commandLabel: i18n.STRINGS.modeCurrentPage }, function (context) {
+  return safeRunModule.safeRun({ command: "export-current-page", commandLabel: i18n.STRINGS.modeCurrentPage }, function (context: SafeRunContextLike) {
     context.logger.step("获取当前文档", "准备获取当前文档");
     let document = getDocument();
     if (!document) {
@@ -614,7 +744,7 @@ function onExportCurrentPage() {
 }
 
 function onExportWholeDocument() {
-  return safeRunModule.safeRun({ command: "export-whole-document", commandLabel: i18n.STRINGS.modeWholeDocument }, function (context) {
+  return safeRunModule.safeRun({ command: "export-whole-document", commandLabel: i18n.STRINGS.modeWholeDocument }, function (context: SafeRunContextLike) {
     context.logger.step("获取当前文档", "准备获取当前文档");
     let document = getDocument();
     if (!document) {
@@ -630,7 +760,7 @@ function onExportWholeDocument() {
 }
 
 function onExportCustom() {
-  return safeRunModule.safeRun({ command: "export-custom", commandLabel: i18n.STRINGS.modeCustom }, function (context) {
+  return safeRunModule.safeRun({ command: "export-custom", commandLabel: i18n.STRINGS.modeCustom }, function (context: SafeRunContextLike) {
     context.logger.step("获取当前文档", "准备获取当前文档");
     let document = getDocument();
     if (!document) {
@@ -641,7 +771,7 @@ function onExportCustom() {
       showNoArtboardMessage("wholeDocument");
       return null;
     }
-    const entries = artboardUtils.flattenGroups(allGroups);
+    const entries: FlatArtboardEntry[] = artboardUtils.flattenGroups(allGroups);
     let selection = scopeDialog.showCustomScopeDialog(entries);
     if (!selection || selection.length === 0) {
       showNoArtboardMessage("custom");
@@ -663,13 +793,13 @@ function onOpenSettings() {
 }
 
 function onDiagnosePluginEnvironment() {
-  return safeRunModule.safeRun({ command: "diagnose-plugin-environment", commandLabel: i18n.STRINGS.diagnostics.menu }, function (context) {
+  return safeRunModule.safeRun({ command: "diagnose-plugin-environment", commandLabel: i18n.STRINGS.diagnostics.menu }, function (context: SafeRunContextLike) {
     return diagnostics.runDiagnostics(context, { pluginVersion: PLUGIN_VERSION });
   });
 }
 
 function onScanCurrentPage() {
-  return safeRunModule.safeRun({ command: "scan-current-page", commandLabel: i18n.STRINGS.scan.menu }, function (context) {
+  return safeRunModule.safeRun({ command: "scan-current-page", commandLabel: i18n.STRINGS.scan.menu }, function (context: SafeRunContextLike) {
     return scanPage.runScanCurrentPage(context);
   });
 }

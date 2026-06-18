@@ -1,4 +1,4 @@
-let normalize = require("./normalize-layer");
+let normalize = require("../sketch/normalize-layer");
 
 
 let RULES = [
