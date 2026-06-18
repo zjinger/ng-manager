@@ -2,11 +2,12 @@
 
 ## 概述
 
-`@yinuo-ngm/design-handoff` 是一个 AI 友好的设计交接工具，用于将 Sketch 设计稿转换为结构化数据，便于 AI Agent 自动生成前端代码。
+`@yinuo-ngm/design-handoff` 是一个 AI 友好的设计交接工具，用于将已导出的设计交接包转换为结构化数据，便于 AI Agent 自动生成前端代码。
+
+设计交接包（Handoff Package）由配套的 Sketch 插件 `ngm-ai-handoff` 生成（源码见 `sketchplugin/`，可通过 `npm run pack:sketch` 打包）。本包负责对交接包做解析、校验、扫描与 AI Agent 任务生成。
 
 ## 功能特性
 
-- ✅ 直接解析 `.sketch` 文件（无需安装 Sketch 插件）
 - ✅ 解析已导出的交接包（JSON 格式）
 - ✅ 生成 AI Agent 任务（prompt.md + context.json）
 - ✅ 支持目标项目配置（Profile）
@@ -24,122 +25,7 @@ npm install @yinuo-ngm/design-handoff
 
 ## CLI 命令
 
-### 1. 查看 .sketch 文件中的页面和画板
-
-```bash
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "<sketch文件路径>" --list
-```
-
-**示例：**
-
-```bash
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "C:\Users\<用户名>\Desktop\sketch\核心网2026推广.sketch" --list
-```
-
-**输出示例：**
-
-```json
-{
-  "pages": [
-    {
-      "index": 0,
-      "id": "C2061E10-1378-44B0-9BB1-29CD5AE6B46C",
-      "name": "✅0-登录页",
-      "artboards": [
-        {
-          "name": "7-图形验证码",
-          "frame": { "width": 1920, "height": 937, "x": -6099, "y": 83 }
-        },
-        {
-          "name": "8-滑动验证",
-          "frame": { "width": 1920, "height": 937, "x": -4052, "y": 84 }
-        }
-      ]
-    },
-    {
-      "index": 1,
-      "name": "✅1-设备新增-0310",
-      "artboards": [...]
-    }
-  ]
-}
-```
-
-### 2. 解析 .sketch 文件
-
-```bash
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "<sketch文件路径>" --out "<输出目录>"
-```
-
-**参数说明：**
-
-| 参数 | 必需 | 说明 |
-|------|------|------|
-| `--file` | ✅ | .sketch 文件路径 |
-| `--out` | ❌ | 输出目录（不指定则不写入文件） |
-| `--page` | ❌ | 页面索引（默认为 0） |
-| `--artboard` | ❌ | 画板名称（默认使用第一个画板） |
-| `--list` | ❌ | 列出所有页面和画板 |
-| `--all` | ❌ | 解析指定页面的所有画板 |
-
-**示例：**
-
-```bash
-# 解析默认页面的第一个画板
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "design.sketch" --out "output"
-
-# 解析指定页面的指定画板
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "design.sketch" --out "output" --page 7 --artboard "1综合管理-海区链路版本控制-1）默认列表"
-
-# 解析指定页面的所有画板
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "design.sketch" --out "output" --page 7 --all
-```
-
-**输出示例：**
-
-```json
-{
-  "outputDir": "C:\\Users\\<用户名>\\Desktop\\sketch\\output",
-  "warnings": [
-    "App version 83.2 may have features not fully supported"
-  ],
-  "summary": {
-    "documentName": "核心网2026推广",
-    "pageName": "✅7-国家中心系统-0601",
-    "artboardName": "1综合管理-海区链路版本控制-1）默认列表",
-    "textCount": 45,
-    "componentCount": 2
-  }
-}
-```
-
-**使用 `--all` 参数的输出示例：**
-
-```json
-{
-  "outputRoot": "C:\\Users\\<用户名>\\Desktop\\sketch\\output",
-  "pageName": "✅7-国家中心系统-0601",
-  "totalArtboards": 28,
-  "parsedArtboards": 28,
-  "warnings": ["App version 83.2 may have features not fully supported"],
-  "artboards": [
-    {
-      "artboardName": "0国家中心系统-导航下拉菜单项",
-      "outputDir": "C:\\Users\\<用户名>\\Desktop\\sketch\\output\\0国家中心系统-导航下拉菜单项",
-      "textCount": 15,
-      "componentCount": 0
-    },
-    {
-      "artboardName": "1综合管理-海区链路版本控制-1）默认列表",
-      "outputDir": "C:\\Users\\<用户名>\\Desktop\\sketch\\output\\1综合管理-海区链路版本控制-1-默认列表",
-      "textCount": 150,
-      "componentCount": 2
-    }
-  ]
-}
-```
-
-### 3. 扫描交接包
+### 1. 扫描交接包
 
 ```bash
 npm run handoff:scan -w @yinuo-ngm/design-handoff -- --root "<交接包根目录>"
@@ -148,10 +34,10 @@ npm run handoff:scan -w @yinuo-ngm/design-handoff -- --root "<交接包根目录
 **示例：**
 
 ```bash
-npm run handoff:scan -w @yinuo-ngm/design-handoff -- --root "C:\Users\<用户名>\Desktop\sketch"
+npm run handoff:scan -w @yinuo-ngm/design-handoff -- --root "C:\\Users\\<用户名>\\Desktop\\sketch"
 ```
 
-### 4. 创建 AI Agent 任务
+### 2. 创建 AI Agent 任务
 
 ```bash
 npm run handoff:task -w @yinuo-ngm/design-handoff -- --package "<交接包目录>"
@@ -187,7 +73,7 @@ npm run handoff:task -w @yinuo-ngm/design-handoff -- --package "output" --target
 
 ### 交接包结构
 
-```
+```text
 output/
 ├── meta.json           # 元信息（文档名、页面名、画板名、导出时间）
 ├── layer-tree.json     # 图层树结构（层级、位置、尺寸）
@@ -201,7 +87,7 @@ output/
 
 ### AI Agent 任务结构
 
-```
+```text
 tasks/
 └── artboard-name/
     ├── prompt.md       # 任务描述和要求
@@ -212,46 +98,6 @@ tasks/
 ---
 
 ## API 使用
-
-### 解析 .sketch 文件
-
-```typescript
-import { parseSketchFile } from '@yinuo-ngm/design-handoff';
-
-const result = await parseSketchFile({
-  sketchFilePath: '/path/to/design.sketch',
-  outputDir: '/path/to/output',
-  artboardName: 'LoginPage',
-  pageIndex: 0,
-});
-
-console.log(result.handoff.meta.artboardName);
-console.log(result.handoff.texts);
-console.log(result.handoff.styles);
-console.log(result.handoff.tokens);
-console.log(result.handoff.components);
-```
-
-### 批量解析 .sketch 文件的所有画板
-
-```typescript
-import { parseSketchFileAllArtboards } from '@yinuo-ngm/design-handoff';
-
-const result = await parseSketchFileAllArtboards({
-  sketchFilePath: '/path/to/design.sketch',
-  outputRoot: '/path/to/output',
-  pageIndex: 7, // 指定页面索引
-});
-
-console.log(`Page: ${result.pageName}`);
-console.log(`Total artboards: ${result.totalArtboards}`);
-console.log(`Parsed artboards: ${result.results.length}`);
-
-// 遍历每个画板的结果
-for (const artboard of result.results) {
-  console.log(`- ${artboard.handoff.meta.artboardName}: ${artboard.handoff.texts.length} texts`);
-}
-```
 
 ### 解析已导出的交接包
 
@@ -319,81 +165,23 @@ const summaries = scanHandoffPackages('/path/to/handoffs');
 
 ## 完整工作流程示例
 
-### 步骤 1：查看 .sketch 文件中的页面和画板
+### 步骤 1：使用 Sketch 插件导出交接包
 
-```bash
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "设计稿.sketch" --list
-```
+在 Sketch 中通过 `NGM AI Handoff` 插件导出选中画板 / 当前页面 / 整个文档，得到交接包目录（包含上述 `meta.json`、`layer-tree.json` 等文件）。
 
-### 步骤 2：解析指定画板
-
-```bash
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "设计稿.sketch" --out "handoff-output" --page 7 --artboard "1综合管理-海区链路版本控制-1）默认列表"
-```
-
-### 步骤 2（批量）：解析指定页面的所有画板
-
-```bash
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "设计稿.sketch" --out "handoff-output" --page 7 --all
-```
-
-### 步骤 3：创建 AI Agent 任务
+### 步骤 2：创建 AI Agent 任务
 
 ```bash
 npm run handoff:task -w @yinuo-ngm/design-handoff -- --package "handoff-output" --target-project "my-angular-app"
 ```
 
-### 步骤 4：AI Agent 读取任务并生成代码
+### 步骤 3：AI Agent 读取任务并生成代码
 
 AI Agent 读取任务目录中的 `prompt.md` 和 `context.json`，根据设计数据生成前端代码。
 
 ---
 
-## 版本兼容性
-
-| Sketch 版本 | 兼容性 | 说明 |
-|-------------|--------|------|
-| 55.2 - 71 | ✅ 完全兼容 | 基础功能完全支持 |
-| 72 - 83 | ✅ 基本兼容 | 基础功能支持，部分新特性可能不支持 |
-| 84+ | ⚠️ 部分兼容 | 基础功能支持，新特性可能不支持 |
-| 2025.x, 2026.x | ⚠️ 部分兼容 | 新版本格式，基础功能支持 |
-
----
-
 ## 常见问题
-
-### Q: 如何查看 .sketch 文件中有哪些页面和画板？
-
-A: 使用 `--list` 参数：
-
-```bash
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "design.sketch" --list
-```
-
-### Q: 解析时报错 "Artboard not found" 怎么办？
-
-A: 
-1. 先使用 `--list` 查看所有页面和画板
-2. 确认画板名称是否完全匹配（包括空格和特殊字符）
-3. 使用 `--page` 参数指定正确的页面索引
-
-### Q: 如何解析特定页面的画板？
-
-A: 使用 `--page` 和 `--artboard` 参数：
-
-```bash
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "design.sketch" --out "output" --page 7 --artboard "画板名称"
-```
-
-### Q: 如何一次性解析一个页面的所有画板？
-
-A: 使用 `--all` 参数：
-
-```bash
-npm run handoff:parse -w @yinuo-ngm/design-handoff -- --file "design.sketch" --out "output" --page 7 --all
-```
-
-这会将页面中的每个画板解析到独立的子目录中。
 
 ### Q: 生成的交接包包含哪些信息？
 
@@ -407,18 +195,17 @@ A: 交接包包含以下文件：
 - `assets-map.json` - 资源映射
 - `agent-prompt.md` - AI Agent 提示词
 
+### Q: 如何生成设计交接包？
+
+A: 使用配套的 Sketch 插件 `ngm-ai-handoff`（位于 `sketchplugin/` 目录）。在 Windows 侧执行 `npm run pack:sketch` 打包得到 `.sketchplugin.zip`，复制到 Mac 解压安装后即可在 Sketch 中导出交接包。
+
 ---
 
 ## 更新日志
 
-### v0.2.1
-
-- ✨ 新增 `--all` 参数，支持批量解析指定页面的所有画板
-- ✨ 新增 `parseSketchFileAllArtboards` API
-
 ### v0.2.0
 
-- ✨ 新增直接解析 .sketch 文件功能
-- ✨ 新增 `--list` 参数，支持查看所有页面和画板
-- ✨ 新增版本兼容性检查
-- 📦 添加 jszip 依赖
+- ✅ 解析已导出的交接包
+- ✅ 生成 AI Agent 任务
+- ✅ 目标项目配置（Profile）
+- ✅ 扫描交接包
