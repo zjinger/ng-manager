@@ -20,6 +20,7 @@ import { taskTools } from "./task.tools";
 import { testStandardTools } from "./test";
 import { workspaceTools } from "./workspace.tools";
 import { frontendWorkflowTools } from "./workflow";
+import { designHandoffTools } from "./design-handoff";
 
 export type McpToolDefinition<TSchema extends z.AnyZodObject = z.AnyZodObject> = {
   name: string;
@@ -53,5 +54,6 @@ export function allTools(): McpToolDefinition[] {
     ...nginxTools(),
     ...proxyTools(),
     ...hubV2Tools(),
+    ...designHandoffTools(),
   ];
 }
