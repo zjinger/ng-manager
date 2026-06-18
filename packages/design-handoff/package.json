@@ -1,7 +1,7 @@
 {
   "name": "@yinuo-ngm/design-handoff",
   "version": "0.2.0",
-  "description": "AI-friendly design handoff parser and Sketch plugin for ng-manager",
+  "description": "Handoff Package middleware and SDK for ng-manager",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
   "main": "lib/index.js",
@@ -13,8 +13,7 @@
     }
   },
   "files": [
-    "lib",
-    "sketchplugin"
+    "lib"
   ],
   "publishConfig": {
     "access": "public"
@@ -24,8 +23,6 @@
     "handoff:scan": "node scripts/scan-handoff-packages.js",
     "handoff:task": "node scripts/create-agent-task.js",
     "handoff:validate": "node scripts/validate-handoff.js",
-    "test:sketch-helpers": "node scripts/test-sketch-helpers.js",
-    "pack:sketch": "node scripts/pack-sketch-plugin.js",
     "test": "npm run build && node scripts/smoke-test.js"
   },
   "dependencies": {},
@@ -35,7 +32,7 @@
     "ngm",
     "design",
     "handoff",
-    "sketch"
+    "sdk"
   ],
   "gitHead": "f64135f6db80de6928bc0b83c29c26e408e9fcfb"
 }

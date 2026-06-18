@@ -1,0 +1,33 @@
+{
+  "name": "@yinuo-ngm/design-handoff-sketch-plugin",
+  "version": "0.3.0",
+  "description": "Sketch plugin for exporting ng-manager Handoff Package",
+  "author": "ZhangJing <892295834@qq.com>",
+  "license": "ISC",
+  "files": [
+    "sketchplugin",
+    "resources",
+    "scripts",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node lib/scripts/build-plugin.js",
+    "test:sketch-helpers": "npm run build && node scripts/test-sketch-helpers.js",
+    "pack:sketch": "npm run build && node lib/scripts/pack-sketch-plugin.js"
+  },
+  "dependencies": {
+    "@yinuo-ngm/design-handoff": "^0.2.0"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "yinuo",
+    "ngm",
+    "design",
+    "handoff",
+    "sketch",
+    "plugin"
+  ]
+}

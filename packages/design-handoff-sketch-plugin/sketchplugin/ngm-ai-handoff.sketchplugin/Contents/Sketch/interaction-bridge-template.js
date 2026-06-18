@@ -1,0 +1,46 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function generateBridgeScript() {
+    return [
+        "(function () {",
+        "  function findHandoffElement(target) {",
+        "    if (!target || !target.closest) return null;",
+        "    return target.closest('[data-handoff-id]');",
+        "  }",
+        "",
+        "  document.addEventListener('click', function (event) {",
+        "    var el = findHandoffElement(event.target);",
+        "    if (!el) return;",
+        "    window.parent.postMessage({",
+        "      type: 'ngm-handoff:select',",
+        "      handoffId: el.getAttribute('data-handoff-id'),",
+        "      handoffType: el.getAttribute('data-handoff-type') || 'layer',",
+        "      layerId: el.getAttribute('data-layer-id') || '',",
+        "      artboardId: el.getAttribute('data-artboard-id') || '',",
+        "      source: 'ngm-preview'",
+        "    }, '*');",
+        "    event.preventDefault();",
+        "    event.stopPropagation();",
+        "  }, true);",
+        "",
+        "  window.addEventListener('message', function (event) {",
+        "    var data = event.data || {};",
+        "    if (data.type !== 'ngm-handoff:highlight') return;",
+        "    var prev = document.querySelector('[data-ngm-handoff-selected=\"true\"]');",
+        "    if (prev) {",
+        "      prev.removeAttribute('data-ngm-handoff-selected');",
+        "    }",
+        "    var el = document.querySelector('[data-handoff-id=\"' + data.handoffId + '\"]');",
+        "    if (!el) return;",
+        "    el.setAttribute('data-ngm-handoff-selected', 'true');",
+        "    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });",
+        "  });",
+        "",
+        "  window.parent.postMessage({ type: 'ngm-handoff:ready', source: 'ngm-preview' }, '*');",
+        "})();",
+        "",
+    ].join("\n");
+}
+module.exports = {
+    generateBridgeScript: generateBridgeScript,
+};

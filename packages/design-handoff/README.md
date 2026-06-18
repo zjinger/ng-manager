@@ -4,7 +4,7 @@
 
 `@yinuo-ngm/design-handoff` 是一个 AI 友好的设计交接工具，用于将已导出的设计交接包转换为结构化数据，便于 AI Agent 自动生成前端代码。
 
-设计交接包（Handoff Package）由配套的 Sketch 插件 `ngm-ai-handoff` 生成（源码见 `sketchplugin/`，可通过 `npm run pack:sketch` 打包）。本包负责对交接包做解析、校验、扫描与 AI Agent 任务生成。
+设计交接包（Handoff Package）可由配套的 Sketch 插件 `@yinuo-ngm/design-handoff-sketch-plugin` 生成。本包只负责对交接包做解析、校验、扫描与 AI Agent 任务生成。
 
 ## 功能特性
 
@@ -197,7 +197,7 @@ A: 交接包包含以下文件：
 
 ### Q: 如何生成设计交接包？
 
-A: 使用配套的 Sketch 插件 `ngm-ai-handoff`（位于 `sketchplugin/` 目录）。在 Windows 侧执行 `npm run pack:sketch` 打包得到 `.sketchplugin.zip`，复制到 Mac 解压安装后即可在 Sketch 中导出交接包。
+A: 使用配套的 Sketch 插件 `@yinuo-ngm/design-handoff-sketch-plugin`。在 Windows 侧执行 `npm run pack:sketch -w @yinuo-ngm/design-handoff-sketch-plugin` 打包得到 `.sketchplugin.zip`，复制到 Mac 解压安装后即可在 Sketch 中导出交接包。
 
 ---
 
