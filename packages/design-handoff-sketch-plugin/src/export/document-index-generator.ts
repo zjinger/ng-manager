@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 // 文档级索引生成器。
 // 输出 handoff-index.json 与可选 index.html，记录文档/页面/画板导出结果。
 // 路径信息均为相对 outputRoot 的路径，便于跨平台迁移。
@@ -195,3 +194,4 @@ module.exports = {
   generateIndexHtml: generateIndexHtml,
 };
 
+export {};

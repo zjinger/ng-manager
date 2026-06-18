@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 // 集中管理插件用户可见中文文案，避免文案散落在各文件中。
 // 仅返回中性 JS 数据，由调用方负责 UI.message / UI.alert 的渲染。
 
@@ -168,3 +167,4 @@ module.exports = {
   t: t,
 };
 
+export {};

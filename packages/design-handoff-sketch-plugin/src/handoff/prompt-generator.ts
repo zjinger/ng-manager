@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 function generatePrompt(meta, assetsMap) {
   let screenshotLine = assetsMap && assetsMap.screenshot
     ? "- screenshot.png：视觉参考（仅对照，不可作为实现依据）"
@@ -44,3 +43,4 @@ module.exports = {
   generatePrompt: generatePrompt,
 };
 
+export {};

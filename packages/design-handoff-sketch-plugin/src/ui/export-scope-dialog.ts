@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 // 自定义导出勾选对话框。
 // 使用 NSAlert accessoryView 构建 checkbox 列表，避免依赖 NSWindowController.extend。
 
@@ -92,4 +91,4 @@ module.exports = {
   showCustomScopeDialog: showCustomScopeDialog,
 };
 
-
+export {};

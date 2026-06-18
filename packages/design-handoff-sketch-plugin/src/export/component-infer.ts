@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 let normalize = require("./normalize-layer");
 
 
@@ -157,3 +156,4 @@ module.exports = {
   inferComponents: inferComponents,
 };
 
+export {};

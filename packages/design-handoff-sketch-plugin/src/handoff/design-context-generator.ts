@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 function str(value) {
   return value == null ? "" : String(value);
 }
@@ -140,3 +139,4 @@ module.exports = {
   generateDesignContext: generateDesignContext,
 };
 
+export {};

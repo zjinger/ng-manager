@@ -1,4 +1,3 @@
-// @ts-nocheck
 var UI = require("sketch/ui");
 var i18n = require("../i18n/i18n");
 var pluginSettings = require("../sketch/settings");
@@ -72,3 +71,5 @@ function safeRun(options, handler) {
 module.exports = {
   safeRun: safeRun,
 };
+
+export {};

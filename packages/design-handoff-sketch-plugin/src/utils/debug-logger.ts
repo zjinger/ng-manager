@@ -1,4 +1,3 @@
-// @ts-nocheck
 var LOG_FILE_NAME = "ngm-ai-handoff.log";
 var UTF8_ENCODING = typeof NSUTF8StringEncoding !== "undefined" ? NSUTF8StringEncoding : 4;
 
@@ -13,7 +12,7 @@ function tryRequire(name) {
 var nodeFs = tryRequire("fs");
 var nodeOs = tryRequire("os");
 
-function joinPath() {
+function joinPath(..._parts: any[]) {
   var parts = Array.prototype.slice.call(arguments).filter(function (part) {
     return part !== null && part !== undefined && String(part).length > 0;
   });
@@ -259,3 +258,5 @@ module.exports = {
   writeJsonFile: writeJsonFile,
   writeTextFile: writeTextFile,
 };
+
+export {};

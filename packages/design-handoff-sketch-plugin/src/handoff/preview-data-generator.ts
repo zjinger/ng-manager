@@ -1,4 +1,3 @@
-// @ts-nocheck
 // 生成 preview-data.json，提供 Preview Render Model（architecture-plan-v2 第 8.3 节）。
 // 该模型不直接复用 layer-tree，而是提取 preview 需要的可见节点、组件、资源引用，
 // 便于 preview.js 独立渲染图层树、Inspect 面板与资源面板。
@@ -191,3 +190,5 @@ function generatePreviewData(meta, layerTree, components, screenshot, styleMap, 
 module.exports = {
   generatePreviewData: generatePreviewData,
 };
+
+export {};

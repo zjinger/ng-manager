@@ -1,4 +1,3 @@
-// @ts-nocheck
 let sketch = null;
 try {
   sketch = require("sketch");
@@ -115,3 +114,5 @@ module.exports = {
   runDiagnostics: runDiagnostics,
   summarizeLayer: summarizeLayer,
 };
+
+export {};

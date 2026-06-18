@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Pure HTML Preview v2 的样式表。
 // 提供图层树、设计稿 Stage、Inspect / 资源面板、screenshot 对照层的基础布局与交互样式。
 
@@ -79,3 +78,5 @@ function generatePreviewCss() {
 module.exports = {
   generatePreviewCss: generatePreviewCss,
 };
+
+export {};

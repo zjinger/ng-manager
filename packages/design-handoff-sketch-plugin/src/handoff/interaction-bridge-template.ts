@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 function generateBridgeScript() {
   return [
     "(function () {",
@@ -49,3 +48,4 @@ module.exports = {
   generateBridgeScript: generateBridgeScript,
 };
 
+export {};

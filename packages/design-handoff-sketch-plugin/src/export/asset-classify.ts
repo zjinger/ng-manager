@@ -1,4 +1,3 @@
-// @ts-nocheck
 // 纯函数资源分类模块：不依赖 Sketch / CocoaScript 运行时，可在 Node 中直接 require 测试。
 // 设计目标见 docs/design-handoff/plan/phase1_refactor.md 任务 1。
 // 该模块不 require 任何本地模块，保证 Node 测试与 Sketch 运行时行为一致。
@@ -154,3 +153,5 @@ module.exports = {
   getFrame: getFrame,
   SMALL_VECTOR_MAX: SMALL_VECTOR_MAX,
 };
+
+export {};

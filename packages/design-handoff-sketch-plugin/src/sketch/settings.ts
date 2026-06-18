@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 var UI = require("sketch/ui");
 var i18n = require("../i18n/i18n");
 
@@ -6,7 +5,7 @@ var SETTINGS_PREFIX = "com.ng-manager.ai-handoff.";
 var OUTPUT_ROOT_KEY = SETTINGS_PREFIX + "outputRoot";
 var EXPORT_SCREENSHOT_KEY = SETTINGS_PREFIX + "exportScreenshot";
 
-function joinPath() {
+function joinPath(..._parts: any[]) {
   var parts = Array.prototype.slice.call(arguments).filter(function (part) {
     return part !== null && part !== undefined && String(part).length > 0;
   });
@@ -138,3 +137,4 @@ module.exports = {
   joinPath: joinPath,
 };
 
+export {};

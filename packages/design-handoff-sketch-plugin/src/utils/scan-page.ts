@@ -1,4 +1,3 @@
-// @ts-nocheck
 let sketch = null;
 try {
   sketch = require("sketch");
@@ -102,3 +101,5 @@ module.exports = {
   collectPageArtboards: collectPageArtboards,
   runScanCurrentPage: runScanCurrentPage,
 };
+
+export {};

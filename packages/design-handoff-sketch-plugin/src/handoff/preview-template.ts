@@ -1,4 +1,3 @@
-// @ts-nocheck
 // 生成 Pure HTML Preview v2 的完整页面模板。
 // 页面包含：顶部工具栏、左侧图层树、中间 Stage + screenshot 对照层、右侧 Inspect / 资源面板。
 
@@ -80,3 +79,5 @@ function generatePreviewHtml(meta, layerTree, components, screenshot, styleMap, 
 module.exports = {
   generatePreviewHtml: generatePreviewHtml,
 };
+
+export {};

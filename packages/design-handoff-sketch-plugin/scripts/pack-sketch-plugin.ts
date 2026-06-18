@@ -1,4 +1,3 @@
-// @ts-nocheck
 const { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } = require("fs");
 const { basename, join, relative, resolve } = require("path");
 const { execSync } = require("child_process");
@@ -207,3 +206,5 @@ writeFileSync(outputFile, zip);
 console.log(`Packed ${files.length} files`);
 console.log(`output: ${outputFile}`);
 console.log(`version=${pluginVersion}, git=${gitHash}, at=${timestamp}`);
+
+export {};

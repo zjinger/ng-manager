@@ -1,4 +1,3 @@
-// @ts-nocheck
 // 导出进度报告器（Phase 1 Refactor 4）。
 // 使用轻量 NSWindow + NSProgressIndicator 展示阶段化进度，支持取消与完成/失败摘要。
 
@@ -445,3 +444,5 @@ module.exports = {
   createReporter: createReporter,
   PHASES: PHASES,
 };
+
+export {};

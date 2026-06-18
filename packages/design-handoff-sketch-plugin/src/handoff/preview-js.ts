@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Sketch Measure 式预览脚本：screenshot 作为视觉事实，图层矩形作为透明可点击热区。
 function generatePreviewJs() {
   return `(function () {
@@ -337,3 +336,5 @@ function generatePreviewJs() {
 }
 
 module.exports = { generatePreviewJs: generatePreviewJs };
+
+export {};

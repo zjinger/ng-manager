@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 // 资源导出模块（Asset Export v2）。
 // 升级目标见 docs/design-handoff/plan/phase1_refactor.md 任务 1-4。
 // - 扩展资源识别（icon/vector/symbol/logo/misc），不再只识别 bitmap/slice
@@ -272,3 +271,5 @@ module.exports = {
   buildLayerIndex: buildLayerIndex,
   collectAssetLayers: collectAssetLayers,
 };
+
+export {};

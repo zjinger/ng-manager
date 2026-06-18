@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 var sketch = require("sketch");
 var normalize = require("../sketch/normalize-layer");
 var styles = require("./style-extractor");
@@ -320,3 +319,4 @@ module.exports = {
   joinPath: pluginSettings.joinPath,
 };
 
+export {};

@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 var sketch = require("sketch");
 var UI = require("sketch/ui");
 var exporter = require("./export/exporter");
@@ -120,6 +119,7 @@ function buildArtboardRecord(options) {
     previewHtmlPath: null,
     status: options.status,
     reason: options.reason || null,
+    warnings: [],
     outputDir: options.outputDir,
   };
 }
@@ -684,3 +684,4 @@ module.exports = {
   onScanCurrentPage: onScanCurrentPage,
 };
 
+export {};

@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 function getFrame(layer) {
   let frame = layer && layer.frame ? layer.frame : {};
 
@@ -232,3 +231,4 @@ module.exports = {
   inferRole: inferRole,
 };
 
+export {};

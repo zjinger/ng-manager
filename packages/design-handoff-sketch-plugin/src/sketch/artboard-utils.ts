@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 // 画板收集与父级画板查找工具。
 // 所有函数保持纯函数风格，不直接调用 UI，便于测试与复用。
 
@@ -204,3 +203,4 @@ module.exports = {
   filterGroupsBySelection: filterGroupsBySelection,
 };
 
+export {};

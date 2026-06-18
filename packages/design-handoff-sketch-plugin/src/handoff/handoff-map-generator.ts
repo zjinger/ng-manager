@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 function buildHandoffMap(layerTree, components) {
   let nodes = [];
 
@@ -48,3 +47,4 @@ module.exports = {
   buildHandoffMap: buildHandoffMap,
 };
 
+export {};

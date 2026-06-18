@@ -4,7 +4,8 @@
     "rootDir": ".",
     "outDir": "lib",
     "composite": true,
-    "strict": true,
+    "strict": false,
+    "noImplicitAny": false,
     "module": "CommonJS",
     "target": "ES2019"
   },

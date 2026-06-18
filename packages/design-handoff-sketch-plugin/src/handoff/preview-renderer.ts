@@ -1,4 +1,3 @@
-﻿// @ts-nocheck
 let HIT_LAYER_ROLES = {
   navigation: 1,
   sidebar: 1,
@@ -244,4 +243,4 @@ module.exports = {
   generatePreviewHtml: generatePreviewHtml,
 };
 
-
+export {};

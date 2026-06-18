@@ -1,4 +1,3 @@
-// @ts-nocheck
 let debugLogger = require("./debug-logger");
 
 function countByStatus(items, status) {
@@ -78,3 +77,5 @@ module.exports = {
   collectWarnings: collectWarnings,
   writeExportResult: writeExportResult,
 };
+
+export {};
