@@ -1,17 +1,17 @@
 ﻿// @ts-nocheck
 var sketch = require("sketch");
-var normalize = require("./normalize-layer");
+var normalize = require("../sketch/normalize-layer");
 var styles = require("./style-extractor");
 var components = require("./component-infer");
 var promptGenerator = require("./prompt-generator");
-var pluginSettings = require("./settings");
-var handoffMapGenerator = require("./handoff-map-generator");
-var previewTemplate = require("./preview-template");
-var previewDataGenerator = require("./preview-data-generator");
-var previewCss = require("./preview-css");
-var previewJs = require("./preview-js");
-var interactionBridgeTemplate = require("./interaction-bridge-template");
-var designContextGenerator = require("./design-context-generator");
+var pluginSettings = require("../sketch/settings");
+var handoffMapGenerator = require("../handoff/handoff-map-generator");
+var previewTemplate = require("../handoff/preview-template");
+var previewDataGenerator = require("../handoff/preview-data-generator");
+var previewCss = require("../handoff/preview-css");
+var previewJs = require("../handoff/preview-js");
+var interactionBridgeTemplate = require("../handoff/interaction-bridge-template");
+var designContextGenerator = require("../handoff/design-context-generator");
 var assetExporter = require("./asset-exporter");
 
 var UTF8_ENCODING = typeof NSUTF8StringEncoding !== "undefined" ? NSUTF8StringEncoding : 4;

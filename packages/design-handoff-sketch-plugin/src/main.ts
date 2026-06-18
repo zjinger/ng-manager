@@ -1,11 +1,11 @@
 ﻿// @ts-nocheck
 var sketch = require("sketch");
 var UI = require("sketch/ui");
-var exporter = require("./exporter");
-var pluginSettings = require("./settings");
-var i18n = require("./i18n");
-var normalize = require("./normalize-layer");
-var artboardUtils = require("./artboard-utils");
+var exporter = require("./export/exporter");
+var pluginSettings = require("./sketch/settings");
+var i18n = require("./i18n/i18n");
+var normalize = require("./sketch/normalize-layer");
+var artboardUtils = require("./sketch/artboard-utils");
 var progress = require("./export-progress");
 var scopeDialog = require("./export-scope-dialog");
 var indexGenerator = require("./document-index-generator");

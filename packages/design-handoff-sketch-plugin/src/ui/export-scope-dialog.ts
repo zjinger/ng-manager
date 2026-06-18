@@ -2,7 +2,7 @@
 // 自定义导出勾选对话框。
 // 使用 NSAlert accessoryView 构建 checkbox 列表，避免依赖 NSWindowController.extend。
 
-var i18n = require("./i18n");
+var i18n = require("../i18n/i18n");
 
 var CHECKBOX_HEIGHT = 22;
 var CHECKBOX_WIDTH = 440;

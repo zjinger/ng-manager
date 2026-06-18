@@ -98,11 +98,8 @@ function cleanGeneratedRuntime(): void {
 }
 
 function copyRuntime(): number {
+  // 只生成 main-bundle.js，不再把业务散件 JS 复制到 Contents/Sketch（phase1_refactor2/3）。
   const files = collectFiles(compiledSourceRoot).filter((file) => extname(file) === ".js");
-  for (const file of files) {
-    const target = join(pluginSketchRoot, basename(file));
-    writeFileSync(target, cleanRuntimeSource(readFileSync(file, "utf8")), "utf8");
-  }
   writeFileSync(join(pluginSketchRoot, "main-bundle.js"), buildMainBundle(files), "utf8");
   writeFileSync(join(pluginSketchRoot, "canary.js"), buildCanaryScript(), "utf8");
   for (const entry of commandEntries) {

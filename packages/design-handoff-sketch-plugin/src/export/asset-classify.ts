@@ -111,9 +111,9 @@ function classifyAsset(layer) {
     return { type: "vector", sourceLayerType: sourceLayerType, exportable: exportable };
   }
 
-  // 规则 8：显式可导出层兜底为 misc
+  // 规则 8：显式可导出层返回 exportable（目录仍落到 misc）。
   if (exportable) {
-    return { type: "misc", sourceLayerType: sourceLayerType, exportable: true };
+    return { type: "exportable", sourceLayerType: sourceLayerType, exportable: true };
   }
 
   return null;

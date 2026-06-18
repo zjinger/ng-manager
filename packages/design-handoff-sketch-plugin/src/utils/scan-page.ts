@@ -5,7 +5,7 @@ try {
 } catch (error) {
   sketch = { getSelectedDocument: function () { return null; } };
 }
-var i18n = require("./i18n");
+var i18n = require("../i18n/i18n");
 var debugLogger = require("./debug-logger");
 
 function getFrame(layer) {

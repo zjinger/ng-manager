@@ -1,7 +1,7 @@
 // @ts-nocheck
 var UI = require("sketch/ui");
-var i18n = require("./i18n");
-var pluginSettings = require("./settings");
+var i18n = require("../i18n/i18n");
+var pluginSettings = require("../sketch/settings");
 var debugLogger = require("./debug-logger");
 
 function getErrorMessage(error) {

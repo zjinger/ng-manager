@@ -1,6 +1,6 @@
 ﻿// @ts-nocheck
 var UI = require("sketch/ui");
-var i18n = require("./i18n");
+var i18n = require("../i18n/i18n");
 
 var SETTINGS_PREFIX = "com.ng-manager.ai-handoff.";
 var OUTPUT_ROOT_KEY = SETTINGS_PREFIX + "outputRoot";

@@ -3,7 +3,7 @@
 // 使用轻量 NSWindow + NSProgressIndicator 展示整体进度，同时保留 UI.message 和日志缓冲。
 
 var UI = require("sketch/ui");
-var i18n = require("./i18n");
+var i18n = require("../i18n/i18n");
 
 var WINDOW_WIDTH = 460;
 var WINDOW_HEIGHT = 126;

@@ -1,0 +1,13 @@
+{
+  "pluginName": "NGM AI Handoff",
+  "exportingProgress": "正在导出第 {index} / {total} 个画板：{name}",
+  "summary": {
+    "title": "导出完成"
+  },
+  "diagnostics": {
+    "menu": "诊断插件环境"
+  },
+  "scan": {
+    "menu": "扫描当前页面"
+  }
+}

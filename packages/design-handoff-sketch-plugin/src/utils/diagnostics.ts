@@ -5,8 +5,8 @@ try {
 } catch (error) {
   sketch = { getSelectedDocument: function () { return null; } };
 }
-var i18n = require("./i18n");
-var artboardUtils = require("./artboard-utils");
+var i18n = require("../i18n/i18n");
+var artboardUtils = require("../sketch/artboard-utils");
 var debugLogger = require("./debug-logger");
 
 function getSketchVersion() {

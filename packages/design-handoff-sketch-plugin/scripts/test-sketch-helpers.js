@@ -1,23 +1,18 @@
 // 临时验证脚本：仅在 Node 中运行纯 JS 辅助模块，不依赖 Sketch/CocoaScript 运行时。
 // 用于在 Windows CI 环境下对新文件做语法 + 行为冒烟测试。
 const path = require("path");
-const sketchDir = path.join(
-  __dirname,
-  "..",
-  "sketchplugin",
-  "ngm-ai-handoff.sketchplugin",
-  "Contents",
-  "Sketch",
-);
+// 由于 Contents/Sketch 不再保留业务散件 JS（phase1_refactor3），
+// 冒烟测试改为直接 require tsc 编译产物 lib/src 下的模块。
+const libDir = path.join(__dirname, "..", "lib", "src");
 
-const i18n = require(path.join(sketchDir, "i18n.js"));
-const artboardUtils = require(path.join(sketchDir, "artboard-utils.js"));
-const classify = require(path.join(sketchDir, "asset-classify.js"));
-const indexGenerator = require(path.join(sketchDir, "document-index-generator.js"));
-const debugLogger = require(path.join(sketchDir, "debug-logger.js"));
-const exportResultWriter = require(path.join(sketchDir, "export-result-writer.js"));
-const diagnostics = require(path.join(sketchDir, "diagnostics.js"));
-const scanPage = require(path.join(sketchDir, "scan-page.js"));
+const i18n = require(path.join(libDir, "i18n", "i18n.js"));
+const artboardUtils = require(path.join(libDir, "sketch", "artboard-utils.js"));
+const classify = require(path.join(libDir, "export", "asset-classify.js"));
+const indexGenerator = require(path.join(libDir, "export", "document-index-generator.js"));
+const debugLogger = require(path.join(libDir, "utils", "debug-logger.js"));
+const exportResultWriter = require(path.join(libDir, "utils", "export-result-writer.js"));
+const diagnostics = require(path.join(libDir, "utils", "diagnostics.js"));
+const scanPage = require(path.join(libDir, "utils", "scan-page.js"));
 
 let failures = 0;
 
@@ -139,7 +134,7 @@ assertEqual("小尺寸 Group + ShapePath -> icon", classify.classifyAsset({
 }).type, "icon");
 assertEqual("小尺寸 ShapePath -> vector", classify.classifyAsset({ type: "ShapePath", name: "line", frame: { x:0,y:0,width:12,height:12 } }).type, "vector");
 assertEqual("大尺寸 ShapePath 不当资源", classify.classifyAsset({ type: "ShapePath", name: "bg shape", frame: { x:0,y:0,width:500,height:300 } }), null);
-assertEqual("exportable -> misc", classify.classifyAsset({ type: "Rectangle", name: "x", exportFormats: [{ format: "png" }] }).type, "misc");
+assertEqual("exportable -> exportable", classify.classifyAsset({ type: "Rectangle", name: "x", exportFormats: [{ format: "png" }] }).type, "exportable");
 assertEqual("asset type 目录映射",
   [
     classify.assetTypeDirectory("bitmap"),
@@ -162,10 +157,10 @@ assertTruthy("not preferSvg bitmap", !classify.preferSvg("bitmap"));
 
 // preview modules
 console.log("\n[preview]");
-const previewData = require(path.join(sketchDir, "preview-data-generator.js"));
-const previewTemplate = require(path.join(sketchDir, "preview-template.js"));
-const previewCss = require(path.join(sketchDir, "preview-css.js"));
-const previewJs = require(path.join(sketchDir, "preview-js.js"));
+const previewData = require(path.join(libDir, "handoff", "preview-data-generator.js"));
+const previewTemplate = require(path.join(libDir, "handoff", "preview-template.js"));
+const previewCss = require(path.join(libDir, "handoff", "preview-css.js"));
+const previewJs = require(path.join(libDir, "handoff", "preview-js.js"));
 
 var previewMeta = { artboardName: "登录页" };
 var previewLayerTree = {
