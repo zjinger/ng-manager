@@ -117,7 +117,6 @@ packages/design-handoff-sketch-plugin/
 
 - 不接入 Hub V2
 - 不实现右侧 Handoff 面板
-- 不增强 .sketch parser
 - 不解析旧 Sketch Measure HTML
 - 不照搬 Sketch Measure 老代码
 - 不引入复杂前端框架
