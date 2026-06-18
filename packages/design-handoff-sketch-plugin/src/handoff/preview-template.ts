@@ -10,6 +10,10 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function safeJsonScript(value) {
+  return JSON.stringify(value || {}).replace(/<\//g, "<\\/");
+}
+
 function generatePreviewHtml(meta, layerTree, components, screenshot, styleMap, assetsMap, previewDataJson, options) {
   options = options || {};
   var title = "NGM Handoff Preview - " + (meta && meta.artboardName ? meta.artboardName : "Artboard");
@@ -18,7 +22,7 @@ function generatePreviewHtml(meta, layerTree, components, screenshot, styleMap, 
   var stageHeight = artboard.height || 0;
   var screenshotHtml = screenshot
     ? '<div class="ngm-screenshot-layer"><img src="screenshot.png" alt="' + escapeHtml(meta && meta.artboardName) + '"></div>'
-    : '<div class="ngm-screenshot-layer"></div>';
+    : '<div class="ngm-screenshot-layer ngm-screenshot-missing">未导出 screenshot.png</div>';
 
   return [
     "<!DOCTYPE html>",
@@ -34,7 +38,8 @@ function generatePreviewHtml(meta, layerTree, components, screenshot, styleMap, 
     '  <div class="ngm-preview-header">',
     '    <div class="ngm-preview-title">' + escapeHtml(title) + "</div>",
     '    <div class="ngm-preview-toolbar">',
-    '      <button id="ngm-toggle-screenshot">对照 screenshot</button>',
+    '      <button id="ngm-toggle-hotspots" class="active">显示热区</button>',
+    '      <button id="ngm-reset-zoom">适配窗口</button>',
     '      <span>' + stageWidth + " × " + stageHeight + " px</span>",
     "    </div>",
     "  </div>",
@@ -47,6 +52,7 @@ function generatePreviewHtml(meta, layerTree, components, screenshot, styleMap, 
     '      <div class="ngm-stage-wrapper">',
     '        <div class="ngm-stage-content">',
     screenshotHtml,
+    '          <div class="ngm-hotspot-layer"></div>',
     "        </div>",
     "      </div>",
     "    </div>",
@@ -61,7 +67,7 @@ function generatePreviewHtml(meta, layerTree, components, screenshot, styleMap, 
     "  </div>",
     "</div>",
     '  <script>',
-    '    window.__NGM_PREVIEW_DATA__ = ' + JSON.stringify(previewDataJson) + ';',
+    '    window.__NGM_PREVIEW_DATA__ = ' + safeJsonScript(previewDataJson) + ';',
     '  </script>',
     '  <script src="interaction-bridge.js"></script>',
     '  <script src="preview.js"></script>',

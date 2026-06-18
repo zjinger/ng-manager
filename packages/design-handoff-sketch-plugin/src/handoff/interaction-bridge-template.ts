@@ -2,6 +2,10 @@
 function generateBridgeScript() {
   return [
     "(function () {",
+    "  if (window.__NGM_PREVIEW_DATA__) {",
+    "    return;",
+    "  }",
+    "",
     "  function findHandoffElement(target) {",
     "    if (!target || !target.closest) return null;",
     "    return target.closest('[data-handoff-id]');",

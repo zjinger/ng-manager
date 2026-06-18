@@ -1,6 +1,6 @@
 {
   "name": "@yinuo-ngm/design-handoff-sketch-plugin",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Sketch plugin for exporting ng-manager Handoff Package",
   "author": "ZhangJing <892295834@qq.com>",
   "license": "ISC",
