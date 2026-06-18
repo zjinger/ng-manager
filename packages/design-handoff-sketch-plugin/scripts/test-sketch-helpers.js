@@ -160,6 +160,62 @@ assertTruthy("preferSvg vector", classify.preferSvg("vector"));
 assertTruthy("preferSvg logo", classify.preferSvg("logo"));
 assertTruthy("not preferSvg bitmap", !classify.preferSvg("bitmap"));
 
+// preview modules
+console.log("\n[preview]");
+const previewData = require(path.join(sketchDir, "preview-data-generator.js"));
+const previewTemplate = require(path.join(sketchDir, "preview-template.js"));
+const previewCss = require(path.join(sketchDir, "preview-css.js"));
+const previewJs = require(path.join(sketchDir, "preview-js.js"));
+
+var previewMeta = { artboardName: "登录页" };
+var previewLayerTree = {
+  id: "ab1", handoffId: "artboard_1", name: "登录页", type: "Artboard",
+  artboardId: "artboard_1",
+  frame: { x: 0, y: 0, width: 375, height: 667 },
+  absoluteFrame: { x: 0, y: 0, width: 375, height: 667 },
+  children: [
+    { id: "t1", handoffId: "layer_t1", name: "title", type: "Text", artboardId: "artboard_1",
+      frame: { x: 20, y: 60, width: 200, height: 24 },
+      absoluteFrame: { x: 20, y: 60, width: 200, height: 24 },
+      text: "Welcome", styleRef: "s1" },
+  ],
+};
+var previewStyleMap = {
+  s1: { fontSize: 18, fontFamily: "PingFang SC" },
+};
+var previewAssets = {
+  assets: [
+    { id: "a1", layerId: "b1", name: "search", type: "icon", format: "svg", path: "assets/icons/icon-001-search__a1b2.svg", width: 24, height: 24, exportStatus: "success" },
+  ],
+};
+var previewDataJson = previewData.generatePreviewData(previewMeta, previewLayerTree, [], null, previewStyleMap, previewAssets);
+assertEqual("preview-data has artboard", !!previewDataJson.artboard, true);
+assertEqual("preview-data nodes.length", previewDataJson.nodes.length, 1);
+assertEqual("preview-data assets.length", previewDataJson.assets.length, 1);
+assertEqual("preview-data node text", previewDataJson.nodes[0].text, "Welcome");
+assertEqual("preview-data asset path", previewDataJson.assets[0].path, "assets/icons/icon-001-search__a1b2.svg");
+
+var previewHtml = previewTemplate.generatePreviewHtml(previewMeta, previewLayerTree, [], "screenshot.png", previewStyleMap, previewAssets, previewDataJson);
+assertTruthy("preview.html includes layer tree panel", previewHtml.indexOf("图层树") > -1);
+assertTruthy("preview.html includes inspect panel", previewHtml.indexOf("Inspect") > -1);
+assertTruthy("preview.html includes assets panel", previewHtml.indexOf("资源") > -1);
+assertTruthy("preview.html includes screenshot toggle", previewHtml.indexOf("ngm-toggle-screenshot") > -1);
+assertTruthy("preview.html references preview.css", previewHtml.indexOf("preview.css") > -1);
+assertTruthy("preview.html references preview.js", previewHtml.indexOf("preview.js") > -1);
+assertTruthy("preview.html injects __NGM_PREVIEW_DATA__", previewHtml.indexOf("__NGM_PREVIEW_DATA__") > -1);
+
+var cssText = previewCss.generatePreviewCss();
+assertTruthy("preview.css includes inspect-panel", cssText.indexOf(".ngm-inspect-panel") > -1);
+assertTruthy("preview.css includes layer-tree", cssText.indexOf(".ngm-layer-tree") > -1);
+assertTruthy("preview.css includes assets-panel", cssText.indexOf(".ngm-assets-panel") > -1);
+
+var jsText = previewJs.generatePreviewJs();
+assertTruthy("preview.js includes ngm-handoff:select", jsText.indexOf("ngm-handoff:select") > -1);
+assertTruthy("preview.js includes ngm-handoff:highlight", jsText.indexOf("ngm-handoff:highlight") > -1);
+assertTruthy("preview.js includes renderLayerTree", jsText.indexOf("renderLayerTree") > -1);
+assertTruthy("preview.js includes renderInspect", jsText.indexOf("renderInspect") > -1);
+assertTruthy("preview.js includes renderAssets", jsText.indexOf("renderAssets") > -1);
+
 // document-index-generator
 console.log("\n[document-index-generator]");
 assertEqual("pad3 三位补齐", indexGenerator.pad3(7), "007");

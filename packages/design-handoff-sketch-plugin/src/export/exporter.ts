@@ -6,7 +6,10 @@ var components = require("./component-infer");
 var promptGenerator = require("./prompt-generator");
 var pluginSettings = require("./settings");
 var handoffMapGenerator = require("./handoff-map-generator");
-var previewRenderer = require("./preview-renderer");
+var previewTemplate = require("./preview-template");
+var previewDataGenerator = require("./preview-data-generator");
+var previewCss = require("./preview-css");
+var previewJs = require("./preview-js");
 var interactionBridgeTemplate = require("./interaction-bridge-template");
 var designContextGenerator = require("./design-context-generator");
 var assetExporter = require("./asset-exporter");
@@ -168,6 +171,9 @@ function buildManifest(meta, screenshot) {
       handoffMap: "handoff-map.json",
       designContext: "design-context.md",
       previewHtml: "preview.html",
+      previewCss: "preview.css",
+      previewJs: "preview.js",
+      previewData: "preview-data.json",
       interactionBridge: "interaction-bridge.js",
       agentPrompt: "agent-prompt.md",
       screenshot: screenshot,
@@ -265,7 +271,10 @@ function exportArtboard(document, artboard, options) {
 
   emitStep("generatingPreview", artboard.name);
   logStep("generate preview html", "开始生成预览 HTML", { artboardName: artboard.name });
-  var previewHtml = previewRenderer.generatePreviewHtml(meta, layerTree, inferredComponents, screenshot, styleMap, assetsMap);
+  var previewDataJson = previewDataGenerator.generatePreviewData(meta, layerTree, inferredComponents, screenshot, styleMap, assetsMap);
+  var previewCssText = previewCss.generatePreviewCss();
+  var previewJsText = previewJs.generatePreviewJs();
+  var previewHtml = previewTemplate.generatePreviewHtml(meta, layerTree, inferredComponents, screenshot, styleMap, assetsMap, previewDataJson);
   var bridgeScript = interactionBridgeTemplate.generateBridgeScript();
 
   emitStep("generatingAiContext", artboard.name);
@@ -285,7 +294,10 @@ function exportArtboard(document, artboard, options) {
   writeJson(outputDir, "assets-map.json", assetsMap);
   writeJson(outputDir, "handoff-map.json", handoffMap);
   logStep("write html files", "开始写入 HTML 与上下文文件", { outputDir: outputDir });
+  writeJson(outputDir, "preview-data.json", previewDataJson);
   writeText(outputDir, "preview.html", previewHtml);
+  writeText(outputDir, "preview.css", previewCssText);
+  writeText(outputDir, "preview.js", previewJsText);
   writeText(outputDir, "interaction-bridge.js", bridgeScript);
   writeText(outputDir, "design-context.md", designContext);
   writeText(outputDir, "agent-prompt.md", prompt);
