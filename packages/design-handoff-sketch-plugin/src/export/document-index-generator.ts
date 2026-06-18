@@ -89,56 +89,104 @@ function generateIndexHtml(indexObject, modeLabel) {
   lines.push('<meta name="viewport" content="width=device-width, initial-scale=1">');
   lines.push("<title>NGM Handoff Index · " + escapeHtml(indexObject.documentName) + "</title>");
   lines.push("<style>");
-  lines.push("  body { margin:0; padding:24px; font-family: -apple-system, 'PingFang SC', sans-serif; background:#fafafa; color:#222; }");
-  lines.push("  h1 { font-size:18px; margin:0 0 4px; }");
-  lines.push("  .ngm-meta { color:#888; font-size:12px; margin-bottom:18px; }");
-  lines.push("  .ngm-page { margin-bottom:18px; background:#fff; border:1px solid #eee; border-radius:6px; padding:12px 16px; }");
-  lines.push("  .ngm-page-title { font-weight:600; font-size:14px; margin-bottom:8px; }");
-  lines.push("  ul { list-style:none; padding:0; margin:0; }");
-  lines.push("  li { padding:6px 0; border-top:1px dashed #eee; font-size:13px; }");
-  lines.push("  li:first-child { border-top:none; }");
-  lines.push("  a { color:#3b82f6; text-decoration:none; }");
-  lines.push("  a:hover { text-decoration:underline; }");
-  lines.push("  .ngm-tag { display:inline-block; padding:0 6px; border-radius:3px; font-size:11px; margin-left:6px; }");
-  lines.push("  .ngm-tag.ok { background:#e6f7ec; color:#1f883d; }");
-  lines.push("  .ngm-tag.fail { background:#fde7e7; color:#b42318; }");
-  lines.push("  .ngm-summary { margin-top:18px; color:#666; font-size:12px; }");
+  lines.push("  :root { color-scheme: light; --bg:#f4f6f8; --panel:#fff; --line:#dde3ea; --text:#18202a; --muted:#687385; --link:#2563eb; --ok:#16833d; --fail:#b42318; }");
+  lines.push("  * { box-sizing:border-box; }");
+  lines.push("  body { margin:0; font-family:-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', sans-serif; background:var(--bg); color:var(--text); }");
+  lines.push("  .ngm-shell { max-width:1280px; margin:0 auto; padding:28px 24px 40px; }");
+  lines.push("  .ngm-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:22px; }");
+  lines.push("  h1 { font-size:22px; line-height:1.25; margin:0 0 8px; letter-spacing:0; }");
+  lines.push("  .ngm-meta { color:var(--muted); font-size:13px; line-height:1.7; overflow-wrap:anywhere; }");
+  lines.push("  .ngm-summary { flex:0 0 auto; display:grid; grid-template-columns:repeat(5, minmax(70px, 1fr)); gap:8px; min-width:420px; }");
+  lines.push("  .ngm-summary-item { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }");
+  lines.push("  .ngm-summary-value { font-size:18px; font-weight:700; line-height:1.1; }");
+  lines.push("  .ngm-summary-label { margin-top:4px; color:var(--muted); font-size:12px; }");
+  lines.push("  .ngm-page { margin-bottom:24px; }");
+  lines.push("  .ngm-page-title { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; font-weight:700; font-size:15px; }");
+  lines.push("  .ngm-page-count { color:var(--muted); font-weight:500; font-size:12px; }");
+  lines.push("  .ngm-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; }");
+  lines.push("  .ngm-card { min-width:0; overflow:hidden; background:var(--panel); border:1px solid var(--line); border-radius:8px; }");
+  lines.push("  .ngm-thumb { display:flex; align-items:center; justify-content:center; height:180px; background:#edf1f5; border-bottom:1px solid var(--line); }");
+  lines.push("  .ngm-thumb img { display:block; max-width:100%; max-height:100%; width:auto; height:auto; }");
+  lines.push("  .ngm-thumb-missing { color:var(--muted); font-size:12px; }");
+  lines.push("  .ngm-card-body { padding:12px; }");
+  lines.push("  .ngm-card-title { display:flex; align-items:flex-start; gap:8px; min-width:0; }");
+  lines.push("  .ngm-card-name { flex:1 1 auto; min-width:0; font-size:13px; font-weight:650; line-height:1.45; overflow-wrap:anywhere; }");
+  lines.push("  .ngm-tag { flex:0 0 auto; display:inline-flex; align-items:center; height:20px; padding:0 7px; border-radius:999px; font-size:11px; font-weight:650; }");
+  lines.push("  .ngm-tag.ok { background:#e8f7ee; color:var(--ok); }");
+  lines.push("  .ngm-tag.fail { background:#fdecec; color:var(--fail); }");
+  lines.push("  .ngm-links { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }");
+  lines.push("  .ngm-link { display:inline-flex; align-items:center; height:28px; padding:0 10px; border:1px solid var(--line); border-radius:6px; color:var(--link); text-decoration:none; font-size:12px; background:#fff; }");
+  lines.push("  .ngm-link:hover { border-color:#93b4f6; background:#f7faff; }");
+  lines.push("  .ngm-reason { margin-top:10px; color:var(--fail); font-size:12px; line-height:1.5; overflow-wrap:anywhere; }");
+  lines.push("  @media (max-width:760px) { .ngm-shell { padding:20px 14px 32px; } .ngm-header { display:block; } .ngm-summary { min-width:0; grid-template-columns:repeat(2, minmax(0,1fr)); margin-top:14px; } }");
   lines.push("</style>");
   lines.push("</head>");
   lines.push("<body>");
+  var s = indexObject.summary || {};
+  lines.push('<main class="ngm-shell">');
+  lines.push('<header class="ngm-header">');
+  lines.push("<div>");
   lines.push("<h1>NGM Design Handoff Index</h1>");
   lines.push('<div class="ngm-meta">');
   lines.push("文档：" + escapeHtml(indexObject.documentName) + " · ");
   lines.push("模式：" + escapeHtml(modeLabel || indexObject.mode) + " · ");
   lines.push("导出时间：" + escapeHtml(indexObject.exportedAt));
   lines.push("</div>");
+  lines.push("</div>");
+  lines.push('<section class="ngm-summary" aria-label="导出汇总">');
+  lines.push(summaryItem("页面", s.pageTotal));
+  lines.push(summaryItem("画板", s.artboardTotal));
+  lines.push(summaryItem("成功", s.successTotal));
+  lines.push(summaryItem("失败", s.failedTotal));
+  lines.push(summaryItem("警告", s.warningTotal));
+  lines.push("</section>");
+  lines.push("</header>");
 
   indexObject.pages.forEach(function (page) {
     lines.push('<section class="ngm-page">');
-    lines.push('<div class="ngm-page-title">' + escapeHtml(page.index) + " · " + escapeHtml(page.pageName) + "（" + page.artboards.length + " 个画板）</div>");
-    lines.push("<ul>");
+    lines.push('<div class="ngm-page-title"><span>' + escapeHtml(page.index) + " · " + escapeHtml(page.pageName) + '</span><span class="ngm-page-count">' + page.artboards.length + " 个画板</span></div>");
+    lines.push('<div class="ngm-grid">');
     page.artboards.forEach(function (ab) {
       var cls = ab.status === "success" ? "ok" : "fail";
       var preview = ab.previewHtml
-        ? '<a href="' + escapeHtml(ab.previewHtml) + '">预览</a>'
-        : "预览（缺失）";
-      var screenshot = ab.screenshot ? ' · <a href="' + escapeHtml(ab.screenshot) + '">截图</a>' : "";
-      var pkg = ab.packageDir ? '<a href="' + escapeHtml(ab.packageDir) + '">Handoff 包</a>' : "Handoff 包（缺失）";
-      lines.push("<li>" + escapeHtml(ab.index) + " · " + escapeHtml(ab.name) + ' <span class="ngm-tag ' + cls + '">' + escapeHtml(ab.status) + "</span> · " + pkg + " · " + preview + screenshot + "</li>");
+        ? '<a class="ngm-link" href="' + escapeHtml(ab.previewHtml) + '">预览</a>'
+        : "";
+      var screenshotLink = ab.screenshot ? '<a class="ngm-link" href="' + escapeHtml(ab.screenshot) + '">截图</a>' : "";
+      var pkg = ab.packageDir ? '<a class="ngm-link" href="' + escapeHtml(ab.packageDir) + '">Handoff 包</a>' : "";
+      var thumb = ab.screenshot
+        ? '<img src="' + escapeHtml(ab.screenshot) + '" alt="' + escapeHtml(ab.name) + '">'
+        : '<span class="ngm-thumb-missing">无截图</span>';
+      lines.push('<article class="ngm-card">');
+      lines.push('<a class="ngm-thumb" href="' + escapeHtml(ab.previewHtml || ab.screenshot || ab.packageDir || "#") + '">' + thumb + '</a>');
+      lines.push('<div class="ngm-card-body">');
+      lines.push('<div class="ngm-card-title"><span class="ngm-card-name">' + escapeHtml(ab.index) + " · " + escapeHtml(ab.name) + '</span><span class="ngm-tag ' + cls + '">' + escapeHtml(ab.status) + "</span></div>");
+      lines.push('<div class="ngm-links">' + pkg + preview + screenshotLink + "</div>");
+      if (ab.reason) {
+        lines.push('<div class="ngm-reason">' + escapeHtml(ab.reason) + "</div>");
+      }
+      lines.push("</div>");
+      lines.push("</article>");
     });
-    lines.push("</ul>");
+    lines.push("</div>");
     lines.push("</section>");
   });
 
-  var s = indexObject.summary || {};
-  lines.push('<div class="ngm-summary">');
-  lines.push("共 " + s.pageTotal + " 个页面 · " + s.artboardTotal + " 个画板 · 成功 " + s.successTotal + " · 失败 " + s.failedTotal + " · 警告 " + s.warningTotal);
-  lines.push("</div>");
+  lines.push("</main>");
 
   lines.push("</body>");
   lines.push("</html>");
 
   return lines.join("\n") + "\n";
+}
+
+function summaryItem(label, value) {
+  return (
+    '<div class="ngm-summary-item"><div class="ngm-summary-value">' +
+    escapeHtml(value == null ? 0 : value) +
+    '</div><div class="ngm-summary-label">' +
+    escapeHtml(label) +
+    "</div></div>"
+  );
 }
 
 module.exports = {

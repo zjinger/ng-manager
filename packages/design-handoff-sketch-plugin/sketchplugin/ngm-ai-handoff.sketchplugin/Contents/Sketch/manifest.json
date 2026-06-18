@@ -5,51 +5,59 @@
   "description": "Export Sketch artboards into AI-friendly handoff packages.",
   "commands": [
     {
+      "name": "测试插件入口",
+      "identifier": "canary",
+      "script": "canary.js",
+      "handler": "onCanary"
+    },
+    {
       "name": "导出选中画板",
       "identifier": "export-selected-artboard",
-      "script": "main.js",
+      "script": "command-export-selected-artboard.js",
       "handler": "onExportSelectedArtboard"
     },
     {
       "name": "导出当前页面",
       "identifier": "export-current-page",
-      "script": "main.js",
+      "script": "command-export-current-page.js",
       "handler": "onExportCurrentPage"
     },
     {
       "name": "导出整个文档",
       "identifier": "export-whole-document",
-      "script": "main.js",
+      "script": "command-export-whole-document.js",
       "handler": "onExportWholeDocument"
     },
     {
       "name": "自定义导出...",
       "identifier": "export-custom",
-      "script": "main.js",
+      "script": "command-export-custom.js",
       "handler": "onExportCustom"
     },
     {
       "name": "设置...",
       "identifier": "open-settings",
-      "script": "main.js",
+      "script": "command-open-settings.js",
       "handler": "onOpenSettings"
     },
     {
       "name": "诊断插件环境",
       "identifier": "diagnose-plugin-environment",
-      "script": "main.js",
+      "script": "command-diagnose-plugin-environment.js",
       "handler": "onDiagnosePluginEnvironment"
     },
     {
       "name": "扫描当前页面",
       "identifier": "scan-current-page",
-      "script": "main.js",
+      "script": "command-scan-current-page.js",
       "handler": "onScanCurrentPage"
     }
   ],
   "menu": {
+    "isRoot": false,
     "title": "NGM AI Handoff",
     "items": [
+      "canary",
       "export-selected-artboard",
       "export-current-page",
       "export-whole-document",

@@ -259,7 +259,7 @@ function exportArtboard(document, artboard, options) {
 
   emitStep("generatingPreview", artboard.name);
   logStep("generate preview html", "开始生成预览 HTML", { artboardName: artboard.name });
-  var previewHtml = previewRenderer.generatePreviewHtml(meta, layerTree, inferredComponents, screenshot);
+  var previewHtml = previewRenderer.generatePreviewHtml(meta, layerTree, inferredComponents, screenshot, styleMap, assetsMap);
   var bridgeScript = interactionBridgeTemplate.generateBridgeScript();
 
   emitStep("generatingAiContext", artboard.name);

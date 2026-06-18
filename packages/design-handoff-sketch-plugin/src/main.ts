@@ -219,72 +219,78 @@ function runExport(document, mode, groups, context) {
   exporter.ensureDirRecursive(rootOutputDir);
 
   var reporter = progress.createReporter();
-  reporter.begin();
+  try {
+    reporter.begin();
 
-  logger.step("收集 Artboard", "开始收集导出画板", { mode: mode });
-  var flat = artboardUtils.flattenGroups(groups);
-  reporter.collected(flat.length);
-  if (flat.length === 0) {
-    writeEmptyExportResult({
+    logger.step("收集 Artboard", "开始收集导出画板", { mode: mode });
+    var flat = artboardUtils.flattenGroups(groups);
+    reporter.collected(flat.length);
+    if (flat.length === 0) {
+      writeEmptyExportResult({
+        document: document,
+        mode: mode,
+        rootOutputDir: rootOutputDir,
+        context: context,
+        reason: "未识别到可导出的画板",
+      });
+      reporter.close();
+      showNoArtboardMessage(mode);
+      return null;
+    }
+    logger.info("收集 Artboard", "画板收集完成", { count: flat.length });
+
+    // 对 "导出当前页面" 且只识别到 1 个画板的情况给出额外提示。
+    if (mode === "currentPage" && flat.length === 1) {
+      reporter.raw(i18n.STRINGS.singleArtboardHint);
+    }
+
+    var pageIndexMap = {};
+    groups.forEach(function (group, index) {
+      pageIndexMap[String((group.page && group.page.id) || "")] = index;
+    });
+
+    var pageCounter = {};
+    var records = [];
+    flat.forEach(function (entry, i) {
+      var page = entry.page;
+      var artboard = entry.artboard;
+      var pageId = String((page && page.id) || "");
+      var pageIndex = pageIndexMap[pageId] !== undefined ? pageIndexMap[pageId] : 0;
+      if (pageCounter[pageId] === undefined) {
+        pageCounter[pageId] = 0;
+      }
+      var artboardInPageIndex = pageCounter[pageId];
+      pageCounter[pageId] += 1;
+
+      reporter.startArtboard(i + 1, flat.length, artboard.name);
+
+      var record = exportSingleArtboard({
+        document: document,
+        settings: settings,
+        rootOutputDir: rootOutputDir,
+        page: page,
+        artboard: artboard,
+        pageIndex: pageIndex,
+        artboardInPageIndex: artboardInPageIndex,
+        reporter: reporter,
+        logger: logger,
+      });
+      records.push(record);
+    });
+
+    return finalizeExport({
       document: document,
       mode: mode,
+      groups: groups,
       rootOutputDir: rootOutputDir,
-      context: context,
-      reason: "未识别到可导出的画板",
-    });
-    showNoArtboardMessage(mode);
-    return null;
-  }
-  logger.info("收集 Artboard", "画板收集完成", { count: flat.length });
-
-  // 对 "导出当前页面" 且只识别到 1 个画板的情况给出额外提示。
-  if (mode === "currentPage" && flat.length === 1) {
-    reporter.raw(i18n.STRINGS.singleArtboardHint);
-  }
-
-  var pageIndexMap = {};
-  groups.forEach(function (group, index) {
-    pageIndexMap[String((group.page && group.page.id) || "")] = index;
-  });
-
-  var pageCounter = {};
-  var records = [];
-  flat.forEach(function (entry, i) {
-    var page = entry.page;
-    var artboard = entry.artboard;
-    var pageId = String((page && page.id) || "");
-    var pageIndex = pageIndexMap[pageId] !== undefined ? pageIndexMap[pageId] : 0;
-    if (pageCounter[pageId] === undefined) {
-      pageCounter[pageId] = 0;
-    }
-    var artboardInPageIndex = pageCounter[pageId];
-    pageCounter[pageId] += 1;
-
-    reporter.startArtboard(i + 1, flat.length, artboard.name);
-
-    var record = exportSingleArtboard({
-      document: document,
-      settings: settings,
-      rootOutputDir: rootOutputDir,
-      page: page,
-      artboard: artboard,
-      pageIndex: pageIndex,
-      artboardInPageIndex: artboardInPageIndex,
+      records: records,
       reporter: reporter,
-      logger: logger,
+      context: context,
     });
-    records.push(record);
-  });
-
-  return finalizeExport({
-    document: document,
-    mode: mode,
-    groups: groups,
-    rootOutputDir: rootOutputDir,
-    records: records,
-    reporter: reporter,
-    context: context,
-  });
+  } catch (error) {
+    reporter.close();
+    throw error;
+  }
 }
 
 function finalizeExport(options) {
@@ -537,10 +543,18 @@ function showFailureSummary(options) {
 }
 
 function revealInFinder(path) {
+  var targetPath = String(path || "");
   try {
-    NSWorkspace.sharedWorkspace().selectFile_inFileViewerByIndex(String(path), "Finder", 0);
+    var url = NSURL.fileURLWithPath(targetPath);
+    NSWorkspace.sharedWorkspace().activateFileViewerSelectingURLs(NSArray.arrayWithObject(url));
+    return;
   } catch (error) {
-    UI.message(i18n.t("summary.openFinderFailed", { path: String(path) }));
+    try {
+      NSWorkspace.sharedWorkspace().openURL(NSURL.fileURLWithPath(targetPath));
+      return;
+    } catch (innerError) {
+      UI.message(i18n.t("summary.openFinderFailed", { path: targetPath }));
+    }
   }
 }
 
