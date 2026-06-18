@@ -1,4 +1,5 @@
 var UI = require("sketch/ui");
+var i18n = require("./i18n");
 
 var SETTINGS_PREFIX = "com.ng-manager.ai-handoff.";
 var OUTPUT_ROOT_KEY = SETTINGS_PREFIX + "outputRoot";
@@ -72,8 +73,8 @@ function chooseExportFolder(currentPath) {
   panel.setCanChooseDirectories(true);
   panel.setCanCreateDirectories(true);
   panel.setAllowsMultipleSelection(false);
-  panel.setPrompt("Use Folder");
-  panel.setMessage("Choose the NGM AI Handoff export folder.");
+  panel.setPrompt(i18n.STRINGS.settings.chooseFolderButton);
+  panel.setMessage(i18n.STRINGS.settings.chooseFolderPrompt);
 
   if (currentPath) {
     panel.setDirectoryURL(NSURL.fileURLWithPath(currentPath));
@@ -91,19 +92,21 @@ function chooseExportFolder(currentPath) {
 function configureSettings() {
   var settings = getSettings();
   var alert = NSAlert.alloc().init();
-  alert.setMessageText("NGM AI Handoff Settings");
+  alert.setMessageText(i18n.STRINGS.settings.title);
   alert.setInformativeText(
     [
-      "Export folder:",
-      settings.outputRoot,
+      i18n.STRINGS.settings.exportFolder + "：",
+      settings.outputRoot || i18n.STRINGS.settings.exportFolderPlaceholder,
       "",
-      "Screenshot export:",
-      settings.exportScreenshot ? "Enabled" : "Disabled",
+      i18n.STRINGS.settings.screenshot + "：",
+      settings.exportScreenshot ? i18n.STRINGS.settings.enabled : i18n.STRINGS.settings.disabled,
     ].join("\n"),
   );
-  alert.addButtonWithTitle("Choose Folder");
-  alert.addButtonWithTitle(settings.exportScreenshot ? "Disable Screenshot" : "Enable Screenshot");
-  alert.addButtonWithTitle("Cancel");
+  alert.addButtonWithTitle(i18n.STRINGS.settings.chooseFolder);
+  alert.addButtonWithTitle(
+    settings.exportScreenshot ? i18n.STRINGS.settings.disable : i18n.STRINGS.settings.enable,
+  );
+  alert.addButtonWithTitle(i18n.STRINGS.settings.cancel);
 
   var response = alert.runModal();
   var firstButton = typeof NSAlertFirstButtonReturn !== "undefined" ? NSAlertFirstButtonReturn : 1000;
@@ -113,14 +116,18 @@ function configureSettings() {
     var selected = chooseExportFolder(settings.outputRoot);
     if (selected) {
       setStoredValue(OUTPUT_ROOT_KEY, selected);
-      UI.message("NGM AI Handoff: export folder updated.");
+      UI.message(i18n.STRINGS.pluginName + " · " + i18n.STRINGS.settings.folderUpdated);
     }
     return;
   }
 
   if (response === secondButton) {
     setStoredBoolean(EXPORT_SCREENSHOT_KEY, !settings.exportScreenshot);
-    UI.message("NGM AI Handoff: screenshot export " + (!settings.exportScreenshot ? "enabled." : "disabled."));
+    UI.message(
+      i18n.STRINGS.pluginName +
+        " · " +
+        (!settings.exportScreenshot ? i18n.STRINGS.settings.screenshotEnabled : i18n.STRINGS.settings.screenshotDisabled),
+    );
   }
 }
 

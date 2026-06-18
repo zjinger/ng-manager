@@ -24,6 +24,8 @@
     "handoff:scan": "node scripts/scan-handoff-packages.js",
     "handoff:task": "node scripts/create-agent-task.js",
     "handoff:parse": "node scripts/parse-sketch-file.js",
+    "handoff:validate": "node scripts/validate-handoff.js",
+    "test:sketch-helpers": "node scripts/test-sketch-helpers.js",
     "pack:sketch": "node scripts/pack-sketch-plugin.js",
     "test": "npm run build && node scripts/smoke-test.js"
   },

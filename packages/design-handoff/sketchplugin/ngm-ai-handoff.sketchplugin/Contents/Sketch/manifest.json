@@ -1,23 +1,35 @@
 {
   "name": "NGM AI Handoff",
   "identifier": "com.ng-manager.ai-handoff",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Export Sketch artboards into AI-friendly handoff packages.",
   "commands": [
     {
-      "name": "Export Selected Artboard",
+      "name": "导出选中画板",
       "identifier": "export-selected-artboard",
       "script": "main.js",
       "handler": "onExportSelectedArtboard"
     },
     {
-      "name": "Export Current Page",
+      "name": "导出当前页面",
       "identifier": "export-current-page",
       "script": "main.js",
       "handler": "onExportCurrentPage"
     },
     {
-      "name": "Settings...",
+      "name": "导出整个文档",
+      "identifier": "export-whole-document",
+      "script": "main.js",
+      "handler": "onExportWholeDocument"
+    },
+    {
+      "name": "自定义导出...",
+      "identifier": "export-custom",
+      "script": "main.js",
+      "handler": "onExportCustom"
+    },
+    {
+      "name": "设置...",
       "identifier": "open-settings",
       "script": "main.js",
       "handler": "onOpenSettings"
@@ -28,6 +40,8 @@
     "items": [
       "export-selected-artboard",
       "export-current-page",
+      "export-whole-document",
+      "export-custom",
       "open-settings"
     ]
   }

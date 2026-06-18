@@ -139,13 +139,13 @@ function exportScreenshot(artboard, outputDir, warnings) {
   return "screenshot.png";
 }
 
-function buildMeta(document, artboard, pluginVersion) {
+function buildMeta(document, artboard, pluginVersion, pageName) {
   return {
     pluginVersion: pluginVersion,
     handoffSpecVersion: "1.0",
     documentName: document.name || "Untitled",
     documentPath: getDocumentPath(document),
-    pageName: document.selectedPage ? document.selectedPage.name : "",
+    pageName: pageName || (document.selectedPage ? document.selectedPage.name : ""),
     artboardName: artboard.name || "Untitled Artboard",
     exportedAt: new Date().toISOString(),
     platform: "sketch",
@@ -176,14 +176,31 @@ function buildManifest(meta, screenshot) {
 }
 
 function exportArtboard(document, artboard, options) {
-  var pluginVersion = options && options.pluginVersion ? options.pluginVersion : "0.2.0";
-  var settings = options && options.settings ? options.settings : pluginSettings.getSettings();
+  options = options || {};
+  var pluginVersion = options.pluginVersion ? options.pluginVersion : "0.2.0";
+  var settings = options.settings ? options.settings : pluginSettings.getSettings();
+  var onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
+  var pageName = options.pageName ? options.pageName : null;
   var documentName = sanitizeName(document.name || "Untitled");
   var artboardName = sanitizeName(artboard.name || "Untitled Artboard");
-  var outputDir = pluginSettings.joinPath(settings.outputRoot, documentName, artboardName);
+  var outputDir = options.outputDir
+    ? options.outputDir
+    : pluginSettings.joinPath(settings.outputRoot, documentName, artboardName);
   var warnings = [];
 
   ensureDirRecursive(outputDir);
+
+  function emitStep(key, name) {
+    if (onProgress) {
+      try {
+        onProgress(key, name);
+      } catch (error) {
+        // 进度回调失败不应影响导出
+      }
+    }
+  }
+
+  emitStep("generatingHandoffJson", artboard.name);
 
   var styleRegistry = styles.createStyleRegistry();
   var layerTree = normalize.normalizeLayer(artboard, styleRegistry);
@@ -196,6 +213,9 @@ function exportArtboard(document, artboard, options) {
   var tokens = styles.extractTokens(styleMap, texts);
   var inferredComponents = components.inferComponents(layerTree);
 
+  if (settings.exportScreenshot) {
+    emitStep("generatingScreenshot", artboard.name);
+  }
   var screenshot = settings.exportScreenshot ? exportScreenshot(artboard, outputDir, warnings) : null;
   if (!settings.exportScreenshot) {
     warnings.push("Screenshot export is disabled in plugin settings.");
@@ -208,10 +228,14 @@ function exportArtboard(document, artboard, options) {
     warnings: warnings,
   };
 
-  var meta = buildMeta(document, artboard, pluginVersion);
+  var meta = buildMeta(document, artboard, pluginVersion, pageName);
   var handoffMap = handoffMapGenerator.buildHandoffMap(layerTree, inferredComponents);
+
+  emitStep("generatingPreview", artboard.name);
   var previewHtml = previewRenderer.generatePreviewHtml(meta, layerTree, inferredComponents, screenshot);
   var bridgeScript = interactionBridgeTemplate.generateBridgeScript();
+
+  emitStep("generatingAiContext", artboard.name);
   var designContext = designContextGenerator.generateDesignContext(meta, layerTree, inferredComponents, texts, tokens, assetsMap);
   var manifest = buildManifest(meta, screenshot);
   var prompt = promptGenerator.generatePrompt(meta, assetsMap);
@@ -235,4 +259,11 @@ function exportArtboard(document, artboard, options) {
 
 module.exports = {
   exportArtboard: exportArtboard,
+  // 暴露文件系统辅助函数，供 main.js / 文档级索引与日志复用。
+  ensureDirRecursive: ensureDirRecursive,
+  writeJson: writeJson,
+  writeText: writeText,
+  sanitizeName: sanitizeName,
+  fileExists: fileExists,
+  joinPath: pluginSettings.joinPath,
 };
