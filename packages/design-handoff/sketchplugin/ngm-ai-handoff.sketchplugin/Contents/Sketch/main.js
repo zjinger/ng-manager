@@ -3,7 +3,7 @@ var UI = require("sketch/ui");
 var exporter = require("./exporter");
 var pluginSettings = require("./settings");
 
-var PLUGIN_VERSION = "0.1.0";
+var PLUGIN_VERSION = "0.2.0";
 
 function getDocument() {
   return sketch.getSelectedDocument();

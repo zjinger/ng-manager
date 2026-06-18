@@ -14,6 +14,14 @@ const REQUIRED_JSON_FILES = [
 
 const REQUIRED_TEXT_FILES = ["agent-prompt.md"] as const;
 
+const RECOMMENDED_FILES = [
+  "handoff.json",
+  "handoff-map.json",
+  "design-context.md",
+  "preview.html",
+  "interaction-bridge.js",
+] as const;
+
 function pushMissing(errors: HandoffValidationIssue[], file: string): void {
   errors.push({ file, message: "Required handoff file is missing." });
 }
@@ -55,6 +63,16 @@ export function validateHandoffPackage(packageDir: string): HandoffValidationRes
   for (const file of REQUIRED_TEXT_FILES) {
     if (!existsSync(join(packageDir, file))) {
       pushMissing(errors, file);
+    }
+  }
+
+  for (const file of RECOMMENDED_FILES) {
+    if (!existsSync(join(packageDir, file))) {
+      warnings.push({
+        file,
+        message:
+          "Recommended handoff file is missing; interactive preview / AI context may be limited.",
+      });
     }
   }
 

@@ -7,6 +7,7 @@ const {
   generateAgentPrompt,
   loadTargetProjectProfile,
   parseHandoffPackage,
+  scanHandoffPackages,
   validateHandoffPackage,
 } = require("../lib");
 
@@ -195,6 +196,96 @@ if (!targetRootTask.taskDir.startsWith(join(targetProject, ".artifacts", "design
 const invalidResult = validateHandoffPackage(invalid);
 if (invalidResult.ok || invalidResult.errors.length === 0) {
   throw new Error("Expected invalid fixture to report missing files.");
+}
+
+// ===== 新风格 Handoff Package 物料（part1） =====
+const newStyle = join(root, "newstyle");
+mkdirSync(newStyle);
+const abFrame = { x: 0, y: 0, width: 1440, height: 900 };
+const childFrame = { x: 0, y: 0, width: 1440, height: 64 };
+
+writeFileSync(join(newStyle, "meta.json"), JSON.stringify({
+  pluginVersion: "0.2.0", handoffSpecVersion: "1.0", documentName: "demo.sketch",
+  documentPath: "/tmp/demo.sketch", pageName: "首页", artboardName: "DemoPage",
+  exportedAt: "2026-06-17T00:00:00.000Z", platform: "sketch",
+}, null, 2));
+writeFileSync(join(newStyle, "handoff.json"), JSON.stringify({
+  specVersion: "1.0", handoffSpecVersion: "1.0", meta: "meta.json",
+  files: { layerTree: "layer-tree.json", texts: "texts.json", styles: "styles.json", tokens: "tokens.json", components: "components.json", assetsMap: "assets-map.json", handoffMap: "handoff-map.json", designContext: "design-context.md", previewHtml: "preview.html", interactionBridge: "interaction-bridge.js", agentPrompt: "agent-prompt.md", screenshot: null },
+  exportedAt: "2026-06-17T00:00:00.000Z",
+}, null, 2));
+writeFileSync(join(newStyle, "layer-tree.json"), JSON.stringify({
+  id: "artboard-001", handoffId: "artboard_aabbccdd", name: "DemoPage", type: "Artboard",
+  frame: abFrame, absoluteFrame: abFrame, artboardId: "artboard_aabbccdd", parentId: null, path: ["DemoPage"],
+  hidden: false, locked: false, text: null, styleRef: null, role: "artboard",
+  domSelector: "[data-handoff-id=\"artboard_aabbccdd\"]",
+  children: [{
+    id: "layer-001", handoffId: "layer_11223344", name: "TopNav", type: "Group",
+    frame: childFrame, absoluteFrame: childFrame, artboardId: "artboard_aabbccdd", parentId: "artboard_aabbccdd", path: ["DemoPage", "TopNav"],
+    hidden: false, locked: false, text: null, styleRef: null, role: "navigation",
+    domSelector: "[data-handoff-id=\"layer_11223344\"]", children: [],
+  }],
+}, null, 2));
+writeFileSync(join(newStyle, "texts.json"), JSON.stringify([
+  { id: "txt-001", name: "Title", text: "标题", fontFamily: "PingFang SC", fontSize: 16, fontWeight: "600", color: "#111827", frame: childFrame },
+], null, 2));
+writeFileSync(join(newStyle, "styles.json"), JSON.stringify({ style_001: { fills: ["#ffffff"], borders: [], radius: 4, opacity: 1, shadows: [] } }, null, 2));
+writeFileSync(join(newStyle, "tokens.json"), JSON.stringify({ colors: { color_001: "#ffffff" }, fontSize: { font_size_001: 16 }, radius: { radius_001: 4 } }, null, 2));
+writeFileSync(join(newStyle, "components.json"), JSON.stringify([
+  { id: "cmp_001", layerId: "layer-001", handoffId: "component_22334455", artboardId: "artboard_aabbccdd", name: "TopNav", inferredType: "navigation", confidence: 0.7, frame: childFrame, absoluteFrame: childFrame, text: null, textList: [], layerIds: ["layer-001"], domSelector: "[data-handoff-id=\"component_22334455\"]", implementationHint: { angularComponentName: "nz-header / app-header", suggestedInputs: [], suggestedOutputs: [], notes: ["顶部导航建议使用 nz-header 与 nz-menu 组合"] } },
+], null, 2));
+writeFileSync(join(newStyle, "assets-map.json"), JSON.stringify({ screenshot: null, assets: [], warnings: [] }, null, 2));
+
+writeFileSync(join(newStyle, "handoff-map.json"), JSON.stringify({
+  version: "1.0", source: "ngm-ai-handoff",
+  nodes: [
+    { handoffId: "artboard_aabbccdd", layerId: "artboard-001", componentId: null, artboardId: "artboard_aabbccdd", type: "artboard", name: "DemoPage", domSelector: "[data-handoff-id=\"artboard_aabbccdd\"]", frame: abFrame },
+    { handoffId: "layer_11223344", layerId: "layer-001", componentId: null, artboardId: "artboard_aabbccdd", type: "layer", name: "TopNav", domSelector: "[data-handoff-id=\"layer_11223344\"]", frame: childFrame },
+    { handoffId: "component_22334455", layerId: "layer-001", componentId: "cmp_001", artboardId: "artboard_aabbccdd", type: "component", name: "TopNav", domSelector: "[data-handoff-id=\"component_22334455\"]", frame: childFrame },
+  ],
+}, null, 2));
+writeFileSync(join(newStyle, "design-context.md"), "# Design Context\n\n- 画板名称：DemoPage\n");
+writeFileSync(join(newStyle, "preview.html"), "<!DOCTYPE html><html><body><div data-handoff-id=\"artboard_aabbccdd\"></div></body></html>");
+writeFileSync(join(newStyle, "interaction-bridge.js"), "(function(){})();");
+writeFileSync(join(newStyle, "agent-prompt.md"), "prompt");
+
+const newStyleValidation = validateHandoffPackage(newStyle);
+if (!newStyleValidation.ok) {
+  throw new Error("Expected new-style fixture to be valid, got " + JSON.stringify(newStyleValidation.errors));
+}
+const newStyleHandoff = parseHandoffPackage(newStyle);
+if (!newStyleHandoff.manifest || newStyleHandoff.manifest.specVersion !== "1.0") {
+  throw new Error("New-style package should parse handoff.json manifest.");
+}
+if (!newStyleHandoff.handoffMap || newStyleHandoff.handoffMap.nodes.length !== 3) {
+  throw new Error("New-style package should parse handoff-map.json with 3 nodes.");
+}
+if (!newStyleHandoff.designContext || newStyleHandoff.designContext.indexOf("Design Context") === -1) {
+  throw new Error("New-style package should parse design-context.md.");
+}
+if (!newStyleHandoff.previewHtmlPath) {
+  throw new Error("New-style package should expose previewHtmlPath.");
+}
+if (!newStyleHandoff.layerTree.handoffId) {
+  throw new Error("New-style layer-tree root should carry handoffId.");
+}
+if (!newStyleHandoff.components[0] || !newStyleHandoff.components[0].layerId) {
+  throw new Error("New-style component should associate layerId.");
+}
+const legacyValidation = validateHandoffPackage(valid);
+if (!legacyValidation.ok) {
+  throw new Error("Legacy package should remain valid.");
+}
+const legacyRecommendedWarnings = legacyValidation.warnings.filter(function (w) {
+  return w.message && w.message.indexOf("Recommended handoff file") === 0;
+});
+if (legacyRecommendedWarnings.length === 0) {
+  throw new Error("Legacy package should warn about missing recommended files.");
+}
+const summaries = scanHandoffPackages(root);
+const newStyleSummary = summaries.find(function (s) { return s.packageDir === newStyle; });
+if (!newStyleSummary || !newStyleSummary.hasPreviewHtml || !newStyleSummary.hasHandoffMap || !newStyleSummary.hasDesignContext) {
+  throw new Error("Scanner should report new capability flags for new-style package.");
 }
 
 // 测试 .sketch 文件解析功能

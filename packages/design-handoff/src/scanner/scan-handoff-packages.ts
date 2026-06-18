@@ -11,6 +11,9 @@ export interface HandoffPackageSummary {
   textCount: number | null;
   componentCount: number | null;
   hasScreenshot: boolean;
+  hasPreviewHtml: boolean;
+  hasHandoffMap: boolean;
+  hasDesignContext: boolean;
   validation: HandoffValidationResult;
 }
 
@@ -66,6 +69,9 @@ export function scanHandoffPackages(rootDir: string): HandoffPackageSummary[] {
       textCount: Array.isArray(texts) ? texts.length : null,
       componentCount: Array.isArray(components) ? components.length : null,
       hasScreenshot: screenshot ? existsSync(screenshot) : false,
+      hasPreviewHtml: existsSync(join(packageDir, "preview.html")),
+      hasHandoffMap: existsSync(join(packageDir, "handoff-map.json")),
+      hasDesignContext: existsSync(join(packageDir, "design-context.md")),
       validation,
     };
   });
