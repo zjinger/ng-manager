@@ -1,14 +1,54 @@
-let sketch = null;
+let sketch: SketchRuntimeModule = null as unknown as SketchRuntimeModule;
 try {
   sketch = require("sketch");
 } catch (error) {
-  sketch = { getSelectedDocument: function () { return null; } };
+  sketch = { getSelectedDocument: function () { return undefined; } };
 }
-let i18n = require("../i18n/i18n");
-let artboardUtils = require("../sketch/artboard-utils");
-let debugLogger = require("./debug-logger");
+const i18n = require("../i18n/i18n");
+const artboardUtils = require("../sketch/artboard-utils");
+const debugLogger = require("./debug-logger");
+const nativeAlert = require("../runtime/native-alert");
 
-function getSketchVersion() {
+import type { RectDto } from "../types/runtime";
+import type { SafeRunContextLike } from "../export/export-types";
+
+interface DiagnosticsOptions {
+  pluginVersion?: string;
+}
+
+interface DiagnosticsInput {
+  document?: SketchDocumentLike | null;
+  settings?: { outputRoot?: string | null } | null;
+  logPath?: string;
+  pluginVersion?: string;
+  checkWritable?: boolean;
+}
+
+interface LayerSummaryDto {
+  id: string;
+  name: string;
+  type: string;
+  hidden: boolean;
+  locked: boolean;
+  frame: RectDto | null;
+}
+
+interface DiagnosticsResultDto {
+  pluginVersion?: string;
+  sketchVersion: string;
+  documentName: string;
+  documentPath: string | null;
+  selectedPageName: string;
+  selectedLayerCount: number;
+  selectedLayers: LayerSummaryDto[];
+  visibleArtboardCount: number;
+  visibleArtboards: LayerSummaryDto[];
+  outputRoot: string;
+  outputRootWritable: boolean;
+  logPath: string;
+}
+
+function getSketchVersion(): string {
   try {
     if (typeof NSBundle !== "undefined") {
       let bundle = NSBundle.mainBundle();
@@ -21,7 +61,7 @@ function getSketchVersion() {
   return "";
 }
 
-function getFrame(layer) {
+function getFrame(layer: SketchLayerLike | undefined | null): RectDto | null {
   if (!layer || !layer.frame) {
     return null;
   }
@@ -33,7 +73,7 @@ function getFrame(layer) {
   };
 }
 
-function summarizeLayer(layer) {
+export function summarizeLayer(layer: SketchLayerLike | undefined | null): LayerSummaryDto {
   return {
     id: String((layer && layer.id) || ""),
     name: String((layer && layer.name) || ""),
@@ -44,7 +84,7 @@ function summarizeLayer(layer) {
   };
 }
 
-function buildDiagnosticsResult(input) {
+export function buildDiagnosticsResult(input: DiagnosticsInput): DiagnosticsResultDto {
   let document = input.document || null;
   let page = document && document.selectedPage ? document.selectedPage : null;
   let selectedLayers = document && document.selectedLayers ? document.selectedLayers.layers || [] : [];
@@ -68,11 +108,10 @@ function buildDiagnosticsResult(input) {
   };
 }
 
-function showDiagnosticsSummary(result, outputPath) {
-  let alert = NSAlert.alloc().init();
-  alert.setMessageText(i18n.STRINGS.diagnostics.title);
-  alert.setInformativeText(
-    [
+function showDiagnosticsSummary(result: DiagnosticsResultDto, outputPath: string): void {
+  nativeAlert.showNativeAlert({
+    title: i18n.STRINGS.diagnostics.title,
+    message: [
       i18n.STRINGS.diagnostics.document + "：" + (result.documentName || i18n.STRINGS.none),
       i18n.STRINGS.diagnostics.page + "：" + (result.selectedPageName || i18n.STRINGS.none),
       i18n.STRINGS.diagnostics.selectedLayers + "：" + result.selectedLayerCount,
@@ -82,12 +121,11 @@ function showDiagnosticsSummary(result, outputPath) {
       i18n.STRINGS.safeRun.logPath + "：" + result.logPath,
       i18n.STRINGS.diagnostics.resultPath + "：" + outputPath,
     ].join("\n"),
-  );
-  alert.addButtonWithTitle(i18n.STRINGS.summary.close);
-  alert.runModal();
+    buttons: [i18n.STRINGS.summary.close],
+  });
 }
 
-function runDiagnostics(context, options) {
+export function runDiagnostics(context: SafeRunContextLike, options?: DiagnosticsOptions): DiagnosticsResultDto {
   options = options || {};
   context.logger.step("诊断环境", "开始诊断插件环境");
   let document = sketch.getSelectedDocument();
@@ -108,11 +146,3 @@ function runDiagnostics(context, options) {
   showDiagnosticsSummary(result, outputPath);
   return result;
 }
-
-module.exports = {
-  buildDiagnosticsResult: buildDiagnosticsResult,
-  runDiagnostics: runDiagnostics,
-  summarizeLayer: summarizeLayer,
-};
-
-export {};

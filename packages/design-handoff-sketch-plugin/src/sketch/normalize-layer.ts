@@ -1,4 +1,17 @@
-function getFrame(layer) {
+import type { HandoffLayerNodeDto, HandoffTextDto, RectDto } from "../types/runtime";
+
+interface NormalizeLayerContext {
+  artboardId?: string | null;
+  parentId?: string | null;
+  path?: string[];
+  parentOrigin?: { x: number; y: number };
+}
+
+interface StyleRegistryLike {
+  register(layer: SketchLayerLike): string | null;
+}
+
+export function getFrame(layer: SketchLayerLike | undefined | null): RectDto {
   let frame = layer && layer.frame ? layer.frame : {};
 
   return {
@@ -9,7 +22,7 @@ function getFrame(layer) {
   };
 }
 
-function shouldIgnoreLayer(layer) {
+export function shouldIgnoreLayer(layer: SketchLayerLike | undefined | null): boolean {
   if (!layer || layer.hidden) {
     return true;
   }
@@ -18,11 +31,11 @@ function shouldIgnoreLayer(layer) {
   return name.indexOf("_ignore") === 0 || name.indexOf(".ignore") === 0;
 }
 
-function isContainer(layer) {
+function isContainer(layer: SketchLayerLike | undefined | null): boolean | null | undefined {
   return layer && (layer.type === "Group" || layer.type === "Artboard" || layer.type === "SymbolInstance");
 }
 
-function getText(layer) {
+function getText(layer: SketchLayerLike | undefined | null): string | null {
   if (!layer || layer.type !== "Text") {
     return null;
   }
@@ -30,7 +43,7 @@ function getText(layer) {
   return typeof layer.text === "string" ? layer.text : "";
 }
 
-function shortHash(value) {
+export function shortHash(value: unknown): string {
   let str = String(value || "");
   let hash = 5381;
   for (let i = 0; i < str.length; i += 1) {
@@ -43,7 +56,7 @@ function shortHash(value) {
   return hex;
 }
 
-function inferRole(layer) {
+export function inferRole(layer: SketchLayerLike): string {
   let type = layer.type;
   let name = String(layer.name || "").toLowerCase();
   if (type === "Artboard") {
@@ -106,14 +119,18 @@ function inferRole(layer) {
   return "container";
 }
 
-function normalizeLayer(layer, styleRegistry, ctx) {
+export function normalizeLayer(
+  layer: SketchLayerLike,
+  styleRegistry?: StyleRegistryLike | null,
+  ctx?: NormalizeLayerContext,
+): HandoffLayerNodeDto | null {
   if (shouldIgnoreLayer(layer)) {
     return null;
   }
 
   ctx = ctx || {};
   let isArtboard = layer.type === "Artboard";
-  let artboardId = ctx.artboardId
+  let artboardId: string | null = ctx.artboardId
     ? ctx.artboardId
     : isArtboard
       ? "artboard_" + shortHash(layer.id)
@@ -134,10 +151,11 @@ function normalizeLayer(layer, styleRegistry, ctx) {
   let handoffId = isArtboardRoot
     ? artboardId
     : "layer_" + shortHash(String(layer.id) + ":" + (artboardId || ""));
+  handoffId = handoffId || "layer_" + shortHash(String(layer.id || ""));
 
   let selfPath = path.concat([layer.name || ""]);
 
-  let children = [];
+  let children: HandoffLayerNodeDto[] = [];
   if (layer.layers && layer.layers.length > 0) {
     let childCtx = {
       artboardId: artboardId,
@@ -145,7 +163,7 @@ function normalizeLayer(layer, styleRegistry, ctx) {
       path: selfPath,
       parentOrigin: childOrigin,
     };
-    layer.layers.forEach(function (child) {
+    layer.layers.forEach(function (child: SketchLayerLike) {
       let normalized = normalizeLayer(child, styleRegistry, childCtx);
       if (normalized) {
         children.push(normalized);
@@ -161,14 +179,16 @@ function normalizeLayer(layer, styleRegistry, ctx) {
     id: String(layer.id || ""),
     handoffId: handoffId,
     name: layer.name || "",
-    type: layer.type || "Unknown",
+    type: (layer.type || "Unknown") as HandoffLayerNodeDto["type"],
     frame: frame,
     absoluteFrame: absoluteFrame,
     artboardId: artboardId,
     parentId: parentId,
     path: selfPath,
     hidden: Boolean(layer.hidden),
+    visible: !Boolean(layer.hidden),
     locked: Boolean(layer.locked),
+    zIndex: 0,
     text: getText(layer),
     styleRef: styleRegistry ? styleRegistry.register(layer) : null,
     role: inferRole(layer),
@@ -177,10 +197,10 @@ function normalizeLayer(layer, styleRegistry, ctx) {
   };
 }
 
-function collectTexts(layer) {
-  let texts = [];
+export function collectTexts(layer: SketchLayerLike): HandoffTextDto[] {
+  let texts: HandoffTextDto[] = [];
 
-  function visit(current) {
+  function visit(current: SketchLayerLike) {
     if (shouldIgnoreLayer(current)) {
       return;
     }
@@ -209,7 +229,7 @@ function collectTexts(layer) {
   return texts;
 }
 
-function normalizeColor(color) {
+export function normalizeColor(color: unknown): string | null {
   if (!color || typeof color !== "string") {
     return null;
   }
@@ -220,15 +240,3 @@ function normalizeColor(color) {
 
   return color.slice(0, 7).toUpperCase();
 }
-
-module.exports = {
-  normalizeLayer: normalizeLayer,
-  collectTexts: collectTexts,
-  getFrame: getFrame,
-  normalizeColor: normalizeColor,
-  shouldIgnoreLayer: shouldIgnoreLayer,
-  shortHash: shortHash,
-  inferRole: inferRole,
-};
-
-export {};

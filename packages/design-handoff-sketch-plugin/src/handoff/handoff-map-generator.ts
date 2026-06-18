@@ -1,7 +1,31 @@
-function buildHandoffMap(layerTree, components) {
-  let nodes = [];
+import type { HandoffLayerNodeDto, RectDto } from "../types/runtime";
 
-  function visitLayer(node) {
+interface ComponentLike {
+  id: string;
+  layerId: string;
+  handoffId: string;
+  artboardId?: string | null;
+  name?: string;
+  domSelector?: string;
+  frame: RectDto;
+  absoluteFrame?: RectDto;
+}
+
+interface HandoffMapNodeDto {
+  handoffId: string;
+  layerId: string;
+  componentId: string | null;
+  artboardId: string | null;
+  type: "artboard" | "layer" | "component";
+  name: string;
+  domSelector: string;
+  frame: RectDto;
+}
+
+export function buildHandoffMap(layerTree: HandoffLayerNodeDto, components: ComponentLike[]) {
+  let nodes: HandoffMapNodeDto[] = [];
+
+  function visitLayer(node: HandoffLayerNodeDto | null | undefined): void {
     if (!node) {
       return;
     }
@@ -23,7 +47,7 @@ function buildHandoffMap(layerTree, components) {
 
   visitLayer(layerTree);
 
-  (components || []).forEach(function (cmp) {
+  (components || []).forEach(function (cmp: ComponentLike) {
     nodes.push({
       handoffId: cmp.handoffId,
       layerId: cmp.layerId,
@@ -42,9 +66,3 @@ function buildHandoffMap(layerTree, components) {
     nodes: nodes,
   };
 }
-
-module.exports = {
-  buildHandoffMap: buildHandoffMap,
-};
-
-export {};

@@ -25,7 +25,7 @@ interface AssetLayerItem {
 }
 
 interface ExportAssetResult {
-  format: string;
+  format: "png" | "svg";
   relPath: string;
 }
 
@@ -95,7 +95,7 @@ function fileExt(name: string): string {
 
 // 构建 layerId -> { handoffId, absoluteFrame, artboardId } 索引，
 // 从已 normalize 的 layerTree 查询，避免重复归一化并保证 handoffId 与图层树一致。
-function buildLayerIndex(layerTree: HandoffLayerNodeDto | null | undefined): Record<string, LayerIndexEntry> {
+export function buildLayerIndex(layerTree: HandoffLayerNodeDto | null | undefined): Record<string, LayerIndexEntry> {
   const index: Record<string, LayerIndexEntry> = {};
   if (!layerTree) {
     return index;
@@ -119,7 +119,7 @@ function buildLayerIndex(layerTree: HandoffLayerNodeDto | null | undefined): Rec
 
 // 递归收集资源图层。若某层被分类为资源（icon group / symbol 等），
 // 则整体导出、不再向下递归子层，避免图标与其内部 ShapePath 重复导出。
-function collectAssetLayers(layer: SketchLayerLike | undefined, list: AssetLayerItem[]): void {
+export function collectAssetLayers(layer: SketchLayerLike | undefined, list: AssetLayerItem[]): void {
   if (!layer) {
     return;
   }
@@ -174,7 +174,7 @@ function exportAssetItem(
   shortId: string,
   assetWarnings: string[],
 ): ExportAssetResult | null {
-  const formats = classify.preferSvg(type) ? ["svg", "png"] : ["png"];
+  const formats: Array<"svg" | "png"> = classify.preferSvg(type) ? ["svg", "png"] : ["png"];
   const subDir = classify.assetTypeDirectory(type);
   const assetDir = joinPath(outputDir, "assets", subDir);
   ensureDir(assetDir);
@@ -210,7 +210,7 @@ function exportAssetItem(
 // 导出 Artboard 的资源图层，返回 assets 数组（写入 assets-map.json）。
 // 保留原函数名 exportBitmapAssets 以兼容 exporter.ts 调用；
 // 新增第 5 个参数 context = { layerTree, artboardId }，用于补全 handoffId / absoluteFrame。
-function exportBitmapAssets(
+export function exportBitmapAssets(
   artboard: SketchLayerLike,
   outputDir: string,
   joinPath: JoinPathFn,
@@ -268,7 +268,7 @@ function exportBitmapAssets(
         name: failedName,
         layerId: String(layer.id || ""),
         handoffId: handoffId,
-        artboardId: resolvedArtboardId,
+        artboardId: String(resolvedArtboardId || ""),
         type: info.type,
         format: null,
         path: null,
@@ -289,7 +289,7 @@ function exportBitmapAssets(
       name: layer.name || ("asset_" + seq),
       layerId: String(layer.id || ""),
       handoffId: handoffId,
-      artboardId: resolvedArtboardId,
+      artboardId: String(resolvedArtboardId || ""),
       type: info.type,
       format: result.format,
       path: result.relPath,
@@ -305,11 +305,3 @@ function exportBitmapAssets(
 
   return assets;
 }
-
-module.exports = {
-  exportBitmapAssets: exportBitmapAssets,
-  buildLayerIndex: buildLayerIndex,
-  collectAssetLayers: collectAssetLayers,
-};
-
-export {};

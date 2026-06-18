@@ -1,7 +1,20 @@
 // 生成 Pure HTML Preview v2 的完整页面模板。
 // 页面包含：顶部工具栏、左侧图层树、中间 Stage + screenshot 对照层、右侧 Inspect / 资源面板。
 
-function escapeHtml(value) {
+import type { AssetsMapDto, HandoffLayerNodeDto } from "../types/runtime";
+
+interface MetaLike {
+  artboardName?: string;
+}
+
+interface PreviewDataLike {
+  artboard?: {
+    width?: number;
+    height?: number;
+  };
+}
+
+function escapeHtml(value: unknown): string {
   return String(value == null ? "" : value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -9,11 +22,20 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
-function safeJsonScript(value) {
+function safeJsonScript(value: unknown): string {
   return JSON.stringify(value || {}).replace(/<\//g, "<\\/");
 }
 
-function generatePreviewHtml(meta, layerTree, components, screenshot, styleMap, assetsMap, previewDataJson, options) {
+export function generatePreviewHtml(
+  meta: MetaLike,
+  layerTree: HandoffLayerNodeDto,
+  components: unknown[],
+  screenshot: string | null,
+  styleMap: unknown,
+  assetsMap: AssetsMapDto,
+  previewDataJson: PreviewDataLike,
+  options?: Record<string, unknown>,
+): string {
   options = options || {};
   const title = "NGM Handoff Preview - " + (meta && meta.artboardName ? meta.artboardName : "Artboard");
   const artboard = previewDataJson && previewDataJson.artboard ? previewDataJson.artboard : { width: 0, height: 0 };
@@ -75,10 +97,9 @@ function generatePreviewHtml(meta, layerTree, components, screenshot, styleMap, 
     "</html>",
     "",
   ].join("\n");
+  void layerTree;
+  void components;
+  void styleMap;
+  void assetsMap;
+  void options;
 }
-
-module.exports = {
-  generatePreviewHtml: generatePreviewHtml,
-};
-
-export {};

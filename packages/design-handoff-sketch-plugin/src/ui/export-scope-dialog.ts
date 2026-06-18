@@ -10,22 +10,24 @@ const DIALOG_HEIGHT = 420;
 const ROW_SPACING = 4;
 const PADDING = 12;
 
-function nsRect(x, y, width, height) {
+import type { FlatArtboardEntry, ScopeSelectionDto } from "../export/export-types";
+
+function nsRect(x: number, y: number, width: number, height: number) {
   return NSMakeRect(x, y, width, height);
 }
 
-function nsPoint(x, y) {
+function nsPoint(x: number, y: number) {
   return NSMakePoint(x, y);
 }
 
 // entries: [{ page, artboard }]
 // returns: [{ pageId, artboardId }] 或 null(取消)
-function showCustomScopeDialog(entries) {
+export function showCustomScopeDialog(entries: FlatArtboardEntry[]): ScopeSelectionDto[] | null {
   if (!entries || entries.length === 0) {
     return null;
   }
 
-  const checkboxFrames = [];
+  const checkboxFrames: any[] = [];
   const alert = NSAlert.alloc().init();
   alert.setMessageText(i18n.STRINGS.custom.title);
   alert.setInformativeText(i18n.t("custom.prompt", { count: entries.length }));
@@ -39,7 +41,7 @@ function showCustomScopeDialog(entries) {
     return null;
   }
 
-  const result = [];
+  const result: ScopeSelectionDto[] = [];
   checkboxFrames.forEach(function (checkbox, index) {
     if (checkbox.state() === NSOnState) {
       const entry = entries[index];
@@ -53,7 +55,7 @@ function showCustomScopeDialog(entries) {
   return result.length > 0 ? result : null;
 }
 
-function buildAccessoryView(entries, checkboxFrames) {
+function buildAccessoryView(entries: FlatArtboardEntry[], checkboxFrames: any[]) {
   const scrollView = NSScrollView.alloc().initWithFrame(
     nsRect(0, 0, DIALOG_WIDTH, DIALOG_HEIGHT),
   );
@@ -67,7 +69,7 @@ function buildAccessoryView(entries, checkboxFrames) {
   );
   scrollView.setDocumentView(documentView);
 
-  entries.forEach(function (entry, index) {
+  entries.forEach(function (entry: FlatArtboardEntry, index: number) {
     const y = documentHeight - PADDING - (index + 1) * (CHECKBOX_HEIGHT + ROW_SPACING);
     const checkbox = NSButton.alloc().initWithFrame(nsRect(PADDING, y, CHECKBOX_WIDTH, CHECKBOX_HEIGHT));
     checkbox.setButtonType(NSSwitchButton);
@@ -86,9 +88,3 @@ function buildAccessoryView(entries, checkboxFrames) {
   scrollView.contentView().documentView().scrollPoint(nsPoint(0, 0));
   return scrollView;
 }
-
-module.exports = {
-  showCustomScopeDialog: showCustomScopeDialog,
-};
-
-export {};

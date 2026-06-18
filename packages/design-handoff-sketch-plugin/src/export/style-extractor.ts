@@ -1,19 +1,47 @@
-let normalize = require("../sketch/normalize-layer");
+const normalize = require("../sketch/normalize-layer");
 
-function colorToHex(color) {
+import type { HandoffTextDto } from "../types/runtime";
+
+interface StyleItemLike {
+  enabled?: boolean;
+  [key: string]: any;
+}
+
+interface SketchPointLike {
+  cornerRadius?: number;
+}
+
+interface ExtractedStyleDto {
+  fills: any[];
+  borders: any[];
+  radius: number | null;
+  opacity: number;
+  shadows: any[];
+  rotation: number | null;
+  fontFamily: string | null;
+  fontSize: number | null;
+  fontWeight: string | null;
+  textColor: string | null;
+  textAlign: string | null;
+  letterSpacing: number | null;
+  lineHeight: number | null;
+  css: string[];
+}
+
+function colorToHex(color: unknown): string | null {
   return normalize.normalizeColor(color);
 }
 
-function enabledItems(items) {
+function enabledItems(items: StyleItemLike[] | undefined | null): StyleItemLike[] {
   if (!items || !items.length) {
     return [];
   }
-  return items.filter(function (item) {
+  return items.filter(function (item: StyleItemLike) {
     return item && item.enabled !== false;
   });
 }
 
-function extractGradient(gradient) {
+function extractGradient(gradient: any) {
   if (!gradient || typeof gradient !== "object") {
     return null;
   }
@@ -22,7 +50,7 @@ function extractGradient(gradient) {
     type: gradient.gradientType || "linear",
     from: gradient.from || null,
     to: gradient.to || null,
-    stops: (gradient.stops || []).map(function (stop) {
+    stops: (gradient.stops || []).map(function (stop: any) {
       return {
         position: typeof stop.position === "number" ? stop.position : 0,
         color: colorToHex(stop.color) || null,
@@ -31,7 +59,7 @@ function extractGradient(gradient) {
   };
 }
 
-function extractFill(fill) {
+function extractFill(fill: any) {
   if (!fill) {
     return null;
   }
@@ -45,7 +73,7 @@ function extractFill(fill) {
   };
 }
 
-function extractBorder(border) {
+function extractBorder(border: any) {
   if (!border) {
     return null;
   }
@@ -61,7 +89,7 @@ function extractBorder(border) {
   };
 }
 
-function extractShadow(shadow) {
+function extractShadow(shadow: any) {
   return {
     type: shadow.type || "shadow",
     color: colorToHex(shadow.color),
@@ -72,29 +100,30 @@ function extractShadow(shadow) {
   };
 }
 
-function extractRadius(layer) {
+function extractRadius(layer: SketchLayerLike | undefined | null): number | null {
   if (!layer) {
     return null;
   }
   if (typeof layer.cornerRadius === "number") {
     return layer.cornerRadius;
   }
-  if (layer.points && layer.points.length > 0 && typeof layer.points[0].cornerRadius === "number") {
-    return layer.points[0].cornerRadius;
+  const firstPoint = layer.points && layer.points.length > 0 ? layer.points[0] as SketchPointLike : null;
+  if (firstPoint && typeof firstPoint.cornerRadius === "number") {
+    return firstPoint.cornerRadius;
   }
   return null;
 }
 
-function cssAttributes(layer) {
+function cssAttributes(layer: SketchLayerLike | undefined | null): string[] {
   if (!layer || !layer.CSSAttributes || !layer.CSSAttributes.length) {
     return [];
   }
-  return layer.CSSAttributes.filter(function (attr) {
+  return layer.CSSAttributes.filter(function (attr: unknown) {
     return attr && typeof attr === "string" && !/\/\*/.test(attr);
   });
 }
 
-function extractTextStyle(layerStyle, textStyle) {
+function extractTextStyle(layerStyle: SketchStyleLike, textStyle: SketchTextStyleLike) {
   return {
     fontFamily: textStyle.fontFamily || null,
     fontSize: typeof textStyle.fontSize === "number" ? textStyle.fontSize : null,
@@ -111,21 +140,21 @@ function extractTextStyle(layerStyle, textStyle) {
   };
 }
 
-function extractStyle(layer) {
-  let style = layer.style || {};
+export function extractStyle(layer: SketchLayerLike): ExtractedStyleDto {
+  let style = (layer.style || {}) as SketchStyleLike;
   let textStyle = style.textStyle || {};
   let textInfo = extractTextStyle(style, textStyle);
 
   return {
-    fills: enabledItems(style.fills)
+    fills: enabledItems(style.fills as StyleItemLike[] | undefined)
       .map(extractFill)
       .filter(Boolean),
-    borders: enabledItems(style.borders)
+    borders: enabledItems(style.borders as StyleItemLike[] | undefined)
       .map(extractBorder)
       .filter(Boolean),
     radius: extractRadius(layer),
     opacity: typeof style.opacity === "number" ? style.opacity : 1,
-    shadows: enabledItems(style.shadows).map(extractShadow),
+    shadows: enabledItems(style.shadows as StyleItemLike[] | undefined).map(extractShadow),
     rotation:
       layer.transform && typeof layer.transform.rotation === "number"
         ? layer.transform.rotation
@@ -141,7 +170,7 @@ function extractStyle(layer) {
   };
 }
 
-function hasMeaningfulStyle(style) {
+function hasMeaningfulStyle(style: ExtractedStyleDto): boolean {
   return (
     style.fills.length > 0 ||
     style.borders.length > 0 ||
@@ -157,14 +186,14 @@ function hasMeaningfulStyle(style) {
   );
 }
 
-function createStyleRegistry() {
-  let styles = {};
-  let keyToId = {};
+export function createStyleRegistry() {
+  let styles: Record<string, ExtractedStyleDto> = {};
+  let keyToId: Record<string, string> = {};
   let count = 0;
 
   return {
     styles: styles,
-    register: function (layer) {
+    register: function (layer: SketchLayerLike): string | null {
       let style = extractStyle(layer);
       if (!hasMeaningfulStyle(style)) {
         return null;
@@ -182,23 +211,23 @@ function createStyleRegistry() {
   };
 }
 
-function pushUnique(values, value) {
+function pushUnique<T>(values: T[], value: T | null | undefined): void {
   if (value !== null && value !== undefined && values.indexOf(value) === -1) {
     values.push(value);
   }
 }
 
-function extractTokens(styles, texts) {
-  let colors = [];
-  let fontSizes = [];
-  let radii = [];
+export function extractTokens(styles: Record<string, ExtractedStyleDto>, texts: HandoffTextDto[]) {
+  let colors: string[] = [];
+  let fontSizes: number[] = [];
+  let radii: number[] = [];
 
   Object.keys(styles).forEach(function (styleId) {
     let style = styles[styleId];
-    style.fills.forEach(function (fill) {
+    style.fills.forEach(function (fill: any) {
       pushUnique(colors, fill.color);
     });
-    style.borders.forEach(function (border) {
+    style.borders.forEach(function (border: any) {
       pushUnique(colors, border.color);
     });
     if (style.radius !== null) {
@@ -212,31 +241,23 @@ function extractTokens(styles, texts) {
     }
   });
 
-  texts.forEach(function (text) {
+  texts.forEach(function (text: HandoffTextDto) {
     pushUnique(colors, text.color);
     pushUnique(fontSizes, text.fontSize);
   });
 
   return {
-    colors: colors.reduce(function (result, color, index) {
+    colors: colors.reduce(function (result: Record<string, string>, color: string, index: number) {
       result["color_" + String(index + 1).padStart(3, "0")] = color;
       return result;
     }, {}),
-    fontSize: fontSizes.reduce(function (result, size, index) {
+    fontSize: fontSizes.reduce(function (result: Record<string, number>, size: number, index: number) {
       result["font_size_" + String(index + 1).padStart(3, "0")] = size;
       return result;
     }, {}),
-    radius: radii.reduce(function (result, radius, index) {
+    radius: radii.reduce(function (result: Record<string, number>, radius: number, index: number) {
       result["radius_" + String(index + 1).padStart(3, "0")] = radius;
       return result;
     }, {}),
   };
 }
-
-module.exports = {
-  createStyleRegistry: createStyleRegistry,
-  extractStyle: extractStyle,
-  extractTokens: extractTokens,
-};
-
-export {};

@@ -1,12 +1,38 @@
-function str(value) {
+import type { AssetsMapDto, HandoffLayerNodeDto, HandoffTextDto, RectDto } from "../types/runtime";
+
+interface MetaLike {
+  pageName?: string;
+  artboardName?: string;
+  documentName?: string;
+  exportedAt?: string;
+  pluginVersion?: string;
+  handoffSpecVersion?: string;
+}
+
+interface ComponentLike {
+  name?: string;
+  inferredType?: string;
+  confidence?: number;
+  implementationHint?: {
+    angularComponentName?: string;
+  };
+}
+
+interface TokensLike {
+  colors?: Record<string, string>;
+  fontSize?: Record<string, number>;
+  radius?: Record<string, number>;
+}
+
+function str(value: unknown): string {
   return value == null ? "" : String(value);
 }
 
-function num(value) {
+function num(value: unknown): string {
   return value == null ? "" : String(value);
 }
 
-function eachEntry(obj, fn) {
+function eachEntry<T>(obj: Record<string, T> | undefined, fn: (key: string, value: T) => void): void {
   if (!obj) {
     return;
   }
@@ -15,13 +41,20 @@ function eachEntry(obj, fn) {
   });
 }
 
-function frameSize(node) {
-  let f = (node && (node.absoluteFrame || node.frame)) || {};
+function frameSize(node: HandoffLayerNodeDto | null | undefined): { width: number; height: number } {
+  let f = (node && (node.absoluteFrame || node.frame)) || {} as Partial<RectDto>;
   return { width: f.width || 0, height: f.height || 0 };
 }
 
-function generateDesignContext(meta, layerTree, components, texts, tokens, assetsMap) {
-  let lines = [];
+export function generateDesignContext(
+  meta: MetaLike,
+  layerTree: HandoffLayerNodeDto,
+  components: ComponentLike[],
+  texts: HandoffTextDto[],
+  tokens: TokensLike,
+  assetsMap: AssetsMapDto,
+): string {
+  let lines: string[] = [];
   let size = frameSize(layerTree);
 
   lines.push("# Design Context");
@@ -44,7 +77,7 @@ function generateDesignContext(meta, layerTree, components, texts, tokens, asset
   lines.push("画板尺寸：" + size.width + " x " + size.height + " px。");
   lines.push("顶层结构：");
   if (layerTree && layerTree.children && layerTree.children.length > 0) {
-    layerTree.children.forEach(function (child) {
+    layerTree.children.forEach(function (child: HandoffLayerNodeDto) {
       lines.push("- " + str(child.name) + "（" + str(child.role || child.type) + "）");
     });
   } else {
@@ -58,7 +91,7 @@ function generateDesignContext(meta, layerTree, components, texts, tokens, asset
   } else {
     lines.push("| 组件 | 类型 | 置信度 | 建议实现 |");
     lines.push("|---|---|---|---|");
-    components.forEach(function (cmp) {
+    components.forEach(function (cmp: ComponentLike) {
       let hint = cmp.implementationHint || {};
       lines.push(
         "| " + str(cmp.name) + " | " + str(cmp.inferredType) + " | " + num(cmp.confidence) + " | " + str(hint.angularComponentName) + " |",
@@ -71,7 +104,7 @@ function generateDesignContext(meta, layerTree, components, texts, tokens, asset
   if (!texts || texts.length === 0) {
     lines.push("（无文本）");
   } else {
-    texts.slice(0, 50).forEach(function (t) {
+    texts.slice(0, 50).forEach(function (t: HandoffTextDto) {
       lines.push("- " + str(t.text));
     });
     if (texts.length > 50) {
@@ -125,7 +158,7 @@ function generateDesignContext(meta, layerTree, components, texts, tokens, asset
   lines.push("## 9. 已知问题");
   lines.push("");
   if (assetsMap && assetsMap.warnings && assetsMap.warnings.length > 0) {
-    assetsMap.warnings.forEach(function (w) {
+    assetsMap.warnings.forEach(function (w: string) {
       lines.push("- " + str(w));
     });
   } else {
@@ -134,9 +167,3 @@ function generateDesignContext(meta, layerTree, components, texts, tokens, asset
   lines.push("");
   return lines.join("\n");
 }
-
-module.exports = {
-  generateDesignContext: generateDesignContext,
-};
-
-export {};

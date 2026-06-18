@@ -2,18 +2,80 @@
 // 该模型不直接复用 layer-tree，而是提取 preview 需要的可见节点、组件、资源引用，
 // 便于 preview.js 独立渲染图层树、Inspect 面板与资源面板。
 
-function getFrame(node) {
+import type { AssetRecordDto, AssetsMapDto, HandoffLayerNodeDto, RectDto } from "../types/runtime";
+
+type StyleMap = Record<string, any>;
+
+interface PreviewAssetRefDto {
+  id: string;
+  name: string;
+  layerId: string;
+  handoffId: string | null;
+  type: string;
+  format: string | null;
+  path: string | null;
+  width: number;
+  height: number;
+  exportStatus: string;
+  warnings: string[];
+}
+
+interface ComponentLike {
+  id: string;
+  handoffId: string;
+  layerId: string;
+  name: string;
+  inferredType: string;
+  confidence: number;
+  frame: RectDto;
+  absoluteFrame?: RectDto;
+  text?: string | null;
+  textList?: string[];
+  layerIds?: string[];
+  implementationHint?: unknown;
+}
+
+interface MetaLike {
+  documentName?: string;
+  pageName?: string;
+  artboardName?: string;
+  pluginVersion?: string;
+  exportedAt?: string;
+}
+
+interface PreviewNodeDto {
+  id: string;
+  handoffId: string;
+  layerId: string;
+  parentId: string | null;
+  artboardId: string | null;
+  name: string;
+  type: string;
+  role: string | null;
+  frame: RectDto;
+  absoluteFrame: RectDto;
+  zIndex: number;
+  visible: boolean;
+  text: string | null;
+  style: any;
+  assetRef: { id: string; type: string; format: string | null; path: string } | null;
+  children: PreviewNodeDto[];
+  renderStrategy: string;
+  inspect: Record<string, unknown>;
+}
+
+function getFrame(node: HandoffLayerNodeDto): RectDto {
   return node && (node.absoluteFrame || node.frame) ? node.absoluteFrame || node.frame : { x: 0, y: 0, width: 0, height: 0 };
 }
 
-function getStyleRef(node, styleMap) {
+function getStyleRef(node: HandoffLayerNodeDto, styleMap: StyleMap): any {
   if (!node || !node.styleRef || !styleMap) {
     return null;
   }
   return styleMap[node.styleRef] || null;
 }
 
-function inferRenderStrategy(node, asset) {
+function inferRenderStrategy(node: HandoffLayerNodeDto | null | undefined, asset: AssetRecordDto | null): string {
   if (!node) {
     return "ignore";
   }
@@ -38,9 +100,9 @@ function inferRenderStrategy(node, asset) {
   return "dom";
 }
 
-function buildCssSnippet(node, style) {
+function buildCssSnippet(node: HandoffLayerNodeDto, style: any): string[] {
   const frame = getFrame(node);
-  const lines = [];
+  const lines: string[] = [];
   lines.push("width: " + (frame.width || 0) + "px;");
   lines.push("height: " + (frame.height || 0) + "px;");
   if (style && style.textColor) lines.push("color: " + style.textColor + ";");
@@ -59,7 +121,7 @@ function buildCssSnippet(node, style) {
   return lines;
 }
 
-function buildInspect(node, styleMap, asset) {
+function buildInspect(node: HandoffLayerNodeDto, styleMap: StyleMap, asset: AssetRecordDto | null): Record<string, unknown> {
   const style = getStyleRef(node, styleMap);
   const inspect = {
     layerType: node.type,
@@ -88,7 +150,13 @@ function buildInspect(node, styleMap, asset) {
   return inspect;
 }
 
-function buildPreviewNode(node, styleMap, assetsByLayerId, parentId, artboardId) {
+function buildPreviewNode(
+  node: HandoffLayerNodeDto,
+  styleMap: StyleMap,
+  assetsByLayerId: Record<string, AssetRecordDto>,
+  parentId: string | null,
+  artboardId: string | null,
+): PreviewNodeDto | null {
   if (!node || node.hidden) {
     return null;
   }
@@ -98,9 +166,9 @@ function buildPreviewNode(node, styleMap, assetsByLayerId, parentId, artboardId)
     return null;
   }
 
-  const children = [];
+  const children: PreviewNodeDto[] = [];
   if (node.children && node.children.length > 0) {
-    node.children.forEach(function (child) {
+    node.children.forEach(function (child: HandoffLayerNodeDto) {
       const childNode = buildPreviewNode(child, styleMap, assetsByLayerId, node.handoffId || node.id, artboardId);
       if (childNode) {
         children.push(childNode);
@@ -130,9 +198,9 @@ function buildPreviewNode(node, styleMap, assetsByLayerId, parentId, artboardId)
   };
 }
 
-function buildAssetRefs(assetsMap) {
-  const refs = [];
-  (assetsMap && assetsMap.assets || []).forEach(function (asset) {
+function buildAssetRefs(assetsMap: AssetsMapDto): PreviewAssetRefDto[] {
+  const refs: PreviewAssetRefDto[] = [];
+  (assetsMap && assetsMap.assets || []).forEach(function (asset: AssetRecordDto) {
     refs.push({
       id: asset.id,
       name: asset.name,
@@ -143,15 +211,15 @@ function buildAssetRefs(assetsMap) {
       path: asset.path,
       width: asset.width || 0,
       height: asset.height || 0,
-      exportStatus: asset.exportStatus || "unknown",
+      exportStatus: asset.exportStatus || "skipped",
       warnings: asset.warnings || [],
     });
   });
   return refs;
 }
 
-function buildComponentPreviews(components) {
-  return (components || []).map(function (cmp) {
+function buildComponentPreviews(components: ComponentLike[]) {
+  return (components || []).map(function (cmp: ComponentLike) {
     return {
       id: cmp.id,
       handoffId: cmp.handoffId,
@@ -168,10 +236,17 @@ function buildComponentPreviews(components) {
   });
 }
 
-function generatePreviewData(meta, layerTree, components, screenshot, styleMap, assetsMap) {
+export function generatePreviewData(
+  meta: MetaLike,
+  layerTree: HandoffLayerNodeDto,
+  components: ComponentLike[],
+  screenshot: string | null,
+  styleMap: StyleMap,
+  assetsMap: AssetsMapDto,
+) {
   const frame = getFrame(layerTree);
-  const assetsByLayerId = {};
-  (assetsMap && assetsMap.assets || []).forEach(function (asset) {
+  const assetsByLayerId: Record<string, AssetRecordDto> = {};
+  (assetsMap && assetsMap.assets || []).forEach(function (asset: AssetRecordDto) {
     if (asset && asset.layerId) {
       assetsByLayerId[String(asset.layerId)] = asset;
     }
@@ -180,14 +255,18 @@ function generatePreviewData(meta, layerTree, components, screenshot, styleMap, 
   const root = buildPreviewNode({
     id: layerTree.id,
     handoffId: layerTree.handoffId,
-    name: layerTree.name || meta.artboardName,
+    name: layerTree.name || meta.artboardName || "",
     type: "Artboard",
     role: "artboard",
     frame: layerTree.frame,
     absoluteFrame: layerTree.absoluteFrame || layerTree.frame,
     children: layerTree.children,
     artboardId: layerTree.artboardId,
+    parentId: null,
+    zIndex: 0,
+    visible: true,
     hidden: false,
+    locked: false,
   }, styleMap || {}, assetsByLayerId, null, layerTree.artboardId);
 
   return {
@@ -206,7 +285,7 @@ function generatePreviewData(meta, layerTree, components, screenshot, styleMap, 
       name: layerTree.name || meta.artboardName,
       width: frame.width,
       height: frame.height,
-      backgroundColor: layerTree.backgroundColor || null,
+      backgroundColor: null,
     },
     screenshot: screenshot || null,
     nodes: root ? root.children : [],
@@ -214,9 +293,3 @@ function generatePreviewData(meta, layerTree, components, screenshot, styleMap, 
     components: buildComponentPreviews(components),
   };
 }
-
-module.exports = {
-  generatePreviewData: generatePreviewData,
-};
-
-export {};

@@ -8,6 +8,43 @@ const WINDOW_WIDTH = 520;
 const WINDOW_HEIGHT = 160;
 const PADDING = 16;
 
+type ProgressPhase = keyof typeof PHASES;
+
+interface ProgressState {
+  mode: string;
+  phase: string;
+  pageName: string;
+  artboardName: string;
+  currentLabel: string;
+  current: number;
+  total: number;
+  percent: number;
+  cancellable: boolean;
+  cancelled: boolean;
+  logPath: string;
+  successCount: number;
+  failedCount: number;
+  warningCount: number;
+  startTime: Date;
+  reporter: unknown;
+}
+
+interface ProgressWindowLike {
+  window: any;
+  titleLabel: any;
+  detailLabel: any;
+  infoLabel: any;
+  bar: any;
+  percentLabel: any;
+  cancelButton: any;
+  onCancel: null | (() => void);
+}
+
+interface ReporterSummary {
+  title: string;
+  detail: string;
+}
+
 const PHASES = {
   preparing: "准备中",
   collectingArtboards: "收集画板",
@@ -26,24 +63,24 @@ const PHASES = {
   finished: "完成",
   failed: "失败",
   cancelled: "已取消",
-};
+} as const;
 
 function nowStamp() {
   return new Date().toISOString();
 }
 
-function nsRect(x, y, width, height) {
+function nsRect(x: number, y: number, width: number, height: number) {
   return NSMakeRect(x, y, width, height);
 }
 
-let CancelHandler = null;
+let CancelHandler: any = null;
 try {
   CancelHandler = NSObject.extend({
-    "initWithReporter:": function(reporter) {
+    "initWithReporter:": function(reporter: any) {
       this.reporter = reporter;
       return this;
     },
-    "cancel:": function(sender) {
+    "cancel:": function(sender: any) {
       if (this.reporter && this.reporter.state) {
         this.reporter.state.cancelled = true;
       }
@@ -58,7 +95,7 @@ try {
   CancelHandler = null;
 }
 
-function createProgressWindow(title) {
+function createProgressWindow(title?: string): ProgressWindowLike | null {
   try {
     const window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer(
       nsRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT),
@@ -139,7 +176,7 @@ function createProgressWindow(title) {
   }
 }
 
-function refreshWindow(window) {
+function refreshWindow(window: any): void {
   try {
     window.displayIfNeeded();
     const content = window.contentView();
@@ -151,7 +188,7 @@ function refreshWindow(window) {
   }
 }
 
-function createProgressState(reporter) {
+function createProgressState(reporter: unknown): ProgressState {
   return {
     mode: "",
     phase: "preparing",
@@ -172,7 +209,7 @@ function createProgressState(reporter) {
   };
 }
 
-function updateProgress(progressWindow, state, detail) {
+function updateProgress(progressWindow: ProgressWindowLike | null, state: ProgressState, detail?: string): void {
   if (!progressWindow || progressWindow.window.closed) {
     return;
   }
@@ -188,8 +225,8 @@ function updateProgress(progressWindow, state, detail) {
     progressWindow.detailLabel.setStringValue(String(detail || state.currentLabel || ""));
 
     const infoParts = [];
-    if (state.phase && PHASES[state.phase]) {
-      infoParts.push(PHASES[state.phase]);
+    if (state.phase && PHASES[state.phase as ProgressPhase]) {
+      infoParts.push(PHASES[state.phase as ProgressPhase]);
     }
     if (state.pageName) {
       infoParts.push(state.pageName);
@@ -208,7 +245,7 @@ function updateProgress(progressWindow, state, detail) {
   }
 }
 
-function closeProgressWindow(progressWindow) {
+function closeProgressWindow(progressWindow: ProgressWindowLike | null): void {
   if (!progressWindow || progressWindow.window.closed) {
     return;
   }
@@ -220,25 +257,25 @@ function closeProgressWindow(progressWindow) {
   }
 }
 
-function createReporter(prefix) {
-  const lines = [];
+export function createReporter(prefix?: string) {
+  const lines: string[] = [];
   const labelPrefix = prefix ? prefix + " · " : i18n.STRINGS.pluginName + " · ";
-  let progressWindow = null;
+  let progressWindow: ProgressWindowLike | null = null;
   let messageShown = false;
-  const state = createProgressState(this);
+  const state = createProgressState(null);
 
-  function append(line) {
+  function append(line: string): void {
     lines.push("[" + nowStamp() + "] " + line);
   }
 
-  function messageOnce(text) {
+  function messageOnce(text: string): void {
     if (!messageShown) {
       UI.message(labelPrefix + text);
       messageShown = true;
     }
   }
 
-  function showSummary(summary) {
+  function showSummary(summary: ReporterSummary): void {
     const alert = NSAlert.alloc().init();
     alert.setMessageText(summary.title || i18n.STRINGS.pluginName);
     alert.setInformativeText(summary.detail || "");
@@ -250,11 +287,11 @@ function createReporter(prefix) {
     state: state,
     lines: lines,
 
-    log: function (line) {
+    log: function (line: string) {
       append(line);
     },
 
-    begin: function (mode, logPath) {
+    begin: function (mode?: string, logPath?: string) {
       state.mode = mode || "";
       state.logPath = logPath || "";
       state.phase = "preparing";
@@ -270,18 +307,18 @@ function createReporter(prefix) {
       messageOnce(i18n.t("collectingArtboards"));
     },
 
-    setPageName: function (name) {
+    setPageName: function (name: string) {
       state.pageName = name || "";
     },
 
-    setPhase: function (phase) {
+    setPhase: function (phase: string) {
       state.phase = phase || state.phase;
-      state.currentLabel = PHASES[state.phase] || state.phase;
+      state.currentLabel = PHASES[state.phase as ProgressPhase] || state.phase;
       append("阶段切换：" + state.phase);
       updateProgress(progressWindow, state, state.currentLabel);
     },
 
-    setProgress: function (current, total, label) {
+    setProgress: function (current: number, total: number, label?: string) {
       state.current = current || 0;
       state.total = total || 1;
       state.currentLabel = label || state.currentLabel;
@@ -289,7 +326,7 @@ function createReporter(prefix) {
       updateProgress(progressWindow, state, state.currentLabel);
     },
 
-    processLayers: function (current, total) {
+    processLayers: function (current: number, total: number) {
       state.phase = "processingLayers";
       state.current = current;
       state.total = total;
@@ -298,7 +335,7 @@ function createReporter(prefix) {
       updateProgress(progressWindow, state, state.currentLabel);
     },
 
-    exportAssets: function (current, total) {
+    exportAssets: function (current: number, total: number) {
       state.phase = "exportingAssets";
       state.current = current;
       state.total = total;
@@ -318,7 +355,7 @@ function createReporter(prefix) {
       }
     },
 
-    collected: function (count) {
+    collected: function (count: number) {
       append("共识别到 " + count + " 个画板");
       state.phase = "collectedArtboards";
       state.total = Math.max(1, count + 1);
@@ -327,21 +364,21 @@ function createReporter(prefix) {
       updateProgress(progressWindow, state, state.currentLabel);
     },
 
-    startArtboard: function (index, total, name) {
+    startArtboard: function (index: number, total: number, name?: string) {
       state.artboardName = name || "";
       state.currentLabel = i18n.t("exportingProgress", { index: index, total: total, name: name });
       append("开始导出画板：" + index + " / " + total + " " + name);
       updateProgress(progressWindow, state, state.currentLabel);
     },
 
-    step: function (key, name) {
+    step: function (key: string, name?: string) {
       const text = i18n.t(key, { name: name });
       append(text + "：" + name);
       state.currentLabel = text;
       updateProgress(progressWindow, state, state.currentLabel);
     },
 
-    success: function (artboard, outputDir) {
+    success: function (artboard: SketchLayerLike | undefined | null, outputDir: string) {
       const name = (artboard && artboard.name) || "";
       append("成功导出画板：" + name + " -> " + outputDir);
       state.successCount += 1;
@@ -349,16 +386,16 @@ function createReporter(prefix) {
       updateProgress(progressWindow, state, "成功导出：" + name);
     },
 
-    failure: function (artboard, error) {
+    failure: function (artboard: SketchLayerLike | undefined | null, error: unknown) {
       const name = (artboard && artboard.name) || "";
-      const reason = error && error.message ? error.message : String(error);
+      const reason = error && typeof error === "object" && "message" in error ? String((error as { message?: unknown }).message) : String(error);
       append("失败导出画板：" + name + "，原因：" + reason);
       state.failedCount += 1;
       state.current += 1;
       updateProgress(progressWindow, state, "导出失败：" + name);
     },
 
-    warning: function (text) {
+    warning: function (text: string) {
       append("警告：" + text);
       state.warningCount += 1;
     },
@@ -395,9 +432,9 @@ function createReporter(prefix) {
       };
     },
 
-    fail: function (error) {
+    fail: function (error: unknown) {
       state.phase = "failed";
-      const reason = error && error.message ? error.message : String(error);
+      const reason = error && typeof error === "object" && "message" in error ? String((error as { message?: unknown }).message) : String(error);
       append("导出失败：" + reason);
       state.currentLabel = "导出失败";
       updateProgress(progressWindow, state, state.currentLabel);
@@ -440,9 +477,4 @@ function createReporter(prefix) {
   return reporter;
 }
 
-module.exports = {
-  createReporter: createReporter,
-  PHASES: PHASES,
-};
-
-export {};
+export { PHASES };

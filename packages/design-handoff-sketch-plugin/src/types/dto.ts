@@ -21,7 +21,7 @@ export type LayerType =
   | "Bitmap"
   | "Slice"
   | "HotSpot"
-  | string;
+  | "Unknown";
 
 export interface HandoffTextDto {
   id?: string;
@@ -38,17 +38,17 @@ export interface HandoffLayerNodeDto {
   id: string;
   handoffId: string;
   layerId?: string;
-  parentId?: string | null;
-  artboardId?: string | null;
+  parentId: string | null;
+  artboardId: string | null;
   name: string;
   type: LayerType;
   role?: string | null;
   frame: RectDto;
-  absoluteFrame?: RectDto;
-  zIndex?: number;
-  visible?: boolean;
-  hidden?: boolean;
-  locked?: boolean;
+  absoluteFrame: RectDto;
+  zIndex: number;
+  visible: boolean;
+  hidden: boolean;
+  locked: boolean;
   text?: string | null;
   styleRef?: string | null;
   children?: HandoffLayerNodeDto[];
@@ -64,56 +64,52 @@ export type AssetType =
   | "symbol"
   | "vector"
   | "exportable"
-  | "misc"
-  | string;
+  | "misc";
 
-export type AssetFormat = "png" | "svg" | "jpg" | "webp" | "pdf" | string;
+export type AssetFormat = "png" | "svg" | "jpg" | "webp" | "pdf" | null;
 
-export type AssetExportStatus = "success" | "failed" | "pending" | "unknown";
+export type AssetExportStatus = "success" | "failed" | "skipped";
 
 export interface AssetRecordDto {
   id: string;
-  name?: string;
-  layerId?: string;
-  handoffId?: string | null;
-  artboardId?: string | null;
-  sourceLayerType?: string;
-  type?: AssetType;
-  format?: AssetFormat | null;
-  path?: string | null;
-  width?: number;
-  height?: number;
-  frame?: RectDto;
-  absoluteFrame?: RectDto | null;
-  exportStatus?: AssetExportStatus;
-  warnings?: string[];
+  name: string;
+  layerId: string;
+  handoffId: string | null;
+  artboardId: string;
+  sourceLayerType: string;
+  type: AssetType;
+  format: AssetFormat;
+  path: string | null;
+  width: number;
+  height: number;
+  frame: RectDto;
+  absoluteFrame: RectDto;
+  exportStatus: AssetExportStatus;
+  warnings: string[];
 }
 
 export interface AssetsMapDto {
-  version?: string;
-  documentName?: string;
-  exportedAt?: string;
-  screenshot?: string | null;
+  screenshot: string | null;
   assets: AssetRecordDto[];
-  warnings?: string[];
+  warnings: string[];
 }
 
-export type ExportItemStatus = "success" | "failed" | "skipped" | string;
+export type ExportItemStatus = "success" | "failed" | "skipped" | "pending";
 
 export interface ArtboardExportRecordDto {
   pageIndex: number;
-  pageId?: string;
-  pageName?: string;
+  pageId: string;
+  pageName: string;
   artboardIndex: number;
   shortId: string;
   artboardName: string;
-  packageDir?: string;
-  screenshotPath?: string | null;
-  previewHtmlPath?: string | null;
+  packageDir: string;
+  screenshotPath: string | null;
+  previewHtmlPath: string | null;
   status: ExportItemStatus;
-  reason?: string | null;
-  warnings?: string[];
-  outputDir?: string;
+  reason: string | null;
+  warnings: string[];
+  outputDir: string;
 }
 
 export interface ExportResultWarningDto {
@@ -127,20 +123,20 @@ export interface ExportResultErrorDto {
 }
 
 export interface ExportResultDto {
-  mode?: string;
-  startedAt?: string;
-  finishedAt?: string;
-  durationMs?: number;
-  documentName?: string;
-  pageName?: string;
-  outputRoot?: string;
-  totalArtboards?: number;
-  successCount?: number;
-  failedCount?: number;
+  mode: string | undefined;
+  startedAt: string | undefined;
+  finishedAt: string;
+  durationMs: number;
+  documentName: string;
+  pageName: string;
+  outputRoot: string;
+  totalArtboards: number;
+  successCount: number;
+  failedCount: number;
   items: ArtboardExportRecordDto[];
-  warnings?: ExportResultWarningDto[];
-  errors?: ExportResultErrorDto[];
-  logPath?: string;
+  warnings: ExportResultWarningDto[];
+  errors: ExportResultErrorDto[];
+  logPath: string;
 }
 
 export interface DocumentIndexArtboardDto {

@@ -1,7 +1,41 @@
-let normalize = require("../sketch/normalize-layer");
+const normalize = require("../sketch/normalize-layer");
 
+import type { HandoffLayerNodeDto, RectDto } from "../types/runtime";
 
-let RULES = [
+type ComponentType =
+  | "navigation" | "sidebar" | "toolbar" | "menu" | "breadcrumb" | "table" | "tabs"
+  | "button" | "input" | "select" | "form" | "list" | "card" | "modal" | "drawer"
+  | "chart" | "unknown";
+
+interface ComponentRule {
+  type: ComponentType;
+  confidence: number;
+  patterns: RegExp[];
+}
+
+interface InferredComponentDto {
+  id: string;
+  layerId: string;
+  handoffId: string;
+  artboardId: string | null;
+  name: string;
+  inferredType: ComponentType;
+  confidence: number;
+  frame: RectDto;
+  absoluteFrame: RectDto;
+  text: string | null;
+  textList: string[];
+  layerIds: string[];
+  domSelector: string;
+  implementationHint: {
+    angularComponentName: string;
+    suggestedInputs: string[];
+    suggestedOutputs: string[];
+    notes: string[];
+  };
+}
+
+let RULES: ComponentRule[] = [
   { type: "navigation", confidence: 0.7, patterns: [/nav|导航|header|topbar|顶栏|页头/] },
   { type: "sidebar", confidence: 0.7, patterns: [/sidebar|侧边|sidenav|aside/] },
   { type: "toolbar", confidence: 0.68, patterns: [/toolbar|工具栏/] },
@@ -20,7 +54,7 @@ let RULES = [
   { type: "chart", confidence: 0.78, patterns: [/chart|图表|graph/] },
 ];
 
-let ANGULAR_HINT = {
+let ANGULAR_HINT: Record<ComponentType, { angularComponentName: string; notes: string[] }> = {
   navigation: { angularComponentName: "nz-header / app-header", notes: ["顶部导航建议使用 nz-header 与 nz-menu 组合"] },
   sidebar: { angularComponentName: "nz-layout / nz-sider", notes: ["侧边栏建议使用 nz-sider + nz-menu"] },
   toolbar: { angularComponentName: "nz-button-group / nz-space", notes: ["工具栏建议使用 nz-button 组合"] },
@@ -40,7 +74,7 @@ let ANGULAR_HINT = {
   unknown: { angularComponentName: "", notes: ["类型未确定，请人工确认"] },
 };
 
-function inferComponent(node) {
+export function inferComponent(node: HandoffLayerNodeDto): { type: ComponentType; confidence: number } | null {
   let target = [node.name || "", node.text || ""].join(" ");
 
   for (let i = 0; i < RULES.length; i += 1) {
@@ -58,13 +92,14 @@ function inferComponent(node) {
   return null;
 }
 
-function collectNodeText(node) {
+function collectNodeText(node: HandoffLayerNodeDto): string | null {
   if (node.text) {
     return node.text;
   }
 
-  for (let i = 0; i < node.children.length; i += 1) {
-    let text = collectNodeText(node.children[i]);
+  const children = node.children || [];
+  for (let i = 0; i < children.length; i += 1) {
+    let text: string | null = collectNodeText(children[i]);
     if (text) {
       return text;
     }
@@ -73,13 +108,14 @@ function collectNodeText(node) {
   return null;
 }
 
-function collectAllTexts(node) {
-  let texts = [];
+function collectAllTexts(node: HandoffLayerNodeDto): string[] {
+  let texts: string[] = [];
   if (node.text) {
     texts.push(node.text);
   }
-  for (let i = 0; i < node.children.length; i += 1) {
-    let childTexts = collectAllTexts(node.children[i]);
+  const children = node.children || [];
+  for (let i = 0; i < children.length; i += 1) {
+    let childTexts: string[] = collectAllTexts(children[i]);
     for (let j = 0; j < childTexts.length; j += 1) {
       texts.push(childTexts[j]);
     }
@@ -87,10 +123,11 @@ function collectAllTexts(node) {
   return texts;
 }
 
-function collectLayerIds(node) {
-  let ids = [node.id];
-  for (let i = 0; i < node.children.length; i += 1) {
-    let childIds = collectLayerIds(node.children[i]);
+function collectLayerIds(node: HandoffLayerNodeDto): string[] {
+  let ids: string[] = [node.id];
+  const children = node.children || [];
+  for (let i = 0; i < children.length; i += 1) {
+    let childIds = collectLayerIds(children[i]);
     for (let j = 0; j < childIds.length; j += 1) {
       ids.push(childIds[j]);
     }
@@ -98,7 +135,7 @@ function collectLayerIds(node) {
   return ids;
 }
 
-function buildImplementationHint(type) {
+function buildImplementationHint(type: ComponentType): InferredComponentDto["implementationHint"] {
   let hint = ANGULAR_HINT[type] || ANGULAR_HINT.unknown;
   return {
     angularComponentName: hint.angularComponentName,
@@ -108,11 +145,11 @@ function buildImplementationHint(type) {
   };
 }
 
-function inferComponents(layerTree) {
-  let components = [];
+export function inferComponents(layerTree: HandoffLayerNodeDto): InferredComponentDto[] {
+  let components: InferredComponentDto[] = [];
   let count = 0;
 
-  function pushComponent(node, type, confidence) {
+  function pushComponent(node: HandoffLayerNodeDto, type: ComponentType, confidence: number) {
     count += 1;
     let handoffId = "component_" + normalize.shortHash(String(node.id) + ":" + (node.artboardId || ""));
     components.push({
@@ -133,7 +170,7 @@ function inferComponents(layerTree) {
     });
   }
 
-  function visit(node) {
+  function visit(node: HandoffLayerNodeDto) {
     let inferred = inferComponent(node);
     let hasChildren = node.children && node.children.length > 0;
     let isArtboard = node.role === "artboard" || node.type === "Artboard";
@@ -144,16 +181,9 @@ function inferComponents(layerTree) {
       pushComponent(node, "unknown", 0.3);
     }
 
-    node.children.forEach(visit);
+    (node.children || []).forEach(visit);
   }
 
   visit(layerTree);
   return components;
 }
-
-module.exports = {
-  inferComponent: inferComponent,
-  inferComponents: inferComponents,
-};
-
-export {};

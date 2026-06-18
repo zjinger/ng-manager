@@ -48,6 +48,7 @@ declare global {
     points?: unknown[];
     cornerRadius?: number;
     master?: SketchLayerLike;
+    parent?: SketchLayerLike;
     CSSAttributes?: string[];
     transform?: { rotation?: number };
     text?: string;
@@ -69,6 +70,9 @@ declare global {
     pages?: SketchPageLike[];
     selectedPage?: SketchPageLike;
     page?: SketchPageLike;
+    selectedLayers?: {
+      layers?: SketchLayerLike[];
+    };
   }
 
   interface SketchUiModule {

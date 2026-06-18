@@ -1,13 +1,44 @@
-let sketch = null;
+let sketch: SketchRuntimeModule = null as unknown as SketchRuntimeModule;
 try {
   sketch = require("sketch");
 } catch (error) {
-  sketch = { getSelectedDocument: function () { return null; } };
+  sketch = { getSelectedDocument: function () { return undefined; } };
 }
-let i18n = require("../i18n/i18n");
-let debugLogger = require("./debug-logger");
+const i18n = require("../i18n/i18n");
+const debugLogger = require("./debug-logger");
+const nativeAlert = require("../runtime/native-alert");
 
-function getFrame(layer) {
+import type { RectDto } from "../types/runtime";
+import type { SafeRunContextLike } from "../export/export-types";
+
+interface PageArtboardSummaryDto {
+  id: string;
+  name: string;
+  hidden: boolean;
+  locked: boolean;
+  frame: RectDto | null;
+}
+
+interface ScanInput {
+  document?: SketchDocumentLike | null;
+  outputRoot?: string;
+  logPath?: string;
+}
+
+interface ScanResultDto {
+  scannedAt: string;
+  documentName: string;
+  documentPath: string | null;
+  pageName: string;
+  artboardCount: number;
+  visibleArtboardCount: number;
+  hiddenArtboardCount: number;
+  artboards: PageArtboardSummaryDto[];
+  outputRoot: string;
+  logPath: string;
+}
+
+function getFrame(layer: SketchLayerLike | undefined | null): RectDto | null {
   if (!layer || !layer.frame) {
     return null;
   }
@@ -19,15 +50,15 @@ function getFrame(layer) {
   };
 }
 
-function collectPageArtboards(page) {
+export function collectPageArtboards(page: SketchPageLike | undefined | null): PageArtboardSummaryDto[] {
   if (!page || !page.layers) {
     return [];
   }
   return page.layers
-    .filter(function (layer) {
+    .filter(function (layer: SketchLayerLike) {
       return layer && layer.type === "Artboard";
     })
-    .map(function (artboard) {
+    .map(function (artboard: SketchLayerLike) {
       return {
         id: String(artboard.id || ""),
         name: String(artboard.name || ""),
@@ -38,11 +69,11 @@ function collectPageArtboards(page) {
     });
 }
 
-function buildScanResult(input) {
+export function buildScanResult(input: ScanInput): ScanResultDto {
   let document = input.document || null;
   let page = document && document.selectedPage ? document.selectedPage : null;
   let artboards = collectPageArtboards(page);
-  let visibleArtboards = artboards.filter(function (item) {
+  let visibleArtboards = artboards.filter(function (item: PageArtboardSummaryDto) {
     return !item.hidden;
   });
 
@@ -60,11 +91,10 @@ function buildScanResult(input) {
   };
 }
 
-function showScanSummary(result, outputPath) {
-  let alert = NSAlert.alloc().init();
-  alert.setMessageText(i18n.STRINGS.scan.title);
-  alert.setInformativeText(
-    [
+function showScanSummary(result: ScanResultDto, outputPath: string): void {
+  nativeAlert.showNativeAlert({
+    title: i18n.STRINGS.scan.title,
+    message: [
       i18n.STRINGS.scan.page + "：" + (result.pageName || i18n.STRINGS.none),
       i18n.STRINGS.scan.total + "：" + result.artboardCount,
       i18n.STRINGS.scan.visible + "：" + result.visibleArtboardCount,
@@ -72,12 +102,11 @@ function showScanSummary(result, outputPath) {
       i18n.STRINGS.scan.resultPath + "：" + outputPath,
       i18n.STRINGS.safeRun.logPath + "：" + result.logPath,
     ].join("\n"),
-  );
-  alert.addButtonWithTitle(i18n.STRINGS.summary.close);
-  alert.runModal();
+    buttons: [i18n.STRINGS.summary.close],
+  });
 }
 
-function runScanCurrentPage(context) {
+export function runScanCurrentPage(context: SafeRunContextLike): ScanResultDto {
   context.logger.step("扫描当前页面", "开始扫描当前页面");
   let document = sketch.getSelectedDocument();
   let outputRoot = context.settings && context.settings.outputRoot
@@ -95,11 +124,3 @@ function runScanCurrentPage(context) {
   showScanSummary(result, outputPath);
   return result;
 }
-
-module.exports = {
-  buildScanResult: buildScanResult,
-  collectPageArtboards: collectPageArtboards,
-  runScanCurrentPage: runScanCurrentPage,
-};
-
-export {};

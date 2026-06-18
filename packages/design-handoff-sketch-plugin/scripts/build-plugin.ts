@@ -12,6 +12,7 @@ const pluginContentsRoot = join(
 const pluginSketchRoot = join(pluginContentsRoot, "Sketch");
 const pluginResourcesRoot = join(pluginContentsRoot, "Resources");
 const resourcesRoot = join(packageRoot, "resources");
+const compiledGeneratedRoot = join(compiledSourceRoot, "generated");
 
 const commandEntries = [
   {
@@ -361,10 +362,27 @@ if (typeof exports !== "undefined") {
 function readPackageVersion(): string {
   try {
     const pkg = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
-    return pkg.version || "0.3.0";
+    return pkg.version || "0.0.0";
   } catch (error) {
-    return "0.3.0";
+    return "0.0.0";
   }
+}
+
+function writeGeneratedVersionModule(): string {
+  const version = readPackageVersion();
+  ensureDir(compiledGeneratedRoot);
+  writeFileSync(
+    join(compiledGeneratedRoot, "version.js"),
+    [
+      '"use strict";',
+      'Object.defineProperty(exports, "__esModule", { value: true });',
+      "exports.VERSION = void 0;",
+      `exports.VERSION = ${JSON.stringify(version)};`,
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  return version;
 }
 
 function buildDefaultManifest(): any {
@@ -409,6 +427,7 @@ function updateManifestScripts(): void {
     manifest = buildDefaultManifest();
     console.log("Generated default manifest.json");
   }
+  manifest.version = readPackageVersion();
   const byCommandId = commandEntries.reduce<Record<string, (typeof commandEntries)[number]>>((result, entry) => {
     result[entry.commandId] = entry;
     return result;
@@ -448,6 +467,7 @@ if (!existsSync(compiledSourceRoot)) {
 }
 
 cleanGeneratedRuntime();
+writeGeneratedVersionModule();
 const runtimeCount = copyRuntime();
 const resourceCount = copyResources();
 
