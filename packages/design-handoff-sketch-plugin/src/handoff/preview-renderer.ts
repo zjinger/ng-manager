@@ -159,9 +159,11 @@ function renderNode(node, styleMap, assetsByLayerId, output) {
   if (asset && asset.path) {
     output.push(
       '<img class="ngm-layer ngm-image"' +
-        dataAttrs(node, "image") +
+        dataAttrs(node, asset.type || "image") +
         ' src="' + escapeHtml(asset.path) + '"' +
         ' alt="' + escapeHtml(node.name || "") + '"' +
+        ' data-asset-type="' + escapeHtml(asset.type || "") + '"' +
+        ' data-asset-format="' + escapeHtml(asset.format || "") + '"' +
         ' style="' + cssDeclarations(baseStyle(node, styleMap)) + '">',
     );
   } else if (node.type === "Text") {
@@ -241,4 +243,5 @@ function generatePreviewHtml(meta, layerTree, components, screenshot, styleMap, 
 module.exports = {
   generatePreviewHtml: generatePreviewHtml,
 };
+
 

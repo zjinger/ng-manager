@@ -12,6 +12,7 @@ const sketchDir = path.join(
 
 const i18n = require(path.join(sketchDir, "i18n.js"));
 const artboardUtils = require(path.join(sketchDir, "artboard-utils.js"));
+const classify = require(path.join(sketchDir, "asset-classify.js"));
 const indexGenerator = require(path.join(sketchDir, "document-index-generator.js"));
 const debugLogger = require(path.join(sketchDir, "debug-logger.js"));
 const exportResultWriter = require(path.join(sketchDir, "export-result-writer.js"));
@@ -120,6 +121,44 @@ assertEqual("getArtboardsFromSelection 自动去重父级画板",
   ["AB1", "AB2"],
 );
 
+
+// asset-classify
+console.log("\n[asset-classify]");
+assertEqual("Slice -> slice", classify.classifyAsset({ type: "Slice", name: "cut" }).type, "slice");
+assertEqual("Bitmap -> bitmap", classify.classifyAsset({ type: "Bitmap", name: "bg" }).type, "bitmap");
+assertEqual("Image -> bitmap", classify.classifyAsset({ type: "Image", name: "photo" }).type, "bitmap");
+assertEqual("logo 命名 -> logo", classify.classifyAsset({ type: "Group", name: "brand logo", frame: { x:0,y:0,width:64,height:24 } }).type, "logo");
+assertEqual("icon 命名 -> icon", classify.classifyAsset({ type: "Shape", name: "search icon", frame: { x:0,y:0,width:24,height:24 } }).type, "icon");
+assertEqual("svg 命名 -> icon", classify.classifyAsset({ type: "Shape", name: "arrow-svg", frame: { x:0,y:0,width:16,height:16 } }).type, "icon");
+assertEqual("SymbolInstance -> symbol", classify.classifyAsset({ type: "SymbolInstance", name: "Button/Primary" }).type, "symbol");
+assertEqual("小尺寸 Group + ShapePath -> icon", classify.classifyAsset({
+  type: "Group",
+  name: "Actions",
+  frame: { x: 0, y: 0, width: 24, height: 24 },
+  layers: [{ type: "ShapePath" }, { type: "ShapePath" }],
+}).type, "icon");
+assertEqual("小尺寸 ShapePath -> vector", classify.classifyAsset({ type: "ShapePath", name: "line", frame: { x:0,y:0,width:12,height:12 } }).type, "vector");
+assertEqual("大尺寸 ShapePath 不当资源", classify.classifyAsset({ type: "ShapePath", name: "bg shape", frame: { x:0,y:0,width:500,height:300 } }), null);
+assertEqual("exportable -> misc", classify.classifyAsset({ type: "Rectangle", name: "x", exportFormats: [{ format: "png" }] }).type, "misc");
+assertEqual("asset type 目录映射",
+  [
+    classify.assetTypeDirectory("bitmap"),
+    classify.assetTypeDirectory("image"),
+    classify.assetTypeDirectory("slice"),
+    classify.assetTypeDirectory("icon"),
+    classify.assetTypeDirectory("logo"),
+    classify.assetTypeDirectory("symbol"),
+    classify.assetTypeDirectory("vector"),
+    classify.assetTypeDirectory("misc"),
+    classify.assetTypeDirectory("exportable"),
+    classify.assetTypeDirectory("unknown"),
+  ],
+  ["images", "images", "slices", "icons", "icons", "symbols", "vectors", "misc", "misc", "misc"],
+);
+assertTruthy("preferSvg icon", classify.preferSvg("icon"));
+assertTruthy("preferSvg vector", classify.preferSvg("vector"));
+assertTruthy("preferSvg logo", classify.preferSvg("logo"));
+assertTruthy("not preferSvg bitmap", !classify.preferSvg("bitmap"));
 
 // document-index-generator
 console.log("\n[document-index-generator]");

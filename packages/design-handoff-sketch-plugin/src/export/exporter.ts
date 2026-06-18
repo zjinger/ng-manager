@@ -246,7 +246,13 @@ function exportArtboard(document, artboard, options) {
   }
 
   logStep("export assets", "开始导出资源图层", { artboardName: artboard.name });
-  var bitmapAssets = assetExporter.exportBitmapAssets(artboard, outputDir, pluginSettings.joinPath, warnings);
+  var bitmapAssets = assetExporter.exportBitmapAssets(
+    artboard,
+    outputDir,
+    pluginSettings.joinPath,
+    warnings,
+    { layerTree: layerTree, artboardId: layerTree.artboardId },
+  );
   var assetsMap = {
     screenshot: screenshot,
     assets: bitmapAssets,

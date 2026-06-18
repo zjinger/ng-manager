@@ -3,13 +3,14 @@ import { basename, extname, join, resolve } from "path";
 
 const packageRoot = resolve(__dirname, "..", "..");
 const compiledSourceRoot = join(packageRoot, "lib", "src");
-const pluginSketchRoot = join(
+const pluginContentsRoot = join(
   packageRoot,
   "sketchplugin",
   "ngm-ai-handoff.sketchplugin",
   "Contents",
-  "Sketch",
 );
+const pluginSketchRoot = join(pluginContentsRoot, "Sketch");
+const pluginResourcesRoot = join(pluginContentsRoot, "Resources");
 const resourcesRoot = join(packageRoot, "resources");
 
 const commandEntries = [
@@ -84,6 +85,15 @@ function cleanGeneratedRuntime(): void {
       continue;
     }
     rmSync(join(pluginSketchRoot, entry), { recursive: true, force: true });
+  }
+  // 清理旧位置资源，避免 architecture-plan-v2 之前的资源残留在 Contents/Sketch/resources。
+  const legacyResourcesDir = join(pluginSketchRoot, "resources");
+  if (existsSync(legacyResourcesDir)) {
+    rmSync(legacyResourcesDir, { recursive: true, force: true });
+  }
+  // 清理新位置资源，保证每次构建幂等。
+  if (existsSync(pluginResourcesRoot)) {
+    rmSync(pluginResourcesRoot, { recursive: true, force: true });
   }
 }
 
@@ -339,34 +349,85 @@ if (typeof exports !== "undefined") {
 `;
 }
 
+function readPackageVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
+    return pkg.version || "0.3.0";
+  } catch (error) {
+    return "0.3.0";
+  }
+}
+
+function buildDefaultManifest(): any {
+  return {
+    name: "NGM AI Handoff",
+    identifier: "com.ng-manager.ai-handoff",
+    version: readPackageVersion(),
+    description: "Export Sketch artboards into AI-friendly handoff packages.",
+    commands: [
+      { name: "测试插件入口", identifier: "canary", script: "canary.js", handler: "onCanary" },
+      { name: "导出选中画板", identifier: "export-selected-artboard", script: "command-export-selected-artboard.js", handler: "onExportSelectedArtboard" },
+      { name: "导出当前页面", identifier: "export-current-page", script: "command-export-current-page.js", handler: "onExportCurrentPage" },
+      { name: "导出整个文档", identifier: "export-whole-document", script: "command-export-whole-document.js", handler: "onExportWholeDocument" },
+      { name: "自定义导出...", identifier: "export-custom", script: "command-export-custom.js", handler: "onExportCustom" },
+      { name: "设置...", identifier: "open-settings", script: "command-open-settings.js", handler: "onOpenSettings" },
+      { name: "诊断插件环境", identifier: "diagnose-plugin-environment", script: "command-diagnose-plugin-environment.js", handler: "onDiagnosePluginEnvironment" },
+      { name: "扫描当前页面", identifier: "scan-current-page", script: "command-scan-current-page.js", handler: "onScanCurrentPage" },
+    ],
+    menu: {
+      isRoot: false,
+      title: "NGM AI Handoff",
+      items: [
+        "canary",
+        "export-selected-artboard",
+        "export-current-page",
+        "export-whole-document",
+        "export-custom",
+        "open-settings",
+        "diagnose-plugin-environment",
+        "scan-current-page",
+      ],
+    },
+  };
+}
+
 function updateManifestScripts(): void {
   const manifestPath = join(pluginSketchRoot, "manifest.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  let manifest: any;
+  if (existsSync(manifestPath)) {
+    manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  } else {
+    manifest = buildDefaultManifest();
+    console.log("Generated default manifest.json");
+  }
   const byCommandId = commandEntries.reduce<Record<string, (typeof commandEntries)[number]>>((result, entry) => {
     result[entry.commandId] = entry;
     return result;
   }, {});
 
-  manifest.commands = (manifest.commands || []).map((command: any) => {
-    const entry = byCommandId[command.identifier];
-    if (!entry) {
-      return command;
-    }
+  manifest.commands = commandEntries.map((entry) => {
+    const existing = (manifest.commands || []).find((command: any) => command.identifier === entry.commandId);
     return {
-      ...command,
+      ...(existing || { name: entry.commandId, identifier: entry.commandId }),
       script: entry.fileName,
       handler: entry.handler,
     };
   });
+  // 确保 commands 顺序与 commandEntries 一致，且 menu.items 包含所有命令。
+  manifest.menu = manifest.menu || buildDefaultManifest().menu;
+  manifest.menu.items = commandEntries.map((entry) => entry.commandId);
 
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n", "utf8");
 }
 
 function copyResources(): number {
+  // 将 resources 复制到 Contents/Resources（architecture-plan-v2 第 4 节）。
+  // 即使没有资源文件，也保留空目录以满足产物结构验收。
+  ensureDir(pluginResourcesRoot);
   const files = collectFiles(resourcesRoot);
   for (const file of files) {
     const rel = file.slice(resourcesRoot.length + 1);
-    const target = join(pluginSketchRoot, "resources", rel);
+    const target = join(pluginResourcesRoot, rel);
     ensureDir(resolve(target, ".."));
     copyFileSync(file, target);
   }
@@ -383,4 +444,5 @@ const resourceCount = copyResources();
 
 console.log(`Built Sketch plugin runtime: ${runtimeCount} file(s)`);
 console.log(`Copied Sketch plugin resources: ${resourceCount} file(s)`);
-console.log(`Plugin output: ${pluginSketchRoot}`);
+console.log(`Sketch runtime output: ${pluginSketchRoot}`);
+console.log(`Sketch resources output: ${pluginResourcesRoot}`);
