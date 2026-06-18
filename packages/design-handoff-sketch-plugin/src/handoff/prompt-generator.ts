@@ -1,6 +1,6 @@
 ﻿// @ts-nocheck
 function generatePrompt(meta, assetsMap) {
-  var screenshotLine = assetsMap && assetsMap.screenshot
+  let screenshotLine = assetsMap && assetsMap.screenshot
     ? "- screenshot.png：视觉参考（仅对照，不可作为实现依据）"
     : "- screenshot.png：（本次未导出）";
 

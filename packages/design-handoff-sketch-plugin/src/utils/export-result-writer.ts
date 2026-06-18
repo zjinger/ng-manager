@@ -1,5 +1,5 @@
 // @ts-nocheck
-var debugLogger = require("./debug-logger");
+let debugLogger = require("./debug-logger");
 
 function countByStatus(items, status) {
   return (items || []).filter(function (item) {
@@ -8,7 +8,7 @@ function countByStatus(items, status) {
 }
 
 function collectWarnings(items) {
-  var warnings = [];
+  let warnings = [];
   (items || []).forEach(function (item) {
     (item.warnings || []).forEach(function (warning) {
       warnings.push({
@@ -21,7 +21,7 @@ function collectWarnings(items) {
 }
 
 function collectErrors(items, extraErrors) {
-  var errors = [];
+  let errors = [];
   (items || [])
     .filter(function (item) {
       return item.status === "failed";
@@ -39,12 +39,12 @@ function collectErrors(items, extraErrors) {
 }
 
 function buildExportResult(input) {
-  var started = input.startedAt ? new Date(input.startedAt).getTime() : Date.now();
-  var finishedAt = input.finishedAt || new Date().toISOString();
-  var finished = new Date(finishedAt).getTime();
-  var items = input.items || [];
-  var warnings = input.warnings || collectWarnings(items);
-  var errors = input.errors || collectErrors(items, []);
+  let started = input.startedAt ? new Date(input.startedAt).getTime() : Date.now();
+  let finishedAt = input.finishedAt || new Date().toISOString();
+  let finished = new Date(finishedAt).getTime();
+  let items = input.items || [];
+  let warnings = input.warnings || collectWarnings(items);
+  let errors = input.errors || collectErrors(items, []);
 
   return {
     mode: input.mode,

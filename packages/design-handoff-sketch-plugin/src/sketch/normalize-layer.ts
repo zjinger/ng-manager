@@ -1,6 +1,6 @@
 ﻿// @ts-nocheck
 function getFrame(layer) {
-  var frame = layer && layer.frame ? layer.frame : {};
+  let frame = layer && layer.frame ? layer.frame : {};
 
   return {
     x: Number(frame.x) || 0,
@@ -15,7 +15,7 @@ function shouldIgnoreLayer(layer) {
     return true;
   }
 
-  var name = layer.name || "";
+  let name = layer.name || "";
   return name.indexOf("_ignore") === 0 || name.indexOf(".ignore") === 0;
 }
 
@@ -32,12 +32,12 @@ function getText(layer) {
 }
 
 function shortHash(value) {
-  var str = String(value || "");
-  var hash = 5381;
-  for (var i = 0; i < str.length; i += 1) {
+  let str = String(value || "");
+  let hash = 5381;
+  for (let i = 0; i < str.length; i += 1) {
     hash = ((hash << 5) + hash + str.charCodeAt(i)) >>> 0;
   }
-  var hex = hash.toString(16);
+  let hex = hash.toString(16);
   while (hex.length < 8) {
     hex = "0" + hex;
   }
@@ -45,8 +45,8 @@ function shortHash(value) {
 }
 
 function inferRole(layer) {
-  var type = layer.type;
-  var name = String(layer.name || "").toLowerCase();
+  let type = layer.type;
+  let name = String(layer.name || "").toLowerCase();
   if (type === "Artboard") {
     return "artboard";
   }
@@ -113,41 +113,41 @@ function normalizeLayer(layer, styleRegistry, ctx) {
   }
 
   ctx = ctx || {};
-  var isArtboard = layer.type === "Artboard";
-  var artboardId = ctx.artboardId
+  let isArtboard = layer.type === "Artboard";
+  let artboardId = ctx.artboardId
     ? ctx.artboardId
     : isArtboard
       ? "artboard_" + shortHash(layer.id)
       : null;
-  var parentId = ctx.parentId || null;
-  var path = ctx.path ? ctx.path.slice() : [];
-  var parentOrigin = ctx.parentOrigin || { x: 0, y: 0 };
+  let parentId = ctx.parentId || null;
+  let path = ctx.path ? ctx.path.slice() : [];
+  let parentOrigin = ctx.parentOrigin || { x: 0, y: 0 };
 
-  var frame = getFrame(layer);
-  var isArtboardRoot = isArtboard;
-  var childOrigin = isArtboardRoot
+  let frame = getFrame(layer);
+  let isArtboardRoot = isArtboard;
+  let childOrigin = isArtboardRoot
     ? { x: 0, y: 0 }
     : { x: parentOrigin.x + frame.x, y: parentOrigin.y + frame.y };
-  var absoluteFrame = isArtboardRoot
+  let absoluteFrame = isArtboardRoot
     ? { x: 0, y: 0, width: frame.width, height: frame.height }
     : { x: parentOrigin.x + frame.x, y: parentOrigin.y + frame.y, width: frame.width, height: frame.height };
 
-  var handoffId = isArtboardRoot
+  let handoffId = isArtboardRoot
     ? artboardId
     : "layer_" + shortHash(String(layer.id) + ":" + (artboardId || ""));
 
-  var selfPath = path.concat([layer.name || ""]);
+  let selfPath = path.concat([layer.name || ""]);
 
-  var children = [];
+  let children = [];
   if (layer.layers && layer.layers.length > 0) {
-    var childCtx = {
+    let childCtx = {
       artboardId: artboardId,
       parentId: handoffId,
       path: selfPath,
       parentOrigin: childOrigin,
     };
     layer.layers.forEach(function (child) {
-      var normalized = normalizeLayer(child, styleRegistry, childCtx);
+      let normalized = normalizeLayer(child, styleRegistry, childCtx);
       if (normalized) {
         children.push(normalized);
       }
@@ -179,7 +179,7 @@ function normalizeLayer(layer, styleRegistry, ctx) {
 }
 
 function collectTexts(layer) {
-  var texts = [];
+  let texts = [];
 
   function visit(current) {
     if (shouldIgnoreLayer(current)) {
@@ -187,8 +187,8 @@ function collectTexts(layer) {
     }
 
     if (current.type === "Text") {
-      var style = current.style || {};
-      var textStyle = style.textStyle || {};
+      let style = current.style || {};
+      let textStyle = style.textStyle || {};
       texts.push({
         id: String(current.id || ""),
         name: current.name || "",

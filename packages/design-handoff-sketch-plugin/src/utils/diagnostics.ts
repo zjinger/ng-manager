@@ -1,19 +1,19 @@
 // @ts-nocheck
-var sketch = null;
+let sketch = null;
 try {
   sketch = require("sketch");
 } catch (error) {
   sketch = { getSelectedDocument: function () { return null; } };
 }
-var i18n = require("../i18n/i18n");
-var artboardUtils = require("../sketch/artboard-utils");
-var debugLogger = require("./debug-logger");
+let i18n = require("../i18n/i18n");
+let artboardUtils = require("../sketch/artboard-utils");
+let debugLogger = require("./debug-logger");
 
 function getSketchVersion() {
   try {
     if (typeof NSBundle !== "undefined") {
-      var bundle = NSBundle.mainBundle();
-      var value = bundle.objectForInfoDictionaryKey("CFBundleShortVersionString");
+      let bundle = NSBundle.mainBundle();
+      let value = bundle.objectForInfoDictionaryKey("CFBundleShortVersionString");
       return value ? String(value) : "";
     }
   } catch (error) {
@@ -46,12 +46,12 @@ function summarizeLayer(layer) {
 }
 
 function buildDiagnosticsResult(input) {
-  var document = input.document || null;
-  var page = document && document.selectedPage ? document.selectedPage : null;
-  var selectedLayers = document && document.selectedLayers ? document.selectedLayers.layers || [] : [];
-  var visibleArtboards = artboardUtils.collectVisibleArtboards(page);
-  var outputRoot = input.settings && input.settings.outputRoot ? input.settings.outputRoot : "";
-  var shouldCheckWritable = input.checkWritable !== false;
+  let document = input.document || null;
+  let page = document && document.selectedPage ? document.selectedPage : null;
+  let selectedLayers = document && document.selectedLayers ? document.selectedLayers.layers || [] : [];
+  let visibleArtboards = artboardUtils.collectVisibleArtboards(page);
+  let outputRoot = input.settings && input.settings.outputRoot ? input.settings.outputRoot : "";
+  let shouldCheckWritable = input.checkWritable !== false;
 
   return {
     pluginVersion: input.pluginVersion,
@@ -70,7 +70,7 @@ function buildDiagnosticsResult(input) {
 }
 
 function showDiagnosticsSummary(result, outputPath) {
-  var alert = NSAlert.alloc().init();
+  let alert = NSAlert.alloc().init();
   alert.setMessageText(i18n.STRINGS.diagnostics.title);
   alert.setInformativeText(
     [
@@ -91,19 +91,19 @@ function showDiagnosticsSummary(result, outputPath) {
 function runDiagnostics(context, options) {
   options = options || {};
   context.logger.step("诊断环境", "开始诊断插件环境");
-  var document = sketch.getSelectedDocument();
-  var result = buildDiagnosticsResult({
+  let document = sketch.getSelectedDocument();
+  let result = buildDiagnosticsResult({
     document: document,
     settings: context.settings,
     logPath: context.logPath,
     pluginVersion: options.pluginVersion,
     checkWritable: true,
   });
-  var outputRoot = result.outputRoot || debugLogger.getFallbackOutputRoot();
+  let outputRoot = result.outputRoot || debugLogger.getFallbackOutputRoot();
   result.outputRoot = outputRoot;
   result.outputRootWritable = debugLogger.isDirectoryWritable(outputRoot);
   debugLogger.ensureDirRecursive(outputRoot);
-  var outputPath = debugLogger.joinPath(outputRoot, "diagnostics-result.json");
+  let outputPath = debugLogger.joinPath(outputRoot, "diagnostics-result.json");
   debugLogger.writeJsonFile(outputRoot, "diagnostics-result.json", result);
   context.logger.info("诊断环境", "诊断结果已写入", { outputPath: outputPath, result: result });
   showDiagnosticsSummary(result, outputPath);

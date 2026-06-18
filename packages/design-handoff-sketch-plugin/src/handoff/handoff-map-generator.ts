@@ -1,12 +1,12 @@
 ﻿// @ts-nocheck
 function buildHandoffMap(layerTree, components) {
-  var nodes = [];
+  let nodes = [];
 
   function visitLayer(node) {
     if (!node) {
       return;
     }
-    var isArtboard = node.role === "artboard" || node.type === "Artboard";
+    let isArtboard = node.role === "artboard" || node.type === "Artboard";
     nodes.push({
       handoffId: node.handoffId || node.id,
       layerId: node.id,

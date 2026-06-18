@@ -8,7 +8,7 @@ function isArtboard(layer) {
 
 // 向上查找最近的 Artboard 父级，找不到返回 null。
 function findParentArtboard(layer) {
-  var current = layer;
+  let current = layer;
   while (current) {
     if (isArtboard(current)) {
       return current;
@@ -20,7 +20,7 @@ function findParentArtboard(layer) {
 
 // 兼容未实现 parent 访问器的图层：递归向上直到 document 层级。
 function findOwningArtboard(layer, document) {
-  var direct = findParentArtboard(layer);
+  let direct = findParentArtboard(layer);
   if (direct) {
     return direct;
   }
@@ -30,14 +30,14 @@ function findOwningArtboard(layer, document) {
     return null;
   }
 
-  var layerId = String(layer && layer.id ? layer.id : "");
+  let layerId = String(layer && layer.id ? layer.id : "");
   if (!layerId) {
     return null;
   }
 
-  for (var i = 0; i < document.pages.length; i += 1) {
-    var page = document.pages[i];
-    var owned = findArtboardContainingLayerId(page, layerId);
+  for (let i = 0; i < document.pages.length; i += 1) {
+    let page = document.pages[i];
+    let owned = findArtboardContainingLayerId(page, layerId);
     if (owned) {
       return owned.artboard;
     }
@@ -51,8 +51,8 @@ function findArtboardContainingLayerId(page, layerId) {
     return null;
   }
 
-  for (var i = 0; i < page.layers.length; i += 1) {
-    var layer = page.layers[i];
+  for (let i = 0; i < page.layers.length; i += 1) {
+    let layer = page.layers[i];
     if (!isArtboard(layer)) {
       continue;
     }
@@ -73,7 +73,7 @@ function containsLayerId(root, layerId) {
     return true;
   }
   if (root.layers && root.layers.length > 0) {
-    for (var i = 0; i < root.layers.length; i += 1) {
+    for (let i = 0; i < root.layers.length; i += 1) {
       if (containsLayerId(root.layers[i], layerId)) {
         return true;
       }
@@ -87,12 +87,12 @@ function containsLayerId(root, layerId) {
 // - 选中内部图层 -> 找到父级 Artboard
 // - 多个图层 -> 合并所属 Artboard 并去重
 function getArtboardsFromSelection(document) {
-  var selection = document && document.selectedLayers ? document.selectedLayers.layers : [];
-  var result = [];
-  var seenIds = {};
+  let selection = document && document.selectedLayers ? document.selectedLayers.layers : [];
+  let result = [];
+  let seenIds = {};
 
   selection.forEach(function (layer) {
-    var artboard;
+    let artboard;
     if (isArtboard(layer)) {
       artboard = layer;
     } else {
@@ -103,7 +103,7 @@ function getArtboardsFromSelection(document) {
       return;
     }
 
-    var id = String(artboard.id || "");
+    let id = String(artboard.id || "");
     if (!id) {
       result.push(artboard);
       return;
@@ -139,11 +139,11 @@ function getAllPages(document) {
 // 返回分组结构：[{ page, artboards: [...] }]
 // 仅保留至少含 1 个可见画板的 Page。
 function getDocumentArtboardGroups(document) {
-  var pages = getAllPages(document);
-  var groups = [];
+  let pages = getAllPages(document);
+  let groups = [];
 
   pages.forEach(function (page) {
-    var artboards = collectVisibleArtboards(page);
+    let artboards = collectVisibleArtboards(page);
     if (artboards.length > 0) {
       groups.push({ page: page, artboards: artboards });
     }
@@ -154,7 +154,7 @@ function getDocumentArtboardGroups(document) {
 
 // 将分组扁平化为 [{ page, artboard }] 列表，保留顺序。
 function flattenGroups(groups) {
-  var flat = [];
+  let flat = [];
   (groups || []).forEach(function (group) {
     (group.artboards || []).forEach(function (artboard) {
       flat.push({ page: group.page, artboard: artboard });
@@ -170,17 +170,17 @@ function filterGroupsBySelection(groups, selection) {
     return [];
   }
 
-  var lookup = {};
+  let lookup = {};
   selection.forEach(function (item) {
-    var key = String(item.pageId) + "|" + String(item.artboardId);
+    let key = String(item.pageId) + "|" + String(item.artboardId);
     lookup[key] = true;
   });
 
-  var result = [];
+  let result = [];
   groups.forEach(function (group) {
-    var pageId = String((group.page && group.page.id) || "");
-    var matched = (group.artboards || []).filter(function (artboard) {
-      var key = pageId + "|" + String(artboard.id || "");
+    let pageId = String((group.page && group.page.id) || "");
+    let matched = (group.artboards || []).filter(function (artboard) {
+      let key = pageId + "|" + String(artboard.id || "");
       return Boolean(lookup[key]);
     });
 

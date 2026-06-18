@@ -1,8 +1,8 @@
 ﻿// @ts-nocheck
-var normalize = require("./normalize-layer");
+let normalize = require("./normalize-layer");
 
 
-var RULES = [
+let RULES = [
   { type: "navigation", confidence: 0.7, patterns: [/nav|导航|header|topbar|顶栏|页头/] },
   { type: "sidebar", confidence: 0.7, patterns: [/sidebar|侧边|sidenav|aside/] },
   { type: "toolbar", confidence: 0.68, patterns: [/toolbar|工具栏/] },
@@ -21,7 +21,7 @@ var RULES = [
   { type: "chart", confidence: 0.78, patterns: [/chart|图表|graph/] },
 ];
 
-var ANGULAR_HINT = {
+let ANGULAR_HINT = {
   navigation: { angularComponentName: "nz-header / app-header", notes: ["顶部导航建议使用 nz-header 与 nz-menu 组合"] },
   sidebar: { angularComponentName: "nz-layout / nz-sider", notes: ["侧边栏建议使用 nz-sider + nz-menu"] },
   toolbar: { angularComponentName: "nz-button-group / nz-space", notes: ["工具栏建议使用 nz-button 组合"] },
@@ -42,11 +42,11 @@ var ANGULAR_HINT = {
 };
 
 function inferComponent(node) {
-  var target = [node.name || "", node.text || ""].join(" ");
+  let target = [node.name || "", node.text || ""].join(" ");
 
-  for (var i = 0; i < RULES.length; i += 1) {
-    var rule = RULES[i];
-    for (var j = 0; j < rule.patterns.length; j += 1) {
+  for (let i = 0; i < RULES.length; i += 1) {
+    let rule = RULES[i];
+    for (let j = 0; j < rule.patterns.length; j += 1) {
       if (rule.patterns[j].test(target)) {
         return {
           type: rule.type,
@@ -64,8 +64,8 @@ function collectNodeText(node) {
     return node.text;
   }
 
-  for (var i = 0; i < node.children.length; i += 1) {
-    var text = collectNodeText(node.children[i]);
+  for (let i = 0; i < node.children.length; i += 1) {
+    let text = collectNodeText(node.children[i]);
     if (text) {
       return text;
     }
@@ -75,13 +75,13 @@ function collectNodeText(node) {
 }
 
 function collectAllTexts(node) {
-  var texts = [];
+  let texts = [];
   if (node.text) {
     texts.push(node.text);
   }
-  for (var i = 0; i < node.children.length; i += 1) {
-    var childTexts = collectAllTexts(node.children[i]);
-    for (var j = 0; j < childTexts.length; j += 1) {
+  for (let i = 0; i < node.children.length; i += 1) {
+    let childTexts = collectAllTexts(node.children[i]);
+    for (let j = 0; j < childTexts.length; j += 1) {
       texts.push(childTexts[j]);
     }
   }
@@ -89,10 +89,10 @@ function collectAllTexts(node) {
 }
 
 function collectLayerIds(node) {
-  var ids = [node.id];
-  for (var i = 0; i < node.children.length; i += 1) {
-    var childIds = collectLayerIds(node.children[i]);
-    for (var j = 0; j < childIds.length; j += 1) {
+  let ids = [node.id];
+  for (let i = 0; i < node.children.length; i += 1) {
+    let childIds = collectLayerIds(node.children[i]);
+    for (let j = 0; j < childIds.length; j += 1) {
       ids.push(childIds[j]);
     }
   }
@@ -100,7 +100,7 @@ function collectLayerIds(node) {
 }
 
 function buildImplementationHint(type) {
-  var hint = ANGULAR_HINT[type] || ANGULAR_HINT.unknown;
+  let hint = ANGULAR_HINT[type] || ANGULAR_HINT.unknown;
   return {
     angularComponentName: hint.angularComponentName,
     suggestedInputs: [],
@@ -110,12 +110,12 @@ function buildImplementationHint(type) {
 }
 
 function inferComponents(layerTree) {
-  var components = [];
-  var count = 0;
+  let components = [];
+  let count = 0;
 
   function pushComponent(node, type, confidence) {
     count += 1;
-    var handoffId = "component_" + normalize.shortHash(String(node.id) + ":" + (node.artboardId || ""));
+    let handoffId = "component_" + normalize.shortHash(String(node.id) + ":" + (node.artboardId || ""));
     components.push({
       id: "cmp_" + String(count).padStart(3, "0"),
       layerId: node.id,
@@ -135,9 +135,9 @@ function inferComponents(layerTree) {
   }
 
   function visit(node) {
-    var inferred = inferComponent(node);
-    var hasChildren = node.children && node.children.length > 0;
-    var isArtboard = node.role === "artboard" || node.type === "Artboard";
+    let inferred = inferComponent(node);
+    let hasChildren = node.children && node.children.length > 0;
+    let isArtboard = node.role === "artboard" || node.type === "Artboard";
 
     if (inferred) {
       pushComponent(node, inferred.type, inferred.confidence);

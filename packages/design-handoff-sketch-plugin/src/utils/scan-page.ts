@@ -1,12 +1,12 @@
 // @ts-nocheck
-var sketch = null;
+let sketch = null;
 try {
   sketch = require("sketch");
 } catch (error) {
   sketch = { getSelectedDocument: function () { return null; } };
 }
-var i18n = require("../i18n/i18n");
-var debugLogger = require("./debug-logger");
+let i18n = require("../i18n/i18n");
+let debugLogger = require("./debug-logger");
 
 function getFrame(layer) {
   if (!layer || !layer.frame) {
@@ -40,10 +40,10 @@ function collectPageArtboards(page) {
 }
 
 function buildScanResult(input) {
-  var document = input.document || null;
-  var page = document && document.selectedPage ? document.selectedPage : null;
-  var artboards = collectPageArtboards(page);
-  var visibleArtboards = artboards.filter(function (item) {
+  let document = input.document || null;
+  let page = document && document.selectedPage ? document.selectedPage : null;
+  let artboards = collectPageArtboards(page);
+  let visibleArtboards = artboards.filter(function (item) {
     return !item.hidden;
   });
 
@@ -62,7 +62,7 @@ function buildScanResult(input) {
 }
 
 function showScanSummary(result, outputPath) {
-  var alert = NSAlert.alloc().init();
+  let alert = NSAlert.alloc().init();
   alert.setMessageText(i18n.STRINGS.scan.title);
   alert.setInformativeText(
     [
@@ -80,17 +80,17 @@ function showScanSummary(result, outputPath) {
 
 function runScanCurrentPage(context) {
   context.logger.step("扫描当前页面", "开始扫描当前页面");
-  var document = sketch.getSelectedDocument();
-  var outputRoot = context.settings && context.settings.outputRoot
+  let document = sketch.getSelectedDocument();
+  let outputRoot = context.settings && context.settings.outputRoot
     ? context.settings.outputRoot
     : debugLogger.getFallbackOutputRoot();
   debugLogger.ensureDirRecursive(outputRoot);
-  var result = buildScanResult({
+  let result = buildScanResult({
     document: document,
     outputRoot: outputRoot,
     logPath: context.logPath,
   });
-  var outputPath = debugLogger.joinPath(outputRoot, "scan-result.json");
+  let outputPath = debugLogger.joinPath(outputRoot, "scan-result.json");
   debugLogger.writeJsonFile(outputRoot, "scan-result.json", result);
   context.logger.info("扫描当前页面", "扫描结果已写入", { outputPath: outputPath, result: result });
   showScanSummary(result, outputPath);

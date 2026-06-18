@@ -1,5 +1,5 @@
 ﻿// @ts-nocheck
-var HIT_LAYER_ROLES = {
+let HIT_LAYER_ROLES = {
   navigation: 1,
   sidebar: 1,
   toolbar: 1,
@@ -28,7 +28,7 @@ function escapeHtml(value) {
 }
 
 function num(value) {
-  var n = Number(value);
+  let n = Number(value);
   return isFinite(n) ? String(n) : "0";
 }
 
@@ -44,7 +44,7 @@ function getStyle(styleMap, node) {
 }
 
 function getAssetMap(assetsMap) {
-  var result = {};
+  let result = {};
   ((assetsMap && assetsMap.assets) || []).forEach(function (asset) {
     if (asset && asset.layerId) {
       result[String(asset.layerId)] = asset;
@@ -67,16 +67,16 @@ function buildShadow(shadows) {
   }
   return shadows
     .map(function (shadow) {
-      var inset = shadow.type === "innerShadow" || shadow.type === "inner" ? " inset" : "";
+      let inset = shadow.type === "innerShadow" || shadow.type === "inner" ? " inset" : "";
       return px(shadow.x) + " " + px(shadow.y) + " " + px(shadow.blur) + " " + px(shadow.spread) + " " + (shadow.color || "rgba(0,0,0,0.2)") + inset;
     })
     .join(", ");
 }
 
 function baseStyle(node, styleMap) {
-  var f = node.absoluteFrame || node.frame || {};
-  var style = getStyle(styleMap, node);
-  var declarations = [
+  let f = node.absoluteFrame || node.frame || {};
+  let style = getStyle(styleMap, node);
+  let declarations = [
     "position:absolute",
     "left:" + px(f.x),
     "top:" + px(f.y),
@@ -93,7 +93,7 @@ function baseStyle(node, styleMap) {
     if (style.radius !== null && style.radius !== undefined) {
       declarations.push("border-radius:" + px(style.radius));
     }
-    var shadow = buildShadow(style.shadows);
+    let shadow = buildShadow(style.shadows);
     if (shadow) {
       declarations.push("box-shadow:" + shadow);
     }
@@ -103,14 +103,14 @@ function baseStyle(node, styleMap) {
 }
 
 function visualStyle(node, styleMap) {
-  var style = getStyle(styleMap, node);
-  var declarations = baseStyle(node, styleMap);
+  let style = getStyle(styleMap, node);
+  let declarations = baseStyle(node, styleMap);
   if (style) {
-    var fill = first(style.fills);
+    let fill = first(style.fills);
     if (fill) {
       declarations.push("background:" + fill);
     }
-    var border = first(style.borders);
+    let border = first(style.borders);
     if (border) {
       declarations.push("border:1px solid " + border);
     }
@@ -119,8 +119,8 @@ function visualStyle(node, styleMap) {
 }
 
 function textStyle(node, styleMap) {
-  var style = getStyle(styleMap, node);
-  var declarations = visualStyle(node, styleMap);
+  let style = getStyle(styleMap, node);
+  let declarations = visualStyle(node, styleMap);
   declarations.push("white-space:pre-wrap");
   declarations.push("line-height:1.25");
   declarations.push("display:flex");
@@ -155,7 +155,7 @@ function renderNode(node, styleMap, assetsByLayerId, output) {
     return;
   }
 
-  var asset = assetsByLayerId[String(node.id || "")];
+  let asset = assetsByLayerId[String(node.id || "")];
   if (asset && asset.path) {
     output.push(
       '<img class="ngm-layer ngm-image"' +
@@ -175,8 +175,8 @@ function renderNode(node, styleMap, assetsByLayerId, output) {
         "</div>",
     );
   } else {
-    var style = getStyle(styleMap, node);
-    var hasVisualStyle = style && ((style.fills && style.fills.length) || (style.borders && style.borders.length) || style.radius !== null || (style.shadows && style.shadows.length));
+    let style = getStyle(styleMap, node);
+    let hasVisualStyle = style && ((style.fills && style.fills.length) || (style.borders && style.borders.length) || style.radius !== null || (style.shadows && style.shadows.length));
     if (hasVisualStyle || node.type === "Shape" || node.type === "ShapePath" || node.role === "button" || node.role === "input" || node.role === "card" || node.role === "modal") {
       output.push(
         '<div class="ngm-layer ngm-shape"' +
@@ -194,17 +194,17 @@ function renderNode(node, styleMap, assetsByLayerId, output) {
 }
 
 function generatePreviewHtml(meta, layerTree, components, screenshot, styleMap, assetsMap) {
-  var stage = (layerTree && (layerTree.absoluteFrame || layerTree.frame)) || { width: 0, height: 0 };
-  var width = num(stage.width);
-  var height = num(stage.height);
-  var layers = [];
+  let stage = (layerTree && (layerTree.absoluteFrame || layerTree.frame)) || { width: 0, height: 0 };
+  let width = num(stage.width);
+  let height = num(stage.height);
+  let layers = [];
   renderNode(layerTree, styleMap || {}, getAssetMap(assetsMap), layers);
 
-  var fallback = screenshot
+  let fallback = screenshot
     ? '<img class="ngm-screenshot-fallback" src="screenshot.png" alt="' + escapeHtml(meta && meta.artboardName) + '">'
     : "";
 
-  var title = "NGM Handoff Preview - " + (meta && meta.artboardName ? meta.artboardName : "Artboard");
+  let title = "NGM Handoff Preview - " + (meta && meta.artboardName ? meta.artboardName : "Artboard");
 
   return [
     "<!DOCTYPE html>",

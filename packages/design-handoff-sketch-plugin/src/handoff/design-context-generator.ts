@@ -17,13 +17,13 @@ function eachEntry(obj, fn) {
 }
 
 function frameSize(node) {
-  var f = (node && (node.absoluteFrame || node.frame)) || {};
+  let f = (node && (node.absoluteFrame || node.frame)) || {};
   return { width: f.width || 0, height: f.height || 0 };
 }
 
 function generateDesignContext(meta, layerTree, components, texts, tokens, assetsMap) {
-  var lines = [];
-  var size = frameSize(layerTree);
+  let lines = [];
+  let size = frameSize(layerTree);
 
   lines.push("# Design Context");
   lines.push("");
@@ -60,7 +60,7 @@ function generateDesignContext(meta, layerTree, components, texts, tokens, asset
     lines.push("| 组件 | 类型 | 置信度 | 建议实现 |");
     lines.push("|---|---|---|---|");
     components.forEach(function (cmp) {
-      var hint = cmp.implementationHint || {};
+      let hint = cmp.implementationHint || {};
       lines.push(
         "| " + str(cmp.name) + " | " + str(cmp.inferredType) + " | " + num(cmp.confidence) + " | " + str(hint.angularComponentName) + " |",
       );

@@ -1,5 +1,5 @@
 ﻿// @ts-nocheck
-var normalize = require("./normalize-layer");
+let normalize = require("./normalize-layer");
 
 function colorToHex(color) {
   return normalize.normalizeColor(color);
@@ -32,8 +32,8 @@ function extractRadius(layer) {
 }
 
 function extractStyle(layer) {
-  var style = layer.style || {};
-  var textStyle = style.textStyle || {};
+  let style = layer.style || {};
+  let textStyle = style.textStyle || {};
 
   return {
     fills: enabledItems(style.fills)
@@ -78,19 +78,19 @@ function hasMeaningfulStyle(style) {
 }
 
 function createStyleRegistry() {
-  var styles = {};
-  var keyToId = {};
-  var count = 0;
+  let styles = {};
+  let keyToId = {};
+  let count = 0;
 
   return {
     styles: styles,
     register: function (layer) {
-      var style = extractStyle(layer);
+      let style = extractStyle(layer);
       if (!hasMeaningfulStyle(style)) {
         return null;
       }
 
-      var key = JSON.stringify(style);
+      let key = JSON.stringify(style);
       if (!keyToId[key]) {
         count += 1;
         keyToId[key] = "style_" + String(count).padStart(3, "0");
@@ -109,12 +109,12 @@ function pushUnique(values, value) {
 }
 
 function extractTokens(styles, texts) {
-  var colors = [];
-  var fontSizes = [];
-  var radii = [];
+  let colors = [];
+  let fontSizes = [];
+  let radii = [];
 
   Object.keys(styles).forEach(function (styleId) {
-    var style = styles[styleId];
+    let style = styles[styleId];
     style.fills.forEach(function (color) {
       pushUnique(colors, color);
     });
