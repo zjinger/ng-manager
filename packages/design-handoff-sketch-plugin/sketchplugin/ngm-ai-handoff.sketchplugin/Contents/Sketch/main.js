@@ -10,6 +10,10 @@ var artboardUtils = require("./artboard-utils");
 var progress = require("./export-progress");
 var scopeDialog = require("./export-scope-dialog");
 var indexGenerator = require("./document-index-generator");
+var safeRunModule = require("./safe-run");
+var diagnostics = require("./diagnostics");
+var scanPage = require("./scan-page");
+var exportResultWriter = require("./export-result-writer");
 var PLUGIN_VERSION = "0.3.0";
 function getDocument() {
     return sketch.getSelectedDocument();
@@ -101,6 +105,7 @@ function exportSingleArtboard(options) {
     var pageIndex = options.pageIndex;
     var artboardInPageIndex = options.artboardInPageIndex;
     var reporter = options.reporter;
+    var logger = options.logger;
     var outputDir = computeArtboardOutputDir(rootOutputDir, page, artboard, pageIndex, artboardInPageIndex);
     var shortId = normalize.shortHash(String(artboard.id || ""));
     var record = buildArtboardRecord({
@@ -114,45 +119,84 @@ function exportSingleArtboard(options) {
         status: "pending",
     });
     try {
-        var exportedDir = exporter.exportArtboard(document, artboard, {
+        logger.step("开始导出画板", "开始导出单个画板", {
+            pageName: page && page.name,
+            artboardName: artboard.name,
+            outputDir: outputDir,
+        });
+        var exported = exporter.exportArtboard(document, artboard, {
             pluginVersion: PLUGIN_VERSION,
             settings: settings,
             outputDir: outputDir,
             pageName: page && page.name,
+            logger: logger,
             onProgress: function (key, name) {
                 reporter.step(key, name);
             },
         });
+        var exportedDir = typeof exported === "string" ? exported : exported.outputDir;
+        var warnings = exported && exported.warnings ? exported.warnings : [];
         reporter.success(artboard, exportedDir);
         record.status = "success";
         record.outputDir = exportedDir;
+        record.warnings = warnings;
         var screenshotAbs = exporter.fileExists(exporter.joinPath(exportedDir, "screenshot.png"))
             ? exporter.joinPath(exportedDir, "screenshot.png")
             : null;
         record.screenshotPath = screenshotAbs ? relativePath(rootOutputDir, screenshotAbs) : null;
         record.previewHtmlPath = relativePath(rootOutputDir, exporter.joinPath(exportedDir, "preview.html"));
         record.packageDir = relativePath(rootOutputDir, exportedDir);
+        logger.info("导出完成", "单个画板导出成功", {
+            artboardName: artboard.name,
+            outputDir: exportedDir,
+            warningCount: warnings.length,
+        });
     }
     catch (error) {
         record.status = "failed";
         record.reason = error && error.message ? error.message : String(error);
+        record.warnings = [];
         reporter.failure(artboard, error);
+        logger.error("导出失败", "单个画板导出失败", error, {
+            pageName: page && page.name,
+            artboardName: artboard.name,
+            outputDir: outputDir,
+        });
     }
     return record;
 }
-function runExport(document, mode, groups) {
-    var settings = pluginSettings.getSettings();
+function runExport(document, mode, groups, context) {
+    var logger = context.logger;
+    logger.step("读取设置", "读取插件导出设置");
+    var settings = context.settings || pluginSettings.getSettings();
+    logger.step("获取当前文档", "已获取当前 Sketch 文档", {
+        documentName: document.name || "Untitled",
+        documentPath: document.path ? String(document.path) : null,
+    });
+    logger.step("获取当前 Page", "已获取当前 Page", {
+        pageName: document.selectedPage ? document.selectedPage.name : "",
+    });
     var documentName = exporter.sanitizeName(document.name || "Untitled");
     var rootOutputDir = exporter.joinPath(settings.outputRoot, documentName);
+    logger.step("创建输出目录", "创建导出根目录", { rootOutputDir: rootOutputDir });
     exporter.ensureDirRecursive(rootOutputDir);
     var reporter = progress.createReporter();
     reporter.begin();
+    logger.step("收集 Artboard", "开始收集导出画板", { mode: mode });
     var flat = artboardUtils.flattenGroups(groups);
     reporter.collected(flat.length);
     if (flat.length === 0) {
+        writeEmptyExportResult({
+            document: document,
+            mode: mode,
+            rootOutputDir: rootOutputDir,
+            context: context,
+            reason: "未识别到可导出的画板",
+        });
         showNoArtboardMessage(mode);
         return null;
     }
+    logger.info("收集 Artboard", "画板收集完成", { count: flat.length });
     if (mode === "currentPage" && flat.length === 1) {
         reporter.raw(i18n.STRINGS.singleArtboardHint);
     }
@@ -182,6 +226,7 @@ function runExport(document, mode, groups) {
             pageIndex: pageIndex,
             artboardInPageIndex: artboardInPageIndex,
             reporter: reporter,
+            logger: logger,
         });
         records.push(record);
     });
@@ -192,6 +237,7 @@ function runExport(document, mode, groups) {
         rootOutputDir: rootOutputDir,
         records: records,
         reporter: reporter,
+        context: context,
     });
 }
 function finalizeExport(options) {
@@ -201,8 +247,11 @@ function finalizeExport(options) {
     var rootOutputDir = options.rootOutputDir;
     var records = options.records;
     var reporter = options.reporter;
+    var context = options.context;
+    var logger = context.logger;
     var modeLabel = getModeLabel(mode);
     reporter.generatingIndex();
+    logger.step("generate document index", "开始生成文档级索引", { rootOutputDir: rootOutputDir });
     var exportedAt = new Date().toISOString();
     var indexObject = indexGenerator.buildIndexObject({
         documentName: document.name || "Untitled",
@@ -226,27 +275,35 @@ function finalizeExport(options) {
     }
     catch (error) {
         reporter.warning("index.html 生成失败：" + (error && error.message ? error.message : String(error)));
+        logger.warn("write html files", "index.html 生成失败", { error: error && error.message ? error.message : String(error) });
     }
-    reporter.writingLog();
-    var logPath = exporter.joinPath(rootOutputDir, "ngm-handoff-export.log");
-    var logText = buildExportLogText({
-        document: document,
-        mode: mode,
-        modeLabel: modeLabel,
-        rootOutputDir: rootOutputDir,
-        records: records,
-        indexObject: indexObject,
-        reporter: reporter,
-        exportedAt: exportedAt,
-    });
-    exporter.writeText(rootOutputDir, "ngm-handoff-export.log", logText);
-    reporter.log("导出日志已写入：" + logPath);
     var success = records.filter(function (r) {
         return r.status === "success";
     }).length;
     var failed = records.filter(function (r) {
         return r.status === "failed";
     }).length;
+    var warnings = exportResultWriter.collectWarnings(records);
+    var errors = exportResultWriter.collectErrors(records, []);
+    logger.step("write export result", "开始写入 export-result.json", {
+        success: success,
+        failed: failed,
+        warningCount: warnings.length,
+    });
+    var exportResult = exportResultWriter.buildExportResult({
+        mode: mode,
+        startedAt: context.startedAt,
+        finishedAt: new Date().toISOString(),
+        documentName: document.name || "Untitled",
+        pageName: document.selectedPage ? document.selectedPage.name : "",
+        outputRoot: rootOutputDir,
+        items: records,
+        warnings: warnings,
+        errors: errors,
+        logPath: context.logPath,
+    });
+    exportResultWriter.writeExportResult(rootOutputDir, exportResult);
+    logger.info("导出完成", "导出流程完成", exportResult);
     reporter.finish(success, failed);
     if (failed > 0) {
         showFailureSummary({
@@ -254,9 +311,11 @@ function finalizeExport(options) {
             modeLabel: modeLabel,
             records: records,
             rootOutputDir: rootOutputDir,
-            logPath: logPath,
+            logPath: context.logPath,
             success: success,
             failed: failed,
+            warnings: warnings.length,
+            stage: logger.getStage(),
         });
     }
     else {
@@ -266,11 +325,29 @@ function finalizeExport(options) {
             groups: groups,
             records: records,
             rootOutputDir: rootOutputDir,
+            logPath: context.logPath,
             success: success,
             failed: failed,
+            warnings: warnings.length,
         });
     }
-    return { rootOutputDir: rootOutputDir, records: records, indexObject: indexObject };
+    return { rootOutputDir: rootOutputDir, records: records, indexObject: indexObject, exportResult: exportResult };
+}
+function writeEmptyExportResult(options) {
+    var result = exportResultWriter.buildExportResult({
+        mode: options.mode,
+        startedAt: options.context.startedAt,
+        finishedAt: new Date().toISOString(),
+        documentName: options.document.name || "Untitled",
+        pageName: options.document.selectedPage ? options.document.selectedPage.name : "",
+        outputRoot: options.rootOutputDir,
+        items: [],
+        warnings: [{ message: options.reason }],
+        errors: [],
+        logPath: options.context.logPath,
+    });
+    exportResultWriter.writeExportResult(options.rootOutputDir, result);
+    options.context.logger.warn("收集 Artboard", options.reason, result);
 }
 function buildExportLogText(options) {
     var lines = [];
@@ -333,7 +410,9 @@ function showSuccessSummary(options) {
         i18n.STRINGS.summary.artboards + "：" + options.records.length + "\n" +
         i18n.STRINGS.summary.success + "：" + options.success + "\n" +
         i18n.STRINGS.summary.failed + "：" + options.failed + "\n" +
-        i18n.STRINGS.summary.outputRoot + "：" + options.rootOutputDir;
+        i18n.STRINGS.summary.warnings + "：" + (options.warnings || 0) + "\n" +
+        i18n.STRINGS.summary.outputRoot + "：" + options.rootOutputDir + "\n" +
+        i18n.STRINGS.safeRun.logPath + "：" + options.logPath;
     alert.setInformativeText(informative);
     alert.addButtonWithTitle(i18n.STRINGS.summary.openInFinder);
     alert.addButtonWithTitle(i18n.STRINGS.summary.close);
@@ -364,6 +443,9 @@ function showFailureSummary(options) {
         i18n.STRINGS.summary.mode + "：" + options.modeLabel,
         i18n.STRINGS.failure.succeededCount + "：" + options.success,
         i18n.STRINGS.summary.failed + "：" + options.failed,
+        i18n.STRINGS.summary.warnings + "：" + (options.warnings || 0),
+        i18n.STRINGS.safeRun.stage + "：" + (options.stage || ""),
+        i18n.STRINGS.failure.partialFiles + "：" + (options.success > 0 ? i18n.STRINGS.yes : i18n.STRINGS.no),
         "",
         failureLines.join("\n"),
         "",
@@ -407,95 +489,90 @@ function showNoArtboardMessage(mode) {
     }
 }
 function onExportSelectedArtboard() {
-    var document = getDocument();
-    if (!document) {
-        UI.message(i18n.STRINGS.pluginName + " · " + i18n.STRINGS.noDocument);
-        return;
-    }
-    var groups = collectGroupsForMode(document, "selected");
-    if (groups.length === 0) {
-        showNoArtboardMessage("selected");
-        return;
-    }
-    try {
-        runExport(document, "selected", groups);
-    }
-    catch (error) {
-        UI.alert(i18n.STRINGS.exportFailedTitle, error && error.message ? error.message : String(error));
-    }
+    return safeRunModule.safeRun({ command: "export-selected-artboard", commandLabel: i18n.STRINGS.modeSelected }, function (context) {
+        context.logger.step("获取当前文档", "准备获取当前文档");
+        var document = getDocument();
+        if (!document) {
+            throw new Error(i18n.STRINGS.noDocument);
+        }
+        var groups = collectGroupsForMode(document, "selected");
+        if (groups.length === 0) {
+            showNoArtboardMessage("selected");
+            return null;
+        }
+        return runExport(document, "selected", groups, context);
+    });
 }
 function onExportCurrentPage() {
-    var document = getDocument();
-    if (!document) {
-        UI.message(i18n.STRINGS.pluginName + " · " + i18n.STRINGS.noDocument);
-        return;
-    }
-    var groups = collectGroupsForMode(document, "currentPage");
-    if (groups.length === 0 || groups[0].artboards.length === 0) {
-        showNoArtboardMessage("currentPage");
-        return;
-    }
-    try {
-        runExport(document, "currentPage", groups);
-    }
-    catch (error) {
-        UI.alert(i18n.STRINGS.exportFailedTitle, error && error.message ? error.message : String(error));
-    }
+    return safeRunModule.safeRun({ command: "export-current-page", commandLabel: i18n.STRINGS.modeCurrentPage }, function (context) {
+        context.logger.step("获取当前文档", "准备获取当前文档");
+        var document = getDocument();
+        if (!document) {
+            throw new Error(i18n.STRINGS.noDocument);
+        }
+        var groups = collectGroupsForMode(document, "currentPage");
+        if (groups.length === 0 || groups[0].artboards.length === 0) {
+            showNoArtboardMessage("currentPage");
+            return null;
+        }
+        return runExport(document, "currentPage", groups, context);
+    });
 }
 function onExportWholeDocument() {
-    var document = getDocument();
-    if (!document) {
-        UI.message(i18n.STRINGS.pluginName + " · " + i18n.STRINGS.noDocument);
-        return;
-    }
-    var groups = collectGroupsForMode(document, "wholeDocument");
-    if (groups.length === 0) {
-        showNoArtboardMessage("wholeDocument");
-        return;
-    }
-    try {
-        runExport(document, "wholeDocument", groups);
-    }
-    catch (error) {
-        UI.alert(i18n.STRINGS.exportFailedTitle, error && error.message ? error.message : String(error));
-    }
+    return safeRunModule.safeRun({ command: "export-whole-document", commandLabel: i18n.STRINGS.modeWholeDocument }, function (context) {
+        context.logger.step("获取当前文档", "准备获取当前文档");
+        var document = getDocument();
+        if (!document) {
+            throw new Error(i18n.STRINGS.noDocument);
+        }
+        var groups = collectGroupsForMode(document, "wholeDocument");
+        if (groups.length === 0) {
+            showNoArtboardMessage("wholeDocument");
+            return null;
+        }
+        return runExport(document, "wholeDocument", groups, context);
+    });
 }
 function onExportCustom() {
-    var document = getDocument();
-    if (!document) {
-        UI.message(i18n.STRINGS.pluginName + " · " + i18n.STRINGS.noDocument);
-        return;
-    }
-    var allGroups = artboardUtils.getDocumentArtboardGroups(document);
-    if (allGroups.length === 0) {
-        showNoArtboardMessage("wholeDocument");
-        return;
-    }
-    var entries = artboardUtils.flattenGroups(allGroups);
-    var selection = scopeDialog.showCustomScopeDialog(entries);
-    if (!selection || selection.length === 0) {
-        showNoArtboardMessage("custom");
-        return;
-    }
-    var groups = artboardUtils.filterGroupsBySelection(allGroups, selection);
-    if (groups.length === 0) {
-        showNoArtboardMessage("custom");
-        return;
-    }
-    try {
-        runExport(document, "custom", groups);
-    }
-    catch (error) {
-        UI.alert(i18n.STRINGS.exportFailedTitle, error && error.message ? error.message : String(error));
-    }
+    return safeRunModule.safeRun({ command: "export-custom", commandLabel: i18n.STRINGS.modeCustom }, function (context) {
+        context.logger.step("获取当前文档", "准备获取当前文档");
+        var document = getDocument();
+        if (!document) {
+            throw new Error(i18n.STRINGS.noDocument);
+        }
+        var allGroups = artboardUtils.getDocumentArtboardGroups(document);
+        if (allGroups.length === 0) {
+            showNoArtboardMessage("wholeDocument");
+            return null;
+        }
+        var entries = artboardUtils.flattenGroups(allGroups);
+        var selection = scopeDialog.showCustomScopeDialog(entries);
+        if (!selection || selection.length === 0) {
+            showNoArtboardMessage("custom");
+            return null;
+        }
+        var groups = artboardUtils.filterGroupsBySelection(allGroups, selection);
+        if (groups.length === 0) {
+            showNoArtboardMessage("custom");
+            return null;
+        }
+        return runExport(document, "custom", groups, context);
+    });
 }
 function onOpenSettings() {
-    try {
+    return safeRunModule.safeRun({ command: "open-settings", commandLabel: i18n.STRINGS.settings.title }, function () {
         pluginSettings.configureSettings();
-    }
-    catch (error) {
-        UI.alert(i18n.STRINGS.settings.failTitle, error && error.message ? error.message : String(error));
-    }
+    });
+}
+function onDiagnosePluginEnvironment() {
+    return safeRunModule.safeRun({ command: "diagnose-plugin-environment", commandLabel: i18n.STRINGS.diagnostics.menu }, function (context) {
+        return diagnostics.runDiagnostics(context, { pluginVersion: PLUGIN_VERSION });
+    });
+}
+function onScanCurrentPage() {
+    return safeRunModule.safeRun({ command: "scan-current-page", commandLabel: i18n.STRINGS.scan.menu }, function (context) {
+        return scanPage.runScanCurrentPage(context);
+    });
 }
 module.exports = {
     onExportSelectedArtboard: onExportSelectedArtboard,
@@ -503,4 +580,6 @@ module.exports = {
     onExportWholeDocument: onExportWholeDocument,
     onExportCustom: onExportCustom,
     onOpenSettings: onOpenSettings,
+    onDiagnosePluginEnvironment: onDiagnosePluginEnvironment,
+    onScanCurrentPage: onScanCurrentPage,
 };

@@ -33,6 +33,18 @@
       "identifier": "open-settings",
       "script": "main.js",
       "handler": "onOpenSettings"
+    },
+    {
+      "name": "诊断插件环境",
+      "identifier": "diagnose-plugin-environment",
+      "script": "main.js",
+      "handler": "onDiagnosePluginEnvironment"
+    },
+    {
+      "name": "扫描当前页面",
+      "identifier": "scan-current-page",
+      "script": "main.js",
+      "handler": "onScanCurrentPage"
     }
   ],
   "menu": {
@@ -42,7 +54,9 @@
       "export-current-page",
       "export-whole-document",
       "export-custom",
-      "open-settings"
+      "open-settings",
+      "diagnose-plugin-environment",
+      "scan-current-page"
     ]
   }
 }

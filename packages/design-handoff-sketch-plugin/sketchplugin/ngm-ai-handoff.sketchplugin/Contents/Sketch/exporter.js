@@ -151,6 +151,7 @@ function exportArtboard(document, artboard, options) {
     var pluginVersion = options.pluginVersion ? options.pluginVersion : "0.2.0";
     var settings = options.settings ? options.settings : pluginSettings.getSettings();
     var onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
+    var logger = options.logger || null;
     var pageName = options.pageName ? options.pageName : null;
     var documentName = sanitizeName(document.name || "Untitled");
     var artboardName = sanitizeName(artboard.name || "Untitled Artboard");
@@ -158,6 +159,17 @@ function exportArtboard(document, artboard, options) {
         ? options.outputDir
         : pluginSettings.joinPath(settings.outputRoot, documentName, artboardName);
     var warnings = [];
+    function logStep(stage, message, data) {
+        if (logger && typeof logger.step === "function") {
+            logger.step(stage, message, data || null);
+        }
+    }
+    function logWarning(stage, message, data) {
+        if (logger && typeof logger.warn === "function") {
+            logger.warn(stage, message, data || null);
+        }
+    }
+    logStep("创建输出目录", "准备创建画板输出目录", { outputDir: outputDir });
     ensureDirRecursive(outputDir);
     function emitStep(key, name) {
         if (onProgress) {
@@ -169,22 +181,33 @@ function exportArtboard(document, artboard, options) {
         }
     }
     emitStep("generatingHandoffJson", artboard.name);
+    logStep("normalize layer tree", "开始归一化图层树", { artboardName: artboard.name });
     var styleRegistry = styles.createStyleRegistry();
     var layerTree = normalize.normalizeLayer(artboard, styleRegistry);
     if (!layerTree) {
         throw new Error("Selected artboard has no exportable layers.");
     }
+    logStep("collect texts", "开始收集文本图层", { artboardName: artboard.name });
     var texts = normalize.collectTexts(artboard);
+    logStep("extract styles", "开始提取样式", { artboardName: artboard.name });
     var styleMap = styleRegistry.styles;
+    logStep("extract tokens", "开始提取设计 Token", { artboardName: artboard.name });
     var tokens = styles.extractTokens(styleMap, texts);
+    logStep("infer components", "开始推断组件", { artboardName: artboard.name });
     var inferredComponents = components.inferComponents(layerTree);
     if (settings.exportScreenshot) {
         emitStep("generatingScreenshot", artboard.name);
+        logStep("export screenshot", "开始导出截图", { artboardName: artboard.name });
     }
     var screenshot = settings.exportScreenshot ? exportScreenshot(artboard, outputDir, warnings) : null;
     if (!settings.exportScreenshot) {
         warnings.push("Screenshot export is disabled in plugin settings.");
+        logWarning("export screenshot", "插件设置已禁用截图导出", { artboardName: artboard.name });
     }
+    else if (!screenshot) {
+        logWarning("export screenshot", "截图导出未生成 screenshot.png", { artboardName: artboard.name });
+    }
+    logStep("export assets", "开始导出资源图层", { artboardName: artboard.name });
     var bitmapAssets = assetExporter.exportBitmapAssets(artboard, outputDir, pluginSettings.joinPath, warnings);
     var assetsMap = {
         screenshot: screenshot,
@@ -192,14 +215,18 @@ function exportArtboard(document, artboard, options) {
         warnings: warnings,
     };
     var meta = buildMeta(document, artboard, pluginVersion, pageName);
+    logStep("build handoff map", "开始生成 Handoff 映射", { artboardName: artboard.name });
     var handoffMap = handoffMapGenerator.buildHandoffMap(layerTree, inferredComponents);
     emitStep("generatingPreview", artboard.name);
+    logStep("generate preview html", "开始生成预览 HTML", { artboardName: artboard.name });
     var previewHtml = previewRenderer.generatePreviewHtml(meta, layerTree, inferredComponents, screenshot);
     var bridgeScript = interactionBridgeTemplate.generateBridgeScript();
     emitStep("generatingAiContext", artboard.name);
+    logStep("generate design context", "开始生成设计上下文", { artboardName: artboard.name });
     var designContext = designContextGenerator.generateDesignContext(meta, layerTree, inferredComponents, texts, tokens, assetsMap);
     var manifest = buildManifest(meta, screenshot);
     var prompt = promptGenerator.generatePrompt(meta, assetsMap);
+    logStep("write json files", "开始写入 Handoff JSON 文件", { outputDir: outputDir });
     writeJson(outputDir, "meta.json", meta);
     writeJson(outputDir, "handoff.json", manifest);
     writeJson(outputDir, "layer-tree.json", layerTree);
@@ -209,11 +236,15 @@ function exportArtboard(document, artboard, options) {
     writeJson(outputDir, "components.json", inferredComponents);
     writeJson(outputDir, "assets-map.json", assetsMap);
     writeJson(outputDir, "handoff-map.json", handoffMap);
+    logStep("write html files", "开始写入 HTML 与上下文文件", { outputDir: outputDir });
     writeText(outputDir, "preview.html", previewHtml);
     writeText(outputDir, "interaction-bridge.js", bridgeScript);
     writeText(outputDir, "design-context.md", designContext);
     writeText(outputDir, "agent-prompt.md", prompt);
-    return outputDir;
+    if (warnings.length > 0) {
+        logWarning("导出完成", "画板导出完成但存在警告", { artboardName: artboard.name, warnings: warnings });
+    }
+    return { outputDir: outputDir, warnings: warnings };
 }
 module.exports = {
     exportArtboard: exportArtboard,

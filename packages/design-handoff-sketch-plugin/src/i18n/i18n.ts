@@ -4,6 +4,9 @@
 
 var STRINGS = {
   pluginName: "NGM AI Handoff",
+  none: "无",
+  yes: "是",
+  no: "否",
 
   // 通用提示
   noDocument: "未打开 Sketch 文档",
@@ -27,6 +30,7 @@ var STRINGS = {
   writingExportLog: "正在写入导出日志...",
   exportDone: "导出完成：成功 {success} 个，失败 {failed} 个",
   outputDirLabel: "输出目录：{dir}",
+  exportResultPath: "导出结果：{path}",
 
   // 导出失败
   exportFailedTitle: "导出失败",
@@ -60,7 +64,40 @@ var STRINGS = {
     failedArtboard: "失败画板",
     reason: "原因",
     succeededCount: "已成功导出",
+    partialFiles: "是否已生成部分文件",
     logHint: "请查看日志：{path}",
+  },
+
+  // 统一安全运行
+  safeRun: {
+    start: "开始执行：{command}",
+    errorTitle: "NGM AI Handoff 执行失败",
+    command: "当前命令",
+    stage: "当前阶段",
+    errorMessage: "错误信息",
+    logPath: "日志路径",
+  },
+
+  diagnostics: {
+    menu: "诊断插件环境",
+    title: "诊断插件环境",
+    document: "当前文档",
+    page: "当前页面",
+    selectedLayers: "选中图层数量",
+    visibleArtboards: "可见画板数量",
+    outputRoot: "输出目录",
+    outputWritable: "输出目录可写",
+    resultPath: "诊断结果",
+  },
+
+  scan: {
+    menu: "扫描当前页面",
+    title: "扫描当前页面",
+    page: "当前页面",
+    total: "画板总数",
+    visible: "可见画板",
+    hidden: "隐藏画板",
+    resultPath: "扫描结果",
   },
 
   // 自定义导出对话框

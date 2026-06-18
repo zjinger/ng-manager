@@ -13,6 +13,10 @@ const sketchDir = path.join(
 const i18n = require(path.join(sketchDir, "i18n.js"));
 const artboardUtils = require(path.join(sketchDir, "artboard-utils.js"));
 const indexGenerator = require(path.join(sketchDir, "document-index-generator.js"));
+const debugLogger = require(path.join(sketchDir, "debug-logger.js"));
+const exportResultWriter = require(path.join(sketchDir, "export-result-writer.js"));
+const diagnostics = require(path.join(sketchDir, "diagnostics.js"));
+const scanPage = require(path.join(sketchDir, "scan-page.js"));
 
 let failures = 0;
 
@@ -49,6 +53,8 @@ assertEqual("t 带变量",
   "正在导出第 1 / 5 个画板：首页",
 );
 assertEqual("t 缺失路径返回原路径", i18n.t("missing.path"), "missing.path");
+assertEqual("新增诊断菜单文案", i18n.t("diagnostics.menu"), "诊断插件环境");
+assertEqual("新增扫描菜单文案", i18n.t("scan.menu"), "扫描当前页面");
 
 // artboard-utils
 console.log("\n[artboard-utils]");
@@ -173,6 +179,138 @@ assertTruthy("index.html 包含模式标签",
   indexGenerator.generateIndexHtml(index, "导出整个文档").indexOf("导出整个文档") > -1,
 );
 
+// debug-logger
+console.log("\n[debug-logger]");
+const entry = debugLogger.buildLogEntry({
+  time: "2026-06-18T00:00:00.000Z",
+  level: "step",
+  command: "扫描当前页面",
+  stage: "扫描当前页面",
+  message: "开始扫描",
+  data: { count: 2 },
+});
+assertEqual("buildLogEntry 字段",
+  {
+    time: entry.time,
+    level: entry.level,
+    command: entry.command,
+    stage: entry.stage,
+    message: entry.message,
+    data: entry.data,
+    error: entry.error,
+  },
+  {
+    time: "2026-06-18T00:00:00.000Z",
+    level: "step",
+    command: "扫描当前页面",
+    stage: "扫描当前页面",
+    message: "开始扫描",
+    data: { count: 2 },
+    error: null,
+  },
+);
+const fallbackLogPath = debugLogger.joinPath(debugLogger.getFallbackOutputRoot(), "logs", "ngm-ai-handoff.log");
+assertTruthy("fallback log path", fallbackLogPath.indexOf("ngm-ai-handoff.log") > -1);
+
+// export-result-writer
+console.log("\n[export-result-writer]");
+const exportResult = exportResultWriter.buildExportResult({
+  mode: "currentPage",
+  startedAt: "2026-06-18T00:00:00.000Z",
+  finishedAt: "2026-06-18T00:00:01.500Z",
+  documentName: "demo.sketch",
+  pageName: "首页",
+  outputRoot: "/tmp/demo",
+  logPath: "/tmp/demo/logs/ngm-ai-handoff.log",
+  items: [
+    { artboardName: "A", status: "success", warnings: ["warn"] },
+    { artboardName: "B", status: "failed", reason: "boom", warnings: [] },
+  ],
+});
+assertEqual("export-result 统计",
+  {
+    totalArtboards: exportResult.totalArtboards,
+    successCount: exportResult.successCount,
+    failedCount: exportResult.failedCount,
+    warningCount: exportResult.warnings.length,
+    errorCount: exportResult.errors.length,
+    durationMs: exportResult.durationMs,
+  },
+  {
+    totalArtboards: 2,
+    successCount: 1,
+    failedCount: 1,
+    warningCount: 1,
+    errorCount: 1,
+    durationMs: 1500,
+  },
+);
+
+// diagnostics
+console.log("\n[diagnostics]");
+const diagnosticsResult = diagnostics.buildDiagnosticsResult({
+  pluginVersion: "0.3.0",
+  logPath: "/tmp/log",
+  settings: { outputRoot: "/tmp/out" },
+  checkWritable: false,
+  document: {
+    name: "demo.sketch",
+    path: "/tmp/demo.sketch",
+    selectedPage: {
+      name: "首页",
+      layers: [
+        { id: "ab1", name: "A", type: "Artboard", hidden: false, locked: false, frame: { x: 1, y: 2, width: 3, height: 4 } },
+        { id: "g1", name: "G", type: "Group", hidden: false },
+      ],
+    },
+    selectedLayers: { layers: [{ id: "l1", name: "Layer", type: "Text", hidden: false, locked: false }] },
+  },
+});
+assertEqual("diagnostics 摘要",
+  {
+    documentName: diagnosticsResult.documentName,
+    selectedPageName: diagnosticsResult.selectedPageName,
+    selectedLayerCount: diagnosticsResult.selectedLayerCount,
+    visibleArtboardCount: diagnosticsResult.visibleArtboardCount,
+  },
+  {
+    documentName: "demo.sketch",
+    selectedPageName: "首页",
+    selectedLayerCount: 1,
+    visibleArtboardCount: 1,
+  },
+);
+
+// scan-page
+console.log("\n[scan-page]");
+const scanResult = scanPage.buildScanResult({
+  outputRoot: "/tmp/out",
+  logPath: "/tmp/log",
+  document: {
+    name: "demo.sketch",
+    selectedPage: {
+      name: "首页",
+      layers: [
+        { id: "ab1", name: "A", type: "Artboard", hidden: false, locked: false },
+        { id: "ab2", name: "B", type: "Artboard", hidden: true, locked: false },
+        { id: "g1", name: "G", type: "Group" },
+      ],
+    },
+  },
+});
+assertEqual("scan-page 统计",
+  {
+    artboardCount: scanResult.artboardCount,
+    visibleArtboardCount: scanResult.visibleArtboardCount,
+    hiddenArtboardCount: scanResult.hiddenArtboardCount,
+  },
+  {
+    artboardCount: 2,
+    visibleArtboardCount: 1,
+    hiddenArtboardCount: 1,
+  },
+);
+
 // 结果汇总
 console.log("");
 if (failures === 0) {
@@ -182,4 +320,3 @@ if (failures === 0) {
   console.error(`${failures} assertion(s) failed`);
   process.exit(1);
 }
-
