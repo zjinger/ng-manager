@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 var normalize = require("./normalize-layer");
 var RULES = [
     { type: "navigation", confidence: 0.7, patterns: [/nav|导航|header|topbar|顶栏|页头/] },

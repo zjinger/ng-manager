@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 function str(value) {
     return value == null ? "" : String(value);
 }

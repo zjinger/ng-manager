@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 var STRINGS = {
     pluginName: "NGM AI Handoff",
     none: "无",

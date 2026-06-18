@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 var HIT_LAYER_ROLES = {
     navigation: 1,
     sidebar: 1,

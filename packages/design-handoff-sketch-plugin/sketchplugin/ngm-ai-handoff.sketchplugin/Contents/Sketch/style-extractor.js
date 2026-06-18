@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 var normalize = require("./normalize-layer");
 function colorToHex(color) {
     return normalize.normalizeColor(color);

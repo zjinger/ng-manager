@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 function generatePrompt(meta, assetsMap) {
     var screenshotLine = assetsMap && assetsMap.screenshot
         ? "- screenshot.png：视觉参考（仅对照，不可作为实现依据）"

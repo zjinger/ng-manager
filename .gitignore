@@ -81,3 +81,4 @@ docs/ui/
 outputs/
 .ng-manager/
 apps/site/docs/hub-v2/skills/*.zip
+packages/design-handoff-sketch-plugin/sketchplugin/

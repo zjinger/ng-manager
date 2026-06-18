@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 var debugLogger = require("./debug-logger");
 function countByStatus(items, status) {
     return (items || []).filter(function (item) {

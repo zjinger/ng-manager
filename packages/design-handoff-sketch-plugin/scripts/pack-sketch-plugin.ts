@@ -6,12 +6,9 @@ const { execSync } = require("child_process");
 const packageRoot = resolve(__dirname, "..", "..");
 const pluginRoot = join(packageRoot, "sketchplugin", "ngm-ai-handoff.sketchplugin");
 const outputDir = resolve(packageRoot, "..", "..", ".artifacts", "sketch");
-// 固定文件名，兼容现有跨平台工作流（Windows 打包 -> 复制到 Mac 解压安装）。
-const outputFile = join(outputDir, "ngm-ai-handoff.sketchplugin.zip");
 
-// 版本标记：读 manifest.json 版本 + 本地时间戳 + git 短 hash，
-// 额外生成一份带版本号的副本，并在产物目录写 pack-manifest.json，
-// 方便追溯每次打包对应哪个版本/提交，同时不破坏固定文件名引用。
+// 版本标记：读 manifest.json 版本 + 本地时间戳 + git 短 hash。
+// 只生成一个带版本号的主 zip，避免固定名、版本名、清单三份产物造成混淆。
 function readPluginVersion() {
   try {
     const manifestPath = join(pluginRoot, "Contents", "Sketch", "manifest.json");
@@ -51,10 +48,9 @@ function sanitizeFilePart(value) {
 
 const pluginVersion = readPluginVersion();
 const gitHash = sanitizeFilePart(runGit("rev-parse --short HEAD")) || "nogit";
-const gitBranch = sanitizeFilePart(runGit("rev-parse --abbrev-ref HEAD"));
 const packedAt = new Date();
 const timestamp = timestampLocal(packedAt);
-const versionedOutputFile = join(
+const outputFile = join(
   outputDir,
   `ngm-ai-handoff-${sanitizeFilePart(pluginVersion)}-${timestamp}-${gitHash}.sketchplugin.zip`,
 );
@@ -197,43 +193,17 @@ if (!existsSync(pluginRoot)) {
 
 mkdirSync(outputDir, { recursive: true });
 
+// 同一秒内重复运行时，版本化文件名可能冲突，先删除保证幂等。
 if (existsSync(outputFile)) {
   rmSync(outputFile);
-}
-// 同一秒内重复运行时，版本化文件名可能冲突，先删除保证幂等。
-if (existsSync(versionedOutputFile)) {
-  rmSync(versionedOutputFile);
 }
 
 const files = collectFiles(pluginRoot);
 const zip = buildZip(files);
 
-// 固定名 zip：兼容现有跨平台工作流（Windows 打包 -> 复制到 Mac 解压安装）。
+// 只写一个主产物：带版本、时间戳和提交短 hash，便于追溯。
 writeFileSync(outputFile, zip);
-// 带版本标记的副本：用于追溯每次打包对应的版本/提交。
-writeFileSync(versionedOutputFile, zip);
-
-// 产物目录下的打包清单，记录版本/提交/时间/文件名，方便人工或脚本核对。
-// 注意：pack-manifest.json 写在 outputDir，不在 pluginRoot 内，不会被打进插件 zip。
-const packManifest = {
-  pluginName: "NGM AI Handoff",
-  version: pluginVersion,
-  gitHash,
-  gitBranch,
-  packedAt: packedAt.toISOString(),
-  timestamp,
-  fileCount: files.length,
-  latestZip: basename(outputFile),
-  versionedZip: basename(versionedOutputFile),
-};
-writeFileSync(
-  join(outputDir, "pack-manifest.json"),
-  `${JSON.stringify(packManifest, null, 2)}\n`,
-);
 
 console.log(`Packed ${files.length} files`);
-console.log(`latest   : ${outputFile}`);
-console.log(`versioned: ${versionedOutputFile}`);
-console.log(
-  `manifest : ${join(outputDir, "pack-manifest.json")} (version=${pluginVersion}, git=${gitHash}, at=${timestamp})`,
-);
+console.log(`output: ${outputFile}`);
+console.log(`version=${pluginVersion}, git=${gitHash}, at=${timestamp}`);

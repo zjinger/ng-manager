@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 function getFrame(layer) {
     var frame = layer && layer.frame ? layer.frame : {};
     return {

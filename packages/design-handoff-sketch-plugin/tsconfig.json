@@ -6,8 +6,7 @@
     "composite": true,
     "strict": true,
     "module": "CommonJS",
-    "target": "ES2019",
-    "moduleDetection": "force"
+    "target": "ES2019"
   },
   "include": ["src/**/*.ts", "scripts/**/*.ts"]
 }

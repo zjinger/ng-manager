@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 function pad3(value) {
     var n = Number(value) || 0;
     var s = String(n);

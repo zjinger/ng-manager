@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 var UI = require("sketch/ui");
 var i18n = require("./i18n");
 function nowStamp() {

@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 var i18n = require("./i18n");
 var CHECKBOX_HEIGHT = 22;
 var CHECKBOX_WIDTH = 440;

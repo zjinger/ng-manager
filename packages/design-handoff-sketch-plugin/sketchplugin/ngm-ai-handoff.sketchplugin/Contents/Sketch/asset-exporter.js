@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 var sketch = require("sketch");
 var normalize = require("./normalize-layer");
 function getFileManager() {

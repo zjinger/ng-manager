@@ -1,5 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 function isArtboard(layer) {
     return layer && layer.type === "Artboard";
 }
