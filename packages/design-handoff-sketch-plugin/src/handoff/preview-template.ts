@@ -15,11 +15,11 @@ function safeJsonScript(value) {
 
 function generatePreviewHtml(meta, layerTree, components, screenshot, styleMap, assetsMap, previewDataJson, options) {
   options = options || {};
-  var title = "NGM Handoff Preview - " + (meta && meta.artboardName ? meta.artboardName : "Artboard");
-  var artboard = previewDataJson && previewDataJson.artboard ? previewDataJson.artboard : { width: 0, height: 0 };
-  var stageWidth = artboard.width || 0;
-  var stageHeight = artboard.height || 0;
-  var screenshotHtml = screenshot
+  const title = "NGM Handoff Preview - " + (meta && meta.artboardName ? meta.artboardName : "Artboard");
+  const artboard = previewDataJson && previewDataJson.artboard ? previewDataJson.artboard : { width: 0, height: 0 };
+  const stageWidth = artboard.width || 0;
+  const stageHeight = artboard.height || 0;
+  const screenshotHtml = screenshot
     ? '<div class="ngm-screenshot-layer"><img src="screenshot.png" alt="' + escapeHtml(meta && meta.artboardName) + '"></div>'
     : '<div class="ngm-screenshot-layer ngm-screenshot-missing">未导出 screenshot.png</div>';
 

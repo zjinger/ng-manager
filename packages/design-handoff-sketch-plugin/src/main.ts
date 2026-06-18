@@ -1,19 +1,19 @@
-var sketch = require("sketch");
-var UI = require("sketch/ui");
-var exporter = require("./export/exporter");
-var pluginSettings = require("./sketch/settings");
-var i18n = require("./i18n/i18n");
-var normalize = require("./sketch/normalize-layer");
-var artboardUtils = require("./sketch/artboard-utils");
-var progress = require("./export-progress");
-var scopeDialog = require("./export-scope-dialog");
-var indexGenerator = require("./document-index-generator");
-var safeRunModule = require("./safe-run");
-var diagnostics = require("./diagnostics");
-var scanPage = require("./scan-page");
-var exportResultWriter = require("./export-result-writer");
+const sketch = require("sketch");
+const UI = require("sketch/ui");
+const exporter = require("./export/exporter");
+const pluginSettings = require("./sketch/settings");
+const i18n = require("./i18n/i18n");
+const normalize = require("./sketch/normalize-layer");
+const artboardUtils = require("./sketch/artboard-utils");
+const progress = require("./export-progress");
+const scopeDialog = require("./export-scope-dialog");
+const indexGenerator = require("./document-index-generator");
+const safeRunModule = require("./safe-run");
+const diagnostics = require("./diagnostics");
+const scanPage = require("./scan-page");
+const exportResultWriter = require("./export-result-writer");
 
-var PLUGIN_VERSION = "0.3.0";
+const PLUGIN_VERSION = "0.3.0";
 
 // ============================================================
 // 基础工具
@@ -43,8 +43,8 @@ function relativePath(rootDir, absPath) {
   if (!rootDir || !absPath) {
     return absPath || "";
   }
-  var root = String(rootDir).replace(/\/+$/g, "");
-  var abs = String(absPath);
+  const root = String(rootDir).replace(/\/+$/g, "");
+  const abs = String(absPath);
   if (abs.indexOf(root + "/") === 0) {
     return abs.slice(root.length + 1);
   }
@@ -62,17 +62,17 @@ function relativePath(rootDir, absPath) {
 
 function collectGroupsForMode(document, mode) {
   if (mode === "selected") {
-    var artboards = artboardUtils.getArtboardsFromSelection(document);
+    const artboards = artboardUtils.getArtboardsFromSelection(document);
     if (artboards.length === 0) {
       return [];
     }
-    var page = document.selectedPage;
+    const page = document.selectedPage;
     return [{ page: page, artboards: artboards }];
   }
 
   if (mode === "currentPage") {
-    var currentPage = document.selectedPage;
-    var currentArtboards = artboardUtils.collectVisibleArtboards(currentPage);
+    const currentPage = document.selectedPage;
+    const currentArtboards = artboardUtils.collectVisibleArtboards(currentPage);
     return [{ page: currentPage, artboards: currentArtboards }];
   }
 
@@ -90,11 +90,11 @@ function collectGroupsForMode(document, mode) {
 
 // 计算每个画板的唯一输出目录，避免同名覆盖。
 function computeArtboardOutputDir(rootOutputDir, page, artboard, pageIndex, artboardInPageIndex) {
-  var pageName = exporter.sanitizeName(page && page.name ? page.name : "Page");
-  var artboardName = exporter.sanitizeName(artboard.name || "Untitled Artboard");
-  var shortId = normalize.shortHash(String(artboard.id || ""));
-  var pageDirName = "page-" + indexGenerator.pad3(pageIndex + 1) + "-" + pageName;
-  var abDirName =
+  const pageName = exporter.sanitizeName(page && page.name ? page.name : "Page");
+  const artboardName = exporter.sanitizeName(artboard.name || "Untitled Artboard");
+  const shortId = normalize.shortHash(String(artboard.id || ""));
+  const pageDirName = "page-" + indexGenerator.pad3(pageIndex + 1) + "-" + pageName;
+  const abDirName =
     "artboard-" +
     indexGenerator.pad3(artboardInPageIndex + 1) +
     "-" +
@@ -106,7 +106,7 @@ function computeArtboardOutputDir(rootOutputDir, page, artboard, pageIndex, artb
 
 // 构造文档级索引用的扁平 record。路径一律相对 rootOutputDir。
 function buildArtboardRecord(options) {
-  var relPackageDir = relativePath(options.rootOutputDir, options.outputDir);
+  const relPackageDir = relativePath(options.rootOutputDir, options.outputDir);
   return {
     pageIndex: options.pageIndex,
     pageId: String((options.page && options.page.id) || ""),
@@ -125,19 +125,19 @@ function buildArtboardRecord(options) {
 }
 
 function exportSingleArtboard(options) {
-  var document = options.document;
-  var settings = options.settings;
-  var rootOutputDir = options.rootOutputDir;
-  var page = options.page;
-  var artboard = options.artboard;
-  var pageIndex = options.pageIndex;
-  var artboardInPageIndex = options.artboardInPageIndex;
-  var reporter = options.reporter;
-  var logger = options.logger;
+  let document = options.document;
+  const settings = options.settings;
+  const rootOutputDir = options.rootOutputDir;
+  const page = options.page;
+  const artboard = options.artboard;
+  const pageIndex = options.pageIndex;
+  const artboardInPageIndex = options.artboardInPageIndex;
+  const reporter = options.reporter;
+  const logger = options.logger;
 
-  var outputDir = computeArtboardOutputDir(rootOutputDir, page, artboard, pageIndex, artboardInPageIndex);
-  var shortId = normalize.shortHash(String(artboard.id || ""));
-  var record = buildArtboardRecord({
+  const outputDir = computeArtboardOutputDir(rootOutputDir, page, artboard, pageIndex, artboardInPageIndex);
+  const shortId = normalize.shortHash(String(artboard.id || ""));
+  const record = buildArtboardRecord({
     rootOutputDir: rootOutputDir,
     outputDir: outputDir,
     page: page,
@@ -154,7 +154,7 @@ function exportSingleArtboard(options) {
       artboardName: artboard.name,
       outputDir: outputDir,
     });
-    var exported = exporter.exportArtboard(document, artboard, {
+    const exported = exporter.exportArtboard(document, artboard, {
       pluginVersion: PLUGIN_VERSION,
       settings: settings,
       outputDir: outputDir,
@@ -164,14 +164,14 @@ function exportSingleArtboard(options) {
         reporter.step(key, name);
       },
     });
-    var exportedDir = typeof exported === "string" ? exported : exported.outputDir;
-    var warnings = exported && exported.warnings ? exported.warnings : [];
+    const exportedDir = typeof exported === "string" ? exported : exported.outputDir;
+    const warnings = exported && exported.warnings ? exported.warnings : [];
     reporter.success(artboard, exportedDir);
 
     record.status = "success";
     record.outputDir = exportedDir;
     record.warnings = warnings;
-    var screenshotAbs = exporter.fileExists(exporter.joinPath(exportedDir, "screenshot.png"))
+    const screenshotAbs = exporter.fileExists(exporter.joinPath(exportedDir, "screenshot.png"))
       ? exporter.joinPath(exportedDir, "screenshot.png")
       : null;
     record.screenshotPath = screenshotAbs ? relativePath(rootOutputDir, screenshotAbs) : null;
@@ -203,9 +203,9 @@ function exportSingleArtboard(options) {
 // ============================================================
 
 function runExport(document, mode, groups, context) {
-  var logger = context.logger;
+  const logger = context.logger;
   logger.step("读取设置", "读取插件导出设置");
-  var settings = context.settings || pluginSettings.getSettings();
+  const settings = context.settings || pluginSettings.getSettings();
   logger.step("获取当前文档", "已获取当前 Sketch 文档", {
     documentName: document.name || "Untitled",
     documentPath: document.path ? String(document.path) : null,
@@ -213,17 +213,17 @@ function runExport(document, mode, groups, context) {
   logger.step("获取当前 Page", "已获取当前 Page", {
     pageName: document.selectedPage ? document.selectedPage.name : "",
   });
-  var documentName = exporter.sanitizeName(document.name || "Untitled");
-  var rootOutputDir = exporter.joinPath(settings.outputRoot, documentName);
+  const documentName = exporter.sanitizeName(document.name || "Untitled");
+  const rootOutputDir = exporter.joinPath(settings.outputRoot, documentName);
   logger.step("创建输出目录", "创建导出根目录", { rootOutputDir: rootOutputDir });
   exporter.ensureDirRecursive(rootOutputDir);
 
-  var reporter = progress.createReporter();
+  const reporter = progress.createReporter();
   try {
     reporter.begin();
 
     logger.step("收集 Artboard", "开始收集导出画板", { mode: mode });
-    var flat = artboardUtils.flattenGroups(groups);
+    const flat = artboardUtils.flattenGroups(groups);
     reporter.collected(flat.length);
     if (flat.length === 0) {
       writeEmptyExportResult({
@@ -244,27 +244,27 @@ function runExport(document, mode, groups, context) {
       reporter.raw(i18n.STRINGS.singleArtboardHint);
     }
 
-    var pageIndexMap = {};
+    const pageIndexMap = {};
     groups.forEach(function (group, index) {
       pageIndexMap[String((group.page && group.page.id) || "")] = index;
     });
 
-    var pageCounter = {};
-    var records = [];
+    const pageCounter = {};
+    const records = [];
     flat.forEach(function (entry, i) {
-      var page = entry.page;
-      var artboard = entry.artboard;
-      var pageId = String((page && page.id) || "");
-      var pageIndex = pageIndexMap[pageId] !== undefined ? pageIndexMap[pageId] : 0;
+      const page = entry.page;
+      const artboard = entry.artboard;
+      const pageId = String((page && page.id) || "");
+      const pageIndex = pageIndexMap[pageId] !== undefined ? pageIndexMap[pageId] : 0;
       if (pageCounter[pageId] === undefined) {
         pageCounter[pageId] = 0;
       }
-      var artboardInPageIndex = pageCounter[pageId];
+      const artboardInPageIndex = pageCounter[pageId];
       pageCounter[pageId] += 1;
 
       reporter.startArtboard(i + 1, flat.length, artboard.name);
 
-      var record = exportSingleArtboard({
+      const record = exportSingleArtboard({
         document: document,
         settings: settings,
         rootOutputDir: rootOutputDir,
@@ -294,21 +294,21 @@ function runExport(document, mode, groups, context) {
 }
 
 function finalizeExport(options) {
-  var document = options.document;
-  var mode = options.mode;
-  var groups = options.groups;
-  var rootOutputDir = options.rootOutputDir;
-  var records = options.records;
-  var reporter = options.reporter;
-  var context = options.context;
-  var logger = context.logger;
-  var modeLabel = getModeLabel(mode);
+  let document = options.document;
+  const mode = options.mode;
+  const groups = options.groups;
+  const rootOutputDir = options.rootOutputDir;
+  const records = options.records;
+  const reporter = options.reporter;
+  const context = options.context;
+  const logger = context.logger;
+  const modeLabel = getModeLabel(mode);
 
   // 生成文档级索引
   reporter.generatingIndex();
   logger.step("generate document index", "开始生成文档级索引", { rootOutputDir: rootOutputDir });
-  var exportedAt = new Date().toISOString();
-  var indexObject = indexGenerator.buildIndexObject({
+  const exportedAt = new Date().toISOString();
+  const indexObject = indexGenerator.buildIndexObject({
     documentName: document.name || "Untitled",
     exportedAt: exportedAt,
     mode: mode,
@@ -325,7 +325,7 @@ function finalizeExport(options) {
   });
   exporter.writeJson(rootOutputDir, "handoff-index.json", indexObject);
   try {
-    var indexHtml = indexGenerator.generateIndexHtml(indexObject, modeLabel);
+    const indexHtml = indexGenerator.generateIndexHtml(indexObject, modeLabel);
     exporter.writeText(rootOutputDir, "index.html", indexHtml);
   } catch (error) {
     reporter.warning("index.html 生成失败：" + (error && error.message ? error.message : String(error)));
@@ -333,20 +333,20 @@ function finalizeExport(options) {
   }
 
   // 汇总
-  var success = records.filter(function (r) {
+  const success = records.filter(function (r) {
     return r.status === "success";
   }).length;
-  var failed = records.filter(function (r) {
+  const failed = records.filter(function (r) {
     return r.status === "failed";
   }).length;
-  var warnings = exportResultWriter.collectWarnings(records);
-  var errors = exportResultWriter.collectErrors(records, []);
+  const warnings = exportResultWriter.collectWarnings(records);
+  const errors = exportResultWriter.collectErrors(records, []);
   logger.step("write export result", "开始写入 export-result.json", {
     success: success,
     failed: failed,
     warningCount: warnings.length,
   });
-  var exportResult = exportResultWriter.buildExportResult({
+  const exportResult = exportResultWriter.buildExportResult({
     mode: mode,
     startedAt: context.startedAt,
     finishedAt: new Date().toISOString(),
@@ -392,7 +392,7 @@ function finalizeExport(options) {
 }
 
 function writeEmptyExportResult(options) {
-  var result = exportResultWriter.buildExportResult({
+  const result = exportResultWriter.buildExportResult({
     mode: options.mode,
     startedAt: options.context.startedAt,
     finishedAt: new Date().toISOString(),
@@ -414,11 +414,11 @@ function writeEmptyExportResult(options) {
 // ============================================================
 
 function buildExportLogText(options) {
-  var lines = [];
-  var document = options.document;
-  var records = options.records;
-  var reporter = options.reporter;
-  var indexObject = options.indexObject;
+  const lines = [];
+  let document = options.document;
+  const records = options.records;
+  const reporter = options.reporter;
+  const indexObject = options.indexObject;
 
   lines.push("NGM AI Handoff 导出日志");
   lines.push("=============================");
@@ -468,14 +468,14 @@ function buildExportLogText(options) {
 // ============================================================
 
 function showSuccessSummary(options) {
-  var alert = NSAlert.alloc().init();
+  const alert = NSAlert.alloc().init();
   alert.setMessageText(i18n.STRINGS.summary.title);
 
-  var pageNames = (options.groups || []).map(function (g) {
+  const pageNames = (options.groups || []).map(function (g) {
     return (g.page && g.page.name) || "";
   });
 
-  var informative =
+  const informative =
     i18n.STRINGS.summary.mode + "：" + options.modeLabel + "\n" +
     i18n.STRINGS.summary.pages + "：" + (options.groups ? options.groups.length : 0) +
     "（" + pageNames.join("、") + "）\n" +
@@ -489,20 +489,20 @@ function showSuccessSummary(options) {
   alert.addButtonWithTitle(i18n.STRINGS.summary.openInFinder);
   alert.addButtonWithTitle(i18n.STRINGS.summary.close);
 
-  var response = alert.runModal();
-  var firstButton = typeof NSAlertFirstButtonReturn !== "undefined" ? NSAlertFirstButtonReturn : 1000;
+  const response = alert.runModal();
+  const firstButton = typeof NSAlertFirstButtonReturn !== "undefined" ? NSAlertFirstButtonReturn : 1000;
   if (response === firstButton) {
     revealInFinder(options.rootOutputDir);
   }
 }
 
 function showFailureSummary(options) {
-  var records = options.records || [];
-  var failures = records.filter(function (r) {
+  const records = options.records || [];
+  const failures = records.filter(function (r) {
     return r.status === "failed";
   });
 
-  var failureLines = failures.map(function (r) {
+  const failureLines = failures.map(function (r) {
     return (
       "- " +
       i18n.STRINGS.failure.failedArtboard +
@@ -515,7 +515,7 @@ function showFailureSummary(options) {
     );
   });
 
-  var informative = [
+  const informative = [
     i18n.STRINGS.failure.intro,
     "",
     i18n.STRINGS.summary.mode + "：" + options.modeLabel,
@@ -529,23 +529,23 @@ function showFailureSummary(options) {
     "",
     i18n.t("failure.logHint", { path: options.logPath }),
   ];
-  var alert = NSAlert.alloc().init();
+  const alert = NSAlert.alloc().init();
   alert.setMessageText(i18n.STRINGS.failure.title);
   alert.setInformativeText(informative.join("\n"));
   alert.addButtonWithTitle(i18n.STRINGS.summary.openInFinder);
   alert.addButtonWithTitle(i18n.STRINGS.summary.close);
 
-  var response = alert.runModal();
-  var firstButton = typeof NSAlertFirstButtonReturn !== "undefined" ? NSAlertFirstButtonReturn : 1000;
+  const response = alert.runModal();
+  const firstButton = typeof NSAlertFirstButtonReturn !== "undefined" ? NSAlertFirstButtonReturn : 1000;
   if (response === firstButton) {
     revealInFinder(options.rootOutputDir);
   }
 }
 
 function revealInFinder(path) {
-  var targetPath = String(path || "");
+  const targetPath = String(path || "");
   try {
-    var url = NSURL.fileURLWithPath(targetPath);
+    const url = NSURL.fileURLWithPath(targetPath);
     NSWorkspace.sharedWorkspace().activateFileViewerSelectingURLs(NSArray.arrayWithObject(url));
     return;
   } catch (error) {
@@ -584,11 +584,11 @@ function showNoArtboardMessage(mode) {
 function onExportSelectedArtboard() {
   return safeRunModule.safeRun({ command: "export-selected-artboard", commandLabel: i18n.STRINGS.modeSelected }, function (context) {
     context.logger.step("获取当前文档", "准备获取当前文档");
-    var document = getDocument();
+    let document = getDocument();
     if (!document) {
       throw new Error(i18n.STRINGS.noDocument);
     }
-    var groups = collectGroupsForMode(document, "selected");
+    const groups = collectGroupsForMode(document, "selected");
     if (groups.length === 0) {
       showNoArtboardMessage("selected");
       return null;
@@ -600,11 +600,11 @@ function onExportSelectedArtboard() {
 function onExportCurrentPage() {
   return safeRunModule.safeRun({ command: "export-current-page", commandLabel: i18n.STRINGS.modeCurrentPage }, function (context) {
     context.logger.step("获取当前文档", "准备获取当前文档");
-    var document = getDocument();
+    let document = getDocument();
     if (!document) {
       throw new Error(i18n.STRINGS.noDocument);
     }
-    var groups = collectGroupsForMode(document, "currentPage");
+    const groups = collectGroupsForMode(document, "currentPage");
     if (groups.length === 0 || groups[0].artboards.length === 0) {
       showNoArtboardMessage("currentPage");
       return null;
@@ -616,11 +616,11 @@ function onExportCurrentPage() {
 function onExportWholeDocument() {
   return safeRunModule.safeRun({ command: "export-whole-document", commandLabel: i18n.STRINGS.modeWholeDocument }, function (context) {
     context.logger.step("获取当前文档", "准备获取当前文档");
-    var document = getDocument();
+    let document = getDocument();
     if (!document) {
       throw new Error(i18n.STRINGS.noDocument);
     }
-    var groups = collectGroupsForMode(document, "wholeDocument");
+    const groups = collectGroupsForMode(document, "wholeDocument");
     if (groups.length === 0) {
       showNoArtboardMessage("wholeDocument");
       return null;
@@ -632,22 +632,22 @@ function onExportWholeDocument() {
 function onExportCustom() {
   return safeRunModule.safeRun({ command: "export-custom", commandLabel: i18n.STRINGS.modeCustom }, function (context) {
     context.logger.step("获取当前文档", "准备获取当前文档");
-    var document = getDocument();
+    let document = getDocument();
     if (!document) {
       throw new Error(i18n.STRINGS.noDocument);
     }
-    var allGroups = artboardUtils.getDocumentArtboardGroups(document);
+    const allGroups = artboardUtils.getDocumentArtboardGroups(document);
     if (allGroups.length === 0) {
       showNoArtboardMessage("wholeDocument");
       return null;
     }
-    var entries = artboardUtils.flattenGroups(allGroups);
-    var selection = scopeDialog.showCustomScopeDialog(entries);
+    const entries = artboardUtils.flattenGroups(allGroups);
+    let selection = scopeDialog.showCustomScopeDialog(entries);
     if (!selection || selection.length === 0) {
       showNoArtboardMessage("custom");
       return null;
     }
-    var groups = artboardUtils.filterGroupsBySelection(allGroups, selection);
+    const groups = artboardUtils.filterGroupsBySelection(allGroups, selection);
     if (groups.length === 0) {
       showNoArtboardMessage("custom");
       return null;

@@ -16,7 +16,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node lib/scripts/build-plugin.js",
     "test:sketch-helpers": "npm run build && node scripts/test-sketch-helpers.js",
-    "pack:sketch": "npm run build && node lib/scripts/pack-sketch-plugin.js"
+    "pack:sketch": "npm run build && node lib/scripts/pack-sketch-plugin.js",
+    "typecheck:strict": "tsc -p tsconfig.strict.json"
   },
   "dependencies": {
     "@yinuo-ngm/design-handoff": "^0.2.0"

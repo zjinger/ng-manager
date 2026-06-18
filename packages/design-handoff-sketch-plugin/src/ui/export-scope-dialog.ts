@@ -1,14 +1,14 @@
 // 自定义导出勾选对话框。
 // 使用 NSAlert accessoryView 构建 checkbox 列表，避免依赖 NSWindowController.extend。
 
-var i18n = require("../i18n/i18n");
+const i18n = require("../i18n/i18n");
 
-var CHECKBOX_HEIGHT = 22;
-var CHECKBOX_WIDTH = 440;
-var DIALOG_WIDTH = 520;
-var DIALOG_HEIGHT = 420;
-var ROW_SPACING = 4;
-var PADDING = 12;
+const CHECKBOX_HEIGHT = 22;
+const CHECKBOX_WIDTH = 440;
+const DIALOG_WIDTH = 520;
+const DIALOG_HEIGHT = 420;
+const ROW_SPACING = 4;
+const PADDING = 12;
 
 function nsRect(x, y, width, height) {
   return NSMakeRect(x, y, width, height);
@@ -25,24 +25,24 @@ function showCustomScopeDialog(entries) {
     return null;
   }
 
-  var checkboxFrames = [];
-  var alert = NSAlert.alloc().init();
+  const checkboxFrames = [];
+  const alert = NSAlert.alloc().init();
   alert.setMessageText(i18n.STRINGS.custom.title);
   alert.setInformativeText(i18n.t("custom.prompt", { count: entries.length }));
   alert.addButtonWithTitle(i18n.STRINGS.custom.confirm);
   alert.addButtonWithTitle(i18n.STRINGS.custom.cancel);
   alert.setAccessoryView(buildAccessoryView(entries, checkboxFrames));
 
-  var response = alert.runModal();
-  var firstButton = typeof NSAlertFirstButtonReturn !== "undefined" ? NSAlertFirstButtonReturn : 1000;
+  const response = alert.runModal();
+  const firstButton = typeof NSAlertFirstButtonReturn !== "undefined" ? NSAlertFirstButtonReturn : 1000;
   if (response !== firstButton) {
     return null;
   }
 
-  var result = [];
+  const result = [];
   checkboxFrames.forEach(function (checkbox, index) {
     if (checkbox.state() === NSOnState) {
-      var entry = entries[index];
+      const entry = entries[index];
       result.push({
         pageId: String((entry.page && entry.page.id) || ""),
         artboardId: String((entry.artboard && entry.artboard.id) || ""),
@@ -54,22 +54,22 @@ function showCustomScopeDialog(entries) {
 }
 
 function buildAccessoryView(entries, checkboxFrames) {
-  var scrollView = NSScrollView.alloc().initWithFrame(
+  const scrollView = NSScrollView.alloc().initWithFrame(
     nsRect(0, 0, DIALOG_WIDTH, DIALOG_HEIGHT),
   );
   scrollView.setHasVerticalScroller(true);
   scrollView.setAutohidesScrollers(false);
   scrollView.setBorderType(NSBezelBorder);
 
-  var documentHeight = Math.max(DIALOG_HEIGHT, entries.length * (CHECKBOX_HEIGHT + ROW_SPACING) + PADDING);
-  var documentView = NSView.alloc().initWithFrame(
+  const documentHeight = Math.max(DIALOG_HEIGHT, entries.length * (CHECKBOX_HEIGHT + ROW_SPACING) + PADDING);
+  const documentView = NSView.alloc().initWithFrame(
     nsRect(0, 0, DIALOG_WIDTH - 2, documentHeight),
   );
   scrollView.setDocumentView(documentView);
 
   entries.forEach(function (entry, index) {
-    var y = documentHeight - PADDING - (index + 1) * (CHECKBOX_HEIGHT + ROW_SPACING);
-    var checkbox = NSButton.alloc().initWithFrame(nsRect(PADDING, y, CHECKBOX_WIDTH, CHECKBOX_HEIGHT));
+    const y = documentHeight - PADDING - (index + 1) * (CHECKBOX_HEIGHT + ROW_SPACING);
+    const checkbox = NSButton.alloc().initWithFrame(nsRect(PADDING, y, CHECKBOX_WIDTH, CHECKBOX_HEIGHT));
     checkbox.setButtonType(NSSwitchButton);
     checkbox.setBezelStyle(0);
     checkbox.setState(NSOnState);

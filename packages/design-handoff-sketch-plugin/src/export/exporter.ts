@@ -1,19 +1,19 @@
-var sketch = require("sketch");
-var normalize = require("../sketch/normalize-layer");
-var styles = require("./style-extractor");
-var components = require("./component-infer");
-var promptGenerator = require("./prompt-generator");
-var pluginSettings = require("../sketch/settings");
-var handoffMapGenerator = require("../handoff/handoff-map-generator");
-var previewTemplate = require("../handoff/preview-template");
-var previewDataGenerator = require("../handoff/preview-data-generator");
-var previewCss = require("../handoff/preview-css");
-var previewJs = require("../handoff/preview-js");
-var interactionBridgeTemplate = require("../handoff/interaction-bridge-template");
-var designContextGenerator = require("../handoff/design-context-generator");
-var assetExporter = require("./asset-exporter");
+const sketch = require("sketch");
+const normalize = require("../sketch/normalize-layer");
+const styles = require("./style-extractor");
+const components = require("./component-infer");
+const promptGenerator = require("./prompt-generator");
+const pluginSettings = require("../sketch/settings");
+const handoffMapGenerator = require("../handoff/handoff-map-generator");
+const previewTemplate = require("../handoff/preview-template");
+const previewDataGenerator = require("../handoff/preview-data-generator");
+const previewCss = require("../handoff/preview-css");
+const previewJs = require("../handoff/preview-js");
+const interactionBridgeTemplate = require("../handoff/interaction-bridge-template");
+const designContextGenerator = require("../handoff/design-context-generator");
+const assetExporter = require("./asset-exporter");
 
-var UTF8_ENCODING = typeof NSUTF8StringEncoding !== "undefined" ? NSUTF8StringEncoding : 4;
+const UTF8_ENCODING = typeof NSUTF8StringEncoding !== "undefined" ? NSUTF8StringEncoding : 4;
 
 function getFileManager() {
   return NSFileManager.defaultManager();
@@ -41,14 +41,14 @@ function moveFile(source, target) {
 }
 
 function readDir(dir) {
-  var contents = getFileManager().contentsOfDirectoryAtPath_error(String(dir), null);
-  var result = [];
+  let contents = getFileManager().contentsOfDirectoryAtPath_error(String(dir), null);
+  const result = [];
 
   if (!contents) {
     return result;
   }
 
-  for (var index = 0; index < contents.count(); index += 1) {
+  for (let index = 0; index < contents.count(); index += 1) {
     result.push(String(contents.objectAtIndex(index)));
   }
 
@@ -75,9 +75,9 @@ function writeJson(outputDir, fileName, value) {
 }
 
 function writeText(outputDir, fileName, value) {
-  var filePath = pluginSettings.joinPath(outputDir, fileName);
-  var text = NSString.stringWithString(String(value));
-  var ok = text.writeToFile_atomically_encoding_error(filePath, true, UTF8_ENCODING, null);
+  const filePath = pluginSettings.joinPath(outputDir, fileName);
+  const text = NSString.stringWithString(String(value));
+  let ok = text.writeToFile_atomically_encoding_error(filePath, true, UTF8_ENCODING, null);
 
   if (!ok) {
     throw new Error("Failed to write file: " + filePath);
@@ -99,7 +99,7 @@ function collectExportedPngs(dir) {
 }
 
 function exportScreenshot(artboard, outputDir, warnings) {
-  var before = collectExportedPngs(outputDir);
+  const before = collectExportedPngs(outputDir);
 
   try {
     sketch.export(artboard, {
@@ -113,13 +113,13 @@ function exportScreenshot(artboard, outputDir, warnings) {
     return null;
   }
 
-  var after = collectExportedPngs(outputDir);
-  var newFiles = after.filter(function (file) {
+  const after = collectExportedPngs(outputDir);
+  const newFiles = after.filter(function (file) {
     return before.indexOf(file) === -1;
   });
 
-  var expected = pluginSettings.joinPath(outputDir, sanitizeName(artboard.name) + ".png");
-  var source = null;
+  const expected = pluginSettings.joinPath(outputDir, sanitizeName(artboard.name) + ".png");
+  let source = null;
   if (fileExists(expected)) {
     source = expected;
   } else if (newFiles.length > 0) {
@@ -131,7 +131,7 @@ function exportScreenshot(artboard, outputDir, warnings) {
     return null;
   }
 
-  var target = pluginSettings.joinPath(outputDir, "screenshot.png");
+  const target = pluginSettings.joinPath(outputDir, "screenshot.png");
   if (source !== target) {
     if (fileExists(target)) {
       removeFile(target);
@@ -183,17 +183,17 @@ function buildManifest(meta, screenshot) {
 
 function exportArtboard(document, artboard, options) {
   options = options || {};
-  var pluginVersion = options.pluginVersion ? options.pluginVersion : "0.2.0";
-  var settings = options.settings ? options.settings : pluginSettings.getSettings();
-  var onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
-  var logger = options.logger || null;
-  var pageName = options.pageName ? options.pageName : null;
-  var documentName = sanitizeName(document.name || "Untitled");
-  var artboardName = sanitizeName(artboard.name || "Untitled Artboard");
-  var outputDir = options.outputDir
+  const pluginVersion = options.pluginVersion ? options.pluginVersion : "0.2.0";
+  const settings = options.settings ? options.settings : pluginSettings.getSettings();
+  const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
+  const logger = options.logger || null;
+  const pageName = options.pageName ? options.pageName : null;
+  const documentName = sanitizeName(document.name || "Untitled");
+  const artboardName = sanitizeName(artboard.name || "Untitled Artboard");
+  const outputDir = options.outputDir
     ? options.outputDir
     : pluginSettings.joinPath(settings.outputRoot, documentName, artboardName);
-  var warnings = [];
+  const warnings = [];
 
   function logStep(stage, message, data) {
     if (logger && typeof logger.step === "function") {
@@ -223,26 +223,26 @@ function exportArtboard(document, artboard, options) {
   emitStep("generatingHandoffJson", artboard.name);
 
   logStep("normalize layer tree", "开始归一化图层树", { artboardName: artboard.name });
-  var styleRegistry = styles.createStyleRegistry();
-  var layerTree = normalize.normalizeLayer(artboard, styleRegistry);
+  const styleRegistry = styles.createStyleRegistry();
+  let layerTree = normalize.normalizeLayer(artboard, styleRegistry);
   if (!layerTree) {
     throw new Error("Selected artboard has no exportable layers.");
   }
 
   logStep("collect texts", "开始收集文本图层", { artboardName: artboard.name });
-  var texts = normalize.collectTexts(artboard);
+  const texts = normalize.collectTexts(artboard);
   logStep("extract styles", "开始提取样式", { artboardName: artboard.name });
-  var styleMap = styleRegistry.styles;
+  const styleMap = styleRegistry.styles;
   logStep("extract tokens", "开始提取设计 Token", { artboardName: artboard.name });
-  var tokens = styles.extractTokens(styleMap, texts);
+  const tokens = styles.extractTokens(styleMap, texts);
   logStep("infer components", "开始推断组件", { artboardName: artboard.name });
-  var inferredComponents = components.inferComponents(layerTree);
+  const inferredComponents = components.inferComponents(layerTree);
 
   if (settings.exportScreenshot) {
     emitStep("generatingScreenshot", artboard.name);
     logStep("export screenshot", "开始导出截图", { artboardName: artboard.name });
   }
-  var screenshot = settings.exportScreenshot ? exportScreenshot(artboard, outputDir, warnings) : null;
+  let screenshot = settings.exportScreenshot ? exportScreenshot(artboard, outputDir, warnings) : null;
   if (!settings.exportScreenshot) {
     warnings.push("Screenshot export is disabled in plugin settings.");
     logWarning("export screenshot", "插件设置已禁用截图导出", { artboardName: artboard.name });
@@ -251,36 +251,36 @@ function exportArtboard(document, artboard, options) {
   }
 
   logStep("export assets", "开始导出资源图层", { artboardName: artboard.name });
-  var bitmapAssets = assetExporter.exportBitmapAssets(
+  const bitmapAssets = assetExporter.exportBitmapAssets(
     artboard,
     outputDir,
     pluginSettings.joinPath,
     warnings,
     { layerTree: layerTree, artboardId: layerTree.artboardId },
   );
-  var assetsMap = {
+  const assetsMap = {
     screenshot: screenshot,
     assets: bitmapAssets,
     warnings: warnings,
   };
 
-  var meta = buildMeta(document, artboard, pluginVersion, pageName);
+  const meta = buildMeta(document, artboard, pluginVersion, pageName);
   logStep("build handoff map", "开始生成 Handoff 映射", { artboardName: artboard.name });
-  var handoffMap = handoffMapGenerator.buildHandoffMap(layerTree, inferredComponents);
+  const handoffMap = handoffMapGenerator.buildHandoffMap(layerTree, inferredComponents);
 
   emitStep("generatingPreview", artboard.name);
   logStep("generate preview html", "开始生成预览 HTML", { artboardName: artboard.name });
-  var previewDataJson = previewDataGenerator.generatePreviewData(meta, layerTree, inferredComponents, screenshot, styleMap, assetsMap);
-  var previewCssText = previewCss.generatePreviewCss();
-  var previewJsText = previewJs.generatePreviewJs();
-  var previewHtml = previewTemplate.generatePreviewHtml(meta, layerTree, inferredComponents, screenshot, styleMap, assetsMap, previewDataJson);
-  var bridgeScript = interactionBridgeTemplate.generateBridgeScript();
+  const previewDataJson = previewDataGenerator.generatePreviewData(meta, layerTree, inferredComponents, screenshot, styleMap, assetsMap);
+  const previewCssText = previewCss.generatePreviewCss();
+  const previewJsText = previewJs.generatePreviewJs();
+  const previewHtml = previewTemplate.generatePreviewHtml(meta, layerTree, inferredComponents, screenshot, styleMap, assetsMap, previewDataJson);
+  const bridgeScript = interactionBridgeTemplate.generateBridgeScript();
 
   emitStep("generatingAiContext", artboard.name);
   logStep("generate design context", "开始生成设计上下文", { artboardName: artboard.name });
-  var designContext = designContextGenerator.generateDesignContext(meta, layerTree, inferredComponents, texts, tokens, assetsMap);
-  var manifest = buildManifest(meta, screenshot);
-  var prompt = promptGenerator.generatePrompt(meta, assetsMap);
+  const designContext = designContextGenerator.generateDesignContext(meta, layerTree, inferredComponents, texts, tokens, assetsMap);
+  const manifest = buildManifest(meta, screenshot);
+  const prompt = promptGenerator.generatePrompt(meta, assetsMap);
 
   logStep("write json files", "开始写入 Handoff JSON 文件", { outputDir: outputDir });
   writeJson(outputDir, "meta.json", meta);

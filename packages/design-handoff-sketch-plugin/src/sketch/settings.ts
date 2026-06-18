@@ -1,18 +1,18 @@
-var UI = require("sketch/ui");
-var i18n = require("../i18n/i18n");
+const UI = require("sketch/ui");
+const i18n = require("../i18n/i18n");
 
-var SETTINGS_PREFIX = "com.ng-manager.ai-handoff.";
-var OUTPUT_ROOT_KEY = SETTINGS_PREFIX + "outputRoot";
-var EXPORT_SCREENSHOT_KEY = SETTINGS_PREFIX + "exportScreenshot";
+const SETTINGS_PREFIX = "com.ng-manager.ai-handoff.";
+const OUTPUT_ROOT_KEY = SETTINGS_PREFIX + "outputRoot";
+const EXPORT_SCREENSHOT_KEY = SETTINGS_PREFIX + "exportScreenshot";
 
 function joinPath(..._parts: any[]) {
-  var parts = Array.prototype.slice.call(arguments).filter(function (part) {
+  const parts = Array.prototype.slice.call(arguments).filter(function (part) {
     return part !== null && part !== undefined && String(part).length > 0;
   });
 
   return parts
     .map(function (part, index) {
-      var value = String(part);
+      let value = String(part);
       if (index === 0) {
         return value.replace(/\/+$/g, "");
       }
@@ -33,7 +33,7 @@ function getDefaultsStore() {
 }
 
 function getStoredString(key) {
-  var value = getDefaultsStore().objectForKey(key);
+  let value = getDefaultsStore().objectForKey(key);
   if (!value) {
     return null;
   }
@@ -42,7 +42,7 @@ function getStoredString(key) {
 }
 
 function hasStoredValue(key) {
-  var value = getDefaultsStore().objectForKey(key);
+  let value = getDefaultsStore().objectForKey(key);
   return value !== null && value !== undefined;
 }
 
@@ -57,7 +57,7 @@ function setStoredBoolean(key, value) {
 }
 
 function getSettings() {
-  var defaults = getDefaults();
+  const defaults = getDefaults();
 
   return {
     outputRoot: getStoredString(OUTPUT_ROOT_KEY) || defaults.outputRoot,
@@ -68,7 +68,7 @@ function getSettings() {
 }
 
 function chooseExportFolder(currentPath) {
-  var panel = NSOpenPanel.openPanel();
+  const panel = NSOpenPanel.openPanel();
   panel.setCanChooseFiles(false);
   panel.setCanChooseDirectories(true);
   panel.setCanCreateDirectories(true);
@@ -80,8 +80,8 @@ function chooseExportFolder(currentPath) {
     panel.setDirectoryURL(NSURL.fileURLWithPath(currentPath));
   }
 
-  var response = panel.runModal();
-  var okResponse = typeof NSModalResponseOK !== "undefined" ? NSModalResponseOK : 1;
+  const response = panel.runModal();
+  const okResponse = typeof NSModalResponseOK !== "undefined" ? NSModalResponseOK : 1;
   if (response !== okResponse && response !== 1) {
     return null;
   }
@@ -90,8 +90,8 @@ function chooseExportFolder(currentPath) {
 }
 
 function configureSettings() {
-  var settings = getSettings();
-  var alert = NSAlert.alloc().init();
+  const settings = getSettings();
+  const alert = NSAlert.alloc().init();
   alert.setMessageText(i18n.STRINGS.settings.title);
   alert.setInformativeText(
     [
@@ -108,12 +108,12 @@ function configureSettings() {
   );
   alert.addButtonWithTitle(i18n.STRINGS.settings.cancel);
 
-  var response = alert.runModal();
-  var firstButton = typeof NSAlertFirstButtonReturn !== "undefined" ? NSAlertFirstButtonReturn : 1000;
-  var secondButton = typeof NSAlertSecondButtonReturn !== "undefined" ? NSAlertSecondButtonReturn : 1001;
+  const response = alert.runModal();
+  const firstButton = typeof NSAlertFirstButtonReturn !== "undefined" ? NSAlertFirstButtonReturn : 1000;
+  const secondButton = typeof NSAlertSecondButtonReturn !== "undefined" ? NSAlertSecondButtonReturn : 1001;
 
   if (response === firstButton) {
-    var selected = chooseExportFolder(settings.outputRoot);
+    const selected = chooseExportFolder(settings.outputRoot);
     if (selected) {
       setStoredValue(OUTPUT_ROOT_KEY, selected);
       UI.message(i18n.STRINGS.pluginName + " · " + i18n.STRINGS.settings.folderUpdated);

@@ -1,7 +1,7 @@
-var LOG_FILE_NAME = "ngm-ai-handoff.log";
-var UTF8_ENCODING = typeof NSUTF8StringEncoding !== "undefined" ? NSUTF8StringEncoding : 4;
+const LOG_FILE_NAME = "ngm-ai-handoff.log";
+const UTF8_ENCODING = typeof NSUTF8StringEncoding !== "undefined" ? NSUTF8StringEncoding : 4;
 
-function tryRequire(name) {
+function tryRequire(name: string): any {
   try {
     return require(name);
   } catch (error) {
@@ -9,17 +9,17 @@ function tryRequire(name) {
   }
 }
 
-var nodeFs = tryRequire("fs");
-var nodeOs = tryRequire("os");
+const nodeFs: any = tryRequire("fs");
+const nodeOs: any = tryRequire("os");
 
-function joinPath(..._parts: any[]) {
-  var parts = Array.prototype.slice.call(arguments).filter(function (part) {
+function joinPath(..._parts: unknown[]): string {
+  const parts = Array.prototype.slice.call(arguments).filter(function (part) {
     return part !== null && part !== undefined && String(part).length > 0;
   });
 
   return parts
     .map(function (part, index) {
-      var value = String(part);
+      const value = String(part);
       if (index === 0) {
         return value.replace(/\/+$/g, "");
       }
@@ -45,8 +45,8 @@ function getFileManager() {
   return null;
 }
 
-function ensureDirRecursive(dir) {
-  var fileManager = getFileManager();
+function ensureDirRecursive(dir: string): boolean {
+  const fileManager = getFileManager();
   if (fileManager) {
     return Boolean(
       fileManager.createDirectoryAtPath_withIntermediateDirectories_attributes_error(
@@ -64,16 +64,16 @@ function ensureDirRecursive(dir) {
   return false;
 }
 
-function fileExists(path) {
-  var fileManager = getFileManager();
+function fileExists(path: string): boolean {
+  const fileManager = getFileManager();
   if (fileManager) {
     return Boolean(fileManager.fileExistsAtPath(String(path)));
   }
   return nodeFs ? nodeFs.existsSync(String(path)) : false;
 }
 
-function removeFile(path) {
-  var fileManager = getFileManager();
+function removeFile(path: string): void {
+  const fileManager = getFileManager();
   if (fileManager) {
     fileManager.removeItemAtPath_error(String(path), null);
     return;
@@ -83,10 +83,10 @@ function removeFile(path) {
   }
 }
 
-function writeTextFile(path, text) {
-  var fileManager = getFileManager();
+function writeTextFile(path: string, text: string): boolean {
+  const fileManager = getFileManager();
   if (fileManager && typeof NSString !== "undefined") {
-    var value = NSString.stringWithString(String(text));
+    const value = NSString.stringWithString(String(text));
     return Boolean(value.writeToFile_atomically_encoding_error(String(path), true, UTF8_ENCODING, null));
   }
   if (nodeFs) {
@@ -96,16 +96,16 @@ function writeTextFile(path, text) {
   return false;
 }
 
-function appendTextFile(path, text) {
-  var fileManager = getFileManager();
+function appendTextFile(path: string, text: string): boolean {
+  const fileManager = getFileManager();
   if (fileManager && typeof NSString !== "undefined") {
     if (!fileExists(path)) {
       return writeTextFile(path, text);
     }
     try {
-      var handle = NSFileHandle.fileHandleForWritingAtPath(String(path));
+      const handle = NSFileHandle.fileHandleForWritingAtPath(String(path));
       handle.seekToEndOfFile();
-      var data = NSString.stringWithString(String(text)).dataUsingEncoding(UTF8_ENCODING);
+      const data = NSString.stringWithString(String(text)).dataUsingEncoding(UTF8_ENCODING);
       handle.writeData(data);
       handle.closeFile();
       return true;
@@ -120,15 +120,15 @@ function appendTextFile(path, text) {
   return false;
 }
 
-function writeJsonFile(dir, fileName, value) {
+function writeJsonFile(dir: string, fileName: string, value: unknown): boolean {
   ensureDirRecursive(dir);
   return writeTextFile(joinPath(dir, fileName), JSON.stringify(value, null, 2) + "\n");
 }
 
-function isDirectoryWritable(dir) {
+function isDirectoryWritable(dir: string): boolean {
   try {
     ensureDirRecursive(dir);
-    var probe = joinPath(dir, ".ngm-ai-handoff-write-test");
+    const probe = joinPath(dir, ".ngm-ai-handoff-write-test");
     if (!writeTextFile(probe, "ok")) {
       return false;
     }
@@ -139,8 +139,8 @@ function isDirectoryWritable(dir) {
   }
 }
 
-function resolveLogLocation(outputRoot) {
-  var preferredRoot = outputRoot ? joinPath(outputRoot, "logs") : null;
+function resolveLogLocation(outputRoot: string | undefined | null): { logDir: string; logPath: string; fallback: boolean } {
+  const preferredRoot = outputRoot ? joinPath(outputRoot, "logs") : null;
   if (preferredRoot && isDirectoryWritable(preferredRoot)) {
     return {
       logDir: preferredRoot,
@@ -149,7 +149,7 @@ function resolveLogLocation(outputRoot) {
     };
   }
 
-  var fallbackRoot = joinPath(getHomeDir(), "Desktop", "ngm-ai-handoff", "logs");
+  const fallbackRoot = joinPath(getHomeDir(), "Desktop", "ngm-ai-handoff", "logs");
   ensureDirRecursive(fallbackRoot);
   return {
     logDir: fallbackRoot,
@@ -158,11 +158,11 @@ function resolveLogLocation(outputRoot) {
   };
 }
 
-function getFallbackOutputRoot() {
+function getFallbackOutputRoot(): string {
   return joinPath(getHomeDir(), "Desktop", "ngm-ai-handoff");
 }
 
-function safeSerialize(value) {
+function safeSerialize(value: unknown): unknown {
   if (value === undefined) {
     return null;
   }
@@ -174,17 +174,26 @@ function safeSerialize(value) {
   }
 }
 
-function normalizeError(error) {
+function normalizeError(error: unknown): { message: string; stack: string | null } | null {
   if (!error) {
     return null;
   }
+  let errorObject = typeof error === "object" ? error as { message?: unknown; stack?: unknown } : null;
   return {
-    message: error && error.message ? String(error.message) : String(error),
-    stack: error && error.stack ? String(error.stack) : null,
+    message: errorObject && errorObject.message ? String(errorObject.message) : String(error),
+    stack: errorObject && errorObject.stack ? String(errorObject.stack) : null,
   };
 }
 
-function buildLogEntry(options) {
+function buildLogEntry(options: {
+  time?: string;
+  level: string;
+  command?: string;
+  stage?: string;
+  message?: string;
+  data?: unknown;
+  error?: unknown;
+}) {
   return {
     time: options.time || new Date().toISOString(),
     level: options.level,
@@ -196,17 +205,20 @@ function buildLogEntry(options) {
   };
 }
 
-function createLogger(options) {
+function createLogger(options?: {
+  outputRoot?: string;
+  command?: string;
+}) {
   options = options || {};
-  var location = resolveLogLocation(options.outputRoot);
-  var currentStage = "初始化";
-  var command = options.command || "";
+  const location = resolveLogLocation(options.outputRoot);
+  let currentStage = "初始化";
+  const command = options.command || "";
 
-  function write(level, stage, message, data, error) {
+  function write(level: string, stage: string | undefined, message: string, data: unknown, error: unknown) {
     if (stage) {
       currentStage = stage;
     }
-    var entry = buildLogEntry({
+    const entry = buildLogEntry({
       level: level,
       command: command,
       stage: stage || currentStage,
@@ -223,22 +235,22 @@ function createLogger(options) {
     logDir: location.logDir,
     logPath: location.logPath,
     fallback: location.fallback,
-    setStage: function (stage) {
+    setStage: function (stage: string) {
       currentStage = stage || currentStage;
     },
-    getStage: function () {
+    getStage: function (): string {
       return currentStage;
     },
-    info: function (stage, message, data) {
+    info: function (stage: string, message: string, data?: unknown) {
       return write("info", stage, message, data, null);
     },
-    warn: function (stage, message, data) {
+    warn: function (stage: string, message: string, data?: unknown) {
       return write("warn", stage, message, data, null);
     },
-    error: function (stage, message, error, data) {
+    error: function (stage: string, message: string, error: unknown, data?: unknown) {
       return write("error", stage, message, data, error);
     },
-    step: function (stage, message, data) {
+    step: function (stage: string, message: string, data?: unknown) {
       return write("step", stage, message, data, null);
     },
   };

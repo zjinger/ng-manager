@@ -1,14 +1,14 @@
 // 导出进度报告器（Phase 1 Refactor 4）。
 // 使用轻量 NSWindow + NSProgressIndicator 展示阶段化进度，支持取消与完成/失败摘要。
 
-var UI = require("sketch/ui");
-var i18n = require("../i18n/i18n");
+const UI = require("sketch/ui");
+const i18n = require("../i18n/i18n");
 
-var WINDOW_WIDTH = 520;
-var WINDOW_HEIGHT = 160;
-var PADDING = 16;
+const WINDOW_WIDTH = 520;
+const WINDOW_HEIGHT = 160;
+const PADDING = 16;
 
-var PHASES = {
+const PHASES = {
   preparing: "准备中",
   collectingArtboards: "收集画板",
   processingLayers: "处理图层",
@@ -36,7 +36,7 @@ function nsRect(x, y, width, height) {
   return NSMakeRect(x, y, width, height);
 }
 
-var CancelHandler = null;
+let CancelHandler = null;
 try {
   CancelHandler = NSObject.extend({
     "initWithReporter:": function(reporter) {
@@ -60,7 +60,7 @@ try {
 
 function createProgressWindow(title) {
   try {
-    var window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer(
+    const window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer(
       nsRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT),
       NSTitledWindowMask,
       NSBackingStoreBuffered,
@@ -69,9 +69,9 @@ function createProgressWindow(title) {
     window.setTitle(title || i18n.STRINGS.pluginName);
     window.center();
 
-    var content = window.contentView();
+    const content = window.contentView();
 
-    var titleLabel = NSTextField.alloc().initWithFrame(nsRect(PADDING, WINDOW_HEIGHT - 42, WINDOW_WIDTH - PADDING * 2, 22));
+    const titleLabel = NSTextField.alloc().initWithFrame(nsRect(PADDING, WINDOW_HEIGHT - 42, WINDOW_WIDTH - PADDING * 2, 22));
     titleLabel.setStringValue(i18n.STRINGS.pluginName);
     titleLabel.setBezeled(false);
     titleLabel.setDrawsBackground(false);
@@ -80,7 +80,7 @@ function createProgressWindow(title) {
     titleLabel.setFont(NSFont.boldSystemFontOfSize(13));
     content.addSubview(titleLabel);
 
-    var detailLabel = NSTextField.alloc().initWithFrame(nsRect(PADDING, WINDOW_HEIGHT - 68, WINDOW_WIDTH - PADDING * 2, 20));
+    const detailLabel = NSTextField.alloc().initWithFrame(nsRect(PADDING, WINDOW_HEIGHT - 68, WINDOW_WIDTH - PADDING * 2, 20));
     detailLabel.setStringValue("");
     detailLabel.setBezeled(false);
     detailLabel.setDrawsBackground(false);
@@ -88,7 +88,7 @@ function createProgressWindow(title) {
     detailLabel.setSelectable(false);
     content.addSubview(detailLabel);
 
-    var infoLabel = NSTextField.alloc().initWithFrame(nsRect(PADDING, WINDOW_HEIGHT - 88, WINDOW_WIDTH - PADDING * 2, 18));
+    const infoLabel = NSTextField.alloc().initWithFrame(nsRect(PADDING, WINDOW_HEIGHT - 88, WINDOW_WIDTH - PADDING * 2, 18));
     infoLabel.setStringValue("");
     infoLabel.setBezeled(false);
     infoLabel.setDrawsBackground(false);
@@ -97,14 +97,14 @@ function createProgressWindow(title) {
     infoLabel.setTextColor(NSColor.secondaryLabelColor ? NSColor.secondaryLabelColor() : NSColor.grayColor());
     content.addSubview(infoLabel);
 
-    var bar = NSProgressIndicator.alloc().initWithFrame(nsRect(PADDING, 48, WINDOW_WIDTH - PADDING * 2 - 90, 18));
+    const bar = NSProgressIndicator.alloc().initWithFrame(nsRect(PADDING, 48, WINDOW_WIDTH - PADDING * 2 - 90, 18));
     bar.setIndeterminate(false);
     bar.setMinValue(0);
     bar.setMaxValue(1);
     bar.setDoubleValue(0);
     content.addSubview(bar);
 
-    var percentLabel = NSTextField.alloc().initWithFrame(nsRect(WINDOW_WIDTH - 90, 46, 74, 18));
+    const percentLabel = NSTextField.alloc().initWithFrame(nsRect(WINDOW_WIDTH - 90, 46, 74, 18));
     percentLabel.setStringValue("0%");
     percentLabel.setBezeled(false);
     percentLabel.setDrawsBackground(false);
@@ -113,7 +113,7 @@ function createProgressWindow(title) {
     percentLabel.setAlignment(NSRightTextAlignment);
     content.addSubview(percentLabel);
 
-    var cancelButton = NSButton.alloc().initWithFrame(nsRect(WINDOW_WIDTH - 90 - PADDING, 10, 90, 28));
+    const cancelButton = NSButton.alloc().initWithFrame(nsRect(WINDOW_WIDTH - 90 - PADDING, 10, 90, 28));
     cancelButton.setTitle("取消");
     cancelButton.setBezelStyle(NSRoundedBezelStyle);
     cancelButton.setTarget(cancelButton);
@@ -142,7 +142,7 @@ function createProgressWindow(title) {
 function refreshWindow(window) {
   try {
     window.displayIfNeeded();
-    var content = window.contentView();
+    const content = window.contentView();
     if (content && content.displayIfNeeded) {
       content.displayIfNeeded();
     }
@@ -177,9 +177,9 @@ function updateProgress(progressWindow, state, detail) {
     return;
   }
   try {
-    var total = Math.max(1, state.total || 1);
-    var current = Math.max(0, Math.min(state.current || 0, total));
-    var percent = Math.round((current / total) * 100);
+    const total = Math.max(1, state.total || 1);
+    const current = Math.max(0, Math.min(state.current || 0, total));
+    const percent = Math.round((current / total) * 100);
     state.percent = percent;
 
     progressWindow.bar.setMaxValue(total);
@@ -187,7 +187,7 @@ function updateProgress(progressWindow, state, detail) {
     progressWindow.percentLabel.setStringValue(String(percent) + "%");
     progressWindow.detailLabel.setStringValue(String(detail || state.currentLabel || ""));
 
-    var infoParts = [];
+    const infoParts = [];
     if (state.phase && PHASES[state.phase]) {
       infoParts.push(PHASES[state.phase]);
     }
@@ -221,11 +221,11 @@ function closeProgressWindow(progressWindow) {
 }
 
 function createReporter(prefix) {
-  var lines = [];
-  var labelPrefix = prefix ? prefix + " · " : i18n.STRINGS.pluginName + " · ";
-  var progressWindow = null;
-  var messageShown = false;
-  var state = createProgressState(this);
+  const lines = [];
+  const labelPrefix = prefix ? prefix + " · " : i18n.STRINGS.pluginName + " · ";
+  let progressWindow = null;
+  let messageShown = false;
+  const state = createProgressState(this);
 
   function append(line) {
     lines.push("[" + nowStamp() + "] " + line);
@@ -239,14 +239,14 @@ function createReporter(prefix) {
   }
 
   function showSummary(summary) {
-    var alert = NSAlert.alloc().init();
+    const alert = NSAlert.alloc().init();
     alert.setMessageText(summary.title || i18n.STRINGS.pluginName);
     alert.setInformativeText(summary.detail || "");
     alert.addButtonWithTitle("确定");
     alert.runModal();
   }
 
-  var reporter = {
+  const reporter = {
     state: state,
     lines: lines,
 
@@ -262,7 +262,7 @@ function createReporter(prefix) {
       append("导出开始：mode=" + mode + "，logPath=" + logPath);
       progressWindow = createProgressWindow(i18n.STRINGS.pluginName);
       if (progressWindow && progressWindow.cancelButton && CancelHandler) {
-        var handler = CancelHandler.alloc().initWithReporter_(reporter);
+        const handler = CancelHandler.alloc().initWithReporter_(reporter);
         progressWindow.cancelButton.setTarget(handler);
         progressWindow.cancelButton.setAction("cancel:");
       }
@@ -335,14 +335,14 @@ function createReporter(prefix) {
     },
 
     step: function (key, name) {
-      var text = i18n.t(key, { name: name });
+      const text = i18n.t(key, { name: name });
       append(text + "：" + name);
       state.currentLabel = text;
       updateProgress(progressWindow, state, state.currentLabel);
     },
 
     success: function (artboard, outputDir) {
-      var name = (artboard && artboard.name) || "";
+      const name = (artboard && artboard.name) || "";
       append("成功导出画板：" + name + " -> " + outputDir);
       state.successCount += 1;
       state.current += 1;
@@ -350,8 +350,8 @@ function createReporter(prefix) {
     },
 
     failure: function (artboard, error) {
-      var name = (artboard && artboard.name) || "";
-      var reason = error && error.message ? error.message : String(error);
+      const name = (artboard && artboard.name) || "";
+      const reason = error && error.message ? error.message : String(error);
       append("失败导出画板：" + name + "，原因：" + reason);
       state.failedCount += 1;
       state.current += 1;
@@ -376,7 +376,7 @@ function createReporter(prefix) {
 
     finish: function () {
       state.phase = "finished";
-      var duration = Math.round((new Date().getTime() - state.startTime.getTime()) / 1000);
+      const duration = Math.round((new Date().getTime() - state.startTime.getTime()) / 1000);
       append("导出完成：成功 " + state.successCount + " 个，失败 " + state.failedCount + " 个，警告 " + state.warningCount + " 个，耗时 " + duration + " 秒");
       state.currentLabel = "导出完成";
       state.current = state.total;
@@ -397,7 +397,7 @@ function createReporter(prefix) {
 
     fail: function (error) {
       state.phase = "failed";
-      var reason = error && error.message ? error.message : String(error);
+      const reason = error && error.message ? error.message : String(error);
       append("导出失败：" + reason);
       state.currentLabel = "导出失败";
       updateProgress(progressWindow, state, state.currentLabel);

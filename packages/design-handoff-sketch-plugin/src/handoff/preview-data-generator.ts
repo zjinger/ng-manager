@@ -39,8 +39,8 @@ function inferRenderStrategy(node, asset) {
 }
 
 function buildCssSnippet(node, style) {
-  var frame = getFrame(node);
-  var lines = [];
+  const frame = getFrame(node);
+  const lines = [];
   lines.push("width: " + (frame.width || 0) + "px;");
   lines.push("height: " + (frame.height || 0) + "px;");
   if (style && style.textColor) lines.push("color: " + style.textColor + ";");
@@ -50,9 +50,9 @@ function buildCssSnippet(node, style) {
   if (style && style.letterSpacing != null) lines.push("letter-spacing: " + style.letterSpacing + "px;");
   if (style && style.lineHeight != null && typeof style.lineHeight === "number") lines.push("line-height: " + style.lineHeight + "px;");
   if (style && style.radius != null) lines.push("border-radius: " + style.radius + "px;");
-  var fill = style && style.fills && style.fills.length ? style.fills[style.fills.length - 1] : null;
+  const fill = style && style.fills && style.fills.length ? style.fills[style.fills.length - 1] : null;
   if (fill && fill.color) lines.push("background: " + fill.color + ";");
-  var border = style && style.borders && style.borders.length ? style.borders[style.borders.length - 1] : null;
+  const border = style && style.borders && style.borders.length ? style.borders[style.borders.length - 1] : null;
   if (border && border.color) lines.push("border: " + (border.thickness || 1) + "px solid " + border.color + ";");
   if (style && style.opacity != null && style.opacity !== 1) lines.push("opacity: " + style.opacity + ";");
   if (style && style.rotation != null) lines.push("transform: rotate(" + style.rotation + "deg);");
@@ -60,8 +60,8 @@ function buildCssSnippet(node, style) {
 }
 
 function buildInspect(node, styleMap, asset) {
-  var style = getStyleRef(node, styleMap);
-  var inspect = {
+  const style = getStyleRef(node, styleMap);
+  const inspect = {
     layerType: node.type,
     role: node.role || null,
     styleRef: node.styleRef || null,
@@ -92,16 +92,16 @@ function buildPreviewNode(node, styleMap, assetsByLayerId, parentId, artboardId)
   if (!node || node.hidden) {
     return null;
   }
-  var asset = node.layerId || node.id ? assetsByLayerId[String(node.layerId || node.id || "")] || null : null;
-  var strategy = inferRenderStrategy(node, asset);
+  const asset = node.layerId || node.id ? assetsByLayerId[String(node.layerId || node.id || "")] || null : null;
+  const strategy = inferRenderStrategy(node, asset);
   if (strategy === "ignore") {
     return null;
   }
 
-  var children = [];
+  const children = [];
   if (node.children && node.children.length > 0) {
     node.children.forEach(function (child) {
-      var childNode = buildPreviewNode(child, styleMap, assetsByLayerId, node.handoffId || node.id, artboardId);
+      const childNode = buildPreviewNode(child, styleMap, assetsByLayerId, node.handoffId || node.id, artboardId);
       if (childNode) {
         children.push(childNode);
       }
@@ -131,7 +131,7 @@ function buildPreviewNode(node, styleMap, assetsByLayerId, parentId, artboardId)
 }
 
 function buildAssetRefs(assetsMap) {
-  var refs = [];
+  const refs = [];
   (assetsMap && assetsMap.assets || []).forEach(function (asset) {
     refs.push({
       id: asset.id,
@@ -169,15 +169,15 @@ function buildComponentPreviews(components) {
 }
 
 function generatePreviewData(meta, layerTree, components, screenshot, styleMap, assetsMap) {
-  var frame = getFrame(layerTree);
-  var assetsByLayerId = {};
+  const frame = getFrame(layerTree);
+  const assetsByLayerId = {};
   (assetsMap && assetsMap.assets || []).forEach(function (asset) {
     if (asset && asset.layerId) {
       assetsByLayerId[String(asset.layerId)] = asset;
     }
   });
 
-  var root = buildPreviewNode({
+  const root = buildPreviewNode({
     id: layerTree.id,
     handoffId: layerTree.handoffId,
     name: layerTree.name || meta.artboardName,

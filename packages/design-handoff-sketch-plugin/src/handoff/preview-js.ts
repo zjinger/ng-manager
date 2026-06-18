@@ -1,10 +1,10 @@
 // Sketch Measure 式预览脚本：screenshot 作为视觉事实，图层矩形作为透明可点击热区。
 function generatePreviewJs() {
   return `(function () {
-  var DATA = window.__NGM_PREVIEW_DATA__ || {};
-  var nodesByHandoffId = {};
-  var assetsByLayerId = {};
-  var selectedHandoffId = null;
+  let DATA = window.__NGM_PREVIEW_DATA__ || {};
+  let nodesByHandoffId = {};
+  let assetsByLayerId = {};
+  let selectedHandoffId = null;
 
   function esc(value) {
     return String(value == null ? '' : value)
@@ -22,12 +22,12 @@ function generatePreviewJs() {
   }
 
   function px(value) {
-    var number = Number(value);
+    let number = Number(value);
     return isFinite(number) ? number + 'px' : '0px';
   }
 
   function unit(value) {
-    var number = Number(value);
+    let number = Number(value);
     return isFinite(number) ? Math.round(number * 100) / 100 : 0;
   }
 
@@ -36,7 +36,7 @@ function generatePreviewJs() {
   }
 
   function dataAttrs(node) {
-    var frame = getFrame(node);
+    let frame = getFrame(node);
     return ' data-handoff-id="' + esc(node.handoffId) + '"' +
       ' data-layer-id="' + esc(node.layerId || node.id) + '"' +
       ' data-artboard-id="' + esc(node.artboardId || '') + '"' +
@@ -57,7 +57,7 @@ function generatePreviewJs() {
 
   function isSelectable(node) {
     if (!node || node.visible === false || node.renderStrategy === 'ignore') return false;
-    var frame = getFrame(node);
+    let frame = getFrame(node);
     if (frame.width <= 0 || frame.height <= 0) return false;
     return true;
   }
@@ -71,10 +71,10 @@ function generatePreviewJs() {
   }
 
   function renderStage() {
-    var stage = DATA.artboard || {};
-    var wrapper = document.querySelector('.ngm-stage-wrapper');
-    var content = document.querySelector('.ngm-stage-content');
-    var hotspots = document.querySelector('.ngm-hotspot-layer');
+    let stage = DATA.artboard || {};
+    let wrapper = document.querySelector('.ngm-stage-wrapper');
+    let content = document.querySelector('.ngm-stage-content');
+    let hotspots = document.querySelector('.ngm-hotspot-layer');
     if (!wrapper || !content || !hotspots) return;
 
     wrapper.style.width = px(stage.width);
@@ -82,9 +82,9 @@ function generatePreviewJs() {
     content.style.width = px(stage.width);
     content.style.height = px(stage.height);
 
-    var html = [];
+    let html = [];
     flattenSelectable(DATA.nodes || [], []).forEach(function (node, index) {
-      var frame = getFrame(node);
+      let frame = getFrame(node);
       html.push('<div class="ngm-hotspot"' + dataAttrs(node) +
         ' style="left:' + px(frame.x) +
         ';top:' + px(frame.y) +
@@ -97,27 +97,27 @@ function generatePreviewJs() {
   }
 
   function fitStage() {
-    var panel = document.querySelector('.ngm-stage-panel');
-    var wrapper = document.querySelector('.ngm-stage-wrapper');
-    var stage = DATA.artboard || {};
+    let panel = document.querySelector('.ngm-stage-panel');
+    let wrapper = document.querySelector('.ngm-stage-wrapper');
+    let stage = DATA.artboard || {};
     if (!panel || !wrapper || !stage.width || !stage.height) return;
-    var availableWidth = Math.max(320, panel.clientWidth - 64);
-    var availableHeight = Math.max(240, panel.clientHeight - 64);
-    var scale = Math.min(1, availableWidth / stage.width, availableHeight / stage.height);
+    let availableWidth = Math.max(320, panel.clientWidth - 64);
+    let availableHeight = Math.max(240, panel.clientHeight - 64);
+    let scale = Math.min(1, availableWidth / stage.width, availableHeight / stage.height);
     wrapper.style.transform = 'scale(' + scale + ')';
     wrapper.style.marginBottom = Math.max(32, stage.height * scale * 0.08) + 'px';
   }
 
   function renderLayerTree() {
-    var root = document.querySelector('.ngm-layer-tree .ngm-panel-content');
+    let root = document.querySelector('.ngm-layer-tree .ngm-panel-content');
     if (!root) return;
     root.innerHTML = buildTreeNodes(DATA.nodes || []);
   }
 
   function buildTreeNodes(nodes) {
-    var out = ['<ul>'];
+    let out = ['<ul>'];
     (nodes || []).forEach(function (node) {
-      var hasChildren = node.children && node.children.length;
+      let hasChildren = node.children && node.children.length;
       out.push('<li>');
       out.push('<div class="ngm-layer-tree-node" data-handoff-id="' + esc(node.handoffId) + '">');
       out.push('<span class="toggle">' + (hasChildren ? '▾' : '') + '</span>');
@@ -144,15 +144,15 @@ function generatePreviewJs() {
   }
 
   function renderInspect(node) {
-    var panel = document.querySelector('.ngm-inspect-panel .ngm-panel-content');
+    let panel = document.querySelector('.ngm-inspect-panel .ngm-panel-content');
     if (!panel) return;
     if (!node) {
       panel.innerHTML = '<div class="ngm-empty-state">点击图层查看详情</div>';
       return;
     }
-    var inspect = node.inspect || {};
-    var frame = getFrame(node);
-    var html = '';
+    let inspect = node.inspect || {};
+    let frame = getFrame(node);
+    let html = '';
     html += infoGroup('基础信息', [
       infoRow('名称', node.name || '-'),
       infoRow('类型', (node.type || '-') + (node.role ? ' / ' + node.role : '')),
@@ -185,12 +185,12 @@ function generatePreviewJs() {
 
   function formatShadow(shadow) {
     if (!shadow) return '-';
-    var inset = shadow.type === 'inner' ? 'inset ' : '';
+    let inset = shadow.type === 'inner' ? 'inset ' : '';
     return inset + shadow.x + 'px ' + shadow.y + 'px ' + shadow.blur + 'px ' + shadow.spread + 'px ' + (shadow.color || '');
   }
 
   function styleGroup(inspect) {
-    var rows = [];
+    let rows = [];
     if (inspect.opacity != null) rows.push(infoRow('不透明度', inspect.opacity));
     if (inspect.rotation != null) rows.push(infoRow('旋转', inspect.rotation + '°'));
     if (inspect.radius != null) rows.push(infoRow('圆角', inspect.radius + 'px'));
@@ -213,7 +213,7 @@ function generatePreviewJs() {
   }
 
   function fontGroup(inspect) {
-    var rows = [];
+    let rows = [];
     if (inspect.textColor) rows.push(infoRow('文字颜色', inspect.textColor, true));
     if (inspect.fontFamily) rows.push(infoRow('字体', inspect.fontFamily));
     if (inspect.fontSize) rows.push(infoRow('字号', inspect.fontSize + 'px'));
@@ -226,7 +226,7 @@ function generatePreviewJs() {
 
   function cssGroup(inspect) {
     if (!inspect.cssSnippet || !inspect.cssSnippet.length) return '';
-    var code = '<pre class="ngm-code-block">' + esc(inspect.cssSnippet.join('\\n')) + '</pre>';
+    let code = '<pre class="ngm-code-block">' + esc(inspect.cssSnippet.join('\\n')) + '</pre>';
     return infoGroup('CSS 片段', [code]);
   }
 
@@ -235,7 +235,7 @@ function generatePreviewJs() {
   }
 
   function infoRow(label, value, swatch) {
-    var color = swatch ? '<span class="ngm-color-swatch" style="background:' + esc(value) + '"></span>' : '';
+    let color = swatch ? '<span class="ngm-color-swatch" style="background:' + esc(value) + '"></span>' : '';
     return '<div class="ngm-info-row"><span>' + esc(label) + '</span><span>' + color + esc(value == null ? '-' : value) + '</span></div>';
   }
 
@@ -244,9 +244,9 @@ function generatePreviewJs() {
   }
 
   function renderAssets() {
-    var panel = document.querySelector('.ngm-assets-panel .ngm-panel-content');
+    let panel = document.querySelector('.ngm-assets-panel .ngm-panel-content');
     if (!panel) return;
-    var assets = DATA.assets || [];
+    let assets = DATA.assets || [];
     if (!assets.length) {
       panel.innerHTML = '<div class="ngm-empty-state">无导出资源</div>';
       return;
@@ -275,7 +275,7 @@ function generatePreviewJs() {
   }
 
   function selectByHandoffId(handoffId, notifyParent) {
-    var node = nodesByHandoffId[handoffId];
+    let node = nodesByHandoffId[handoffId];
     selectedHandoffId = handoffId;
     clearSelection();
     if (!node) {
@@ -283,19 +283,19 @@ function generatePreviewJs() {
       return;
     }
 
-    var selector = '[data-handoff-id="' + cssEsc(handoffId) + '"]';
-    var stageEl = document.querySelector('.ngm-hotspot-layer ' + selector);
+    let selector = '[data-handoff-id="' + cssEsc(handoffId) + '"]';
+    let stageEl = document.querySelector('.ngm-hotspot-layer ' + selector);
     if (stageEl) {
       stageEl.setAttribute('data-ngm-handoff-selected', 'true');
       stageEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
     }
 
-    var treeEl = document.querySelector('.ngm-layer-tree-node' + selector);
+    let treeEl = document.querySelector('.ngm-layer-tree-node' + selector);
     if (treeEl) treeEl.classList.add('selected');
 
-    var asset = assetsByLayerId[String(node.layerId || node.id || '')];
+    let asset = assetsByLayerId[String(node.layerId || node.id || '')];
     if (asset && asset.id) {
-      var assetEl = document.querySelector('.ngm-asset-item[data-asset-id="' + cssEsc(asset.id) + '"]');
+      let assetEl = document.querySelector('.ngm-asset-item[data-asset-id="' + cssEsc(asset.id) + '"]');
       if (assetEl) assetEl.classList.add('selected');
     }
 
@@ -317,7 +317,7 @@ function generatePreviewJs() {
 
   function bindEvents() {
     document.querySelector('.ngm-hotspot-layer').addEventListener('click', function (event) {
-      var el = event.target.closest('.ngm-hotspot');
+      let el = event.target.closest('.ngm-hotspot');
       if (!el) return;
       selectByHandoffId(el.getAttribute('data-handoff-id'), true);
       event.preventDefault();
@@ -325,18 +325,18 @@ function generatePreviewJs() {
     });
 
     document.querySelector('.ngm-layer-tree').addEventListener('click', function (event) {
-      var nodeEl = event.target.closest('.ngm-layer-tree-node');
+      let nodeEl = event.target.closest('.ngm-layer-tree-node');
       if (!nodeEl) return;
       selectByHandoffId(nodeEl.getAttribute('data-handoff-id'), true);
     });
 
     document.querySelector('.ngm-assets-panel').addEventListener('click', function (event) {
-      var item = event.target.closest('.ngm-asset-item');
+      let item = event.target.closest('.ngm-asset-item');
       if (!item) return;
-      var layerId = item.getAttribute('data-layer-id');
-      var node = null;
+      let layerId = item.getAttribute('data-layer-id');
+      let node = null;
       Object.keys(nodesByHandoffId).some(function (handoffId) {
-        var candidate = nodesByHandoffId[handoffId];
+        let candidate = nodesByHandoffId[handoffId];
         if (String(candidate.layerId || candidate.id || '') === String(layerId || '')) {
           node = candidate;
           return true;
@@ -347,7 +347,7 @@ function generatePreviewJs() {
     });
 
     document.getElementById('ngm-toggle-screenshot').addEventListener('click', function () {
-      var screenshot = document.querySelector('.ngm-screenshot-layer');
+      let screenshot = document.querySelector('.ngm-screenshot-layer');
       if (screenshot) {
         screenshot.classList.toggle('hidden');
         this.classList.toggle('active');
@@ -355,7 +355,7 @@ function generatePreviewJs() {
     });
 
     document.getElementById('ngm-toggle-hotspots').addEventListener('click', function () {
-      var layer = document.querySelector('.ngm-hotspot-layer');
+      let layer = document.querySelector('.ngm-hotspot-layer');
       layer.classList.toggle('hidden');
       this.classList.toggle('active');
     });
@@ -364,7 +364,7 @@ function generatePreviewJs() {
     window.addEventListener('resize', fitStage);
 
     window.addEventListener('message', function (event) {
-      var data = event.data || {};
+      let data = event.data || {};
       if (data.type === 'ngm-handoff:highlight' && data.handoffId) {
         selectByHandoffId(data.handoffId, false);
       }

@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/types/**/*.ts",
+    "src/export/asset-classify.ts",
+    "src/export/document-index-generator.ts",
+    "src/utils/export-result-writer.ts",
+    "src/utils/debug-logger.ts"
+  ]
+}

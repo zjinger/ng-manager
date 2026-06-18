@@ -1,15 +1,17 @@
+import type { ArtboardExportRecordDto, ExportItemStatus, ExportResultDto, ExportResultWarningDto, ExportResultErrorDto } from "../types/runtime";
+
 let debugLogger = require("./debug-logger");
 
-function countByStatus(items, status) {
-  return (items || []).filter(function (item) {
+function countByStatus(items: ArtboardExportRecordDto[] | undefined, status: ExportItemStatus): number {
+  return (items || []).filter(function (item: ArtboardExportRecordDto) {
     return item.status === status;
   }).length;
 }
 
-function collectWarnings(items) {
-  let warnings = [];
+function collectWarnings(items: ArtboardExportRecordDto[] | undefined): ExportResultWarningDto[] {
+  let warnings: ExportResultWarningDto[] = [];
   (items || []).forEach(function (item) {
-    (item.warnings || []).forEach(function (warning) {
+    (item.warnings || []).forEach(function (warning: string) {
       warnings.push({
         artboardName: item.artboardName || "",
         message: warning,
@@ -19,31 +21,42 @@ function collectWarnings(items) {
   return warnings;
 }
 
-function collectErrors(items, extraErrors) {
-  let errors = [];
+function collectErrors(items: ArtboardExportRecordDto[] | undefined, extraErrors: ExportResultErrorDto[] | undefined): ExportResultErrorDto[] {
+  let errors: ExportResultErrorDto[] = [];
   (items || [])
-    .filter(function (item) {
+    .filter(function (item: ArtboardExportRecordDto) {
       return item.status === "failed";
     })
-    .forEach(function (item) {
+    .forEach(function (item: ArtboardExportRecordDto) {
       errors.push({
         artboardName: item.artboardName || "",
         message: item.reason || "unknown",
       });
     });
-  (extraErrors || []).forEach(function (error) {
+  (extraErrors || []).forEach(function (error: ExportResultErrorDto) {
     errors.push(error);
   });
   return errors;
 }
 
-function buildExportResult(input) {
+function buildExportResult(input: {
+  mode?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  documentName?: string;
+  pageName?: string;
+  outputRoot?: string;
+  items?: ArtboardExportRecordDto[];
+  warnings?: ExportResultWarningDto[];
+  errors?: ExportResultErrorDto[];
+  logPath?: string;
+}): ExportResultDto {
   let started = input.startedAt ? new Date(input.startedAt).getTime() : Date.now();
   let finishedAt = input.finishedAt || new Date().toISOString();
   let finished = new Date(finishedAt).getTime();
-  let items = input.items || [];
-  let warnings = input.warnings || collectWarnings(items);
-  let errors = input.errors || collectErrors(items, []);
+  let items: ArtboardExportRecordDto[] = input.items || [];
+  let warnings: ExportResultWarningDto[] = input.warnings || collectWarnings(items);
+  let errors: ExportResultErrorDto[] = input.errors || collectErrors(items, []);
 
   return {
     mode: input.mode,
@@ -63,7 +76,7 @@ function buildExportResult(input) {
   };
 }
 
-function writeExportResult(outputRoot, result) {
+function writeExportResult(outputRoot: string, result: ExportResultDto): string | null {
   if (!outputRoot) {
     return null;
   }

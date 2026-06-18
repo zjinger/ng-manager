@@ -5,9 +5,9 @@
 // - 不假设导出文件名一定是 baseName.png：导出到独立临时目录、扫描新增文件、重命名为稳定文件名
 // - 每个 asset 写入完整字段（含 handoffId/artboardId/absoluteFrame/format/width/height/...）
 // - 单个资源导出失败只记录 warning，不中断整个 Artboard 导出
-var sketch = require("sketch");
-var normalize = require("./normalize-layer");
-var classify = require("./asset-classify");
+const sketch = require("sketch");
+const normalize = require("./normalize-layer");
+const classify = require("./asset-classify");
 
 function getFileManager() {
   return NSFileManager.defaultManager();
@@ -39,7 +39,7 @@ function fileExistsAt(path) {
 }
 
 function sanitizeAssetName(name) {
-  var value = String(name || "asset")
+  const value = String(name || "asset")
     .replace(/[\\/:*?"<>|]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
@@ -47,31 +47,31 @@ function sanitizeAssetName(name) {
 }
 
 function scanDirFileNames(dir) {
-  var fm = getFileManager();
+  const fm = getFileManager();
   if (!fm.fileExistsAtPath(String(dir))) {
     return [];
   }
-  var contents = fm.contentsOfDirectoryAtPath_error(String(dir), null);
-  var result = [];
+  let contents = fm.contentsOfDirectoryAtPath_error(String(dir), null);
+  let result = [];
   if (!contents) {
     return result;
   }
-  var count = contents.count();
-  for (var i = 0; i < count; i += 1) {
+  const count = contents.count();
+  for (let i = 0; i < count; i += 1) {
     result.push(String(contents.objectAtIndex(i)));
   }
   return result;
 }
 
 function fileExt(name) {
-  var dot = String(name || "").lastIndexOf(".");
+  const dot = String(name || "").lastIndexOf(".");
   return dot >= 0 ? String(name).slice(dot + 1).toLowerCase() : "";
 }
 
 // 构建 layerId -> { handoffId, absoluteFrame, artboardId } 索引，
 // 从已 normalize 的 layerTree 查询，避免重复归一化并保证 handoffId 与图层树一致。
 function buildLayerIndex(layerTree) {
-  var index = {};
+  const index = {};
   if (!layerTree) {
     return index;
   }
@@ -98,7 +98,7 @@ function collectAssetLayers(layer, list) {
   if (!layer) {
     return;
   }
-  var info = classify.classifyAsset(layer);
+  const info = classify.classifyAsset(layer);
   if (info) {
     list.push({ layer: layer, info: info });
     return;
@@ -114,7 +114,7 @@ function collectAssetLayers(layer, list) {
 // 临时目录导出前为空，避免与已有文件同名覆盖导致的 before/after 误判（任务 3）。
 function exportIntoTempDir(layer, tmpDir, fmt) {
   ensureDir(tmpDir);
-  var before = scanDirFileNames(tmpDir);
+  const before = scanDirFileNames(tmpDir);
   try {
     sketch.export(layer, {
       output: tmpDir,
@@ -125,9 +125,9 @@ function exportIntoTempDir(layer, tmpDir, fmt) {
   } catch (error) {
     return null;
   }
-  var after = scanDirFileNames(tmpDir);
-  for (var i = 0; i < after.length; i += 1) {
-    var name = after[i];
+  const after = scanDirFileNames(tmpDir);
+  for (let i = 0; i < after.length; i += 1) {
+    const name = after[i];
     if (before.indexOf(name) !== -1) {
       continue;
     }
@@ -140,15 +140,15 @@ function exportIntoTempDir(layer, tmpDir, fmt) {
 // 导出单个资源：按格式策略依次尝试，成功后重命名为稳定文件名。
 // 返回 { format, relPath } 或 null（含资源级 warning 写入 assetWarnings）。
 function exportAssetItem(layer, type, outputDir, joinPath, seq, baseName, shortId, assetWarnings) {
-  var formats = classify.preferSvg(type) ? ["svg", "png"] : ["png"];
-  var subDir = classify.assetTypeDirectory(type);
-  var assetDir = joinPath(outputDir, "assets", subDir);
+  const formats = classify.preferSvg(type) ? ["svg", "png"] : ["png"];
+  const subDir = classify.assetTypeDirectory(type);
+  const assetDir = joinPath(outputDir, "assets", subDir);
   ensureDir(assetDir);
 
-  for (var f = 0; f < formats.length; f += 1) {
-    var fmt = formats[f];
-    var tmpDir = joinPath(assetDir, ".tmp-" + seq + "-" + shortId + "-" + fmt);
-    var producedName = exportIntoTempDir(layer, tmpDir, fmt);
+  for (let f = 0; f < formats.length; f += 1) {
+    const fmt = formats[f];
+    const tmpDir = joinPath(assetDir, ".tmp-" + seq + "-" + shortId + "-" + fmt);
+    let producedName = exportIntoTempDir(layer, tmpDir, fmt);
 
     if (!producedName) {
       // svg 可能不被某些图层支持（如位图），记 warning 后继续尝试 png fallback。
@@ -157,9 +157,9 @@ function exportAssetItem(layer, type, outputDir, joinPath, seq, baseName, shortI
       continue;
     }
 
-    var stableName = type + "-" + seq + "-" + baseName + "__" + shortId + "." + fmt;
-    var stableAbs = joinPath(assetDir, stableName);
-    var producedAbs = joinPath(tmpDir, producedName);
+    const stableName = type + "-" + seq + "-" + baseName + "__" + shortId + "." + fmt;
+    const stableAbs = joinPath(assetDir, stableName);
+    const producedAbs = joinPath(tmpDir, producedName);
 
     if (fileExistsAt(stableAbs)) {
       removeItemAt(stableAbs);
@@ -178,36 +178,36 @@ function exportAssetItem(layer, type, outputDir, joinPath, seq, baseName, shortI
 // 新增第 5 个参数 context = { layerTree, artboardId }，用于补全 handoffId / absoluteFrame。
 function exportBitmapAssets(artboard, outputDir, joinPath, warnings, context) {
   context = context || {};
-  var layerTree = context.layerTree || null;
-  var artboardId = context.artboardId || (layerTree ? layerTree.artboardId : null) || "";
-  var layerIndex = buildLayerIndex(layerTree);
+  let layerTree = context.layerTree || null;
+  const artboardId = context.artboardId || (layerTree ? layerTree.artboardId : null) || "";
+  const layerIndex = buildLayerIndex(layerTree);
 
-  var imagesDir = joinPath(outputDir, "assets", "images");
+  const imagesDir = joinPath(outputDir, "assets", "images");
   ensureDir(imagesDir);
 
-  var list = [];
+  const list = [];
   collectAssetLayers(artboard, list);
 
-  var assets = [];
+  const assets = [];
   list.forEach(function (item, index) {
-    var layer = item.layer;
-    var info = item.info;
-    var seq = String(index + 1).padStart(3, "0");
-    var baseName = sanitizeAssetName(layer.name || ("asset_" + seq));
-    var shortId = normalize.shortHash(String(layer.id || "") + ":" + artboardId);
-    var frame = normalize.getFrame(layer);
+    let layer = item.layer;
+    const info = item.info;
+    const seq = String(index + 1).padStart(3, "0");
+    const baseName = sanitizeAssetName(layer.name || ("asset_" + seq));
+    const shortId = normalize.shortHash(String(layer.id || "") + ":" + artboardId);
+    const frame = normalize.getFrame(layer);
 
     // handoffId / absoluteFrame 优先取自 normalize 后的图层树索引；
     // 若节点被归一化裁剪（空容器等），按 normalize 公式兜底生成 handoffId。
-    var node = layerIndex[String(layer.id || "")] || null;
-    var handoffId = node && node.handoffId
+    let node = layerIndex[String(layer.id || "")] || null;
+    const handoffId = node && node.handoffId
       ? node.handoffId
       : "layer_" + normalize.shortHash(String(layer.id || "") + ":" + artboardId);
-    var absoluteFrame = node && node.absoluteFrame ? node.absoluteFrame : frame;
-    var resolvedArtboardId = node && node.artboardId ? node.artboardId : artboardId;
+    const absoluteFrame = node && node.absoluteFrame ? node.absoluteFrame : frame;
+    const resolvedArtboardId = node && node.artboardId ? node.artboardId : artboardId;
 
-    var assetWarnings = [];
-    var result = exportAssetItem(
+    const assetWarnings = [];
+    let result = exportAssetItem(
       layer,
       info.type,
       outputDir,
@@ -221,8 +221,8 @@ function exportBitmapAssets(artboard, outputDir, joinPath, warnings, context) {
     if (!result) {
       // 导出失败：仍写入 assets-map（exportStatus=failed, path=null），
       // 便于 preview / AI 上下文感知失败资源，同时不中断整体导出（验收 6/7）。
-      var failedName = layer.name || ("asset_" + seq);
-      var failReason = assetWarnings.length > 0 ? assetWarnings.join("; ") : "export produced no file";
+      const failedName = layer.name || ("asset_" + seq);
+      const failReason = assetWarnings.length > 0 ? assetWarnings.join("; ") : "export produced no file";
       assets.push({
         id: "asset_" + seq,
         name: failedName,
