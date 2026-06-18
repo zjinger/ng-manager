@@ -38,6 +38,27 @@ function inferRenderStrategy(node, asset) {
   return "dom";
 }
 
+function buildCssSnippet(node, style) {
+  var frame = getFrame(node);
+  var lines = [];
+  lines.push("width: " + (frame.width || 0) + "px;");
+  lines.push("height: " + (frame.height || 0) + "px;");
+  if (style && style.textColor) lines.push("color: " + style.textColor + ";");
+  if (style && style.fontSize) lines.push("font-size: " + style.fontSize + "px;");
+  if (style && style.fontFamily) lines.push("font-family: " + JSON.stringify(style.fontFamily) + ";");
+  if (style && style.textAlign) lines.push("text-align: " + style.textAlign + ";");
+  if (style && style.letterSpacing != null) lines.push("letter-spacing: " + style.letterSpacing + "px;");
+  if (style && style.lineHeight != null && typeof style.lineHeight === "number") lines.push("line-height: " + style.lineHeight + "px;");
+  if (style && style.radius != null) lines.push("border-radius: " + style.radius + "px;");
+  var fill = style && style.fills && style.fills.length ? style.fills[style.fills.length - 1] : null;
+  if (fill && fill.color) lines.push("background: " + fill.color + ";");
+  var border = style && style.borders && style.borders.length ? style.borders[style.borders.length - 1] : null;
+  if (border && border.color) lines.push("border: " + (border.thickness || 1) + "px solid " + border.color + ";");
+  if (style && style.opacity != null && style.opacity !== 1) lines.push("opacity: " + style.opacity + ";");
+  if (style && style.rotation != null) lines.push("transform: rotate(" + style.rotation + "deg);");
+  return lines;
+}
+
 function buildInspect(node, styleMap, asset) {
   var style = getStyleRef(node, styleMap);
   var inspect = {
@@ -50,9 +71,16 @@ function buildInspect(node, styleMap, asset) {
     borders: style && style.borders ? style.borders : [],
     shadows: style && style.shadows ? style.shadows : [],
     radius: style && style.radius != null ? style.radius : null,
+    rotation: style && style.rotation != null ? style.rotation : null,
     fontFamily: style && style.fontFamily ? style.fontFamily : null,
     fontSize: style && style.fontSize ? style.fontSize : null,
     fontWeight: style && style.fontWeight ? style.fontWeight : null,
+    textColor: style && style.textColor ? style.textColor : null,
+    textAlign: style && style.textAlign ? style.textAlign : null,
+    letterSpacing: style && style.letterSpacing != null ? style.letterSpacing : null,
+    lineHeight: style && style.lineHeight != null ? style.lineHeight : null,
+    css: style && style.css ? style.css : [],
+    cssSnippet: buildCssSnippet(node, style),
     assetType: asset ? asset.type : null,
     assetFormat: asset ? asset.format : null,
     assetPath: asset && asset.path ? asset.path : null,

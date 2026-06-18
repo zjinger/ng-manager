@@ -164,22 +164,70 @@ function generatePreviewJs() {
       infoRow('W', unit(frame.width) + 'px'),
       infoRow('H', unit(frame.height) + 'px')
     ]);
-    if (node.text) html += infoGroup('文本', [infoText(node.text)]);
+    if (node.text) html += infoGroup('文本内容', [infoText(node.text)]);
     html += styleGroup(inspect);
+    html += fontGroup(inspect);
+    html += cssGroup(inspect);
     if (inspect.assetPath) html += infoGroup('资源', [infoRow('路径', inspect.assetPath), infoRow('类型', (inspect.assetType || '-') + (inspect.assetFormat ? ' / ' + inspect.assetFormat : ''))]);
     panel.innerHTML = html || '<div class="ngm-empty-state">无可用信息</div>';
+  }
+
+  function formatFill(fill) {
+    if (!fill) return '-';
+    if (fill.gradient && fill.gradient.stops && fill.gradient.stops.length) return '渐变';
+    return fill.color || '-';
+  }
+
+  function formatBorder(border) {
+    if (!border) return '-';
+    return (border.thickness || 1) + 'px ' + (border.position || '') + ' ' + (border.color || '');
+  }
+
+  function formatShadow(shadow) {
+    if (!shadow) return '-';
+    var inset = shadow.type === 'inner' ? 'inset ' : '';
+    return inset + shadow.x + 'px ' + shadow.y + 'px ' + shadow.blur + 'px ' + shadow.spread + 'px ' + (shadow.color || '');
   }
 
   function styleGroup(inspect) {
     var rows = [];
     if (inspect.opacity != null) rows.push(infoRow('不透明度', inspect.opacity));
+    if (inspect.rotation != null) rows.push(infoRow('旋转', inspect.rotation + '°'));
+    if (inspect.radius != null) rows.push(infoRow('圆角', inspect.radius + 'px'));
+    if (inspect.fills && inspect.fills.length) {
+      inspect.fills.forEach(function (fill, index) {
+        rows.push(infoRow('填充' + (inspect.fills.length > 1 ? ' ' + (index + 1) : ''), formatFill(fill), fill && fill.color));
+      });
+    }
+    if (inspect.borders && inspect.borders.length) {
+      inspect.borders.forEach(function (border, index) {
+        rows.push(infoRow('边框' + (inspect.borders.length > 1 ? ' ' + (index + 1) : ''), formatBorder(border), border && border.color));
+      });
+    }
+    if (inspect.shadows && inspect.shadows.length) {
+      inspect.shadows.forEach(function (shadow, index) {
+        rows.push(infoRow('阴影' + (inspect.shadows.length > 1 ? ' ' + (index + 1) : ''), formatShadow(shadow)));
+      });
+    }
+    return rows.length ? infoGroup('样式', rows) : '';
+  }
+
+  function fontGroup(inspect) {
+    var rows = [];
+    if (inspect.textColor) rows.push(infoRow('文字颜色', inspect.textColor, true));
     if (inspect.fontFamily) rows.push(infoRow('字体', inspect.fontFamily));
     if (inspect.fontSize) rows.push(infoRow('字号', inspect.fontSize + 'px'));
     if (inspect.fontWeight) rows.push(infoRow('字重', inspect.fontWeight));
-    if (inspect.fills && inspect.fills.length) rows.push(infoRow('填充', inspect.fills[inspect.fills.length - 1], true));
-    if (inspect.borders && inspect.borders.length) rows.push(infoRow('边框', inspect.borders[inspect.borders.length - 1], true));
-    if (inspect.radius != null) rows.push(infoRow('圆角', inspect.radius + 'px'));
-    return rows.length ? infoGroup('样式', rows) : '';
+    if (inspect.textAlign) rows.push(infoRow('对齐', inspect.textAlign));
+    if (inspect.letterSpacing != null) rows.push(infoRow('字距', inspect.letterSpacing + 'px'));
+    if (inspect.lineHeight != null) rows.push(infoRow('行高', inspect.lineHeight));
+    return rows.length ? infoGroup('文本', rows) : '';
+  }
+
+  function cssGroup(inspect) {
+    if (!inspect.cssSnippet || !inspect.cssSnippet.length) return '';
+    var code = '<pre class="ngm-code-block">' + esc(inspect.cssSnippet.join('\\n')) + '</pre>';
+    return infoGroup('CSS 片段', [code]);
   }
 
   function infoGroup(title, rows) {
@@ -296,6 +344,14 @@ function generatePreviewJs() {
         return false;
       });
       if (node) selectByHandoffId(node.handoffId, true);
+    });
+
+    document.getElementById('ngm-toggle-screenshot').addEventListener('click', function () {
+      var screenshot = document.querySelector('.ngm-screenshot-layer');
+      if (screenshot) {
+        screenshot.classList.toggle('hidden');
+        this.classList.toggle('active');
+      }
     });
 
     document.getElementById('ngm-toggle-hotspots').addEventListener('click', function () {
